@@ -1,0 +1,51 @@
+{
+  "sprint": "S09",
+  "timestamp": "2026-03-16T18:34:00Z",
+  "iteration": 0,
+  "assertions": [
+    {
+      "id": "S09-A01",
+      "result": "PASS",
+      "description": "Course publishing pipeline: create → quality check → publish"
+    },
+    { "id": "S09-A02", "result": "PASS", "description": "Stripe checkout creates payment intent" },
+    {
+      "id": "S09-A03",
+      "result": "PASS",
+      "description": "Creator receives payout record after sale"
+    },
+    { "id": "S09-A04", "result": "PASS", "description": "Course discovery: search by keyword" },
+    {
+      "id": "S09-A05",
+      "result": "PASS",
+      "description": "Course discovery: filter by topic, difficulty, price"
+    },
+    {
+      "id": "S09-A06",
+      "result": "PASS",
+      "description": "Agent submission stores manifest and enters review queue"
+    },
+    { "id": "S09-A07", "result": "PASS", "description": "Agent activation adds to user's tools" },
+    {
+      "id": "S09-A08",
+      "result": "PASS",
+      "description": "Quality checker enforces min lessons, attribution, readability"
+    },
+    { "id": "S09-A09", "result": "PASS", "description": "Revenue split: 85/15 BYOAI, 80/20 Pro" },
+    {
+      "id": "S09-A10",
+      "result": "PASS",
+      "description": "Creator dashboard shows analytics and earnings"
+    },
+    { "id": "S09-A11", "result": "PASS", "description": "Agent sandbox (structural)" },
+    {
+      "id": "S09-A12",
+      "result": "PASS",
+      "description": "Full flow: create → publish → discover → enroll → access"
+    }
+  ],
+  "summary": { "total": 12, "passed": 12, "failed": 0, "score": 1.0 },
+  "test_output": "15 passed (15) in marketplace.test.ts, 229 total",
+  "exit_code": 0,
+  "command_run": "npx turbo run test --force && npx tsc --noEmit && npx eslint ."
+}
