@@ -1,0 +1,24 @@
+{
+  "name": "research_agent",
+  "version": "1.0.0",
+  "description": "Deep-dives into emerging research; finds primary sources, preprints, conference papers; synthesizes findings.",
+  "capabilities": ["deep_research", "find_papers", "synthesize"],
+  "requiredProviders": ["openai", "anthropic"],
+  "minModelCapabilities": ["text-generation"],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "topic": { "type": "string" },
+      "depth": { "type": "string", "enum": ["surface", "moderate", "deep"] }
+    },
+    "required": ["topic"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" },
+      "summary": { "type": "object" },
+      "papers": { "type": "array" }
+    }
+  }
+}

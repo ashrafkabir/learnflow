@@ -1,0 +1,24 @@
+{
+  "name": "exam_agent",
+  "version": "1.0.0",
+  "description": "Generates quizzes, practice exams, coding challenges; scores responses; identifies knowledge gaps.",
+  "capabilities": ["generate_quiz", "score_quiz", "identify_gaps"],
+  "requiredProviders": ["openai", "anthropic"],
+  "minModelCapabilities": ["text-generation"],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "content": { "type": "string" },
+      "questionType": { "type": "string", "enum": ["multiple_choice", "short_answer"] },
+      "numQuestions": { "type": "number" }
+    },
+    "required": ["content"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" },
+      "questions": { "type": "array" }
+    }
+  }
+}

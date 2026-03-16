@@ -1,0 +1,23 @@
+{
+  "name": "summarizer_agent",
+  "version": "1.0.0",
+  "description": "Condenses long-form content into key takeaways; produces executive summaries for professionals.",
+  "capabilities": ["summarize", "condense", "key_takeaways"],
+  "requiredProviders": ["openai", "anthropic"],
+  "minModelCapabilities": ["text-generation"],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "content": { "type": "string" },
+      "maxWords": { "type": "number" }
+    },
+    "required": ["content"]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "text": { "type": "string" },
+      "summary": { "type": "object" }
+    }
+  }
+}

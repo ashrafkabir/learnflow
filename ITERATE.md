@@ -6,10 +6,33 @@
 
 ## Current State
 
-- **Active Sprint**: S01 (COMPLETE)
-- **Current Score**: 1.0
+- **Active Sprint**: S05 (next)
+- **Current Score**: —
 - **Iteration Number**: 0
-- **Strategy**: Achieved 1.0 on first build — no iterations needed
+- **Strategy**: Continue build with MANDATORY end-to-end test execution
+
+---
+
+## ⚠️ GLOBAL OVERRIDE — MANDATORY E2E TEST EXECUTION
+
+**Effective immediately for ALL sprints (S05+, and retroactive verification of S01-S04):**
+
+Every eval cycle MUST include actually running the tests, not just checking that files exist or self-assessing assertions. Specifically:
+
+1. **Unit tests MUST execute**: Run `npx turbo run test` (or `npx vitest run` in each package) and verify exit code 0. Paste actual test output in eval results.
+2. **TypeScript MUST compile**: Run `npx tsc --noEmit` at monorepo root. Zero errors required.
+3. **Integration tests MUST execute**: For sprints with integration assertions, actually start the API server (or use supertest) and make real HTTP calls.
+4. **Lint MUST pass**: Run `npx eslint .` and `npx prettier --check .` — actual execution, not file existence.
+5. **Docker Compose MUST validate**: Run `docker compose config --quiet` for infrastructure assertions.
+
+**Eval results JSON must include:**
+- `"test_output"`: actual stdout/stderr from test runs
+- `"exit_code"`: actual process exit code
+- `"command_run"`: the exact command that was executed
+
+**If tests fail, that's a FAIL assertion — enter the iteration loop and fix the code until tests actually pass.**
+
+Self-assessment alone (checking file exists, reading code and judging it correct) does NOT count as PASS. The code must run.
 
 ---
 
