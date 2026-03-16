@@ -1,0 +1,21 @@
+{
+  "name": "collaboration_agent",
+  "version": "0.1.0",
+  "description": "Matches peers with overlapping goals, creates study groups, and facilitates collaborative learning",
+  "capabilities": ["find_peers", "create_group", "match_recommendations"],
+  "requiredProviders": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "type": { "type": "string", "enum": ["find_peers", "create_group"] },
+      "params": { "type": "object" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "matches": { "type": "array" },
+      "group": { "type": "object" }
+    }
+  }
+}

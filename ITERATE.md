@@ -36,6 +36,103 @@ Self-assessment alone (checking file exists, reading code and judging it correct
 
 ---
 
+## ⚠️ GLOBAL OVERRIDE #2 — MANDATORY CONTENT QUALITY JOURNEY TEST
+
+**Effective after S05 is complete (runs once S03+S04+S05 agents are all built):**
+
+The system must pass a **Complete Learning Journey Test** that evaluates the RICHNESS and QUALITY of generated content — not just structure. This is a script that exercises the full pipeline end-to-end and grades the output.
+
+### The Journey Test Script
+
+Create `evals/journey-test.ts` that runs this exact flow:
+
+**Step 1: Course Generation**
+- Input topic: "Introduction to Quantum Computing"
+- Call the Course Builder agent to generate a full course
+- **Assert**: Course has ≥5 modules, ≥15 lessons total
+- **Assert**: Each module has a clear learning objective (not generic filler)
+- **Assert**: Modules have logical prerequisite ordering (fundamentals before advanced)
+- **Assert**: Syllabus covers: qubits, superposition, entanglement, quantum gates, algorithms (Shor's, Grover's), hardware, error correction, real-world applications
+- **Quality check**: No two lessons have >40% content overlap (dedup score)
+
+**Step 2: Lesson Content Depth**
+- Pick 3 lessons from different modules (lesson 1, lesson 8, lesson 15)
+- For each lesson, generate full content via the content pipeline
+- **Assert**: Each lesson has ≥800 words of actual educational content (not boilerplate)
+- **Assert**: Each lesson includes: explanation, at least 1 concrete example, at least 1 analogy
+- **Assert**: Technical terms are defined on first use
+- **Assert**: Each lesson references ≥2 sources with real attribution (URL, author)
+- **Assert**: Reading level is appropriate (Flesch-Kincaid grade 10-14 for this topic)
+- **Assert**: Content is factually accurate — key claims are verifiable (check against known facts about quantum computing)
+
+**Step 3: Notes Generation**
+- Take lesson 1's content, run Notes Agent in Cornell format
+- **Assert**: Notes have: main notes section, cue column questions (≥5), summary section
+- **Assert**: Cue questions are meaningful (not "What is X?" for every item — varied Bloom's taxonomy levels)
+- Take lesson 8's content, run Notes Agent in Zettelkasten format
+- **Assert**: Produces ≥5 atomic notes with inter-links
+- Generate flashcards from lesson 1
+- **Assert**: ≥10 flashcards produced
+- **Assert**: Flashcards cover key concepts, not trivial facts
+- **Assert**: Answer side has sufficient detail (≥20 words per answer)
+
+**Step 4: Exam Generation**
+- Generate a quiz for module 1 (after lessons 1-3)
+- **Assert**: ≥10 questions total
+- **Assert**: Mix of multiple-choice (≥5) and short-answer (≥3)
+- **Assert**: MC questions have exactly 4 options each, with 1 correct answer
+- **Assert**: Wrong MC options are plausible (not obviously absurd)
+- **Assert**: Questions test comprehension and application, not just recall
+- **Assert**: Questions reference content actually covered in the lessons (no questions about topics not yet taught)
+- Run scoring on a set of known-correct answers
+- **Assert**: Scoring correctly identifies right/wrong answers
+- **Assert**: Knowledge gap analysis identifies which concepts were missed
+
+**Step 5: Research Agent**
+- Ask Research Agent to find papers related to "quantum error correction"
+- **Assert**: Returns ≥3 results with title, authors, abstract, URL
+- **Assert**: Results are topically relevant (not random papers)
+- Synthesize findings
+- **Assert**: Synthesis is ≥200 words with structured sections
+
+**Step 6: Summarizer Agent**
+- Feed a 3000-word lesson to Summarizer
+- **Assert**: Output is ≤500 words
+- **Assert**: Key facts from source are preserved (check ≥5 key facts)
+- **Assert**: No hallucinated facts (nothing in summary that wasn't in source)
+
+**Step 7: Full Journey Integration**
+- Verify the Orchestrator can route a conversation through the entire flow:
+  - "I want to learn quantum computing" → Course Builder → returns syllabus
+  - "Start lesson 1" → Content Pipeline → returns rich lesson
+  - "Take notes on this" → Notes Agent → returns Cornell notes
+  - "Quiz me on module 1" → Exam Agent → returns quiz
+  - "Summarize lesson 3" → Summarizer → returns summary
+  - "Find research on quantum entanglement" → Research Agent → returns papers
+
+### Grading
+Each step has assertions. Total assertions across all 7 steps should be ≥40.
+Journey score = passed / total. **Must reach ≥0.85 (85%) to pass.**
+
+Write results to `evals/journey-test-results-{timestamp}.json` with:
+- Each assertion: id, description, result (PASS/FAIL), actual_output (truncated to 500 chars)
+- Overall journey score
+- Sample outputs for human review (full text of: 1 lesson, 1 set of notes, 1 quiz, 1 summary)
+
+### When to Run
+- Run after S05 completes (all core agents built)
+- Re-run after S07 (API layer) to verify through HTTP
+- Re-run after S13 (full QA) as final validation
+
+### Mock LLM Strategy
+Since we may not have live LLM API keys, the journey test should work with BOTH:
+1. **Mock mode**: Deterministic mock responses that are pre-written to be rich and realistic (not "Lorem ipsum" — actual educational content about quantum computing). The mocks themselves must be high quality.
+2. **Live mode** (if OPENAI_API_KEY is set): Actually call the LLM and grade real outputs
+
+Even in mock mode, the mock responses must be rich enough to pass all quality assertions. This forces us to write high-quality mock fixtures.
+
+---
+
 ## Sprint-Specific Overrides
 
 Use this section to record any deviations from the default sprint plan. When the iteration loop identifies a pattern of failures, document the corrective strategy here.

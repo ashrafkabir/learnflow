@@ -19,6 +19,10 @@ export { ResearchAgent } from './research-agent/research-agent.js';
 export { ExamAgent } from './exam-agent/exam-agent.js';
 export { SummarizerAgent } from './summarizer-agent/summarizer-agent.js';
 
+// Collaboration & Mindmap (S06)
+export { CollaborationAgent } from './collaboration-agent/collaboration-agent.js';
+export { MindmapAgent } from './mindmap-agent/mindmap-agent.js';
+
 // Types
 export type { ConceptNode } from './course-builder/topic-decomposer.js';
 export type { SyllabusModule, Syllabus } from './course-builder/syllabus-generator.js';
@@ -39,3 +43,10 @@ export type {
   QuizResult,
 } from './exam-agent/exam-agent.js';
 export type { Summary } from './summarizer-agent/summarizer-agent.js';
+export type { PeerMatch, StudyGroup } from './collaboration-agent/collaboration-agent.js';
+export type {
+  MindmapNode,
+  MindmapEdge,
+  Mindmap,
+  CrdtOperation,
+} from './mindmap-agent/mindmap-agent.js';

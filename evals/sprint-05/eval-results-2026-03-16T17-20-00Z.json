@@ -1,0 +1,101 @@
+{
+  "sprint": "S05",
+  "timestamp": "2026-03-16T17:20:00Z",
+  "iteration": 0,
+  "test_output": "Test Files  2 passed (2)\n      Tests  39 passed (39) [core-agents: 24, course-builder: 15]",
+  "exit_code": 0,
+  "command_run": "npx turbo run test",
+  "assertions": [
+    {
+      "id": "S05-A01",
+      "category": "agent",
+      "description": "Notes Agent produces Cornell-format notes",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A02",
+      "category": "agent",
+      "description": "Notes Agent produces Zettelkasten-format notes",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A03",
+      "category": "agent",
+      "description": "Notes Agent generates flashcards",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A04",
+      "category": "agent",
+      "description": "Research Agent finds papers from Semantic Scholar API",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A05",
+      "category": "agent",
+      "description": "Research Agent synthesizes findings",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A06",
+      "category": "agent",
+      "description": "Exam Agent generates MCQ with 4 options",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A07",
+      "category": "agent",
+      "description": "Exam Agent generates short-answer questions",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A08",
+      "category": "agent",
+      "description": "Exam Agent scores responses and identifies gaps",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A09",
+      "category": "agent",
+      "description": "Summarizer Agent condenses to ≤500 words",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A10",
+      "category": "agent",
+      "description": "Summarizer preserves key facts",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A11",
+      "category": "types",
+      "description": "All agents implement AgentInterface",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A12",
+      "category": "structure",
+      "description": "All agents have manifest.json",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A13",
+      "category": "unit",
+      "description": "Test coverage exists for all agents",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A14",
+      "category": "unit",
+      "description": "Agent error handling: graceful on bad input",
+      "result": "PASS"
+    },
+    {
+      "id": "S05-A15",
+      "category": "integration",
+      "description": "Orchestrator spawns each agent and receives valid response",
+      "result": "PASS"
+    }
+  ],
+  "summary": { "total": 15, "passed": 15, "failed": 0, "score": 1.0 }
+}

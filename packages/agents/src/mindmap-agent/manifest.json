@@ -1,0 +1,21 @@
+{
+  "name": "mindmap_agent",
+  "version": "0.1.0",
+  "description": "Manages knowledge graphs with CRDT-based collaborative editing, visualization, and SVG export",
+  "capabilities": ["update_mindmap", "visualize", "extend_graph"],
+  "requiredProviders": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "type": { "type": "string", "enum": ["extend_graph", "export_svg", "view"] },
+      "params": { "type": "object" }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "mindmap": { "type": "object" },
+      "svg": { "type": "string" }
+    }
+  }
+}
