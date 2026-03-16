@@ -1,0 +1,20 @@
+import { z } from 'zod';
+
+export const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PORT: z.coerce.number().int().positive().default(3000),
+  DATABASE_URL: z.string().url(),
+  REDIS_URL: z.string().url(),
+  MINIO_ENDPOINT: z.string().min(1),
+  MINIO_ACCESS_KEY: z.string().min(1),
+  MINIO_SECRET_KEY: z.string().min(1),
+  JWT_SECRET: z.string().min(32),
+  OPENAI_API_KEY: z.string().optional(),
+  STRIPE_SECRET_KEY: z.string().optional(),
+});
+
+export type Env = z.infer<typeof envSchema>;
+
+export function validateEnv(env: Record<string, string | undefined>): Env {
+  return envSchema.parse(env);
+}

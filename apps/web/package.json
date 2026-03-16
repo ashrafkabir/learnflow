@@ -1,0 +1,11 @@
+{
+  "name": "@learnflow/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Web build placeholder'",
+    "lint": "echo 'Web lint placeholder'",
+    "test": "echo 'No tests yet'",
+    "dev": "echo 'Web dev placeholder'"
+  }
+}

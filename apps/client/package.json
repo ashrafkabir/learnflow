@@ -1,0 +1,11 @@
+{
+  "name": "@learnflow/client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Client build placeholder'",
+    "lint": "echo 'Client lint placeholder'",
+    "test": "echo 'No tests yet'",
+    "dev": "echo 'Client dev placeholder'"
+  }
+}

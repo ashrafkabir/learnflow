@@ -1,0 +1,17 @@
+{
+  "name": "@learnflow/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src/",
+    "test": "echo 'No tests yet'",
+    "dev": "echo 'API dev server placeholder'"
+  },
+  "dependencies": {
+    "@learnflow/shared": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
