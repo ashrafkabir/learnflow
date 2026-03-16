@@ -5,13 +5,25 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint src/",
-    "test": "echo 'No tests yet'",
+    "test": "vitest run",
     "dev": "echo 'API dev server placeholder'"
   },
   "dependencies": {
-    "@learnflow/shared": "*"
+    "@learnflow/shared": "*",
+    "express": "^4.21.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.0",
+    "uuid": "^10.0.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0"
+    "@types/express": "^5.0.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/uuid": "^10.0.0",
+    "@types/supertest": "^6.0.0",
+    "supertest": "^7.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
   }
 }

@@ -1,0 +1,118 @@
+{
+  "sprint": "S02",
+  "timestamp": "2026-03-16T17:00:00Z",
+  "iteration": 1,
+  "assertions": [
+    {
+      "id": "S02-A01",
+      "category": "api",
+      "description": "POST /api/v1/auth/register creates user and returns JWT",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A02",
+      "category": "api",
+      "description": "POST /api/v1/auth/login returns JWT for valid credentials",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A03",
+      "category": "api",
+      "description": "POST /api/v1/auth/login rejects invalid credentials",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A04",
+      "category": "api",
+      "description": "JWT refresh endpoint issues new token before expiry",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A05",
+      "category": "api",
+      "description": "OAuth flow works for Google provider",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A06",
+      "category": "api",
+      "description": "POST /api/v1/keys stores API key encrypted (AES-256)",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A07",
+      "category": "api",
+      "description": "GET /api/v1/keys returns keys with masked values",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A08",
+      "category": "api",
+      "description": "API key validation rejects invalid/expired keys",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A09",
+      "category": "security",
+      "description": "API keys are never logged in application logs",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A10",
+      "category": "security",
+      "description": "Passwords are hashed with bcrypt (cost >= 12)",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A11",
+      "category": "types",
+      "description": "Auth middleware correctly types req.user with role info",
+      "result": "PASS",
+      "details": "tsc --noEmit passes"
+    },
+    {
+      "id": "S02-A12",
+      "category": "unit",
+      "description": "Key encryption/decryption roundtrip works",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A13",
+      "category": "unit",
+      "description": "Token usage tracking middleware counts tokens per agent",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A14",
+      "category": "api",
+      "description": "RBAC middleware blocks free users from Pro endpoints",
+      "result": "PASS",
+      "details": null
+    },
+    {
+      "id": "S02-A15",
+      "category": "integration",
+      "description": "Full auth flow: register → login → add key → list keys",
+      "result": "PASS",
+      "details": null
+    }
+  ],
+  "summary": {
+    "total": 15,
+    "passed": 15,
+    "failed": 0,
+    "score": 1.0
+  }
+}
