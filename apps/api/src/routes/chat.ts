@@ -7,7 +7,7 @@ const router = Router();
 const chatSchema = z.object({
   text: z.string().min(1),
   attachments: z.array(z.string()).optional(),
-  context_overrides: z.record(z.unknown()).optional(),
+  context_overrides: z.record(z.string(), z.unknown()).optional(),
 });
 
 // POST /api/v1/chat - Send message to Orchestrator

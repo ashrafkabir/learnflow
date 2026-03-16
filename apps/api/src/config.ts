@@ -1,3 +1,5 @@
+export const JWT_SECRET = process.env.JWT_SECRET || 'learnflow-dev-secret-change-in-production';
+
 export const config = {
   jwtSecret: process.env.JWT_SECRET || 'learnflow-dev-secret-change-in-production',
   jwtExpiresIn: '1h',

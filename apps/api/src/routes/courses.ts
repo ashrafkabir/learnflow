@@ -56,7 +56,8 @@ router.post('/', authMiddleware, (req: Request, res: Response) => {
 
 // GET /api/v1/courses/:id - Get course detail
 router.get('/:id', authMiddleware, (req: Request, res: Response) => {
-  const course = courses.get(req.params.id);
+  const courseId = req.params.id as string;
+  const course = courses.get(courseId);
   if (!course) {
     res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
     return;
@@ -66,7 +67,8 @@ router.get('/:id', authMiddleware, (req: Request, res: Response) => {
 
 // GET /api/v1/courses/:id/lessons/:lessonId - Get lesson
 router.get('/:id/lessons/:lessonId', authMiddleware, (req: Request, res: Response) => {
-  const course = courses.get(req.params.id);
+  const courseId = req.params.id as string;
+  const course = courses.get(courseId);
   if (!course) {
     res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
     return;
@@ -81,7 +83,8 @@ router.get('/:id/lessons/:lessonId', authMiddleware, (req: Request, res: Respons
 
 // POST /api/v1/courses/:id/lessons/:lessonId/complete - Mark lesson complete
 router.post('/:id/lessons/:lessonId/complete', authMiddleware, (req: Request, res: Response) => {
-  const course = courses.get(req.params.id);
+  const courseId = req.params.id as string;
+  const course = courses.get(courseId);
   if (!course) {
     res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
     return;

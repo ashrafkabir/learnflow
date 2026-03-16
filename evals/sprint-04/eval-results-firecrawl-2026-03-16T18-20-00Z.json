@@ -1,0 +1,81 @@
+{
+  "sprint": "S04-FIRE",
+  "timestamp": "2026-03-16T18:20:00Z",
+  "iteration": 0,
+  "assertions": [
+    {
+      "id": "S04-FIRE-01",
+      "category": "unit",
+      "description": "Content pipeline calls Firecrawl for every new topic/lesson",
+      "result": "PASS",
+      "details": "searchSources and crawlSourcesForTopic both return valid results"
+    },
+    {
+      "id": "S04-FIRE-02",
+      "category": "unit",
+      "description": "Crawled sources stored with full metadata",
+      "result": "PASS",
+      "details": "All sources have URL, title, author, date, credibility, relevance, recency scores"
+    },
+    {
+      "id": "S04-FIRE-03",
+      "category": "unit",
+      "description": "Sources scoring <0.5 credibility are rejected",
+      "result": "PASS",
+      "details": "Low credibility domains score ≤0.5, filtered in pipeline"
+    },
+    {
+      "id": "S04-FIRE-04",
+      "category": "unit",
+      "description": "Every lesson has ≥3 cited sources with verifiable URLs",
+      "result": "PASS",
+      "details": "crawlSourcesForTopic returns ≥3 sources with valid HTTP URLs"
+    },
+    {
+      "id": "S04-FIRE-05",
+      "category": "unit",
+      "description": "References section exists at bottom of every lesson",
+      "result": "PASS",
+      "details": "synthesizeFromSources produces ## References & Further Reading section"
+    },
+    {
+      "id": "S04-FIRE-06",
+      "category": "unit",
+      "description": "Inline citations appear in lesson body (≥3 per lesson)",
+      "result": "PASS",
+      "details": "Content contains [1], [2], [3]+ citation markers"
+    },
+    {
+      "id": "S04-FIRE-07",
+      "category": "unit",
+      "description": "No single domain provides >50% of sources",
+      "result": "PASS",
+      "details": "checkDomainDiversity validates, ensureDiversity enforces during crawl"
+    },
+    {
+      "id": "S04-FIRE-08",
+      "category": "unit",
+      "description": "Source URLs are valid",
+      "result": "PASS",
+      "details": "All URLs pass new URL() validation and match https:// pattern"
+    },
+    {
+      "id": "S04-FIRE-09",
+      "category": "unit",
+      "description": "Content is synthesized, not copied",
+      "result": "PASS",
+      "details": "Jaccard similarity between synthesized paragraphs and sources <0.8"
+    },
+    {
+      "id": "S04-FIRE-10",
+      "category": "unit",
+      "description": "Crawled content is cached locally",
+      "result": "PASS",
+      "details": "Cache populated after first call, reused on second call"
+    }
+  ],
+  "summary": { "total": 10, "passed": 10, "failed": 0, "score": 1.0 },
+  "test_output": "17 passed (17) in firecrawl-content.test.ts",
+  "exit_code": 0,
+  "command_run": "npx vitest run packages/agents/src/__tests__/firecrawl-content.test.ts"
+}

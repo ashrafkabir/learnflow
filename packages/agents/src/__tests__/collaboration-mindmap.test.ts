@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { CollaborationAgent } from '../collaboration-agent/collaboration-agent.js';
 import { MindmapAgent } from '../mindmap-agent/mindmap-agent.js';
-import type { StudentContextObject } from '@learnflow/core';
+import type { StudentContextObject, AgentInterface } from '@learnflow/core';
 
 function createMockContext(overrides: Partial<StudentContextObject> = {}): StudentContextObject {
   return {

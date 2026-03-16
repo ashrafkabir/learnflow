@@ -1,8 +1,8 @@
 # LearnFlow Build Progress
 
-**Overall**: 6/14 sprints complete | 43%
-**Current Sprint**: S07 (In Progress)
-**Last Updated**: 2026-03-16T17:22:00Z
+**Overall**: 7/14 sprints complete | 50%
+**Current Sprint**: S08 (Next)
+**Last Updated**: 2026-03-16T18:20:00Z
 **Total Iterations**: 0
 
 ---
@@ -15,7 +15,7 @@
 | S04 | Course Builder & Pipeline | Complete | 1.0 | 0 | 2026-03-16T17:14:00Z |
 | S05 | Core Agents | Complete | 1.0 | 0 | 2026-03-16T17:18:00Z |
 | S06 | Collaboration & Mindmap | Complete | 1.0 | 0 | 2026-03-16T17:21:00Z |
-| S07 | API Layer | Not Started | — | 0 | — |
+| S07 | API Layer | Complete | 1.0 | 0 | 2026-03-16T18:20:00Z |
 | S08 | Client Application | Not Started | — | 0 | — |
 | S09 | Marketplace | Not Started | — | 0 | — |
 | S10 | Subscription & Billing | Not Started | — | 0 | — |
@@ -34,5 +34,7 @@
 - S02: In-memory DB, Express.js, AES-256-CBC encryption, bcrypt cost 12, mock OAuth
 - S03: Keyword-based intent routing, DAG planner with parallel execution, full spec Section 10 system prompt
 - S04: Deterministic topic decomposition, Jaccard similarity for dedup, 1500 words/lesson max
+- S04-FIRE: Firecrawl integration with mock mode, credibility scoring, domain diversity enforcement, inline citations + references
 - S05: Cornell/Zettelkasten note formats, MCQ/short-answer quiz generation, extractive summarization
 - S06: Jaccard-based peer matching, CRDT operations for collaborative mindmap editing, SVG export
+- S07: Express REST + WebSocket, Zod validation, auth middleware at app level, rate limiter tier-aware, OpenAPI spec
