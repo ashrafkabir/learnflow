@@ -1,8 +1,8 @@
 # LearnFlow Build Progress
 
-**Overall**: 2/14 sprints complete | 14%
-**Current Sprint**: S02 (Complete)
-**Last Updated**: 2026-03-16T17:00:00Z
+**Overall**: 3/14 sprints complete | 21%
+**Current Sprint**: S03 (Complete)
+**Last Updated**: 2026-03-16T17:09:00Z
 **Total Iterations**: 0
 
 ---
@@ -11,7 +11,7 @@
 |--------|-----------|--------|-------|------------|-----------|
 | S01 | Project Scaffolding | Complete | 1.0 | 0 | 2026-03-16T16:52:00Z |
 | S02 | Auth & Key Management | Complete | 1.0 | 0 | 2026-03-16T17:00:00Z |
-| S03 | Orchestrator Agent | Not Started | — | 0 | — |
+| S03 | Orchestrator Agent | Complete | 1.0 | 0 | 2026-03-16T17:09:00Z |
 | S04 | Course Builder & Pipeline | Not Started | — | 0 | — |
 | S05 | Core Agents | Not Started | — | 0 | — |
 | S06 | Collaboration & Mindmap | Not Started | — | 0 | — |
@@ -32,12 +32,6 @@
 
 ## Decisions Made
 
-- Spec file unavailable; used sensible defaults for all type definitions
-- Turborepo v2 with flat ESLint config (v9)
-- vitest for unit testing
-- Zod for env validation
-- S02: In-memory DB for auth (will be replaced by PostgreSQL in later sprints)
-- S02: Express.js for API framework
-- S02: AES-256-CBC with random IV for API key encryption
-- S02: bcrypt with cost 12 for password hashing
-- S02: Mock OAuth for Google (real OAuth in production)
+- S01: Turborepo v2, flat ESLint config (v9), vitest, Zod for env validation
+- S02: In-memory DB, Express.js, AES-256-CBC encryption, bcrypt cost 12, mock OAuth
+- S03: Keyword-based intent routing (LLM in production), DAG planner with parallel execution, full spec Section 10 system prompt
