@@ -1,0 +1,36 @@
+{
+  "cdn": {
+    "provider": "cloudflare",
+    "zones": [
+      {
+        "domain": "learnflow.ai",
+        "caching": {
+          "static_assets": {
+            "paths": ["/assets/*", "/_next/static/*", "/images/*"],
+            "ttl": 2592000,
+            "browser_ttl": 86400
+          },
+          "api": {
+            "paths": ["/api/*"],
+            "ttl": 0,
+            "bypass": true
+          }
+        },
+        "security": {
+          "waf": true,
+          "ddos_protection": true,
+          "bot_management": true,
+          "ssl_mode": "strict"
+        },
+        "performance": {
+          "minify_js": true,
+          "minify_css": true,
+          "minify_html": true,
+          "brotli": true,
+          "http2": true,
+          "http3": true
+        }
+      }
+    ]
+  }
+}

@@ -1,4 +1,14 @@
-dist
-node_modules
-.turbo
-*.md
+# Generated artifacts
+coverage/
+evals/screenshots/
+
+# Build artifacts
+**/dist/
+**/node_modules/
+
+# Infra files (can be formatted separately)
+k8s/
+monitoring/
+
+# One-off scripts
+debug-screenshot.mjs

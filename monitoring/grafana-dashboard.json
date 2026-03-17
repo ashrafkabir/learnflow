@@ -1,0 +1,56 @@
+{
+  "dashboard": {
+    "title": "LearnFlow API Monitoring",
+    "uid": "learnflow-api",
+    "panels": [
+      {
+        "title": "Request Rate",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          { "expr": "rate(http_requests_total{app=\"learnflow\"}[5m])" }
+        ]
+      },
+      {
+        "title": "Response Latency (p95)",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          { "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{app=\"learnflow\"}[5m]))" }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "type": "stat",
+        "datasource": "Prometheus",
+        "targets": [
+          { "expr": "rate(http_requests_total{app=\"learnflow\",status=~\"5..\"}[5m]) / rate(http_requests_total{app=\"learnflow\"}[5m])" }
+        ]
+      },
+      {
+        "title": "Active WebSocket Connections",
+        "type": "gauge",
+        "datasource": "Prometheus",
+        "targets": [
+          { "expr": "websocket_connections_active{app=\"learnflow\"}" }
+        ]
+      },
+      {
+        "title": "Agent Response Times",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          { "expr": "histogram_quantile(0.95, rate(agent_response_duration_seconds_bucket{app=\"learnflow\"}[5m]))" }
+        ]
+      },
+      {
+        "title": "Memory Usage",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          { "expr": "container_memory_usage_bytes{pod=~\"learnflow.*\"}" }
+        ]
+      }
+    ]
+  }
+}

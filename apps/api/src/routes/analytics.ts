@@ -1,10 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '../middleware.js';
 
 const router = Router();
 
 // GET /api/v1/analytics - Get learning analytics dashboard data
-router.get('/', authMiddleware, (req: Request, res: Response) => {
+router.get('/', (req: Request, res: Response) => {
   const userId = req.user!.sub;
 
   res.status(200).json({

@@ -3,9 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "echo 'Web build placeholder'",
-    "lint": "echo 'Web lint placeholder'",
-    "test": "echo 'No tests yet'",
-    "dev": "echo 'Web dev placeholder'"
+    "build": "next build",
+    "dev": "next dev --port 3001",
+    "lint": "echo 'skip web lint (configured at repo root)'",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "next": "14.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0"
   }
 }

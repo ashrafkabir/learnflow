@@ -1,26 +1,36 @@
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '../middleware.js';
 
 const router = Router();
 
 // GET /api/v1/profile/context - Get full Student Context Object
-router.get('/context', authMiddleware, (req: Request, res: Response) => {
+router.get('/context', (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const role = req.user!.role;
   const tier = req.user!.tier;
 
   res.status(200).json({
     userId,
-    goals: [],
-    strengths: [],
-    weaknesses: [],
+    goals: ['Career Growth', 'Learn AI'],
+    strengths: ['programming', 'math'],
+    weaknesses: ['statistics'],
     learningStyle: 'reading',
     quizScores: {},
-    studyStreak: 0,
-    totalStudyMinutes: 0,
+    studyStreak: 5,
+    totalStudyMinutes: 320,
     subscriptionTier: tier || 'free',
     role: role || 'student',
     lastActiveAt: new Date().toISOString(),
+    progress: {
+      coursesCompleted: 2,
+      lessonsCompleted: 15,
+      currentCourse: 'quantum-101',
+    },
+    preferences: {
+      notifications: true,
+      darkMode: false,
+      language: 'en',
+      settingsVersion: 1,
+    },
   });
 });
 

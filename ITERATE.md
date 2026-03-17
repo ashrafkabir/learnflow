@@ -26,6 +26,7 @@ Every eval cycle MUST include actually running the tests, not just checking that
 5. **Docker Compose MUST validate**: Run `docker compose config --quiet` for infrastructure assertions.
 
 **Eval results JSON must include:**
+
 - `"test_output"`: actual stdout/stderr from test runs
 - `"exit_code"`: actual process exit code
 - `"command_run"`: the exact command that was executed
@@ -41,18 +42,22 @@ Self-assessment alone (checking file exists, reading code and judging it correct
 **This is the highest priority eval requirement. The app must ACTUALLY RUN and be tested through a browser.**
 
 ### Setup
+
 1. Playwright is available at: `NODE_PATH=/home/aifactory/.npm-global/lib/node_modules/@executeautomation/playwright-mcp-server/node_modules`
 2. Chromium is at: `/home/aifactory/.cache/ms-playwright/chromium-1208/chrome-linux64/chrome`
 3. Install Playwright test runner in the project: `npm install -D @playwright/test`
 4. Create `playwright.config.ts` at monorepo root
 
 ### What Must Happen
+
 After the API (S07) and Client (S08) are built, the system must be:
+
 1. **Started** — `docker compose up -d` for Postgres/Redis/MinIO, then `npm run dev` for the API server and web client
 2. **Tested via Playwright** — real browser automation hitting the running app
 3. **Fed trending topics** — not hardcoded test data, use REAL current trending learning topics
 
 ### Trending Topics Test Data (use these 5 topics)
+
 1. "Agentic AI and Autonomous Agents" — hottest topic in tech right now
 2. "Rust Programming for Systems Development" — trending in developer education
 3. "Prompt Engineering and LLM Fine-Tuning" — high demand learning topic
@@ -62,12 +67,14 @@ After the API (S07) and Client (S08) are built, the system must be:
 ### Playwright E2E Test Suite (`e2e/learning-journey.spec.ts`)
 
 **Test 1: User Registration & Onboarding**
+
 - Navigate to the app
 - Register a new user
 - Complete onboarding flow (set learning goals, preferred topics)
 - Assert: user lands on home dashboard
 
 **Test 2: Course Generation Quality (run for each of 5 topics)**
+
 - Enter topic in course builder
 - Wait for course generation to complete
 - Assert: course has ≥5 modules visible in UI
@@ -77,6 +84,7 @@ After the API (S07) and Client (S08) are built, the system must be:
 - Assert: no two modules have identical descriptions
 
 **Test 3: Lesson Content Depth**
+
 - Open lesson 1 of the first course
 - Wait for content to render
 - Assert: content area has ≥800 words (measure visible text length)
@@ -86,6 +94,7 @@ After the API (S07) and Client (S08) are built, the system must be:
 - Navigate to lesson 3 — repeat assertions
 
 **Test 4: Notes Generation**
+
 - From a lesson view, click "Take Notes" (or equivalent)
 - Select Cornell format
 - Wait for notes to generate
@@ -96,6 +105,7 @@ After the API (S07) and Client (S08) are built, the system must be:
 - **Screenshot notes** → save to `evals/screenshots/`
 
 **Test 5: Quiz/Exam Flow**
+
 - Navigate to quiz for module 1
 - Assert: ≥8 questions displayed
 - Assert: multiple choice questions have exactly 4 options each
@@ -106,6 +116,7 @@ After the API (S07) and Client (S08) are built, the system must be:
 - **Screenshot quiz results** → save to `evals/screenshots/`
 
 **Test 6: Research Agent**
+
 - Open research panel
 - Search for "latest developments in [topic]"
 - Assert: ≥3 results displayed with titles and abstracts
@@ -113,6 +124,7 @@ After the API (S07) and Client (S08) are built, the system must be:
 - **Screenshot research results**
 
 **Test 7: Mindmap Visualization**
+
 - Navigate to mindmap view
 - Assert: course nodes are visible and connected
 - Assert: nodes are interactive (clickable)
@@ -120,12 +132,14 @@ After the API (S07) and Client (S08) are built, the system must be:
 - **Screenshot mindmap**
 
 **Test 8: Cross-Topic Comparison**
+
 - Generate courses for at least 2 different topics
 - Assert: syllabi are meaningfully different (not template variations)
 - Compare lesson structures — different topics should have different module breakdowns
 - **Screenshot both syllabi side by side if possible**
 
 ### Grading & Iteration
+
 - Each test has multiple assertions. Total should be ≥50 assertions across all 8 tests.
 - **All screenshots are saved to `evals/screenshots/` with descriptive names** for human review.
 - Journey score = passed / total. **Must reach ≥0.80 (80%) to pass.**
@@ -133,12 +147,15 @@ After the API (S07) and Client (S08) are built, the system must be:
 - **The iteration decision is based on what the Playwright tests ACTUALLY show** — not self-assessment.
 
 ### When to Run
+
 - **First run**: After S08 (Client) is complete — full UI + API must be running
 - **Second run**: After S13 (QA) as final validation
 - **Can also run after S07**: API-only tests via Playwright hitting API endpoints directly (no UI needed)
 
 ### Output
+
 Write results to `evals/e2e-results-{timestamp}.json`:
+
 ```json
 {
   "timestamp": "...",
@@ -161,6 +178,7 @@ Write results to `evals/e2e-results-{timestamp}.json`:
 **Content must come from REAL crawled web sources, not LLM hallucinations. Every lesson must cite its sources with verifiable URLs.**
 
 ### Firecrawl Integration
+
 The Firecrawl skill is available. API key is set in env: `FIRECRAWL_API_KEY`.
 Skill docs: `/home/aifactory/.openclaw/workspace/skills/firecrawl-search/SKILL.md`
 
@@ -168,6 +186,7 @@ Skill docs: `/home/aifactory/.openclaw/workspace/skills/firecrawl-search/SKILL.m
 
 **Step 1: Topic Research via Firecrawl**
 When generating a course or lesson, the content pipeline MUST:
+
 1. Use Firecrawl to **search and scrape** real articles, documentation, tutorials, and papers related to the topic
 2. Target high-quality sources:
    - Official documentation (docs.python.org, rust-lang.org, etc.)
@@ -177,6 +196,7 @@ When generating a course or lesson, the content pipeline MUST:
    - Industry reports and whitepapers
 3. Extract **full markdown content** from each page (not just snippets)
 4. Store crawled content in a structured format with metadata:
+
 ```json
 {
   "url": "https://example.com/article",
@@ -193,6 +213,7 @@ When generating a course or lesson, the content pipeline MUST:
 
 **Step 2: Source Quality Scoring**
 Each crawled source must be scored on:
+
 - **Credibility** (0-1): Academic/official > established media > blogs > forums
   - arxiv.org, .edu, .gov, official docs → 0.9-1.0
   - MIT Tech Review, Wired, Nature, IEEE → 0.8-0.9
@@ -205,6 +226,7 @@ Each crawled source must be scored on:
 
 **Step 3: Content Synthesis (NOT Copy)**
 The LLM synthesizes lesson content FROM the crawled sources:
+
 - Paraphrases and restructures — never copies verbatim (plagiarism check)
 - Combines insights from multiple sources into coherent narrative
 - Adds pedagogical structure (learning objectives, examples, exercises)
@@ -212,14 +234,17 @@ The LLM synthesizes lesson content FROM the crawled sources:
 
 **Step 4: Attribution in Every Lesson**
 Every lesson MUST include:
+
 1. **Inline citations** — when a specific fact, statistic, or claim is made, cite the source: "Quantum entanglement was experimentally verified in 1982 (Aspect et al., via MIT Tech Review [1])"
 2. **References section** at the bottom of every lesson:
+
 ```
 ## References & Further Reading
 1. Smith, J. "Understanding Quantum Entanglement" MIT Technology Review, Nov 2025. https://example.com/article
 2. Official Rust Documentation - Ownership. https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html
 3. Chen, L. "Building Autonomous AI Agents" arXiv:2025.12345, Dec 2025. https://arxiv.org/abs/2025.12345
 ```
+
 3. **Source count per lesson**: Minimum 3 sources, target 5-8 sources per lesson
 4. **Source diversity**: No more than 50% of sources from a single domain
 
@@ -239,6 +264,7 @@ Every lesson MUST include:
 ### Playwright E2E Assertions (add to existing test suite)
 
 In the lesson content tests:
+
 - Assert: "References" or "Sources" section visible at bottom of lesson
 - Assert: ≥3 clickable source links in references
 - Assert: inline citation markers visible in lesson body (e.g., [1], [2])
@@ -247,6 +273,7 @@ In the lesson content tests:
 ### Integration with Content Pipeline
 
 The Course Builder (S04) and Content Pipeline must be updated to:
+
 1. Accept Firecrawl as a content source provider
 2. Run Firecrawl searches before generating each lesson
 3. Pass crawled content to the LLM as context for synthesis
@@ -268,6 +295,7 @@ The system must pass a **Complete Learning Journey Test** that evaluates the RIC
 Create `evals/journey-test.ts` that runs this exact flow:
 
 **Step 1: Course Generation**
+
 - Input topic: "Introduction to Quantum Computing"
 - Call the Course Builder agent to generate a full course
 - **Assert**: Course has ≥5 modules, ≥15 lessons total
@@ -277,6 +305,7 @@ Create `evals/journey-test.ts` that runs this exact flow:
 - **Quality check**: No two lessons have >40% content overlap (dedup score)
 
 **Step 2: Lesson Content Depth**
+
 - Pick 3 lessons from different modules (lesson 1, lesson 8, lesson 15)
 - For each lesson, generate full content via the content pipeline
 - **Assert**: Each lesson has ≥800 words of actual educational content (not boilerplate)
@@ -287,6 +316,7 @@ Create `evals/journey-test.ts` that runs this exact flow:
 - **Assert**: Content is factually accurate — key claims are verifiable (check against known facts about quantum computing)
 
 **Step 3: Notes Generation**
+
 - Take lesson 1's content, run Notes Agent in Cornell format
 - **Assert**: Notes have: main notes section, cue column questions (≥5), summary section
 - **Assert**: Cue questions are meaningful (not "What is X?" for every item — varied Bloom's taxonomy levels)
@@ -298,6 +328,7 @@ Create `evals/journey-test.ts` that runs this exact flow:
 - **Assert**: Answer side has sufficient detail (≥20 words per answer)
 
 **Step 4: Exam Generation**
+
 - Generate a quiz for module 1 (after lessons 1-3)
 - **Assert**: ≥10 questions total
 - **Assert**: Mix of multiple-choice (≥5) and short-answer (≥3)
@@ -310,6 +341,7 @@ Create `evals/journey-test.ts` that runs this exact flow:
 - **Assert**: Knowledge gap analysis identifies which concepts were missed
 
 **Step 5: Research Agent**
+
 - Ask Research Agent to find papers related to "quantum error correction"
 - **Assert**: Returns ≥3 results with title, authors, abstract, URL
 - **Assert**: Results are topically relevant (not random papers)
@@ -317,12 +349,14 @@ Create `evals/journey-test.ts` that runs this exact flow:
 - **Assert**: Synthesis is ≥200 words with structured sections
 
 **Step 6: Summarizer Agent**
+
 - Feed a 3000-word lesson to Summarizer
 - **Assert**: Output is ≤500 words
 - **Assert**: Key facts from source are preserved (check ≥5 key facts)
 - **Assert**: No hallucinated facts (nothing in summary that wasn't in source)
 
 **Step 7: Full Journey Integration**
+
 - Verify the Orchestrator can route a conversation through the entire flow:
   - "I want to learn quantum computing" → Course Builder → returns syllabus
   - "Start lesson 1" → Content Pipeline → returns rich lesson
@@ -332,21 +366,26 @@ Create `evals/journey-test.ts` that runs this exact flow:
   - "Find research on quantum entanglement" → Research Agent → returns papers
 
 ### Grading
+
 Each step has assertions. Total assertions across all 7 steps should be ≥40.
 Journey score = passed / total. **Must reach ≥0.85 (85%) to pass.**
 
 Write results to `evals/journey-test-results-{timestamp}.json` with:
+
 - Each assertion: id, description, result (PASS/FAIL), actual_output (truncated to 500 chars)
 - Overall journey score
 - Sample outputs for human review (full text of: 1 lesson, 1 set of notes, 1 quiz, 1 summary)
 
 ### When to Run
+
 - Run after S05 completes (all core agents built)
 - Re-run after S07 (API layer) to verify through HTTP
 - Re-run after S13 (full QA) as final validation
 
 ### Mock LLM Strategy
+
 Since we may not have live LLM API keys, the journey test should work with BOTH:
+
 1. **Mock mode**: Deterministic mock responses that are pre-written to be rich and realistic (not "Lorem ipsum" — actual educational content about quantum computing). The mocks themselves must be high quality.
 2. **Live mode** (if OPENAI_API_KEY is set): Actually call the LLM and grade real outputs
 
@@ -359,71 +398,85 @@ Even in mock mode, the mock responses must be rich enough to pass all quality as
 Use this section to record any deviations from the default sprint plan. When the iteration loop identifies a pattern of failures, document the corrective strategy here.
 
 ### S01 — Project Scaffolding
+
 - **Approach**: Standard scaffold per spec workstream WS-01
 - **Known risks**: None yet
 - **Overrides**: None
 
 ### S02 — Authentication & Key Management
+
 - **Approach**: Standard implementation per spec
 - **Known risks**: None yet
 - **Overrides**: None
 
 ### S03 — Orchestrator Agent
+
 - **Approach**: Standard implementation per spec
 - **Known risks**: LLM mock setup may require custom harness
 - **Overrides**: None
 
 ### S04 — Course Builder & Content Pipeline
+
 - **Approach**: Standard implementation per spec
 - **Known risks**: Web scraping tests need reliable mock HTML fixtures
 - **Overrides**: None
 
 ### S05 — Core Agents
+
 - **Approach**: Implement all 4 agents with shared AgentInterface
 - **Known risks**: Agent eval harness needs to be built in S03 first
 - **Overrides**: None
 
 ### S06 — Collaboration & Mindmap
+
 - **Approach**: Standard implementation per spec
 - **Known risks**: Yjs CRDT integration complexity
 - **Overrides**: None
 
 ### S07 — API Layer
+
 - **Approach**: Standard implementation per spec
 - **Known risks**: WebSocket load testing setup
 - **Overrides**: None
 
 ### S08 — Client Application
+
 - **Approach**: Flutter for cross-platform (decision made per spec)
 - **Known risks**: Largest sprint by scope — may need sub-sprints
 - **Overrides**: None
 
 ### S09 — Marketplace
+
 - **Approach**: Standard implementation per spec
 - **Known risks**: Stripe mock complexity
 - **Overrides**: None
 
 ### S10 — Subscription & Billing
+
 - **Approach**: Standard implementation per spec
 - **Known risks**: IAP receipt validation mock
 - **Overrides**: None
 
 ### S11 — Marketing Website
+
 - **Approach**: Next.js 14 per spec
 - **Known risks**: Animation performance on mobile
 - **Overrides**: None
 
 ### S12 — Documentation
+
 - **Approach**: Nextra docs site per spec
 - **Known risks**: Code example extraction and compilation
 - **Overrides**: None
 
 ### S13 — Testing & QA
+
 - **Approach**: Run comprehensive suite per EVALS.md
 - **Known risks**: E2E test flakiness
 - **Overrides**: None
 
 ### S14 — Deployment & Launch
+
 - **Approach**: Standard implementation per spec
 - **Known risks**: Platform-specific build toolchain setup
 - **Overrides**: None
@@ -435,36 +488,43 @@ Use this section to record any deviations from the default sprint plan. When the
 When the iteration loop runs, the Orchestrator selects from these strategies based on the type of failure:
 
 ### Strategy: Fix Type Error
+
 - **Trigger**: `types` category assertion fails
 - **Action**: Read the compiler error, fix the type definition or usage
 - **Scope**: Single file change
 
 ### Strategy: Add Missing Implementation
+
 - **Trigger**: `structure` or `api` assertion fails because a file/endpoint doesn't exist
 - **Action**: Create the missing file or implement the missing endpoint
 - **Scope**: New file or function
 
 ### Strategy: Fix Test Failure
+
 - **Trigger**: `unit` or `integration` assertion fails
 - **Action**: Debug the test, fix the source code (not the test, unless the test is wrong)
 - **Scope**: Source code fix
 
 ### Strategy: Fix Agent Output
+
 - **Trigger**: `agent` assertion fails (wrong format, hallucination, wrong routing)
 - **Action**: Adjust the agent's system prompt or output parser
 - **Scope**: Prompt or parser change
 
 ### Strategy: Fix UI/UX Issue
+
 - **Trigger**: `uiux` assertion fails (missing component, accessibility, responsiveness)
 - **Action**: Add or fix the UI component
 - **Scope**: Component code change
 
 ### Strategy: Fix Performance Issue
+
 - **Trigger**: `performance` assertion fails (slow response, high memory)
 - **Action**: Profile, identify bottleneck, optimize
 - **Scope**: Optimization change
 
 ### Strategy: Fix Security Issue
+
 - **Trigger**: `security` assertion fails
 - **Action**: Apply security fix (input validation, encryption, auth check)
 - **Scope**: Security hardening

@@ -1,0 +1,10 @@
+{
+  "name": "@learnflow/docs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "echo 'Docs build OK'",
+    "dev": "echo 'Docs dev'",
+    "test": "vitest run"
+  }
+}

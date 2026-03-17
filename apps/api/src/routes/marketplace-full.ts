@@ -3,7 +3,6 @@
  */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware.js';
 
 const router = Router();
 
@@ -140,7 +139,7 @@ const searchSchema = z.object({
 // ─── Routes ───
 
 // POST /api/v1/marketplace/publish — publish a course (S09-A01)
-router.post('/publish', authMiddleware, (req: Request, res: Response) => {
+router.post('/publish', (req: Request, res: Response) => {
   const parse = publishCourseSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
@@ -195,7 +194,7 @@ router.get('/courses', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/marketplace/checkout — Stripe checkout (S09-A02)
-router.post('/checkout', authMiddleware, (req: Request, res: Response) => {
+router.post('/checkout', (req: Request, res: Response) => {
   const { courseId } = req.body;
   const course = publishedCourses.get(courseId);
   if (!course) {
@@ -237,7 +236,7 @@ router.post('/checkout', authMiddleware, (req: Request, res: Response) => {
 });
 
 // POST /api/v1/marketplace/agents/submit — submit agent (S09-A06)
-router.post('/agents/submit', authMiddleware, (req: Request, res: Response) => {
+router.post('/agents/submit', (req: Request, res: Response) => {
   const parse = submitAgentSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
@@ -263,7 +262,7 @@ router.get('/agents', (_req: Request, res: Response) => {
 });
 
 // POST /api/v1/marketplace/agents/:id/activate — activate agent (S09-A07)
-router.post('/agents/:id/activate', authMiddleware, (req: Request, res: Response) => {
+router.post('/agents/:id/activate', (req: Request, res: Response) => {
   const agent = agentSubmissions.get(String(req.params.id));
   if (!agent) {
     res.status(404).json({ error: 'not_found', message: 'Agent not found', code: 404 });
@@ -277,7 +276,7 @@ router.post('/agents/:id/activate', authMiddleware, (req: Request, res: Response
 });
 
 // GET /api/v1/marketplace/creator/dashboard — creator analytics (S09-A10)
-router.get('/creator/dashboard', authMiddleware, (req: Request, res: Response) => {
+router.get('/creator/dashboard', (req: Request, res: Response) => {
   const creatorCourses = Array.from(publishedCourses.values()).filter(
     (c) => c.creatorId === req.user!.sub,
   );

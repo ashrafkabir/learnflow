@@ -23,6 +23,9 @@ export { SummarizerAgent } from './summarizer-agent/summarizer-agent.js';
 export { CollaborationAgent } from './collaboration-agent/collaboration-agent.js';
 export { MindmapAgent } from './mindmap-agent/mindmap-agent.js';
 
+// Update Agent (S10)
+export { UpdateAgent, MockWebSearchProvider } from './update-agent/update-agent.js';
+
 // Types
 export type { ConceptNode } from './course-builder/topic-decomposer.js';
 export type { SyllabusModule, Syllabus } from './course-builder/syllabus-generator.js';
@@ -50,3 +53,22 @@ export type {
   Mindmap,
   CrdtOperation,
 } from './mindmap-agent/mindmap-agent.js';
+
+// Firecrawl Content Provider
+export {
+  crawlSourcesForTopic,
+  searchSources,
+  scrapeUrl,
+  scoreCredibility,
+  scoreRecency,
+  scoreRelevance,
+  synthesizeFromSources,
+  formatCitations,
+  checkDomainDiversity,
+  extractDomain,
+} from './content-pipeline/firecrawl-provider.js';
+export type {
+  FirecrawlSource,
+  FirecrawlConfig,
+  FirecrawlSearchResult,
+} from './content-pipeline/firecrawl-provider.js';

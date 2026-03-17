@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { encrypt } from './crypto.js';
 import { db, DbApiKey } from './db.js';
-import { authMiddleware } from './middleware.js';
 
 const router = Router();
 
@@ -14,7 +13,7 @@ const addKeySchema = z.object({
 });
 
 /** POST /api/v1/keys — store an encrypted API key */
-router.post('/', authMiddleware, (req: Request, res: Response) => {
+router.post('/', (req: Request, res: Response) => {
   const parse = addKeySchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
@@ -53,7 +52,7 @@ router.post('/', authMiddleware, (req: Request, res: Response) => {
 });
 
 /** GET /api/v1/keys — list keys with masked values */
-router.get('/', authMiddleware, (req: Request, res: Response) => {
+router.get('/', (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const keys = db.getKeysByUserId(userId);
 
@@ -70,7 +69,7 @@ router.get('/', authMiddleware, (req: Request, res: Response) => {
 });
 
 /** POST /api/v1/keys/validate — validate an API key format */
-router.post('/validate', authMiddleware, (req: Request, res: Response) => {
+router.post('/validate', (req: Request, res: Response) => {
   const { provider, apiKey } = req.body;
 
   if (!provider || !apiKey) {

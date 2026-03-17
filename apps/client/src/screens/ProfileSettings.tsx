@@ -1,146 +1,174 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../design-system/ThemeProvider.js';
+import { useApp } from '../context/AppContext.js';
 
-/** S08-A10: Profile & settings with goals, API keys, subscription, export, privacy */
 export function ProfileSettings() {
   const nav = useNavigate();
-  const { mode, toggle } = useTheme();
-  const [activeTab, setActiveTab] = useState<'profile' | 'keys' | 'subscription' | 'privacy'>(
-    'profile',
-  );
+  const { state, dispatch } = useApp();
+  const { profile } = state;
 
-  const tabs = [
-    { id: 'profile' as const, label: 'Profile & Goals' },
-    { id: 'keys' as const, label: 'API Keys' },
-    { id: 'subscription' as const, label: 'Subscription' },
-    { id: 'privacy' as const, label: 'Privacy & Export' },
-  ];
+  const update = (partial: Partial<typeof profile>) => {
+    dispatch({ type: 'UPDATE_PROFILE', profile: partial });
+  };
+
+  const toggleDarkMode = () => {
+    const next = !profile.darkMode;
+    update({ darkMode: next });
+    if (next) document.documentElement.classList.add('dark');
+    else document.documentElement.classList.remove('dark');
+    localStorage.setItem('learnflow-dark', String(next));
+  };
 
   return (
     <section
       aria-label="Profile Settings"
-      data-screen="profile-settings"
-      style={{ padding: 24, maxWidth: 800, margin: '0 auto' }}
+      data-screen="settings"
+      className="min-h-screen bg-gray-50 dark:bg-bg-dark"
     >
-      <button onClick={() => nav('/dashboard')} style={{ marginBottom: 16 }}>
-        ← Back
-      </button>
-      <h1 style={{ fontSize: '24px', marginBottom: 16 }}>Settings</h1>
-
-      <nav
-        aria-label="Settings tabs"
-        style={{ display: 'flex', gap: 4, marginBottom: 24, borderBottom: '1px solid #e5e7eb' }}
-      >
-        {tabs.map((t) => (
+      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            role="tab"
-            aria-selected={activeTab === t.id}
-            style={{
-              padding: '8px 16px',
-              border: 'none',
-              background: 'none',
-              cursor: 'pointer',
-              borderBottom: activeTab === t.id ? '2px solid #6366F1' : '2px solid transparent',
-              color: activeTab === t.id ? '#6366F1' : '#6b7280',
-              fontWeight: activeTab === t.id ? 600 : 400,
-            }}
+            onClick={() => nav('/dashboard')}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
           >
-            {t.label}
+            ←
           </button>
-        ))}
-      </nav>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h1>
+        </div>
+      </header>
 
-      {activeTab === 'profile' && (
-        <div data-section="profile-goals" aria-label="Profile and goals">
-          <h2 style={{ fontSize: '20px', marginBottom: 12 }}>Learning Goals</h2>
-          <div style={{ marginBottom: 16 }}>
-            {['Career Growth', 'Certification Prep'].map((g) => (
-              <span
-                key={g}
-                style={{
-                  display: 'inline-block',
-                  margin: 4,
-                  padding: '4px 12px',
-                  background: '#EEF2FF',
-                  borderRadius: 16,
-                  fontSize: 14,
-                }}
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Subscription Tier (Task 14) */}
+        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-5 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm opacity-90">Current Plan</p>
+              <p className="text-2xl font-bold">Free</p>
+              <p className="text-sm opacity-75 mt-1">
+                3 courses · Basic agents · Bring your own keys
+              </p>
+            </div>
+            <button className="bg-white text-purple-600 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-white/90 transition-colors shadow-sm">
+              Upgrade to Pro
+            </button>
+          </div>
+        </div>
+
+        {/* Pro Features Preview (Task 14) */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Pro Features</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { icon: '♾️', label: 'Unlimited courses', pro: true },
+              { icon: '🤖', label: 'Priority agent access', pro: true },
+              { icon: '🔑', label: 'Managed API keys', pro: true },
+              { icon: '🔄', label: 'Update Agent', pro: true },
+              { icon: '📚', label: '3 courses', pro: false },
+              { icon: '🧠', label: 'Basic agents', pro: false },
+            ].map((f) => (
+              <div
+                key={f.label}
+                className={`flex items-center gap-3 p-3 rounded-xl ${f.pro ? 'bg-purple-50 dark:bg-purple-900/20' : 'bg-gray-50 dark:bg-gray-800'}`}
               >
-                {g}
-              </span>
+                <span>{f.icon}</span>
+                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{f.label}</span>
+                {f.pro ? (
+                  <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-0.5 rounded-full font-medium">
+                    PRO
+                  </span>
+                ) : (
+                  <span className="text-xs text-success font-medium">✓ Free</span>
+                )}
+              </div>
             ))}
           </div>
-          <h2 style={{ fontSize: '20px', marginBottom: 12 }}>Appearance</h2>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>Dark Mode</span>
-            <button
-              onClick={toggle}
-              aria-label={`Toggle dark mode (currently ${mode})`}
-              style={{ padding: '4px 12px', borderRadius: 16, border: '1px solid #d1d5db' }}
+        </div>
+
+        {/* Profile */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Profile</h2>
+          <div className="space-y-3">
+            <label className="block">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Name</span>
+              <input
+                value={profile.name}
+                onChange={(e) => update({ name: e.target.value })}
+                className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+            </label>
+            <label className="block">
+              <span className="text-sm text-gray-600 dark:text-gray-400">Email</span>
+              <input
+                value={profile.email}
+                onChange={(e) => update({ email: e.target.value })}
+                type="email"
+                className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Learning */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Learning Preferences
+          </h2>
+          <label className="block">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Daily Goal (minutes)</span>
+            <input
+              type="number"
+              value={profile.dailyGoal}
+              onChange={(e) => update({ dailyGoal: parseInt(e.target.value) || 0 })}
+              min={5}
+              max={240}
+              className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Experience Level</span>
+            <select
+              value={profile.experience}
+              onChange={(e) => update({ experience: e.target.value })}
+              className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             >
-              {mode === 'dark' ? '🌙 On' : '☀️ Off'}
-            </button>
+              <option value="beginner">Beginner</option>
+              <option value="intermediate">Intermediate</option>
+              <option value="advanced">Advanced</option>
+            </select>
           </label>
         </div>
-      )}
 
-      {activeTab === 'keys' && (
-        <div data-section="api-keys" aria-label="API key management">
-          <h2 style={{ fontSize: '20px', marginBottom: 12 }}>API Keys</h2>
-          <div
-            style={{ padding: 12, border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: 12 }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>OpenAI</span>
-              <span style={{ fontFamily: 'monospace', color: '#6b7280' }}>sk-...Xf4m</span>
-            </div>
-          </div>
-          <button style={{ padding: '8px 16px' }}>+ Add Key</button>
-        </div>
-      )}
-
-      {activeTab === 'subscription' && (
-        <div data-section="subscription" aria-label="Subscription management">
-          <h2 style={{ fontSize: '20px', marginBottom: 12 }}>Subscription</h2>
-          <div style={{ padding: 16, border: '1px solid #e5e7eb', borderRadius: 12 }}>
-            <p style={{ fontSize: '16px', fontWeight: 600 }}>Free Plan</p>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: 4 }}>
-              Basic access with your own API keys
-            </p>
+        {/* Toggles */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Preferences</h2>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-700 dark:text-gray-300">Dark Mode</span>
             <button
-              style={{
-                marginTop: 12,
-                padding: '8px 24px',
-                background: '#6366F1',
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
-                cursor: 'pointer',
-              }}
+              onClick={toggleDarkMode}
+              className={`relative w-11 h-6 rounded-full transition-colors ${profile.darkMode ? 'bg-accent' : 'bg-gray-300 dark:bg-gray-600'}`}
+              role="switch"
+              aria-checked={profile.darkMode}
             >
-              Upgrade to Pro — $20/mo
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${profile.darkMode ? 'translate-x-5' : ''}`}
+              />
+            </button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-700 dark:text-gray-300">Notifications</span>
+            <button
+              onClick={() => update({ notifications: !profile.notifications })}
+              className={`relative w-11 h-6 rounded-full transition-colors ${profile.notifications ? 'bg-accent' : 'bg-gray-300 dark:bg-gray-600'}`}
+              role="switch"
+              aria-checked={profile.notifications}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${profile.notifications ? 'translate-x-5' : ''}`}
+              />
             </button>
           </div>
         </div>
-      )}
-
-      {activeTab === 'privacy' && (
-        <div data-section="privacy-export" aria-label="Privacy and data export">
-          <h2 style={{ fontSize: '20px', marginBottom: 12 }}>Privacy & Data</h2>
-          <button style={{ padding: '8px 16px', marginRight: 8 }}>📥 Export My Data</button>
-          <button style={{ padding: '8px 16px', color: '#EF4444' }}>🗑️ Delete Account</button>
-          <div style={{ marginTop: 24 }}>
-            <h3 style={{ fontSize: '16px', marginBottom: 8 }}>Data Handling</h3>
-            <p style={{ fontSize: '14px', color: '#6b7280' }}>
-              Your API keys are encrypted with AES-256. Learning data is stored locally and synced
-              securely. You can export or delete all data at any time.
-            </p>
-          </div>
-        </div>
-      )}
+      </div>
     </section>
   );
 }

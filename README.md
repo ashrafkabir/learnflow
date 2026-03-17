@@ -12,23 +12,27 @@ An AI-powered learning platform that uses intelligent agents to create personali
 ## Setup
 
 1. Clone the repository:
+
    ```bash
    git clone <repo-url>
    cd learnflow
    ```
 
 2. Copy and configure environment variables:
+
    ```bash
    cp .env.example .env
    # Edit .env with your values
    ```
 
 3. Start infrastructure services:
+
    ```bash
    docker compose up -d
    ```
 
 4. Install dependencies:
+
    ```bash
    npm install
    ```

@@ -36,12 +36,12 @@ The platform is available on macOS, Windows, Android, and iOS. Students bring th
 
 ## 2.1 Vision Statement
 
-*Democratize personalized mastery-based learning by combining conversational AI, autonomous agents, and community-driven content into a single, beautiful, cross-platform experience that is free for anyone with an API key and premium for professionals who need managed, always-current skill development.*
+_Democratize personalized mastery-based learning by combining conversational AI, autonomous agents, and community-driven content into a single, beautiful, cross-platform experience that is free for anyone with an API key and premium for professionals who need managed, always-current skill development._
 
 ## 2.2 Target Users
 
 |                       |                                                                           |                      |
-|-----------------------|---------------------------------------------------------------------------|----------------------|
+| --------------------- | ------------------------------------------------------------------------- | -------------------- |
 | **Persona**           | **Description**                                                           | **Tier**             |
 | Self-Directed Learner | Hobbyist or career-changer exploring new domains at their own pace        | Free (BYOAI)         |
 | University Student    | Supplementing coursework with AI-curated, exam-ready materials            | Free (BYOAI)         |
@@ -52,12 +52,12 @@ The platform is available on macOS, Windows, Android, and iOS. Students bring th
 ## 2.3 Competitive Differentiation
 
 |                 |                                              |                                       |
-|-----------------|----------------------------------------------|---------------------------------------|
+| --------------- | -------------------------------------------- | ------------------------------------- |
 | **Dimension**   | **LearnFlow**                                | **Competitors (Coursera/Udemy/Khan)** |
 | Content Source  | Real-time internet curation with attribution | Pre-recorded, static content          |
 | Personalization | Conversational goal-setting, adaptive agents | Algorithmic recommendations           |
-| Cost            | Free with BYOAI; affordable Pro tier         | $20-50/mo subscription walls         |
-| Lesson Format   | Bite-sized (<10 min), always current        | Long-form videos, aging content       |
+| Cost            | Free with BYOAI; affordable Pro tier         | $20-50/mo subscription walls          |
+| Lesson Format   | Bite-sized (<10 min), always current         | Long-form videos, aging content       |
 | Agents          | Extensible multi-agent marketplace           | No agent ecosystem                    |
 | Creator Economy | Two-sided marketplace with revenue share     | Instructor-led only                   |
 
@@ -84,7 +84,7 @@ LearnFlow follows a layered architecture with clear separation between the clien
 ## 3.2 Technology Stack
 
 |                   |                                             |                                                             |
-|-------------------|---------------------------------------------|-------------------------------------------------------------|
+| ----------------- | ------------------------------------------- | ----------------------------------------------------------- |
 | **Layer**         | **Technology**                              | **Rationale**                                               |
 | Client Framework  | Flutter (Dart) or React Native (TypeScript) | Single codebase for all 4 platforms with native performance |
 | API Gateway       | Kong / AWS API Gateway + Lambda authorizers | Scalable, managed, supports WebSocket                       |
@@ -124,7 +124,7 @@ The Orchestrator is the central intelligence layer. It receives all user interac
 ## 4.2 Core Agent Catalog
 
 |                       |                                                                                                                                          |                                                            |
-|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------|
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | **Agent**             | **Function**                                                                                                                             | **Trigger**                                                |
 | Course Builder Agent  | Scours internet for latest articles, papers, tutorials; structures into bite-sized lessons with attribution; builds syllabus and mindmap | User defines a learning goal or topic                      |
 | Content Scraper Agent | Extracts, cleans, and attributes web content; scores quality; deduplicates against existing corpus                                       | Course Builder requests source material                    |
@@ -162,7 +162,7 @@ Free-tier users provide their own API keys (OpenAI, Anthropic, Google, Mistral, 
 ## 5.1 Platform Matrix
 
 |              |                                               |                      |                            |
-|--------------|-----------------------------------------------|----------------------|----------------------------|
+| ------------ | --------------------------------------------- | -------------------- | -------------------------- |
 | **Platform** | **Distribution**                              | **Min Version**      | **Framework**              |
 | macOS        | Direct download (.dmg) + Homebrew cask        | macOS 13 (Ventura)   | Flutter desktop / Electron |
 | Windows      | Direct download (.exe/.msi) + Microsoft Store | Windows 10 21H2+     | Flutter desktop / Electron |
@@ -285,7 +285,7 @@ The primary interaction surface is a chat-style interface where the student conv
 ■ **COLOR PALETTE**
 
 |            |                |               |                                       |
-|------------|----------------|---------------|---------------------------------------|
+| ---------- | -------------- | ------------- | ------------------------------------- |
 | **Token**  | **Light Mode** | **Dark Mode** | **Usage**                             |
 | Primary    | \#1A1A2E       | \#F8FAFC      | Text, key actions                     |
 | Accent     | \#2563EB       | \#60A5FA      | Links, interactive elements, progress |
@@ -330,10 +330,10 @@ The Course Builder Agent, working with the Content Scraper Agent, performs intel
 ## 6.2 Lesson Structure
 
 |                     |                                                               |                |
-|---------------------|---------------------------------------------------------------|----------------|
+| ------------------- | ------------------------------------------------------------- | -------------- |
 | **Element**         | **Description**                                               | **Max Length** |
 | Title               | Clear, descriptive lesson title                               | 80 characters  |
-| Estimated Time      | Reading time badge (always <10 min)                          | N/A            |
+| Estimated Time      | Reading time badge (always <10 min)                           | N/A            |
 | Learning Objectives | 2-3 bullet points: what you will understand after this lesson | 150 chars each |
 | Core Content        | Well-structured prose with headings, code blocks, diagrams    | 1500 words     |
 | Key Takeaways       | 3-5 memorable summary points                                  | 100 chars each |
@@ -366,7 +366,7 @@ The course marketplace is a two-sided platform where creators publish structured
 ■ **REVENUE MODEL**
 
 |                              |                            |                                                        |
-|------------------------------|----------------------------|--------------------------------------------------------|
+| ---------------------------- | -------------------------- | ------------------------------------------------------ |
 | **Tier**                     | **Revenue Split**          | **Features**                                           |
 | Free Course                  | N/A                        | Community visibility, creator profile, usage analytics |
 | Paid Course (BYOAI user)     | 85% creator / 15% platform | Full marketplace placement, featured eligibility       |
@@ -405,8 +405,8 @@ The agent marketplace enables developers to publish specialized agents that exte
 # 8. Subscription & Monetization
 
 |                   |                                  |                                      |
-|-------------------|----------------------------------|--------------------------------------|
-| **Feature**       | **Free (BYOAI)**                 | **Pro ($14.99/mo)**                 |
+| ----------------- | -------------------------------- | ------------------------------------ |
+| **Feature**       | **Free (BYOAI)**                 | **Pro ($14.99/mo)**                  |
 | API Key           | Student provides their own       | Managed by platform (pooled keys)    |
 | Course Creation   | Unlimited                        | Unlimited + priority generation      |
 | Agent Access      | All marketplace agents           | All + Pro-exclusive agents           |
@@ -581,7 +581,7 @@ You continuously adapt based on observed behavior:
 ## 11.1 Core Endpoints
 
 |            |                                                |                                                            |
-|------------|------------------------------------------------|------------------------------------------------------------|
+| ---------- | ---------------------------------------------- | ---------------------------------------------------------- |
 | **Method** | **Endpoint**                                   | **Description**                                            |
 | POST       | /api/v1/auth/register                          | Create account (email, social, or passkey)                 |
 | POST       | /api/v1/auth/login                             | Authenticate and receive JWT                               |
@@ -604,7 +604,7 @@ You continuously adapt based on observed behavior:
 ## 11.2 WebSocket Events
 
 |                 |                 |                                          |
-|-----------------|-----------------|------------------------------------------|
+| --------------- | --------------- | ---------------------------------------- |
 | **Event**       | **Direction**   | **Payload**                              |
 | message         | Client → Server | { text, attachments, context_overrides } |
 | response.start  | Server → Client | { message_id, agent_name }               |
@@ -692,7 +692,7 @@ You continuously adapt based on observed behavior:
 # 13. Documentation Plan
 
 |                       |                          |                                                                              |
-|-----------------------|--------------------------|------------------------------------------------------------------------------|
+| --------------------- | ------------------------ | ---------------------------------------------------------------------------- |
 | **Document**          | **Audience**             | **Content**                                                                  |
 | Getting Started Guide | New Users                | Account creation, API key setup, first course creation walkthrough           |
 | User Guide            | All Users                | Complete feature reference: courses, mindmaps, agents, marketplace, settings |
@@ -785,12 +785,12 @@ You continuously adapt based on observed behavior:
 # 15. Testing Strategy
 
 |                     |                                                            |                                |                               |
-|---------------------|------------------------------------------------------------|--------------------------------|-------------------------------|
+| ------------------- | ---------------------------------------------------------- | ------------------------------ | ----------------------------- |
 | **Test Type**       | **Scope**                                                  | **Tools**                      | **Threshold**                 |
 | Unit Tests          | Agent logic, API handlers, UI components                   | Jest, Testing Library, Pytest  | \>85% coverage                |
 | Integration Tests   | Agent-to-agent communication, API flows                    | Supertest, Playwright          | All critical paths            |
 | E2E Tests           | Full user journeys: onboarding through course completion   | Playwright, Detox (mobile)     | Top 10 user flows             |
-| Agent Tests         | Prompt regression, output quality, hallucination detection | LangSmith, custom eval harness | <5% hallucination rate       |
+| Agent Tests         | Prompt regression, output quality, hallucination detection | LangSmith, custom eval harness | <5% hallucination rate        |
 | Load Tests          | API throughput, WebSocket concurrency, agent scaling       | k6, Artillery                  | 1000 concurrent users         |
 | Security Tests      | OWASP Top 10, API key handling, injection attacks          | OWASP ZAP, Snyk                | Zero critical vulnerabilities |
 | Accessibility Tests | WCAG 2.1 AA compliance across all screens                  | Axe, Lighthouse                | \>95 accessibility score      |
@@ -1076,13 +1076,13 @@ Maintain a PROGRESS.md file at the repo root with the following format for each 
 ## 17.1 Glossary
 
 |                   |                                                                                  |
-|-------------------|----------------------------------------------------------------------------------|
+| ----------------- | -------------------------------------------------------------------------------- |
 | **Term**          | **Definition**                                                                   |
 | BYOAI             | Bring Your Own AI — user provides their own LLM API key for free platform access |
 | SCO               | Student Context Object — the aggregate of all tracked data about a learner       |
 | Orchestrator      | Central agent that manages user interaction and spawns specialized agents        |
 | Agent Mesh        | The network of containerized, independently deployable agents                    |
-| Bite-sized Lesson | A structured learning unit designed for <10 minutes of reading                  |
+| Bite-sized Lesson | A structured learning unit designed for <10 minutes of reading                   |
 | Knowledge Graph   | Visual representation of concepts and their relationships (the mindmap)          |
 | DAG Planner       | Directed Acyclic Graph-based execution planner for parallel agent scheduling     |
 | SCORM             | Shareable Content Object Reference Model — e-learning interoperability standard  |
@@ -1101,4 +1101,4 @@ Maintain a PROGRESS.md file at the repo root with the following format for each 
 
 44. Open source strategy: determine which components (Agent SDK, client, core) should be open-sourced
 
-*End of Specification*
+_End of Specification_

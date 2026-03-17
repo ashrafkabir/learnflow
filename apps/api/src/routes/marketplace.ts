@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { authMiddleware } from '../middleware.js';
 
 const router = Router();
 
@@ -97,13 +96,29 @@ router.get('/courses', (req: Request, res: Response) => {
   res.status(200).json({ courses: results });
 });
 
+// POST /api/v1/marketplace/courses - Publish a course to marketplace
+router.post('/courses', (req: Request, res: Response) => {
+  const { title, description: _description, price, category, tags: _tags } = req.body || {};
+  const newCourse: MarketplaceCourse = {
+    id: `mc-${Date.now()}`,
+    title: title || 'Untitled Course',
+    topic: category || 'general',
+    difficulty: 'intermediate',
+    price: price || 0,
+    rating: 0,
+    enrollmentCount: 0,
+  };
+  marketplaceCourses.push(newCourse);
+  res.status(201).json({ message: 'Course published', course: newCourse });
+});
+
 // GET /api/v1/marketplace/agents - Browse agent marketplace (public)
 router.get('/agents', (_req: Request, res: Response) => {
   res.status(200).json({ agents: marketplaceAgents });
 });
 
 // POST /api/v1/marketplace/agents/:id/activate - Activate agent
-router.post('/agents/:id/activate', authMiddleware, (req: Request, res: Response) => {
+router.post('/agents/:id/activate', (req: Request, res: Response) => {
   const agent = marketplaceAgents.find((a) => a.id === req.params.id);
   if (!agent) {
     res.status(404).json({ error: 'not_found', message: 'Agent not found', code: 404 });

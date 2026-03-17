@@ -8,7 +8,9 @@ import { marketplaceRouter } from './routes/marketplace.js';
 import { profileRouter } from './routes/profile.js';
 import { subscriptionRouter } from './routes/subscription.js';
 import { analyticsRouter } from './routes/analytics.js';
-import { authMiddleware, requireTier, tokenUsageMiddleware } from './middleware.js';
+import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from './middleware.js';
+import jwt from 'jsonwebtoken';
+import { config } from './config.js';
 
 // Simple in-memory rate limiter
 const rateLimitStore: Map<string, { count: number; resetAt: number }> = new Map();
@@ -46,7 +48,7 @@ function rateLimiter(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-export function createApp() {
+export function createApp(options?: { devMode?: boolean }) {
   const app = express();
   app.use(express.json());
   app.use(tokenUsageMiddleware);
@@ -54,15 +56,41 @@ export function createApp() {
   // Public auth routes
   app.use('/api/v1/auth', authRouter);
 
-  // Auth + rate limiter for protected routes
-  app.use('/api/v1/keys', authMiddleware, rateLimiter, keysRouter);
-  app.use('/api/v1/chat', authMiddleware, rateLimiter, chatRouter);
-  app.use('/api/v1/courses', authMiddleware, rateLimiter, coursesRouter);
-  app.use('/api/v1/mindmap', authMiddleware, rateLimiter, mindmapRouter);
+  // Dev-mode middleware — allows unauthenticated access with a default user
+  function devAuth(req: Request, _res: Response, next: NextFunction): void {
+    const header = req.headers.authorization;
+    if (header?.startsWith('Bearer ')) {
+      const token = header.slice(7);
+      try {
+        const decoded = jwt.verify(token, config.jwtSecret) as AuthUser;
+        req.user = decoded;
+      } catch {
+        /* ignore invalid token */
+      }
+    }
+    if (!req.user) {
+      req.user = {
+        sub: 'test-user-1',
+        email: 'test@learnflow.dev',
+        role: 'student' as const,
+        tier: 'pro' as const,
+      };
+    }
+    next();
+  }
+
+  // Use real auth in test/production, dev auth for local development
+  const protectedAuth = options?.devMode ? devAuth : authMiddleware;
+
+  // Routes
+  app.use('/api/v1/keys', protectedAuth, rateLimiter, keysRouter);
+  app.use('/api/v1/chat', protectedAuth, rateLimiter, chatRouter);
+  app.use('/api/v1/courses', protectedAuth, rateLimiter, coursesRouter);
+  app.use('/api/v1/mindmap', protectedAuth, rateLimiter, mindmapRouter);
   app.use('/api/v1/marketplace', rateLimiter, marketplaceRouter);
-  app.use('/api/v1/profile', authMiddleware, rateLimiter, profileRouter);
-  app.use('/api/v1/subscription', authMiddleware, rateLimiter, subscriptionRouter);
-  app.use('/api/v1/analytics', authMiddleware, rateLimiter, analyticsRouter);
+  app.use('/api/v1/profile', protectedAuth, rateLimiter, profileRouter);
+  app.use('/api/v1/subscription', protectedAuth, rateLimiter, subscriptionRouter);
+  app.use('/api/v1/analytics', protectedAuth, rateLimiter, analyticsRouter);
 
   // Pro-only endpoint for RBAC testing
   app.get('/api/v1/pro/features', authMiddleware, requireTier('pro'), (_req, res) => {

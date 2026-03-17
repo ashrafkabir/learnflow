@@ -192,8 +192,9 @@ describe('S07-A15: Full API flow', () => {
       .get(`/api/v1/courses/${courseId}`)
       .set('Authorization', `Bearer ${token}`);
     expect(getCourse.status).toBe(200);
-    expect(getCourse.body.lessons.length).toBeGreaterThan(0);
-    const lessonId = getCourse.body.lessons[0].id;
+    expect(getCourse.body.modules.length).toBeGreaterThan(0);
+    expect(getCourse.body.modules[0].lessons.length).toBeGreaterThan(0);
+    const lessonId = getCourse.body.modules[0].lessons[0].id;
 
     // 5. Get lesson
     const getLesson = await request(app)
