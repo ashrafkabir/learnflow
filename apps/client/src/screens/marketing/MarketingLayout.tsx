@@ -81,7 +81,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
       </header>
 
       {/* Content */}
-      {children}
+      <main>{children}</main>
 
       {/* Footer */}
       <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800">

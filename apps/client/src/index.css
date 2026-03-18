@@ -62,6 +62,24 @@
   --shadow-modal: 0 8px 30px rgba(0,0,0,0.4);
 }
 
+/* High-contrast mode — Spec §5.3 accessibility */
+@media (prefers-contrast: more) {
+  :root { --shadow-card: 0 0 0 1px rgba(0,0,0,0.3); }
+  body { color: #000; }
+  button, a, [role="button"] { border-width: 2px; }
+}
+html.high-contrast {
+  --shadow-card: 0 0 0 1px rgba(0,0,0,0.3);
+}
+html.high-contrast body { color: #0a0a0a; }
+html.high-contrast.dark body { color: #fff; }
+html.high-contrast button,
+html.high-contrast a,
+html.high-contrast [role="button"] { border-width: 2px; }
+html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([class*="bg-error"]) {
+  opacity: 1 !important;
+}
+
 @layer base {
   html {
     font-family: var(--font-sans);
@@ -91,6 +109,13 @@
     /* Icon-only buttons need min-width too */
     button:not([class*="w-full"]):not([class*="flex-1"]) {
       min-width: 44px;
+    }
+  }
+
+  /* Touch target sizing for coarse pointers (mobile) */
+  @media (pointer: coarse) {
+    button, a, [role="button"], select, input, textarea {
+      min-height: 44px;
     }
   }
 

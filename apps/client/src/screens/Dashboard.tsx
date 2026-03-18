@@ -158,7 +158,7 @@ export function Dashboard() {
         </div>
       </header>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         {/* Skeleton loading state */}
         {initialLoading ? (
           <SkeletonDashboard />
@@ -656,7 +656,7 @@ export function Dashboard() {
         </div>
         </>
         )}
-      </div>
+      </main>
     </section>
   );
 }

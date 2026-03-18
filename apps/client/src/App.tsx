@@ -15,6 +15,7 @@ import { MindmapExplorer } from './screens/MindmapExplorer.js';
 import { CourseMarketplace } from './screens/marketplace/CourseMarketplace.js';
 import { AgentMarketplace } from './screens/marketplace/AgentMarketplace.js';
 import { CourseDetail } from './screens/marketplace/CourseDetail.js';
+import { CreatorDashboard } from './screens/marketplace/CreatorDashboard.js';
 import { ProfileSettings } from './screens/ProfileSettings.js';
 import { PipelineDetail } from './screens/PipelineDetail.js';
 import { LoginScreen } from './screens/LoginScreen.js';
@@ -95,6 +96,7 @@ export function App() {
         <Route path="/marketplace/courses" element={<ErrorBoundary><CourseMarketplace /></ErrorBoundary>} />
         <Route path="/marketplace/courses/:courseId" element={<ErrorBoundary><CourseDetail /></ErrorBoundary>} />
         <Route path="/marketplace/agents" element={<ErrorBoundary><AgentMarketplace /></ErrorBoundary>} />
+        <Route path="/marketplace/creator" element={<ErrorBoundary><CreatorDashboard /></ErrorBoundary>} />
 
         {/* Profile & Settings */}
         <Route path="/settings" element={<ErrorBoundary><ProfileSettings /></ErrorBoundary>} />

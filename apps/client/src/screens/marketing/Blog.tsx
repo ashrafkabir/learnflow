@@ -22,7 +22,7 @@ export function BlogPage() {
             <article
               key={post.id}
               onClick={() => nav(`/blog/${post.id}`)}
-              className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 hover:shadow-lg transition-all cursor-pointer group"
+              className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 hover:shadow-elevated transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3 mb-3">
                 <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${post.tagColor}`}>{post.tag}</span>

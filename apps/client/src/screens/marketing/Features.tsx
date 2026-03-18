@@ -66,7 +66,7 @@ export function FeaturesPage() {
           {FEATURES.map((f, i) => (
             <div key={f.title} className={`flex flex-col md:flex-row gap-8 items-center ${i % 2 === 1 ? 'md:flex-row-reverse' : ''} group`}>
               <div className="flex-1">
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${GRADIENT_COLORS[i % GRADIENT_COLORS.length]} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${GRADIENT_COLORS[i % GRADIENT_COLORS.length]} flex items-center justify-center mb-4 shadow-elevated group-hover:scale-110 transition-transform duration-300`}>
                   <span className="text-2xl filter drop-shadow-sm">{f.icon}</span>
                 </div>
                 <h2 className="text-2xl font-bold mb-3">{f.title}</h2>
@@ -86,7 +86,7 @@ export function FeaturesPage() {
                 <span className="text-7xl drop-shadow-sm">{f.icon}</span>
                 <div className="flex flex-wrap justify-center gap-2">
                   {f.benefits.slice(0, 3).map((b, j) => (
-                    <span key={j} className="text-[10px] px-2.5 py-1 rounded-full bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 font-medium shadow-sm border border-gray-200/50 dark:border-gray-600/50">{b}</span>
+                    <span key={j} className="text-[10px] px-2.5 py-1 rounded-full bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 font-medium shadow-card border border-gray-200/50 dark:border-gray-600/50">{b}</span>
                   ))}
                 </div>
               </div>

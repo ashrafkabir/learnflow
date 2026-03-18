@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
+import { SkeletonMarketplace } from '../../components/Skeleton.js';
 
 interface Agent {
   id: string;
@@ -25,6 +26,13 @@ export function AgentMarketplace() {
   const nav = useNavigate();
   const [activatedIds, setActivatedIds] = useState<Set<string>>(new Set());
   const [activating, setActivating] = useState<string | null>(null);
+  const [loading, setLoading] = useState(!AGENTS.length);
+
+  useEffect(() => {
+    if (!loading) return;
+    const t = setTimeout(() => setLoading(false), 400);
+    return () => clearTimeout(t);
+  }, [loading]);
 
   const handleActivate = async (agent: Agent) => {
     setActivating(agent.id);
@@ -71,7 +79,7 @@ export function AgentMarketplace() {
           </div>
         )}
 
-        <div
+        {loading ? <SkeletonMarketplace /> : <div
           data-component="agent-catalog"
           aria-label="Agent catalog"
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
@@ -119,7 +127,7 @@ export function AgentMarketplace() {
               </div>
             );
           })}
-        </div>
+        </div>}
       </div>
     </section>
   );

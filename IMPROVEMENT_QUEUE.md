@@ -1,7 +1,7 @@
 # LearnFlow Improvement Queue — Iteration 17
 
 ## Current Iteration: 17
-## Status: READY FOR BUILDER
+## Status: DONE
 ## Date: 2025-07-19
 ## Focus: Conversation mindmap panel, landing page contrast, accessibility, CourseDetail button fix, marketing Features shadow cleanup
 

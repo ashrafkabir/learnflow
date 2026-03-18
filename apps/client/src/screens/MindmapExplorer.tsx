@@ -189,7 +189,7 @@ export function MindmapExplorer() {
         stabilization: { iterations: 100 },
       },
       autoResize: true,
-      interaction: { hover: true, tooltipDelay: 200 },
+      interaction: { hover: true, tooltipDelay: 200, keyboard: { enabled: true, speed: { x: 10, y: 10, zoom: 0.02 } } },
       nodes: { borderWidth: 2, shadow: { enabled: true, size: 4, x: 0, y: 2, color: 'rgba(0,0,0,0.1)' }, font: { size: 14, face: 'system-ui, sans-serif' } },
       edges: { smooth: { type: 'continuous' } },
     };
@@ -257,10 +257,12 @@ export function MindmapExplorer() {
           </div>
         </div>
       </header>
-      <div className="px-0 sm:px-1 py-0">
+      <main className="px-0 sm:px-1 py-0">
         <div
           data-component="mindmap-preview"
           aria-label="Knowledge mindmap"
+          tabIndex={0}
+          role="img"
           className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card overflow-hidden"
           style={{ height: 'calc(100vh - 80px)', position: 'relative' }}
         >
@@ -334,7 +336,7 @@ export function MindmapExplorer() {
             </>
           )}
         </div>
-      </div>
+      </main>
 
       {/* Add Node Modal */}
       {showAddNode && (

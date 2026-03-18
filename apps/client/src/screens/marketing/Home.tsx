@@ -40,12 +40,12 @@ export function HomePage() {
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/20 text-accent text-sm font-semibold mb-6 border border-accent/30">
             <span>✨</span> Now with multi-agent AI pipeline
           </div>
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-6 text-gray-900 dark:text-white">
             Learn anything.<br />
             <span className="text-accent">Master everything.</span><br />
             Powered by AI agents.
           </h1>
-          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed">
             Set your goals, and intelligent agents build your personalized learning path from the best content on the web. Free with your own API key.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

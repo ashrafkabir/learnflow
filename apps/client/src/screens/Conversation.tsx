@@ -13,6 +13,98 @@ import type { Source } from '../components/CitationTooltip.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { Button } from '../components/Button.js';
 
+// Dynamically import vis-network for mindmap panel
+let Network: unknown = null;
+let DataSet: unknown = null;
+type VisDataSetCtor = new (items: Array<Record<string, unknown>>) => unknown;
+type VisNetworkCtor = new (container: HTMLElement, data: Record<string, unknown>, options: Record<string, unknown>) => { on: (event: string, cb: (params: unknown) => void) => void; destroy: () => void; fit: (...args: unknown[]) => void };
+
+function MindmapPanel({ open, onClose, courses, completedLessons, onNodeClick }: {
+  open: boolean;
+  onClose: () => void;
+  courses: Array<{ id: string; title: string; modules: Array<{ title: string; lessons: Array<{ id: string; title: string }> }> }>;
+  completedLessons: Set<string>;
+  onNodeClick: (courseId: string, lessonId?: string) => void;
+}) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const networkRef = React.useRef<{ destroy: () => void } | null>(null);
+  const [loaded, setLoaded] = React.useState(!!Network);
+
+  React.useEffect(() => {
+    if (Network) { setLoaded(true); return; }
+    import('vis-network/standalone').then((mod) => {
+      Network = (mod as any).Network;
+      DataSet = (mod as any).DataSet;
+      setLoaded(true);
+    }).catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    if (!open || !loaded || !containerRef.current || !Network || !DataSet) return;
+    networkRef.current?.destroy();
+    const NetworkCtor = Network as VisNetworkCtor;
+    const DataSetCtor = DataSet as VisDataSetCtor;
+
+    const nodes: Array<Record<string, unknown>> = [];
+    const edges: Array<Record<string, unknown>> = [];
+    let nodeId = 1;
+    const rootId = nodeId++;
+    nodes.push({ id: rootId, label: 'Knowledge', shape: 'ellipse', color: { background: '#6366F1', border: '#4F46E5' }, font: { color: '#fff', size: 14 }, size: 30 });
+
+    for (const course of courses) {
+      const cId = nodeId++;
+      const total = course.modules.reduce((s, m) => s + m.lessons.length, 0);
+      const done = course.modules.reduce((s, m) => s + m.lessons.filter((l) => completedLessons.has(l.id)).length, 0);
+      const pct = total > 0 ? done / total : 0;
+      const color = pct >= 1 ? '#16A34A' : pct > 0 ? '#F59E0B' : '#9CA3AF';
+      nodes.push({ id: cId, label: course.title.slice(0, 30), shape: 'box', color: { background: color, border: color }, font: { color: '#fff', size: 11 }, _courseId: course.id });
+      edges.push({ from: rootId, to: cId });
+      for (const mod of course.modules) {
+        for (const lesson of mod.lessons) {
+          const lId = nodeId++;
+          const lDone = completedLessons.has(lesson.id);
+          nodes.push({ id: lId, label: lesson.title.slice(0, 20), shape: 'dot', size: 8, color: { background: lDone ? '#16A34A' : '#E5E7EB' }, _courseId: course.id, _lessonId: lesson.id });
+          edges.push({ from: cId, to: lId, color: { color: '#94A3B8' } });
+        }
+      }
+    }
+
+    const net = new NetworkCtor(containerRef.current, { nodes: new DataSetCtor(nodes), edges: new DataSetCtor(edges) }, {
+      layout: { hierarchical: false },
+      physics: { enabled: true, forceAtlas2Based: { gravitationalConstant: -30, springLength: 80 }, solver: 'forceAtlas2Based', stabilization: { iterations: 60 } },
+      interaction: { hover: true, keyboard: { enabled: true } },
+      nodes: { borderWidth: 2, font: { size: 11, face: 'system-ui' } },
+      edges: { smooth: { type: 'continuous' } },
+    });
+    networkRef.current = net as any;
+    net.on('click', (params: unknown) => {
+      const p = params as { nodes?: unknown[] };
+      if (p.nodes?.length === 1) {
+        const id = p.nodes[0];
+        const node = nodes.find((n) => n.id === id);
+        if (node?._courseId) onNodeClick(node._courseId as string, node._lessonId as string | undefined);
+      }
+    });
+    return () => { networkRef.current?.destroy(); networkRef.current = null; };
+  }, [open, loaded, courses, completedLessons]);
+
+  if (!open) return null;
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={onClose} />
+      <aside className="fixed top-0 right-0 h-full w-full md:w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 z-50 flex flex-col shadow-modal" aria-label="Knowledge mindmap">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">🧠 Knowledge Map</h2>
+          <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+        </div>
+        <div ref={containerRef} className="flex-1 min-h-0" tabIndex={0} role="img" aria-label="Knowledge mindmap graph" />
+        {!loaded && <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">Loading mindmap…</div>}
+        <p className="text-[10px] text-gray-400 px-3 py-2 text-center">Click a node to navigate • Arrow keys to pan</p>
+      </aside>
+    </>
+  );
+}
+
 // Agent display names and activity messages
 const AGENT_LABELS: Record<string, { icon: string; label: string; activity: string }> = {
   notes: { icon: '📝', label: 'Notes Agent', activity: 'is organizing your notes...' },
@@ -142,6 +234,7 @@ export function Conversation() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSources, setDrawerSources] = useState<Source[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
+  const [mindmapOpen, setMindmapOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // WebSocket streaming
@@ -276,6 +369,8 @@ export function Conversation() {
               + New Chat
             </Button>
           )}
+          <Button variant="ghost" size="sm" onClick={() => setDrawerOpen(!drawerOpen)} className="border border-gray-200 dark:border-gray-700" title="View sources">📚</Button>
+          <Button variant="ghost" size="sm" onClick={() => setMindmapOpen(!mindmapOpen)} className="border border-gray-200 dark:border-gray-700" title="Knowledge mindmap">🧠</Button>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
             <span className="text-xs text-gray-600 dark:text-gray-400" title="AI assistant is ready to help">Online</span>
@@ -284,7 +379,7 @@ export function Conversation() {
       </header>
 
       {/* Messages */}
-      <div
+      <main
         data-component="message-list"
         role="log"
         aria-label="Messages"
@@ -486,7 +581,7 @@ export function Conversation() {
           </div>
         )}
         <div ref={messagesEndRef} />
-      </div>
+      </main>
 
       {/* Input */}
       <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 safe-area-bottom">
@@ -529,6 +624,19 @@ export function Conversation() {
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         sources={drawerSources}
+      />
+
+      {/* Mindmap Panel — Spec §5.2.3 */}
+      <MindmapPanel
+        open={mindmapOpen}
+        onClose={() => setMindmapOpen(false)}
+        courses={state.courses}
+        completedLessons={state.completedLessons}
+        onNodeClick={(courseId, lessonId) => {
+          setMindmapOpen(false);
+          if (lessonId) nav(`/courses/${courseId}/lessons/${lessonId}`);
+          else nav(`/courses/${courseId}`);
+        }}
       />
     </section>
   );

@@ -407,7 +407,7 @@ export function LessonReader() {
         </div>
       </header>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <article data-component="lesson-content" aria-label="Lesson content" className="space-y-6">
           {/* Title section */}
           {sections.filter((s) => s.type === 'title').map((s, i) => (
@@ -784,7 +784,7 @@ export function LessonReader() {
         )}
 
         {activePanel === 'quiz' && <QuizPanel />}
-      </div>
+      </main>
 
       {/* Bottom action bar */}
       <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">

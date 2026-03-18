@@ -42,7 +42,7 @@ function ToastItem({ item, onRemove }: { item: ToastItem; onRemove: () => void }
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg backdrop-blur-md ${COLORS[item.type]} animate-[slideIn_0.3s_ease-out]`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-elevated backdrop-blur-md ${COLORS[item.type]} animate-[slideIn_0.3s_ease-out]`}
       role="alert"
     >
       <span>{ICONS[item.type]}</span>

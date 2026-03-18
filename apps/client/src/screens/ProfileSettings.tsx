@@ -35,9 +35,18 @@ export function ProfileSettings() {
     dispatch({ type: 'UPDATE_PROFILE', profile: partial });
   };
 
+  const [highContrast, setHighContrast] = useState(() => localStorage.getItem('learnflow-contrast') === 'true');
+
   const toggleDarkMode = () => {
     toggleTheme();
     update({ darkMode: themeMode !== 'dark' });
+  };
+
+  const toggleHighContrast = () => {
+    const next = !highContrast;
+    setHighContrast(next);
+    localStorage.setItem('learnflow-contrast', String(next));
+    document.documentElement.classList.toggle('high-contrast', next);
   };
 
   return (
@@ -313,6 +322,20 @@ export function ProfileSettings() {
             >
               <span
                 className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${profile.darkMode ? 'translate-x-5' : ''}`}
+              />
+            </Button>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-700 dark:text-gray-300">High Contrast</span>
+            <Button
+              variant="ghost"
+              onClick={toggleHighContrast}
+              className={`relative w-11 h-6 p-0 rounded-full transition-colors ${highContrast ? 'bg-accent' : 'bg-gray-300 dark:bg-gray-600'}`}
+              role="switch"
+              aria-checked={highContrast}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${highContrast ? 'translate-x-5' : ''}`}
               />
             </Button>
           </div>

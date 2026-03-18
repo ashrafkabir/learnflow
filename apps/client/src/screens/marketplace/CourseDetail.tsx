@@ -170,15 +170,16 @@ export function CourseDetail() {
             <div className="space-y-2">
               {course.syllabus.map((mod, idx) => (
                 <div key={idx} className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => toggleModule(idx)}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors h-auto rounded-none"
                   >
                     <span className="text-sm font-semibold text-gray-900 dark:text-white">
                       Module {idx + 1}: {mod.module}
                     </span>
                     <span className="text-xs text-gray-500">{mod.lessons.length} lessons {expandedModules.has(idx) ? '▲' : '▼'}</span>
-                  </button>
+                  </Button>
                   {expandedModules.has(idx) && (
                     <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-2 space-y-1">
                       {mod.lessons.map((lesson, li) => (
