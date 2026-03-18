@@ -1,160 +1,164 @@
 # LearnFlow Improvement Queue
 
-## Iteration: 28
+## Iteration: 29
 
-**Status:** DONE  
+**Status:** READY FOR BUILDER  
 **Date:** 2026-03-18
 
-## Brutal Assessment (evidence-based)
+## Brutal Assessment (verify, don’t trust)
 
-### 1) Automated tests are effectively broken (not just flaky)
+Overall: the repo is now **materially runnable + testable** (all tests passing), and we can generate a **repeatable screenshot set**. But spec compliance is still **largely “shape-matching”** (screens/routes exist, placeholders/mock behavior underneath) rather than a true multi-agent learning platform.
 
-- Running `npm test` produces **mass failure** (log shows **128 failed tests**).
-- Root cause is not app logic; it’s the “no silent crashes” console gate + noisy React/Router test warnings:
-  - `Warning: The current testing environment is not configured to support act(...)` (thrown as `console.error`)
-  - React Router warning treated as fatal:
-    - `⚠️ React Router Future Flag Warning: ... v7_startTransition ...`
-  - Evidence: `apps/client/.turbo/turbo-test.log` lines ~700–820 show failures cascading from console gate.
+### What’s solid now (evidence)
 
-### 2) Screenshot coverage was incomplete / inconsistent due to auth + onboarding overlay
+- ✅ **Automated tests are working again**: `npm test` passes across workspaces.
+  - Evidence: local run output shows `@learnflow/client` **144 passed**, `@learnflow/api` **115 passed**, `@learnflow/agents` **68 passed**.
+- ✅ **Deterministic screenshots for “every screen”** are achievable with the existing script.
+  - Evidence: `SCREENSHOT_DIR=evals/screenshots/iter29-2026-03-18 BASE_URL=http://localhost:3002 node screenshot-all.mjs` generated a consistent set.
+  - Output dir: `evals/screenshots/iter29-2026-03-18/`.
 
-- There is a **blocking overlay** (`<OnboardingTooltips />`) that can intercept clicks and mislead automation.
-  - Evidence: `apps/client/src/components/OnboardingTooltips.tsx` uses `fixed inset-0 ... pointer-events-auto` overlay and only stores completion in `localStorage['onboarding-tour-complete']`.
-- The required “every screen” screenshot run was non-deterministic until we forced:
-  - `localStorage['learnflow-token']='dev'`
-  - `localStorage['onboarding-tour-complete']='true'`
+### Biggest reality gaps vs the Product Spec
 
-### 3) Product flow gaps vs spec intent (high-level)
+1. **Spec §11.2 WebSocket protocol is implemented, but payloads don’t match the spec.**
+   - Spec expects e.g. `progress.update: { course_id, lesson_id, completion% }`.
+   - Implementation sends `progress.update: { user_id, metric, value }`.
+   - Evidence: `apps/api/src/websocket.ts`.
 
-- App has routes/screens for many areas (marketing, onboarding, dashboard, pipelines, settings, marketplace), but the **end-to-end learning loop** (create course → pipeline → course view → lesson reader) is hard to validate automatically because:
-  - dashboard interactions get blocked by overlays and state gates
-  - pipeline/course creation requires API + keys/subscription logic that isn’t reliably satisfied in dev/test
+2. **Marketing website spec (§12) says Next.js 14 (App Router) + MDX docs/blog.**
+   - There _is_ a Next app at `apps/web/src/app/*`, but it currently only has `/`, `/features`, `/pricing`, `/download`, `/blog`, and **no** `/docs`, `/about`, `/marketplace`.
+   - Meanwhile the React client also has marketing pages (`apps/client/src/screens/marketing/*`). This is a product decision conflict.
+   - Evidence: `apps/web/src/app/*`, client screenshots: `marketing-about.png`, `marketing-docs.png`.
 
-### 4) Tooling quality gap: repo lacks ripgrep (`rg`) used by previous iteration scripts
+3. **“Multi-agent orchestration” is still mostly a stubbed UX.**
+   - Conversation uses a WebSocket hook, but the server’s WS handler emits canned chunks; no real orchestrator/agent mesh behavior.
+   - Evidence: `apps/api/src/websocket.ts` (hardcoded chunks), client `apps/client/src/hooks/useWebSocket.ts` + `apps/client/src/screens/Conversation.tsx`.
 
-- `rg` is not installed (`/bin/bash: rg: command not found`). This slows iteration and encourages sloppy grep patterns.
-
----
-
-## Iteration 28 — Prioritized Tasks (10–15)
-
-> Format: **Problem** → **Fix** → **Acceptance Criteria** (with file paths)
-
-### P0 — Make tests actionable again
-
-1. ✅ **Tests fail due to React Router future warnings being treated as fatal**
-
-- **Problem:** The console gate throws on `console.warn`, and Router future warnings are emitted during route mounts.
-- **Fix:**
-  - Preferably: opt-in to Router future flags in test routers (MemoryRouter/createMemoryRouter) where used.
-  - Alternatively: allowlist only the specific Router warning string in _one_ place to avoid hiding real issues.
-- **Acceptance:** `npm test` no longer fails solely because of React Router future flag warnings.
-- **Files:** `vitest.setup.ts`, `apps/client/src/test-setup.ts`, test helpers creating routers.
-
-2. ✅ **Tests fail due to `act(...)` environment warning**
-
-- **Problem:** React emits `Warning: The current testing environment is not configured to support act(...)`, which becomes a thrown error via console gate.
-- **Fix:**
-  - Ensure `@testing-library/react` + React 18 config is correct; set `globalThis.IS_REACT_ACT_ENVIRONMENT = true` in setup.
-  - Remove double console-gate stacking (global + app-level) if both run.
-- **Acceptance:** No `act(...)` warnings in test output; `npm test` progresses to real assertions.
-- **Files:** `vitest.setup.ts`, `apps/client/src/test-setup.ts`, `apps/client/vitest.config.ts`.
-
-3. ✅ **Two separate “console gate” implementations conflict**
-
-- **Problem:** `vitest.setup.ts` and `apps/client/src/test-setup.ts` both override console methods; noise becomes fatal twice and makes debugging harder.
-- **Fix:** Consolidate console gate into one setup (prefer root `vitest.setup.ts`) and keep app-level setup for DOM/polyfills only.
-- **Acceptance:** Single source of truth for console gate; consistent allowlist; tests output is readable.
-- **Files:** `vitest.setup.ts`, `apps/client/src/test-setup.ts`, `apps/client/vitest.config.ts`.
-
-4. **Root Vitest config path resolution bug (already fixed but must be kept)**
-
-- **Problem:** Root `vitest.config.ts` used `setupFiles: ['./vitest.setup.ts']` which breaks in workspace runs (it looks for `apps/web/vitest.setup.ts`).
-- **Fix:** Keep absolute resolution via `path.resolve(__dirname,'vitest.setup.ts')`.
-- **Acceptance:** `npm test` can run from repo root without missing setup file errors.
-- **Files:** `vitest.config.ts`.
-
-### P1 — Make “Create Course” and pipeline flow reliably verifiable
-
-5. ✅ **Onboarding tooltip overlay blocks clicks & automation (and can confuse real users)**
-
-- **Problem:** The overlay is full-screen pointer-events and appears on first Dashboard visit.
-- **Fix:**
-  - Add an explicit close button with clear hit target.
-  - Ensure the overlay does not block the “Create Course” input/button area by positioning.
-  - Add deterministic disable via query param (`?tour=off`) for eval runs.
-- **Acceptance:** Creating a course is possible without dismissing the overlay; Playwright can click dashboard CTA without `force: true`.
-- **Files:** `apps/client/src/components/OnboardingTooltips.tsx`, `apps/client/src/screens/Dashboard.tsx`.
-
-6. ✅ **Dev-mode auth gating for evaluation is inconsistent**
-
-- **Problem:** Some routes appear to redirect/behave differently without a real token; automation had to hack localStorage.
-- **Fix:** Provide an explicit `DEV_AUTH_BYPASS` flag (env var) + banner, not an implicit token string.
-- **Acceptance:** When `DEV_AUTH_BYPASS=1`, all app routes load without login and without server dependency.
-- **Files:** `apps/client/src/App.tsx` (auth guard), auth context.
-
-7. ✅ **Course creation blocked by subscription/courses gate in non-obvious ways**
-
-- **Problem:** Dashboard uses `canCreateCourse = subscription==='pro' || courses.length < 3` and redirects to `/settings` on failure.
-- **Fix:**
-  - Make the gating UI explicit (inline message + upgrade CTA), don’t surprise-navigate.
-  - In dev/evals, ensure default subscription and initial courses state don’t block creating first course.
-- **Acceptance:** On a fresh profile, “✨ Create Course” stays on dashboard and starts a pipeline.
-- **Files:** `apps/client/src/screens/Dashboard.tsx`, subscription persistence in app state.
-
-8. **Pipeline detail screenshot coverage exists but must be standardized**
-
-- **Problem:** Pipeline cards are clickable listitems (not anchors), so naive screenshot scripts miss pipeline detail.
-- **Fix:** Maintain `screenshot-all.mjs` (or replace existing script) to explicitly click `[role=listitem]` and screenshot `/pipeline/:id`.
-- **Acceptance:** A single script produces screenshots for: landing, login, register, onboarding (all steps), dashboard, course view, lesson reader, conversation, mindmap, marketplace (courses+agents), settings, pipelines list, pipeline detail.
-- **Files:** `screenshot-all.mjs` (new), existing `screenshot.mjs` (review/merge).
-
-### P2 — Spec alignment & UX quality
-
-9. ✅ **Dashboard `initialLoading` is never set true**
-
-- **Problem:** `initialLoading` defaults false; skeleton never shows even while `/courses` fetch happens.
-- **Fix:** Set `setInitialLoading(true)` before the fetch; ensure it flips false finally.
-- **Acceptance:** On slow network, skeleton renders; on fast network, no flicker.
-- **Files:** `apps/client/src/screens/Dashboard.tsx`.
-
-10. ✅ **Review Queue uses `window.location.href` instead of SPA navigation**
-
-- **Problem:** Forces full page load and breaks app-state continuity.
-- **Fix:** Replace with `nav(...)`.
-- **Acceptance:** Clicking review item transitions client-side.
-- **Files:** `apps/client/src/screens/Dashboard.tsx`.
-
-11. **Marketing pages need a quality pass for spec compliance**
-
-- **Problem:** Marketing routes exist but may be placeholder-heavy; need explicit checklist vs spec (hero, features, pricing, docs, etc.).
-- **Fix:** Compare each marketing screen to spec; remove lorem/placeholder; ensure consistent CTA to register/download.
-- **Acceptance:** Each marketing route has complete copy, CTA, and consistent nav.
-- **Files:** `apps/client/src/screens/marketing/*`.
-
-12. **Install ripgrep for faster iteration**
-
-- **Problem:** `rg` missing; slows targeted verification.
-- **Fix:** Add dev dependency or document install step in repo bootstrap.
-- **Acceptance:** `rg -n "Create Course" apps/client/src` works locally.
-- **Files:** `BOOTSTRAP.md` / dev docs (if present).
+4. **Course/lesson loop exists, but “<10 min lessons + attribution” is not strongly enforced end-to-end.**
+   - Spec: bite-sized lessons (<10 min) + full attribution/provenance.
+   - Implementation: lessons exist and often include references, but constraints/validation are not guaranteed at API contract level.
+   - Evidence: create course route `apps/api/src/routes/courses.ts` (builder path), lesson rendering in `apps/client/src/screens/LessonReader.tsx`.
 
 ---
 
-## Remaining for Future Iterations (not in 28)
+## Iteration 29 — Prioritized Tasks (10–15)
 
-- Proper auth (real JWT, refresh, roles), not localStorage dev token.
-- Data model hardening: persistence layer, multi-user separation.
-- True “course marketplace” publishing & rating flows.
-- Mindmap correctness: semantic linking to lessons; export.
-- Chat/conversation: tool use, citations, memory.
+> Format: **Problem** → **Fix** → **Acceptance Criteria** (with evidence/file paths)
+
+### P0 — WebSocket spec compliance (stop drifting from spec)
+
+1. **WebSocket `progress.update` payload violates spec**
+
+- **Problem:** Spec §11.2: `progress.update` must include `{ course_id, lesson_id, completion% }`. Implementation sends `{ user_id, metric, value }`.
+- **Fix:** Align event payloads to spec and update client event handling accordingly.
+- **Acceptance:** WS event `progress.update` matches spec contract; client updates course progress UI based on it.
+- **Files:** `apps/api/src/websocket.ts`, `apps/client/src/hooks/useWebSocket.ts`, `apps/client/src/screens/*` (where progress is displayed).
+
+2. **WebSocket `mindmap.update` payload drifts from spec**
+
+- **Problem:** Spec shows `{ nodes_added[], edges_added[] }` (and implicitly consistent schema). Implementation emits `{ nodes_added, nodes_updated, edges_added }` with empty arrays only.
+- **Fix:** Define a typed `MindmapNode`/`MindmapEdge` payload and implement meaningful updates (even if mocked) aligned to the spec.
+- **Acceptance:** Mindmap Explorer receives at least one meaningful update event when subscribed, and renders nodes/edges.
+- **Files:** `apps/api/src/websocket.ts`, `apps/client/src/screens/MindmapExplorer.tsx`.
+
+3. **WS auth is inconsistent with dev experience**
+
+- **Problem:** Server requires JWT via `?token=...` at `/ws`. Screenshots/evals rely on localStorage hacks and bypass.
+- **Fix:** Provide a dev-only token mode or a consistent dev auth pathway (e.g., accept `token=dev` when `NODE_ENV=development`).
+- **Acceptance:** In dev, authed WS connects without needing a real JWT; in prod, JWT remains required.
+- **Files:** `apps/api/src/websocket.ts`, `apps/api/src/config.ts`.
+
+### P0 — Resolve the marketing site ambiguity (two sites = two truths)
+
+4. **Spec §12 requires Next.js website, but product currently ships marketing inside the client**
+
+- **Problem:** Client has `/features /pricing /docs /about /blog /download` screens; Next site has only subset and no docs/about.
+- **Fix:** Decide one canonical marketing surface:
+  - Option A (preferred per spec): move marketing to `apps/web` and keep client strictly “app”.
+  - Option B: declare `apps/web` optional and update spec/README accordingly.
+- **Acceptance:** There is exactly one “source of truth” for marketing routes, nav, and copy; no duplicate/contradictory pages.
+- **Files:** `apps/web/src/app/*`, `apps/client/src/screens/marketing/*`, routing in `apps/client/src/App.tsx`.
+
+5. **Next.js site missing required pages**
+
+- **Problem:** Spec §12 lists Homepage/Features/Pricing/Marketplace/Docs/Blog/About/Download; Next app missing `/docs`, `/about`, `/marketplace`.
+- **Fix:** Implement the missing pages in `apps/web` and add nav links.
+- **Acceptance:** Next site serves all spec pages; Playwright screenshots cover them.
+- **Files:** `apps/web/src/app/*`, `apps/web/src/app/layout.tsx`.
+
+6. **Next.js metadataBase warning in build logs**
+
+- **Problem:** Next build warns `metadataBase property ... is not set`.
+- **Fix:** Set `metadataBase` in `apps/web/src/app/layout.tsx` metadata.
+- **Acceptance:** `next build` runs without metadataBase warnings.
+- **Files:** `apps/web/src/app/layout.tsx`.
+
+### P1 — Core learning loop integrity (from “exists” → “works”)
+
+7. **Conversation is not actually orchestrating agents**
+
+- **Problem:** Server WS response is canned; doesn’t call orchestrator/agents.
+- **Fix:** Route `message` WS event through the same logic as `/api/v1/chat`, or implement a minimal orchestrator that picks a handler and streams chunks.
+- **Acceptance:** A user message triggers a real pipeline: agent.spawned → chunks derived from actual agent output → response.end with sources.
+- **Files:** `apps/api/src/websocket.ts`, `apps/api/src/routes/chat.ts`, `packages/agents/*`.
+
+8. **Course creation + pipelines need explicit, user-visible state**
+
+- **Problem:** Users can create courses, but “pipeline” progress and state transitions are not clearly tied to course creation.
+- **Fix:** When creating a course, create a pipeline entity with statuses; UI shows pending/running/completed states, and pipeline detail is linked from course.
+- **Acceptance:** Create course produces a pipeline with at least 3 steps and timestamps; pipeline detail shows logs/results.
+- **Files:** `apps/api/src/routes/courses.ts`, `apps/client/src/screens/PipelineView.tsx`, `apps/client/src/screens/PipelineDetail.tsx`.
+
+9. **Lesson timebox (<10 min) not enforced**
+
+- **Problem:** Spec mandates <10 minute lessons; current content can exceed (and tests include 60–90 min examples in stored data).
+- **Fix:** Add server-side enforcement/validation (word count/reading time) and a formatter that splits oversized lessons.
+- **Acceptance:** API guarantees each lesson meets reading-time max; UI displays “~X min” badge.
+- **Files:** `packages/agents/*` formatter, `apps/api/src/routes/courses.ts`, `apps/client/src/screens/LessonReader.tsx`.
+
+10. **Attribution/provenance is not a first-class API contract**
+
+- **Problem:** Spec requires sources; UI/WS currently can deliver empty sources.
+- **Fix:** Make sources required (min 3) for created lessons and return them in lesson responses and WS response.end.
+- **Acceptance:** Every lesson response includes `sources[]` with title/url/date; LessonReader renders a References section consistently.
+- **Files:** `apps/api/src/routes/courses.ts`, `apps/api/src/routes/chat.ts`, `apps/api/src/websocket.ts`, `apps/client/src/screens/LessonReader.tsx`.
+
+### P2 — Developer ergonomics + evidence quality
+
+11. **Screenshot automation misses Collaboration + Lesson Reader in iter29 set**
+
+- **Problem:** `iter29-2026-03-18` screenshots do not include `/collaborate` and `lesson-reader.png` (script prints done before lesson capture depending on state).
+- **Fix:** Extend `screenshot-all.mjs` to explicitly visit `/collaborate` and to always capture lesson reader (navigate directly to first lesson route if present).
+- **Acceptance:** Screenshot set includes collaboration + lesson reader every run.
+- **Files:** `screenshot-all.mjs`.
+
+12. **Ripgrep (`rg`) missing; slows verification and increases risk of missing spec drift**
+
+- **Problem:** `rg` is not installed (`/bin/bash: rg: command not found`).
+- **Fix:** Document install in README/bootstrap or add a devcontainer step; alternatively vendor a simple `scripts/search.sh` that uses `grep -R` consistently.
+- **Acceptance:** Repo provides a documented, working fast-search workflow.
+- **Files:** `README.md` / `BOOTSTRAP.md` (if present) / `scripts/*`.
+
+13. **Binary DB files in repo path interfere with grep and signal “stateful dev by accident”**
+
+- **Problem:** `apps/api/.data/learnflow.db*` is present and matched by grep; it’s noisy and risks being committed.
+- **Fix:** Ensure `.data/` is gitignored and provide seed scripts instead.
+- **Acceptance:** No SQLite WAL/DB artifacts tracked; dev uses reproducible seeds.
+- **Files:** `.gitignore`, `apps/api/.data/*`, seed scripts.
 
 ---
 
-## Artifacts / Evidence
+## Spec-to-Implementation Gap Notes (file-path evidence)
 
-- Failing tests log: `apps/client/.turbo/turbo-test.log` (shows Router warnings + act warnings → thrown)
-- Screenshots directory used this iteration:
-  - `evals/screenshots/iter28-2026-03-18/` (public + authed routes)
-- Overlay source:
-  - `apps/client/src/components/OnboardingTooltips.tsx`
+- WebSocket spec mismatch: `LearnFlow_Product_Spec.md` §11.2 vs `apps/api/src/websocket.ts`.
+- Marketing website spec vs implementation:
+  - Spec §12 demands Next.js + MDX docs.
+  - Next app exists: `apps/web/src/app/*` but missing `/docs`, `/about`, `/marketplace`.
+  - Client marketing pages exist: `apps/client/src/screens/marketing/*`.
+
+---
+
+## Artifacts (Iteration 29)
+
+- Screenshots: `evals/screenshots/iter29-2026-03-18/`
+  - Captured: landing, marketing features/pricing/download/blog/about/docs (client), auth login/register, onboarding (6), dashboard, conversation, mindmap, marketplace (courses+agents), settings, pipelines list, pipeline detail, course view.
+  - Missing in current set: collaboration + lesson reader (see Task #11).
