@@ -133,9 +133,9 @@ export function CourseDetail() {
             <span className="text-xs text-gray-500 capitalize">{course.topic.replace('-', ' ')}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">{course.title}</h1>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">{course.description}</p>
+          <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
 
-          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mb-4">
+          <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-300 mb-4">
             <span>⭐ {course.rating}</span>
             <span>{course.enrollmentCount.toLocaleString()} enrolled</span>
             {course.lessonCount && <span>{course.lessonCount} lessons</span>}
@@ -183,7 +183,7 @@ export function CourseDetail() {
                   {expandedModules.has(idx) && (
                     <div className="border-t border-gray-100 dark:border-gray-800 px-4 py-2 space-y-1">
                       {mod.lessons.map((lesson, li) => (
-                        <div key={li} className="flex items-center gap-2 py-1.5 text-sm text-gray-600 dark:text-gray-400">
+                        <div key={li} className="flex items-center gap-2 py-1.5 text-sm text-gray-600 dark:text-gray-300">
                           <span className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xs">{li + 1}</span>
                           {lesson}
                         </div>
@@ -208,7 +208,7 @@ export function CourseDetail() {
                     <span className="text-xs text-gray-500">{r.date}</span>
                   </div>
                   <div className="text-xs text-yellow-500 mb-1">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{r.text}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{r.text}</p>
                 </div>
               ))}
             </div>

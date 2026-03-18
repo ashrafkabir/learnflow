@@ -78,7 +78,7 @@ export function OnboardingTopics() {
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
             <div className="h-full w-2/5 bg-accent rounded-full transition-all" />
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">2/6</span>
+          <span className="text-xs text-gray-500 dark:text-gray-300">2/6</span>
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export function OnboardingTopics() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           What interests you?
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">
+        <p className="text-gray-600 dark:text-gray-300 mb-8">
           Pick topics you want to explore. You can always change these later.
         </p>
 
@@ -112,7 +112,7 @@ export function OnboardingTopics() {
         {/* Adjacent topic suggestions */}
         {suggestions.length > 0 && (
           <div className="mb-6 animate-fade-in">
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">💡 Suggested for you:</p>
+            <p className="text-xs text-gray-500 dark:text-gray-300 mb-2">💡 Suggested for you:</p>
             <div className="flex flex-wrap gap-2">
               {suggestions.map((t) => (
                 <Button
@@ -130,7 +130,7 @@ export function OnboardingTopics() {
         )}
 
         {selected.length === 0 && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select at least one topic to continue, or skip this step.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-300 mb-2">Select at least one topic to continue, or skip this step.</p>
         )}
         <div className="flex gap-3 items-center">
           <Button variant="secondary" onClick={() => nav('/onboarding/goals')} className="px-6 py-4">

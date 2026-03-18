@@ -128,7 +128,7 @@ export function ProfileSettings() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Profile</h2>
           <div className="space-y-3">
             <label className="block">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Name</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Name</span>
               <input
                 value={profile.name}
                 onChange={(e) => update({ name: e.target.value })}
@@ -136,7 +136,7 @@ export function ProfileSettings() {
               />
             </label>
             <label className="block">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Email</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Email</span>
               <input
                 value={profile.email}
                 onChange={(e) => update({ email: e.target.value })}
@@ -169,7 +169,7 @@ export function ProfileSettings() {
         {/* API Keys */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4 flex flex-col">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">API Keys</h2>
-          <p className="text-xs text-gray-600 dark:text-gray-400">Keys are encrypted with AES-256 and stored on the server. We never store raw keys.</p>
+          <p className="text-xs text-gray-600 dark:text-gray-300">Keys are encrypted with AES-256 and stored on the server. We never store raw keys.</p>
 
           {/* Saved keys with usage stats — Task 12 */}
           {savedKeys.length > 0 && (
@@ -179,7 +179,7 @@ export function ProfileSettings() {
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">{k.provider}</span>
-                      <span className="ml-2 text-xs text-gray-600 dark:text-gray-400 font-mono">{k.maskedKey}</span>
+                      <span className="ml-2 text-xs text-gray-600 dark:text-gray-300 font-mono">{k.maskedKey}</span>
                     </div>
                     <Button
                       variant="ghost"
@@ -194,7 +194,7 @@ export function ProfileSettings() {
                     </Button>
                   </div>
                   {/* Usage stats — Task 12 */}
-                  <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+                  <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-300">
                     <span>📊 Used {k.usageCount ?? 0} times this month</span>
                     <span>🕐 Last used: {k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never'}</span>
                   </div>
@@ -209,7 +209,7 @@ export function ProfileSettings() {
           {/* Add new key */}
           <div className="space-y-3">
             <label className="block">
-              <span className="text-sm text-gray-600 dark:text-gray-400">Provider</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">Provider</span>
               <select
                 value={keyProvider}
                 onChange={(e) => setKeyProvider(e.target.value)}
@@ -223,7 +223,7 @@ export function ProfileSettings() {
               </select>
             </label>
             <label className="block">
-              <span className="text-sm text-gray-600 dark:text-gray-400">API Key</span>
+              <span className="text-sm text-gray-600 dark:text-gray-300">API Key</span>
               <div className="flex gap-2 mt-1">
                 <input
                   type={showKey ? 'text' : 'password'}
@@ -284,7 +284,7 @@ export function ProfileSettings() {
             Learning Preferences
           </h2>
           <label className="block">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Daily Goal (minutes)</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300">Daily Goal (minutes)</span>
             <input
               type="number"
               value={profile.dailyGoal}
@@ -295,7 +295,7 @@ export function ProfileSettings() {
             />
           </label>
           <label className="block">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Experience Level</span>
+            <span className="text-sm text-gray-600 dark:text-gray-300">Experience Level</span>
             <select
               value={profile.experience}
               onChange={(e) => update({ experience: e.target.value })}
@@ -349,7 +349,7 @@ export function ProfileSettings() {
               { key: 'notifAgentActivity', label: 'Agent activity updates' },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between pl-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
                 <Button
                   variant="ghost"
                   onClick={() => update({ [key]: !(profile as any)[key] } as any)}
@@ -373,7 +373,7 @@ export function ProfileSettings() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">Export as JSON</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Courses, progress, and settings</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300">Courses, progress, and settings</p>
               </div>
               <Button
                 variant="secondary"
@@ -394,7 +394,7 @@ export function ProfileSettings() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">Export as Markdown</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">All courses as .md files</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300">All courses as .md files</p>
               </div>
               <Button
                 variant="secondary"
@@ -418,8 +418,8 @@ export function ProfileSettings() {
             {['PDF', 'SCORM', 'Notion', 'Obsidian'].map((fmt) => (
               <div key={fmt} className="flex items-center justify-between opacity-60 cursor-not-allowed" title="Upgrade to Pro to unlock this export format">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-500">Export as {fmt}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{fmt} format export</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Export as {fmt}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300">{fmt} format export</p>
                 </div>
                 <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">PRO</span>
               </div>
@@ -430,7 +430,7 @@ export function ProfileSettings() {
         {/* Privacy */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Privacy</h2>
-          <p className="text-xs text-gray-600 dark:text-gray-400">Per our privacy policy, here's what we track:</p>
+          <p className="text-xs text-gray-600 dark:text-gray-300">Per our privacy policy, here's what we track:</p>
           <div className="space-y-2 text-sm">
             {[
               { label: 'Learning progress & streaks', tracked: true },
@@ -440,7 +440,7 @@ export function ProfileSettings() {
               { label: 'Conversation content (session only)', tracked: false },
               { label: 'Browsing activity outside LearnFlow', tracked: false },
             ].map((item) => (
-              <div key={item.label} className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+              <div key={item.label} className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
                 <span className={item.tracked ? 'text-blue-500' : 'text-gray-300'}>
                   {item.tracked ? '●' : '○'}
                 </span>
@@ -459,7 +459,7 @@ export function ProfileSettings() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">Delete All Data</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Permanently delete all your data (GDPR)</p>
+              <p className="text-xs text-gray-600 dark:text-gray-300">Permanently delete all your data (GDPR)</p>
             </div>
             <Button
               variant="danger"

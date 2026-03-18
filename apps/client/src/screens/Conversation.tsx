@@ -355,7 +355,7 @@ export function Conversation() {
           </Button>
           <div>
             <h1 className="text-base font-semibold text-gray-900 dark:text-white">LearnFlow AI</h1>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Your personal learning assistant</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">Your personal learning assistant</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -373,7 +373,7 @@ export function Conversation() {
           <Button variant="ghost" size="sm" onClick={() => setMindmapOpen(!mindmapOpen)} className="border border-gray-200 dark:border-gray-700" title="Knowledge mindmap">🧠</Button>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-            <span className="text-xs text-gray-600 dark:text-gray-400" title="AI assistant is ready to help">Online</span>
+            <span className="text-xs text-gray-600 dark:text-gray-300" title="AI assistant is ready to help">Online</span>
           </div>
         </div>
       </header>
@@ -394,7 +394,7 @@ export function Conversation() {
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
                 Ask me anything about your learning
               </h2>
-              <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto text-sm leading-relaxed">
+              <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto text-sm leading-relaxed">
                 I can create courses, quiz you, generate study notes, and research topics with real sources.
               </p>
             </div>
@@ -412,7 +412,7 @@ export function Conversation() {
                 >
                   <span className="text-2xl">{s.icon}</span>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">{s.title}</span>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">{s.desc}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300">{s.desc}</span>
                 </Button>
               ))}
             </div>
@@ -563,12 +563,12 @@ export function Conversation() {
                   <>
                     <span className="text-lg">{agentInfo.icon}</span>
                     <span className="font-medium text-gray-900 dark:text-white">{agentInfo.label}</span>
-                    <span className="text-gray-500 dark:text-gray-400">{agentInfo.activity}</span>
+                    <span className="text-gray-500 dark:text-gray-300">{agentInfo.activity}</span>
                   </>
                 ) : (
                   <>
                     <span className="text-lg">🤖</span>
-                    <span className="text-gray-500 dark:text-gray-400">Thinking...</span>
+                    <span className="text-gray-500 dark:text-gray-300">Thinking...</span>
                   </>
                 )}
                 <span className="flex gap-1 ml-1">
@@ -586,7 +586,7 @@ export function Conversation() {
       {/* Input */}
       <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 safe-area-bottom">
         {(contextBadge || state.activeCourse || state.activeLesson) && (
-          <div className="max-w-4xl mx-auto mb-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+          <div className="max-w-4xl mx-auto mb-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <span>📚</span>
             {contextBadge ? (
               <span className="font-medium text-gray-600 dark:text-gray-300">{contextBadge}</span>

@@ -25,7 +25,7 @@ export function OnboardingApiKeys() {
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
             <div className="h-full w-2/3 bg-accent rounded-full transition-all" />
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">4/6</span>
+          <span className="text-xs text-gray-500 dark:text-gray-300">4/6</span>
         </div>
       </div>
 
@@ -34,7 +34,7 @@ export function OnboardingApiKeys() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           Connect Your AI Provider
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">
+        <p className="text-gray-500 dark:text-gray-300 mb-8">
           Bring your own API key from OpenAI, Anthropic, or Google. Your key is encrypted and never
           shared.
         </p>

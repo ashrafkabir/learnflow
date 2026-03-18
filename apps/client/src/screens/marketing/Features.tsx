@@ -1,6 +1,10 @@
 import React from 'react';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
+import { motion } from 'framer-motion';
+
+const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
+const stagger = { visible: { transition: { staggerChildren: 0.15 } } };
 
 const GRADIENT_COLORS = [
   'from-blue-500 to-cyan-400',
@@ -57,20 +61,20 @@ export function FeaturesPage() {
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h1 className="text-4xl font-extrabold tracking-tight mb-4">Features</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
             A complete AI-powered learning platform with agents that research, teach, quiz, and track your progress.
           </p>
         </div>
 
-        <div className="space-y-16">
+        <motion.div className="space-y-16" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
           {FEATURES.map((f, i) => (
-            <div key={f.title} className={`flex flex-col md:flex-row gap-8 items-center ${i % 2 === 1 ? 'md:flex-row-reverse' : ''} group`}>
+            <motion.div key={f.title} variants={fadeUp} className={`flex flex-col md:flex-row gap-8 items-center ${i % 2 === 1 ? 'md:flex-row-reverse' : ''} group`}>
               <div className="flex-1">
                 <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${GRADIENT_COLORS[i % GRADIENT_COLORS.length]} flex items-center justify-center mb-4 shadow-elevated group-hover:scale-110 transition-transform duration-300`}>
                   <span className="text-2xl filter drop-shadow-sm">{f.icon}</span>
                 </div>
                 <h2 className="text-2xl font-bold mb-3">{f.title}</h2>
-                <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{f.desc}</p>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{f.desc}</p>
                 <ul className="space-y-2">
                   {f.benefits.map((b) => (
                     <li key={b} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
@@ -90,9 +94,9 @@ export function FeaturesPage() {
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
     </MarketingLayout>
   );

@@ -37,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               Something went wrong
             </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-300">
               An unexpected error occurred. Please try again.
             </p>
             {import.meta.env.DEV && this.state.error && (

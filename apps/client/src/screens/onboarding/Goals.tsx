@@ -54,7 +54,7 @@ export function OnboardingGoals() {
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
             <div className="h-full w-1/6 bg-accent rounded-full transition-all" />
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">1/6</span>
+          <span className="text-xs text-gray-500 dark:text-gray-300">1/6</span>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export function OnboardingGoals() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           What do you want to learn?
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-6">
+        <p className="text-gray-500 dark:text-gray-300 mb-6">
           Tell us about your learning goals in your own words, or pick from suggestions below.
         </p>
 
@@ -103,7 +103,7 @@ export function OnboardingGoals() {
           </div>
         )}
 
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Or pick from common goals:</p>
+        <p className="text-xs text-gray-500 dark:text-gray-300 mb-2">Or pick from common goals:</p>
         <div className="flex flex-wrap gap-2 mb-8">
           {GOAL_SUGGESTIONS.filter((s) => !goals.includes(s)).map((s) => (
             <Button

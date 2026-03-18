@@ -1,7 +1,7 @@
 # LearnFlow Improvement Queue — Iteration 18
 
 ## Current Iteration: 18
-## Status: READY FOR BUILDER
+## Status: DONE
 ## Date: 2025-07-19
 ## Focus: Missing marketing pages, Framer Motion animations, demo section, social login, collaboration stub, dark mode contrast audit
 

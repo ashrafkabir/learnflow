@@ -7,6 +7,8 @@ const NAV_LINKS = [
   { label: 'Pricing', href: '/pricing' },
   { label: 'Download', href: '/download' },
   { label: 'Blog', href: '/blog' },
+  { label: 'About', href: '/about' },
+  { label: 'Docs', href: '/docs' },
 ];
 
 export function MarketingLayout({ children }: { children: ReactNode }) {
@@ -32,10 +34,11 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
                 variant="ghost"
                 size="sm"
                 onClick={() => nav(l.href)}
+                aria-current={location.pathname === l.href ? 'page' : undefined}
                 className={`text-sm font-medium ${
                   location.pathname === l.href
-                    ? 'text-accent'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    ? 'text-accent font-bold underline underline-offset-4'
+                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 {l.label}
@@ -67,7 +70,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
                 variant="ghost"
                 fullWidth
                 onClick={() => { nav(l.href); setMobileOpen(false); }}
-                className="justify-start text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                className="justify-start text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
               >
                 {l.label}
               </Button>
@@ -91,7 +94,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Product</h3>
               <div className="space-y-2">
                 {['Features', 'Pricing', 'Download', 'Changelog'].map((t) => (
-                  <Button key={t} variant="ghost" size="sm" onClick={() => nav(`/${t.toLowerCase()}`)} className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
+                  <Button key={t} variant="ghost" size="sm" onClick={() => nav(`/${t.toLowerCase()}`)} className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
                 ))}
               </div>
             </div>
@@ -99,7 +102,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Resources</h3>
               <div className="space-y-2">
                 {['Blog', 'Documentation', 'API Reference', 'Community'].map((t) => (
-                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
+                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
                 ))}
               </div>
             </div>
@@ -107,7 +110,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Company</h3>
               <div className="space-y-2">
                 {['About', 'Careers', 'Privacy', 'Terms'].map((t) => (
-                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
+                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
                 ))}
               </div>
             </div>
@@ -115,17 +118,17 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Connect</h3>
               <div className="space-y-2">
                 {['Twitter', 'Discord', 'GitHub', 'YouTube'].map((t) => (
-                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
+                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
                 ))}
               </div>
             </div>
           </div>
           <div className="border-t border-gray-200 dark:border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
               <span>🧠</span>
               <span>© {new Date().getFullYear()} LearnFlow. All rights reserved.</span>
             </div>
-            <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-300">
               <Button variant="ghost" size="sm" className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300">Privacy</Button>
               <Button variant="ghost" size="sm" className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300">Terms</Button>
               <Button variant="ghost" size="sm" className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300">Cookies</Button>

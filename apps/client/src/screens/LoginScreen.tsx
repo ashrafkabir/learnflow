@@ -45,7 +45,7 @@ export function LoginScreen() {
             <span className="text-2xl">🧠</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Sign in to LearnFlow</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Sign in to LearnFlow</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
@@ -100,15 +100,53 @@ export function LoginScreen() {
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
+
+          {/* Social OAuth divider */}
+          <div className="flex items-center gap-3 my-2">
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+            <span className="text-xs text-gray-500 dark:text-gray-300">or continue with</span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+          </div>
+
+          {/* Social login buttons */}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={() => alert('Google OAuth coming soon')}
+              className="flex items-center justify-center gap-2"
+            >
+              <span>🔵</span> Continue with Google
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={() => alert('GitHub OAuth coming soon')}
+              className="flex items-center justify-center gap-2"
+            >
+              <span>⚫</span> Continue with GitHub
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={() => alert('Apple OAuth coming soon')}
+              className="flex items-center justify-center gap-2"
+            >
+              <span>🍎</span> Continue with Apple
+            </Button>
+          </div>
         </form>
 
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-3">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-300 mt-3">
           Don't have an account?{' '}
           <Link to="/register" className="text-accent font-medium hover:underline">Sign up</Link>
         </p>
 
         {import.meta.env.DEV && (
-          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-300 mt-2">
             <Link to="/dashboard" className="hover:underline opacity-50">Skip (dev mode) →</Link>
           </p>
         )}

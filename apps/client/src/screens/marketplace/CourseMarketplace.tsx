@@ -217,13 +217,13 @@ export function CourseMarketplace() {
                 className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 cursor-pointer hover:border-accent card transition-all shadow-card"
               >
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2" title={c.title}>{c.title}</h3>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 capitalize">{c.difficulty} · {c.topic.replace('-', ' ')}{c.lessonCount ? ` · ${c.lessonCount} lessons` : ''}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">{c.description}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mb-3 capitalize">{c.difficulty} · {c.topic.replace('-', ' ')}{c.lessonCount ? ` · ${c.lessonCount} lessons` : ''}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mb-4">{c.description}</p>
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-bold text-gray-900 dark:text-white">
                     {c.price === 0 ? 'Free' : `$${c.price}`}
                   </span>
-                  <span className="text-xs text-gray-600 dark:text-gray-400">⭐ {c.rating} · {c.enrollmentCount} enrolled</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-300">⭐ {c.rating} · {c.enrollmentCount} enrolled</span>
                 </div>
                 <Button
                   variant="primary"

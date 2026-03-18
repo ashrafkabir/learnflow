@@ -26,6 +26,9 @@ import { PricingPage } from './screens/marketing/Pricing.js';
 import { DownloadPage } from './screens/marketing/Download.js';
 import { BlogPage } from './screens/marketing/Blog.js';
 import { BlogPostPage } from './screens/marketing/BlogPost.js';
+import { AboutPage } from './screens/marketing/About.js';
+import { DocsPage } from './screens/marketing/Docs.js';
+import { Collaboration } from './screens/Collaboration.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { PageTransition } from './components/PageTransition.js';
 import { MobileNav } from './components/MobileNav.js';
@@ -34,7 +37,7 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { state } = useApp();
   const location = useLocation();
   const isOnboarding = location.pathname.startsWith('/onboarding');
-  const isPublic = ['/', '/login', '/register', '/features', '/pricing', '/download', '/blog'].includes(location.pathname) || location.pathname.startsWith('/blog/');
+  const isPublic = ['/', '/login', '/register', '/features', '/pricing', '/download', '/blog', '/about', '/docs'].includes(location.pathname) || location.pathname.startsWith('/blog/');
   const isAuth = ['/login', '/register'].includes(location.pathname);
 
   // Check authentication
@@ -55,7 +58,7 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
 function AppMobileNav() {
   const location = useLocation();
-  const appPaths = ['/dashboard', '/conversation', '/courses', '/mindmap', '/marketplace', '/settings', '/pipeline'];
+  const appPaths = ['/dashboard', '/conversation', '/courses', '/mindmap', '/marketplace', '/settings', '/pipeline', '/collaborate'];
   const isAppScreen = appPaths.some((p) => location.pathname.startsWith(p));
   if (!isAppScreen) return null;
   return <MobileNav />;
@@ -98,6 +101,9 @@ export function App() {
         <Route path="/marketplace/agents" element={<ErrorBoundary><AgentMarketplace /></ErrorBoundary>} />
         <Route path="/marketplace/creator" element={<ErrorBoundary><CreatorDashboard /></ErrorBoundary>} />
 
+        {/* Collaboration */}
+        <Route path="/collaborate" element={<ErrorBoundary><Collaboration /></ErrorBoundary>} />
+
         {/* Profile & Settings */}
         <Route path="/settings" element={<ErrorBoundary><ProfileSettings /></ErrorBoundary>} />
 
@@ -107,6 +113,8 @@ export function App() {
         <Route path="/download" element={<DownloadPage />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/blog/:slug" element={<BlogPostPage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/docs" element={<DocsPage />} />
 
         {/* Auth */}
         <Route path="/login" element={<LoginScreen />} />

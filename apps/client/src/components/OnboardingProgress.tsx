@@ -29,7 +29,7 @@ export function OnboardingProgress({ current }: { current: string }) {
               {i < currentIdx ? '✓' : i + 1}
             </div>
             <span className={`text-[10px] mt-1 font-medium ${
-              i === currentIdx ? 'text-accent' : i < currentIdx ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+              i === currentIdx ? 'text-accent' : i < currentIdx ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-300'
             }`}>
               {step.label}
             </span>

@@ -270,7 +270,7 @@ export function MindmapExplorer() {
             <div className="flex items-center justify-center h-full text-center">
               <div>
                 <span className="text-5xl block mb-4">🗺️</span>
-                <p className="text-gray-500 dark:text-gray-400 text-lg">
+                <p className="text-gray-500 dark:text-gray-300 text-lg">
                   Create a course to see your knowledge map
                 </p>
                 <Button
@@ -283,7 +283,7 @@ export function MindmapExplorer() {
               </div>
             </div>
           ) : !loaded ? (
-            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-300">
               Loading graph...
             </div>
           ) : (

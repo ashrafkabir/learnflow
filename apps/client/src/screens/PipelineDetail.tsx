@@ -40,7 +40,7 @@ export function PipelineDetail() {
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
               Course Pipeline
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{state.topic}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-300">{state.topic}</p>
           </div>
         </div>
       </header>

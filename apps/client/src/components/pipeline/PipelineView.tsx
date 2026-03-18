@@ -144,7 +144,7 @@ function ReviewingPanel({ state, onViewCourse }: { state: PipelineState; onViewC
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-gray-500 dark:text-gray-400">
+      <p className="text-sm text-gray-500 dark:text-gray-300">
         ✅ Course ready! Review and edit lessons below.
       </p>
 
@@ -197,7 +197,7 @@ export function PipelineView({ state, onViewCourse }: { state: PipelineState; on
           <h2 className="text-lg font-bold text-gray-900 dark:text-white">
             {state.courseTitle || `Creating: ${state.topic}`}
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-gray-300">
             {state.moduleCount ? `${state.moduleCount} modules · ${state.lessonCount} lessons` : 'Preparing...'}
           </p>
         </div>

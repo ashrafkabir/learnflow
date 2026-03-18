@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { icon: '📊', label: 'Dashboard', path: '/dashboard' },
   { icon: '💬', label: 'Conversation', path: '/conversation' },
   { icon: '🗺️', label: 'Mind Map', path: '/mindmap' },
+  { icon: '🤝', label: 'Collaborate', path: '/collaborate' },
   { icon: '🏪', label: 'Marketplace', path: '/marketplace' },
   { icon: '⚙️', label: 'Settings', path: '/settings' },
 ];
@@ -61,10 +62,11 @@ export function MobileNav() {
               variant="ghost"
               fullWidth
               onClick={() => { nav(item.path); setOpen(false); }}
+              aria-current={location.pathname.startsWith(item.path) ? 'page' : undefined}
               className={`justify-start gap-3 text-sm font-medium py-3 ${
                 location.pathname.startsWith(item.path)
                   ? 'bg-accent/10 text-accent'
-                  : 'text-gray-600 dark:text-gray-400'
+                  : 'text-gray-600 dark:text-gray-300'
               }`}
             >
               <span className="text-lg">{item.icon}</span>

@@ -64,7 +64,7 @@ export function SubscriptionChoice() {
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
             <div className="h-full w-5/6 bg-accent rounded-full transition-all" />
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">5/6</span>
+          <span className="text-xs text-gray-500 dark:text-gray-300">5/6</span>
         </div>
       </div>
 
@@ -73,7 +73,7 @@ export function SubscriptionChoice() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">
           Choose Your Plan
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8 text-center">
+        <p className="text-gray-500 dark:text-gray-300 mb-8 text-center">
           Start free, upgrade anytime.
         </p>
 
@@ -100,11 +100,11 @@ export function SubscriptionChoice() {
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{plan.name}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
                   {plan.price}
-                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400">{plan.period}</span>
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-300">{plan.period}</span>
                 </p>
                 <ul className="mt-4 space-y-2">
                   {plan.features.map((f) => (
-                    <li key={f} className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                    <li key={f} className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
                       <span className="text-success">✓</span> {f}
                     </li>
                   ))}
@@ -138,7 +138,7 @@ export function SubscriptionChoice() {
             <div className="text-center">
               <div className="text-4xl mb-3">🚀</div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Pro Coming Soon!</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
                 Payment integration is being finalized. Leave your email and we'll notify you when Pro is ready.
               </p>
             </div>

@@ -14,7 +14,7 @@ export function BlogPage() {
       <section className="max-w-4xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-extrabold tracking-tight mb-4">Blog</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">Insights on AI-powered learning, study techniques, and product updates.</p>
+          <p className="text-lg text-gray-600 dark:text-gray-300">Insights on AI-powered learning, study techniques, and product updates.</p>
         </div>
 
         <div className="space-y-6">
@@ -26,12 +26,12 @@ export function BlogPage() {
             >
               <div className="flex items-center gap-3 mb-3">
                 <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${post.tagColor}`}>{post.tag}</span>
-                <span className="text-xs text-gray-600 dark:text-gray-400">{post.date}</span>
-                <span className="text-xs text-gray-600 dark:text-gray-400">·</span>
-                <span className="text-xs text-gray-600 dark:text-gray-400">{post.readTime}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-300">{post.date}</span>
+                <span className="text-xs text-gray-600 dark:text-gray-300">·</span>
+                <span className="text-xs text-gray-600 dark:text-gray-300">{post.readTime}</span>
               </div>
               <h2 className="text-xl font-bold mb-2 group-hover:text-accent transition-colors">{post.title}</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{post.excerpt}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{post.excerpt}</p>
             </article>
           ))}
         </div>

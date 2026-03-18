@@ -158,7 +158,7 @@ export function CourseView() {
                     <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                       {mod.title}
                     </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">
                       {mod.objective} · {mod.lessons.filter(l => state.completedLessons.has(l.id)).length}/{mod.lessons.length} lessons
                     </p>
                     <div className="mt-1.5 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
@@ -170,7 +170,7 @@ export function CourseView() {
                   </div>
                 </div>
                 <span
-                  className="text-gray-500 dark:text-gray-400 text-lg transition-transform"
+                  className="text-gray-500 dark:text-gray-300 text-lg transition-transform"
                   style={{ transform: expandedModule === mod.id ? 'rotate(180deg)' : '' }}
                 >
                   ▼
@@ -200,9 +200,9 @@ export function CourseView() {
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {lesson.title}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{lesson.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-300 truncate">{lesson.description}</p>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap mr-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-300 whitespace-nowrap mr-2">
                           {lesson.estimatedTime} min
                         </span>
                         <Button

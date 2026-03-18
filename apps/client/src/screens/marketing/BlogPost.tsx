@@ -33,7 +33,7 @@ export function BlogPostPage() {
         <header className="mb-8">
           <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${post.tagColor}`}>{post.tag}</span>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mt-4 mb-3">{post.title}</h1>
-          <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-300">
             <span>{post.author}</span>
             <span>·</span>
             <span>{post.date}</span>
@@ -49,9 +49,9 @@ export function BlogPostPage() {
             components={{
               h2: ({ children }) => <h2 className="text-2xl font-bold mt-8 mb-4 text-gray-900 dark:text-white">{children}</h2>,
               h3: ({ children }) => <h3 className="text-xl font-semibold mt-6 mb-3 text-gray-900 dark:text-white">{children}</h3>,
-              p: ({ children }) => <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed mb-4">{children}</p>,
-              ul: ({ children }) => <ul className="list-disc ml-6 space-y-1 text-gray-600 dark:text-gray-400 mb-4">{children}</ul>,
-              ol: ({ children }) => <ol className="list-decimal ml-6 space-y-1 text-gray-600 dark:text-gray-400 mb-4">{children}</ol>,
+              p: ({ children }) => <p className="text-base text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{children}</p>,
+              ul: ({ children }) => <ul className="list-disc ml-6 space-y-1 text-gray-600 dark:text-gray-300 mb-4">{children}</ul>,
+              ol: ({ children }) => <ol className="list-decimal ml-6 space-y-1 text-gray-600 dark:text-gray-300 mb-4">{children}</ol>,
               strong: ({ children }) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
               code: ({ className, children, ...props }) => {
                 const isBlock = className?.startsWith('language-') || className?.startsWith('hljs');

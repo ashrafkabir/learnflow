@@ -397,7 +397,7 @@ export function LessonReader() {
             >
               {JSON.parse(localStorage.getItem('learnflow-bookmarks') || '[]').includes(lessonId || '') ? '🔖' : '📑'}
             </Button>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-500 dark:text-gray-300">
               {lesson.wordCount} words · {lesson.estimatedTime} min
             </span>
             {isComplete && (
@@ -415,7 +415,7 @@ export function LessonReader() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{s.content.replace(/^#\s*/, '')}</h1>
               <div className="mt-3 flex items-center gap-3">
                 <span className="inline-flex items-center gap-1 bg-accent/10 text-accent text-xs font-medium px-3 py-1 rounded-full">⏱️ {lesson.estimatedTime} min read</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">{lesson.wordCount} words</span>
+                <span className="text-xs text-gray-500 dark:text-gray-300">{lesson.wordCount} words</span>
               </div>
             </div>
           ))}
@@ -527,7 +527,7 @@ export function LessonReader() {
                         <span className="inline-block bg-yellow-200 dark:bg-yellow-700/40 px-1 rounded text-sm text-gray-900 dark:text-white">
                           "{ann.selectedText.slice(0, 80)}{ann.selectedText.length > 80 ? '…' : ''}"
                         </span>
-                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-300">
                           {ann.type === 'note' ? '📝' : ann.type === 'explain' ? '🔍' : '💡'}
                         </span>
                       </Button>
@@ -580,14 +580,14 @@ export function LessonReader() {
                         <tbody>
                           {comparison.dimensions.map((dim, di) => (
                             <tr key={di} className="border-b dark:border-gray-800"><td className="p-2 font-medium text-gray-700 dark:text-gray-300">{dim}</td>
-                              {comparison.concepts.map((_, ci) => (<td key={ci} className="p-2 text-gray-600 dark:text-gray-400">{comparison.cells[di]?.[ci] || '—'}</td>))}
+                              {comparison.concepts.map((_, ci) => (<td key={ci} className="p-2 text-gray-600 dark:text-gray-300">{comparison.cells[di]?.[ci] || '—'}</td>))}
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   )}
-                  {comparison.summary && (<p className="mt-4 text-sm text-gray-600 dark:text-gray-400 italic bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">{comparison.summary}</p>)}
+                  {comparison.summary && (<p className="mt-4 text-sm text-gray-600 dark:text-gray-300 italic bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">{comparison.summary}</p>)}
                 </>
               ) : comparison ? (
                 <p className="text-sm text-gray-500 text-center py-4">{comparison.summary || 'No comparable concepts found in this lesson.'}</p>
@@ -634,24 +634,24 @@ export function LessonReader() {
             sections.filter((s) => s.type === 'nextsteps').map((s, i) => (
               <div key={`next-${i}`} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
                 <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">🚀 Next Steps</h2>
-                <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
                   {s.content.split('\n').filter((l) => l.trim()).map((line, j) => (<p key={j}>{line.replace(/^[-•]\s*/, '')}</p>))}
                 </div>
               </div>
             ))
           ) : (
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-400 italic">🚀 No next steps listed for this lesson.</div>
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">🚀 No next steps listed for this lesson.</div>
           )}
 
           {/* Quick Check */}
           {sections.filter((s) => s.type === 'quickcheck').length > 0 ? (
             sections.filter((s) => s.type === 'quickcheck').map((s, i) => (<InlineQuickCheck key={`qc-${i}`} content={s.content} />))
           ) : (
-            <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-400 italic">✅ No quick check questions for this lesson. Try the "Quiz Me" button below!</div>
+            <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">✅ No quick check questions for this lesson. Try the "Quiz Me" button below!</div>
           )}
 
           {sections.filter((s) => s.type === 'objectives').length === 0 && (
-            <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-400 italic">🎯 No learning objectives listed for this lesson.</div>
+            <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">🎯 No learning objectives listed for this lesson.</div>
           )}
         </article>
 
@@ -705,7 +705,7 @@ export function LessonReader() {
           <div className="mt-4 space-y-4">
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">📝 Notes</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Generate AI-powered notes or write your own:</p>
+              <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">Generate AI-powered notes or write your own:</p>
               <div className="flex flex-wrap gap-2 mb-4">
                 {[
                   { key: 'summary', label: '📄 Auto-Summary', desc: 'Concise lesson summary' },
@@ -740,7 +740,7 @@ export function LessonReader() {
                   {state.notes.flashcards.map((fc, i) => (
                     <div key={i} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
                       <p className="font-medium text-gray-900 dark:text-white mb-2">Q: {fc.front}</p>
-                      <p className="text-gray-600 dark:text-gray-400">A: {fc.back}</p>
+                      <p className="text-gray-600 dark:text-gray-300">A: {fc.back}</p>
                     </div>
                   ))}
                 </div>
@@ -885,7 +885,7 @@ function QuizPanel() {
   const quiz = state.quiz;
   if (state.loading.quiz)
     return (
-      <div className="mt-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 text-center text-gray-500 dark:text-gray-400">
+      <div className="mt-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 text-center text-gray-500 dark:text-gray-300">
         ⏳ Generating quiz...
       </div>
     );
@@ -910,7 +910,7 @@ function QuizPanel() {
               <div className="space-y-1.5 ml-4">
                 {q.options.map((opt) => (
                   <label key={opt}
-                    className={`flex items-center gap-2 text-sm p-2 rounded-xl cursor-pointer transition-colors ${answers[q.id] === opt ? 'bg-accent/10 text-accent' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+                    className={`flex items-center gap-2 text-sm p-2 rounded-xl cursor-pointer transition-colors ${answers[q.id] === opt ? 'bg-accent/10 text-accent' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
                   >
                     <input type="radio" name={q.id} value={opt} checked={answers[q.id] === opt} onChange={() => setAnswers((a) => ({ ...a, [q.id]: opt }))} className="accent-accent" />
                     {opt}

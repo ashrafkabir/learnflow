@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
+import { motion } from 'framer-motion';
+
+const scaleIn = { hidden: { opacity: 0, scale: 0.95 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.4 } } };
+const stagger = { visible: { transition: { staggerChildren: 0.15 } } };
 
 const PLANS = [
   {
@@ -62,7 +66,7 @@ export function PricingPage() {
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
           <h1 className="text-4xl font-extrabold tracking-tight mb-4">Simple, transparent pricing</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">Start free, upgrade when you're ready.</p>
+          <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">Start free, upgrade when you're ready.</p>
           
           <div className="inline-flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-full p-1">
             <Button
@@ -84,9 +88,10 @@ export function PricingPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-20">
+        <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-20" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
           {PLANS.map((plan) => (
-            <div
+            <motion.div
+              variants={scaleIn}
               key={plan.name}
               className={`relative rounded-2xl p-8 border-2 ${
                 plan.highlight
@@ -100,10 +105,10 @@ export function PricingPage() {
                 </span>
               )}
               <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{plan.desc}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{plan.desc}</p>
               <div className="mb-6">
                 <span className="text-4xl font-bold">${annual ? plan.annual : plan.monthly}</span>
-                {plan.monthly > 0 && <span className="text-gray-500 dark:text-gray-400 text-sm">/month</span>}
+                {plan.monthly > 0 && <span className="text-gray-500 dark:text-gray-300 text-sm">/month</span>}
               </div>
               <Button
                 variant={plan.highlight ? 'primary' : 'secondary'}
@@ -132,14 +137,14 @@ export function PricingPage() {
                   </li>
                 ))}
                 {plan.missing.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                  <li key={f} className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-300">
                     <span className="text-red-400 dark:text-red-500">✕</span> {f}
                   </li>
                 ))}
               </ul>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
         {/* Money-back guarantee */}
         <div className="flex justify-center mb-16">
@@ -160,9 +165,9 @@ export function PricingPage() {
               <details key={item.q} className="group border border-gray-200 dark:border-gray-700 rounded-xl hover:border-accent/30 transition-colors">
                 <summary className="cursor-pointer p-4 font-medium text-sm flex justify-between items-center text-gray-900 dark:text-white">
                   {item.q}
-                  <span className="text-gray-500 dark:text-gray-400 group-open:rotate-180 transition-transform ml-4 flex-shrink-0">▾</span>
+                  <span className="text-gray-500 dark:text-gray-300 group-open:rotate-180 transition-transform ml-4 flex-shrink-0">▾</span>
                 </summary>
-                <p className="px-4 pb-4 text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{item.a}</p>
+                <p className="px-4 pb-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{item.a}</p>
               </details>
             ))}
           </div>

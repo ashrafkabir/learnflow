@@ -99,8 +99,8 @@ export function AgentMarketplace() {
                     {a.tier}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">{a.description}</p>
-                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-3">
+                <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">{a.description}</p>
+                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-300 mb-3">
                   <span>⭐ {a.rating}</span>
                   <span>·</span>
                   <span>{a.usageCount.toLocaleString()} uses</span>
@@ -109,7 +109,7 @@ export function AgentMarketplace() {
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-4">
                   {a.capabilities.map((c) => (
-                    <span key={c} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded">
+                    <span key={c} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded">
                       {c}
                     </span>
                   ))}

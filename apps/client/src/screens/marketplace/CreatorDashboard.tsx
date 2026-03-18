@@ -38,7 +38,7 @@ export function CreatorDashboard() {
               variant={tab === t ? 'primary' : 'ghost'}
               size="sm"
               onClick={() => setTab(t)}
-              className={`flex-1 ${tab === t ? '' : 'text-gray-600 dark:text-gray-400'}`}
+              className={`flex-1 ${tab === t ? '' : 'text-gray-600 dark:text-gray-300'}`}
             >
               {t}
             </Button>
@@ -49,7 +49,7 @@ export function CreatorDashboard() {
         <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
           <span className="text-5xl">{empty.icon}</span>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">{empty.title}</h2>
-          <p className="text-gray-600 dark:text-gray-400 max-w-sm">{empty.desc}</p>
+          <p className="text-gray-600 dark:text-gray-300 max-w-sm">{empty.desc}</p>
           {tab === 'My Courses' && (
             <Button variant="primary" onClick={() => nav('/conversation')}>Create Your First Course</Button>
           )}

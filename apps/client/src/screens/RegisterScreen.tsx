@@ -46,7 +46,7 @@ export function RegisterScreen() {
             <span className="text-2xl">🧠</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create your account</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Start learning with LearnFlow</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Start learning with LearnFlow</p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
@@ -114,9 +114,47 @@ export function RegisterScreen() {
           >
             {loading ? 'Creating account...' : 'Create Account'}
           </Button>
+
+          {/* Social OAuth divider */}
+          <div className="flex items-center gap-3 my-2">
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+            <span className="text-xs text-gray-500 dark:text-gray-300">or continue with</span>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+          </div>
+
+          {/* Social login buttons */}
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={() => alert('Google OAuth coming soon')}
+              className="flex items-center justify-center gap-2"
+            >
+              <span>🔵</span> Continue with Google
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={() => alert('GitHub OAuth coming soon')}
+              className="flex items-center justify-center gap-2"
+            >
+              <span>⚫</span> Continue with GitHub
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={() => alert('Apple OAuth coming soon')}
+              className="flex items-center justify-center gap-2"
+            >
+              <span>🍎</span> Continue with Apple
+            </Button>
+          </div>
         </form>
 
-        <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-3">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-300 mt-3">
           Already have an account?{' '}
           <Link to="/login" className="text-accent font-medium hover:underline">Sign in</Link>
         </p>

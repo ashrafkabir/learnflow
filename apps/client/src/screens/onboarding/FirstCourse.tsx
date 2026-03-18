@@ -50,7 +50,7 @@ export function FirstCourse() {
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
             <div className="h-full w-full bg-accent rounded-full transition-all" />
           </div>
-          <span className="text-xs text-gray-500 dark:text-gray-400">6/6</span>
+          <span className="text-xs text-gray-500 dark:text-gray-300">6/6</span>
         </div>
       </div>
 
@@ -64,7 +64,7 @@ export function FirstCourse() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
               Setting up your experience
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">{stage.label}</p>
+            <p className="text-gray-500 dark:text-gray-300 mb-6">{stage.label}</p>
 
             {/* Progress bar */}
             <div className="w-full max-w-xs h-3 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden mb-4">
@@ -100,7 +100,7 @@ export function FirstCourse() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
               You're All Set!
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mb-8">
+            <p className="text-gray-500 dark:text-gray-300 mb-8">
               Your preferences have been saved. Head to your dashboard to create your first course!
             </p>
             <Button

@@ -224,21 +224,21 @@ export function Dashboard() {
             <p className="text-xs opacity-75 mt-1">days in a row</p>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-1">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Courses</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Courses</p>
             <p className="text-3xl font-bold text-gray-900 dark:text-white">
               {state.courses.length}
             </p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">active</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">active</p>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-2">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Completed</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Completed</p>
             <p className="text-3xl font-bold text-success">{state.completedLessons.size}</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">lessons</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">lessons</p>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-3">
-            <p className="text-sm text-gray-600 dark:text-gray-400">Today</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Today</p>
             <p className="text-3xl font-bold text-accent">0/3</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">daily goal</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">daily goal</p>
           </div>
         </div>
 
@@ -251,7 +251,7 @@ export function Dashboard() {
                 {Math.min(state.completedLessons.size, 3)} due
               </span>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">Spaced repetition keeps knowledge fresh. Review these lessons today.</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Spaced repetition keeps knowledge fresh. Review these lessons today.</p>
             <div className="space-y-2">
               {state.courses.slice(0, 2).flatMap(c =>
                 (c.modules || []).flatMap(m => m.lessons || []).filter((l: {id: string; title: string}) => state.completedLessons.has(l.id)).slice(0, 2).map((l: {id: string; title: string}) => (
@@ -263,7 +263,7 @@ export function Dashboard() {
                     className="justify-start text-left px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30"
                   >
                     <span className="font-medium text-gray-900 dark:text-white">🔄 {l.title}</span>
-                    <span className="text-gray-600 dark:text-gray-400 ml-2">— Review due</span>
+                    <span className="text-gray-600 dark:text-gray-300 ml-2">— Review due</span>
                   </Button>
                 ))
               )}
@@ -287,7 +287,7 @@ export function Dashboard() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">No activity yet this week</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">No activity yet this week</p>
                   {todaysLessons.length > 0 ? (
                     <Button
                       variant="ghost"
@@ -311,14 +311,14 @@ export function Dashboard() {
                 <div className="flex items-end gap-2 h-32">
                   {weeklyData.map((d) => (
                     <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-gray-600 dark:text-gray-400">{d.minutes > 0 ? `${d.minutes}m` : ''}</span>
+                      <span className="text-[10px] text-gray-600 dark:text-gray-300">{d.minutes > 0 ? `${d.minutes}m` : ''}</span>
                       <div className="w-full flex flex-col justify-end" style={{ height: '80px' }}>
                         <div
                           className="w-full bg-accent/80 rounded-t-md transition-all duration-500"
                           style={{ height: `${Math.max((d.minutes / maxMin) * 100, d.minutes > 0 ? 8 : 0)}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-gray-600 dark:text-gray-400 font-medium">{d.day}</span>
+                      <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">{d.day}</span>
                     </div>
                   ))}
                 </div>
@@ -349,7 +349,7 @@ export function Dashboard() {
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {tl.lessonTitle}
                     </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                    <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
                       {tl.courseTitle} · {tl.estimatedTime} min
                     </p>
                   </div>
@@ -424,7 +424,7 @@ export function Dashboard() {
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {p.courseTitle || p.topic}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 capitalize">{p.stage.replace('_', ' ')} · {p.progress}%</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 capitalize">{p.stage.replace('_', ' ')} · {p.progress}%</p>
                     </div>
                     <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div className="h-full bg-sky-400 rounded-full transition-all" style={{ width: `${p.progress}%` }} />
@@ -448,7 +448,7 @@ export function Dashboard() {
             </h2>
           </div>
           {state.notifications.length === 0 && state.courses.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-400 text-center py-4">
+            <p className="text-sm text-gray-600 dark:text-gray-300 text-center py-4">
               No notifications yet. Create a course to get started!
             </p>
           ) : (
@@ -456,7 +456,7 @@ export function Dashboard() {
               {state.notifications.slice(0, 5).map((n) => (
                 <div key={n.id} className="flex items-center gap-3 p-2 text-sm group">
                   <span>{n.type === 'agent' ? '🤖' : n.type === 'progress' ? '📈' : '💡'}</span>
-                  <span className="flex-1 text-gray-600 dark:text-gray-400">{n.message}</span>
+                  <span className="flex-1 text-gray-600 dark:text-gray-300">{n.message}</span>
                   <span className="text-xs text-gray-300">{new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   <Button
                     variant="ghost"
@@ -471,7 +471,7 @@ export function Dashboard() {
               {state.courses.length > 0 && (
                 <div className="flex items-center gap-3 p-2 text-sm">
                   <span className="text-blue-500">📚</span>
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600 dark:text-gray-300">
                     You have {state.courses.length} active course{state.courses.length !== 1 ? 's' : ''}. Keep up the momentum!
                   </span>
                 </div>
@@ -479,7 +479,7 @@ export function Dashboard() {
               {state.completedLessons.size > 0 && (
                 <div className="flex items-center gap-3 p-2 text-sm">
                   <span className="text-green-500">🎉</span>
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-gray-600 dark:text-gray-300">
                     {state.completedLessons.size} lesson{state.completedLessons.size !== 1 ? 's' : ''} completed. Great progress!
                   </span>
                 </div>
@@ -514,7 +514,7 @@ export function Dashboard() {
                 <span className="text-4xl">🚀</span>
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Create your first course</h3>
-              <p className="text-gray-600 dark:text-gray-400 text-sm max-w-md mx-auto mb-6">
+              <p className="text-gray-600 dark:text-gray-300 text-sm max-w-md mx-auto mb-6">
                 Enter any topic above and our AI agents will research, organize, and build a personalized course for you in minutes.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
@@ -584,10 +584,10 @@ export function Dashboard() {
                         className="ml-3 flex-shrink-0"
                       />
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
                       {course.description}
                     </p>
-                    <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+                    <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
                       <span>
                         {completed}/{totalLessons} lessons
                       </span>
@@ -624,7 +624,7 @@ export function Dashboard() {
                   );
                 })}
               </svg>
-              <p className="absolute bottom-2 text-xs text-gray-500 dark:text-gray-400">{state.courses.length} topics mapped</p>
+              <p className="absolute bottom-2 text-xs text-gray-500 dark:text-gray-300">{state.courses.length} topics mapped</p>
             </div>
           ) : (
             <div className="h-32 bg-gray-50 dark:bg-gray-800/50 rounded-xl flex items-center justify-center">
