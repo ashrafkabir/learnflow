@@ -41,7 +41,9 @@ export function KnowledgeGraphBg() {
       });
     }
 
-    const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() || '#6366f1';
+    const accentColor =
+      getComputedStyle(document.documentElement).getPropertyValue('--color-accent').trim() ||
+      '#6366f1';
 
     const draw = () => {
       const w = canvas.offsetWidth;

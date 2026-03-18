@@ -7,61 +7,161 @@ const SECTIONS = [
   {
     category: 'Getting Started',
     items: [
-      { title: 'Installation', content: 'Download LearnFlow for your platform from the Download page. Available on macOS, Windows, Linux, iOS, and Android. The web version requires no installation.' },
-      { title: 'Creating Your First Course', content: 'After onboarding, click "New Course" from the Dashboard or type a topic in the Conversation screen. Our AI agents will research, curate, and build a structured course for you.' },
-      { title: 'Configuring API Keys', content: 'Go to Settings → API Vault to add your own OpenAI, Anthropic, or Google API keys. Keys are encrypted locally and never shared. Pro users get managed keys included.' },
+      {
+        title: 'Installation',
+        content:
+          'Download LearnFlow for your platform from the Download page. Available on macOS, Windows, Linux, iOS, and Android. The web version requires no installation.',
+      },
+      {
+        title: 'Creating Your First Course',
+        content:
+          'After onboarding, click "New Course" from the Dashboard or type a topic in the Conversation screen. Our AI agents will research, curate, and build a structured course for you.',
+      },
+      {
+        title: 'Configuring API Keys',
+        content:
+          'Go to Settings → API Vault to add your own OpenAI, Anthropic, or Google API keys. Keys are encrypted locally and never shared. Pro users get managed keys included.',
+      },
     ],
   },
   {
     category: 'User Guide',
     items: [
-      { title: 'Dashboard Overview', content: 'The Dashboard shows your active courses, learning streaks, and quick actions. Use the sidebar to navigate to Conversation, Mind Map, Marketplace, and Settings. The "Today\'s Lessons" queue surfaces your most relevant next steps based on spaced repetition and course progress.' },
-      { title: 'AI Conversation', content: 'Chat with specialized AI agents. Ask questions, request research summaries, or create new courses — all through natural conversation with inline citations. Use quick-action chips (Take Notes, Quiz Me, Go Deeper, See Sources) after each assistant response for one-tap workflows.' },
-      { title: 'Knowledge Mindmap', content: 'Visualize your knowledge graph. Nodes are color-coded by mastery level: green (mastered), amber (in progress), gray (not started). Click to expand, jump to lessons, or add connections. Use keyboard navigation for accessibility. Press "?" for keyboard shortcuts.' },
-      { title: 'Lesson Reader', content: 'Each lesson renders with rich formatting: LaTeX equations, syntax-highlighted code blocks, and markdown. Swipe between lessons on mobile. Use flashcards at the bottom of each lesson to test recall, and earn confetti celebrations on completion.' },
-      { title: 'Profile & Settings', content: 'Configure your API keys in the secure API Vault, toggle dark mode, manage notification preferences, and export your data in Markdown or JSON format. All keys are encrypted locally using AES-256.' },
-      { title: 'Collaboration', content: 'Find study partners by selecting interest tags. Create or join study groups around specific topics. Real-time shared mindmaps are coming soon.' },
+      {
+        title: 'Dashboard Overview',
+        content:
+          'The Dashboard shows your active courses, learning streaks, and quick actions. Use the sidebar to navigate to Conversation, Mind Map, Marketplace, and Settings. The "Today\'s Lessons" queue surfaces your most relevant next steps based on spaced repetition and course progress.',
+      },
+      {
+        title: 'AI Conversation',
+        content:
+          'Chat with specialized AI agents. Ask questions, request research summaries, or create new courses — all through natural conversation with inline citations. Use quick-action chips (Take Notes, Quiz Me, Go Deeper, See Sources) after each assistant response for one-tap workflows.',
+      },
+      {
+        title: 'Knowledge Mindmap',
+        content:
+          'Visualize your knowledge graph. Nodes are color-coded by mastery level: green (mastered), amber (in progress), gray (not started). Click to expand, jump to lessons, or add connections. Use keyboard navigation for accessibility. Press "?" for keyboard shortcuts.',
+      },
+      {
+        title: 'Lesson Reader',
+        content:
+          'Each lesson renders with rich formatting: LaTeX equations, syntax-highlighted code blocks, and markdown. Swipe between lessons on mobile. Use flashcards at the bottom of each lesson to test recall, and earn confetti celebrations on completion.',
+      },
+      {
+        title: 'Profile & Settings',
+        content:
+          'Configure your API keys in the secure API Vault, toggle dark mode, manage notification preferences, and export your data in Markdown or JSON format. All keys are encrypted locally using AES-256.',
+      },
+      {
+        title: 'Collaboration',
+        content:
+          'Find study partners by selecting interest tags. Create or join study groups around specific topics. Real-time shared mindmaps are coming soon.',
+      },
     ],
   },
   {
     category: 'Agent SDK',
     items: [
-      { title: 'Agent Architecture', content: 'LearnFlow uses a multi-agent pipeline: Curriculum Agent, Research Agent, Content Agent, Exam Agent, and Collaboration Agent. Each handles a specific phase of course creation.' },
-      { title: 'Creating Custom Agents', content: 'Coming soon — the Agent SDK will let you build and publish custom AI agents to the marketplace.' },
+      {
+        title: 'Agent Architecture',
+        content:
+          'LearnFlow uses a multi-agent pipeline: Curriculum Agent, Research Agent, Content Agent, Exam Agent, and Collaboration Agent. Each handles a specific phase of course creation.',
+      },
+      {
+        title: 'Creating Custom Agents',
+        content:
+          'Coming soon — the Agent SDK will let you build and publish custom AI agents to the marketplace.',
+      },
     ],
   },
   {
     category: 'API Reference',
     items: [
-      { title: 'REST API', content: 'The LearnFlow REST API provides programmatic access to courses, lessons, notes, and user data. Full API documentation coming soon.' },
-      { title: 'WebSocket Events', content: 'Real-time events for course generation progress, agent status, and collaboration features. Documentation coming soon.' },
+      {
+        title: 'REST API',
+        content:
+          'The LearnFlow REST API provides programmatic access to courses, lessons, notes, and user data. Full API documentation coming soon.',
+      },
+      {
+        title: 'WebSocket Events',
+        content:
+          'Real-time events for course generation progress, agent status, and collaboration features. Documentation coming soon.',
+      },
     ],
   },
   {
     category: 'Creator Guide',
     items: [
-      { title: 'Publishing Courses', content: 'Create courses and publish them to the marketplace for the community. Set pricing, add descriptions, and track analytics from the Creator Dashboard.' },
-      { title: 'Earning Revenue', content: 'Pro creators earn revenue from paid course sales. Stripe integration for payouts coming soon.' },
-      { title: 'Course Analytics', content: 'Track enrollments, completion rates, ratings, and revenue from the Creator Dashboard. See which modules have the highest drop-off and optimize your content accordingly.' },
+      {
+        title: 'Publishing Courses',
+        content:
+          'Create courses and publish them to the marketplace for the community. Set pricing, add descriptions, and track analytics from the Creator Dashboard.',
+      },
+      {
+        title: 'Earning Revenue',
+        content:
+          'Pro creators earn revenue from paid course sales. Stripe integration for payouts coming soon.',
+      },
+      {
+        title: 'Course Analytics',
+        content:
+          'Track enrollments, completion rates, ratings, and revenue from the Creator Dashboard. See which modules have the highest drop-off and optimize your content accordingly.',
+      },
     ],
   },
   {
     category: 'Troubleshooting',
     items: [
-      { title: 'Common Issues', content: 'Course generation stuck? Try refreshing the page or checking your API key configuration. If generation fails, ensure your API key has sufficient credits and the provider is not rate-limiting your requests.' },
-      { title: 'API Key Errors', content: 'If you see "Invalid API Key" errors, go to Settings → API Vault and re-enter your key. Ensure you\'re using the correct provider (OpenAI, Anthropic, or Google). Keys are validated on save.' },
-      { title: 'Performance Tips', content: 'For best performance: use Chrome or Firefox, enable hardware acceleration, close unused tabs during course generation, and ensure a stable internet connection for real-time features.' },
-      { title: 'Contact Support', content: 'Can\'t find what you need? Email support@learnflow.ai or join our Discord community at discord.gg/learnflow for real-time help from the team and community.' },
+      {
+        title: 'Common Issues',
+        content:
+          'Course generation stuck? Try refreshing the page or checking your API key configuration. If generation fails, ensure your API key has sufficient credits and the provider is not rate-limiting your requests.',
+      },
+      {
+        title: 'API Key Errors',
+        content:
+          'If you see "Invalid API Key" errors, go to Settings → API Vault and re-enter your key. Ensure you\'re using the correct provider (OpenAI, Anthropic, or Google). Keys are validated on save.',
+      },
+      {
+        title: 'Performance Tips',
+        content:
+          'For best performance: use Chrome or Firefox, enable hardware acceleration, close unused tabs during course generation, and ensure a stable internet connection for real-time features.',
+      },
+      {
+        title: 'Contact Support',
+        content:
+          "Can't find what you need? Email support@learnflow.ai or join our Discord community at discord.gg/learnflow for real-time help from the team and community.",
+      },
     ],
   },
 ];
 
 const QUICK_START_STEPS = [
-  { step: 1, title: 'Download & Install', desc: 'Get LearnFlow for your platform from the Download page. Web, macOS, Windows, Linux, iOS, and Android.' },
-  { step: 2, title: 'Create an Account', desc: 'Sign up with email or use Google/GitHub/Apple OAuth for one-click registration.' },
-  { step: 3, title: 'Add Your API Key', desc: 'Go to Settings → API Vault and add your OpenAI, Anthropic, or Google API key. Keys are encrypted locally.' },
-  { step: 4, title: 'Create Your First Course', desc: 'Type any topic in the Conversation screen — "Learn Rust" or "Quantum Mechanics 101." AI agents build your course.' },
-  { step: 5, title: 'Start Learning', desc: 'Read lessons, take quizzes, build your mindmap, and track your progress on the Dashboard.' },
+  {
+    step: 1,
+    title: 'Download & Install',
+    desc: 'Get LearnFlow for your platform from the Download page. Web, macOS, Windows, Linux, iOS, and Android.',
+  },
+  {
+    step: 2,
+    title: 'Create an Account',
+    desc: 'Sign up with email or use Google/GitHub/Apple OAuth for one-click registration.',
+  },
+  {
+    step: 3,
+    title: 'Add Your API Key',
+    desc: 'Go to Settings → API Vault and add your OpenAI, Anthropic, or Google API key. Keys are encrypted locally.',
+  },
+  {
+    step: 4,
+    title: 'Create Your First Course',
+    desc: 'Type any topic in the Conversation screen — "Learn Rust" or "Quantum Mechanics 101." AI agents build your course.',
+  },
+  {
+    step: 5,
+    title: 'Start Learning',
+    desc: 'Read lessons, take quizzes, build your mindmap, and track your progress on the Dashboard.',
+  },
 ];
 
 export function DocsPage() {
@@ -77,7 +177,7 @@ export function DocsPage() {
         items: s.items.filter(
           (item) =>
             item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.content.toLowerCase().includes(searchQuery.toLowerCase())
+            item.content.toLowerCase().includes(searchQuery.toLowerCase()),
         ),
       })).filter((s) => s.items.length > 0)
     : null;
@@ -127,9 +227,9 @@ export function DocsPage() {
                       key={item.title}
                       onClick={() => {
                         setActiveCategory(s.category);
-                        const idx = SECTIONS.find((sec) => sec.category === s.category)!.items.findIndex(
-                          (i) => i.title === item.title
-                        );
+                        const idx = SECTIONS.find(
+                          (sec) => sec.category === s.category,
+                        )!.items.findIndex((i) => i.title === item.title);
                         setActiveItem(idx);
                         setSearchQuery('');
                       }}

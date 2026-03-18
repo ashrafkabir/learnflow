@@ -17,12 +17,30 @@ import { Button } from '../components/Button.js';
 let Network: unknown = null;
 let DataSet: unknown = null;
 type VisDataSetCtor = new (items: Array<Record<string, unknown>>) => unknown;
-type VisNetworkCtor = new (container: HTMLElement, data: Record<string, unknown>, options: Record<string, unknown>) => { on: (event: string, cb: (params: unknown) => void) => void; destroy: () => void; fit: (...args: unknown[]) => void };
+type VisNetworkCtor = new (
+  container: HTMLElement,
+  data: Record<string, unknown>,
+  options: Record<string, unknown>,
+) => {
+  on: (event: string, cb: (params: unknown) => void) => void;
+  destroy: () => void;
+  fit: (...args: unknown[]) => void;
+};
 
-function MindmapPanel({ open, onClose, courses, completedLessons, onNodeClick }: {
+function MindmapPanel({
+  open,
+  onClose,
+  courses,
+  completedLessons,
+  onNodeClick,
+}: {
   open: boolean;
   onClose: () => void;
-  courses: Array<{ id: string; title: string; modules: Array<{ title: string; lessons: Array<{ id: string; title: string }> }> }>;
+  courses: Array<{
+    id: string;
+    title: string;
+    modules: Array<{ title: string; lessons: Array<{ id: string; title: string }> }>;
+  }>;
   completedLessons: Set<string>;
   onNodeClick: (courseId: string, lessonId?: string) => void;
 }) {
@@ -31,12 +49,17 @@ function MindmapPanel({ open, onClose, courses, completedLessons, onNodeClick }:
   const [loaded, setLoaded] = React.useState(!!Network);
 
   React.useEffect(() => {
-    if (Network) { setLoaded(true); return; }
-    import('vis-network/standalone').then((mod) => {
-      Network = (mod as any).Network;
-      DataSet = (mod as any).DataSet;
+    if (Network) {
       setLoaded(true);
-    }).catch(() => {});
+      return;
+    }
+    import('vis-network/standalone')
+      .then((mod) => {
+        Network = (mod as any).Network;
+        DataSet = (mod as any).DataSet;
+        setLoaded(true);
+      })
+      .catch(() => {});
   }, []);
 
   React.useEffect(() => {
@@ -49,57 +72,112 @@ function MindmapPanel({ open, onClose, courses, completedLessons, onNodeClick }:
     const edges: Array<Record<string, unknown>> = [];
     let nodeId = 1;
     const rootId = nodeId++;
-    nodes.push({ id: rootId, label: 'Knowledge', shape: 'ellipse', color: { background: '#6366F1', border: '#4F46E5' }, font: { color: '#fff', size: 14 }, size: 30 });
+    nodes.push({
+      id: rootId,
+      label: 'Knowledge',
+      shape: 'ellipse',
+      color: { background: '#6366F1', border: '#4F46E5' },
+      font: { color: '#fff', size: 14 },
+      size: 30,
+    });
 
     for (const course of courses) {
       const cId = nodeId++;
       const total = course.modules.reduce((s, m) => s + m.lessons.length, 0);
-      const done = course.modules.reduce((s, m) => s + m.lessons.filter((l) => completedLessons.has(l.id)).length, 0);
+      const done = course.modules.reduce(
+        (s, m) => s + m.lessons.filter((l) => completedLessons.has(l.id)).length,
+        0,
+      );
       const pct = total > 0 ? done / total : 0;
       const color = pct >= 1 ? '#16A34A' : pct > 0 ? '#F59E0B' : '#9CA3AF';
-      nodes.push({ id: cId, label: course.title.slice(0, 30), shape: 'box', color: { background: color, border: color }, font: { color: '#fff', size: 11 }, _courseId: course.id });
+      nodes.push({
+        id: cId,
+        label: course.title.slice(0, 30),
+        shape: 'box',
+        color: { background: color, border: color },
+        font: { color: '#fff', size: 11 },
+        _courseId: course.id,
+      });
       edges.push({ from: rootId, to: cId });
       for (const mod of course.modules) {
         for (const lesson of mod.lessons) {
           const lId = nodeId++;
           const lDone = completedLessons.has(lesson.id);
-          nodes.push({ id: lId, label: lesson.title.slice(0, 20), shape: 'dot', size: 8, color: { background: lDone ? '#16A34A' : '#E5E7EB' }, _courseId: course.id, _lessonId: lesson.id });
+          nodes.push({
+            id: lId,
+            label: lesson.title.slice(0, 20),
+            shape: 'dot',
+            size: 8,
+            color: { background: lDone ? '#16A34A' : '#E5E7EB' },
+            _courseId: course.id,
+            _lessonId: lesson.id,
+          });
           edges.push({ from: cId, to: lId, color: { color: '#94A3B8' } });
         }
       }
     }
 
-    const net = new NetworkCtor(containerRef.current, { nodes: new DataSetCtor(nodes), edges: new DataSetCtor(edges) }, {
-      layout: { hierarchical: false },
-      physics: { enabled: true, forceAtlas2Based: { gravitationalConstant: -30, springLength: 80 }, solver: 'forceAtlas2Based', stabilization: { iterations: 60 } },
-      interaction: { hover: true, keyboard: { enabled: true } },
-      nodes: { borderWidth: 2, font: { size: 11, face: 'system-ui' } },
-      edges: { smooth: { type: 'continuous' } },
-    });
+    const net = new NetworkCtor(
+      containerRef.current,
+      { nodes: new DataSetCtor(nodes), edges: new DataSetCtor(edges) },
+      {
+        layout: { hierarchical: false },
+        physics: {
+          enabled: true,
+          forceAtlas2Based: { gravitationalConstant: -30, springLength: 80 },
+          solver: 'forceAtlas2Based',
+          stabilization: { iterations: 60 },
+        },
+        interaction: { hover: true, keyboard: { enabled: true } },
+        nodes: { borderWidth: 2, font: { size: 11, face: 'system-ui' } },
+        edges: { smooth: { type: 'continuous' } },
+      },
+    );
     networkRef.current = net as any;
     net.on('click', (params: unknown) => {
       const p = params as { nodes?: unknown[] };
       if (p.nodes?.length === 1) {
         const id = p.nodes[0];
         const node = nodes.find((n) => n.id === id);
-        if (node?._courseId) onNodeClick(node._courseId as string, node._lessonId as string | undefined);
+        if (node?._courseId)
+          onNodeClick(node._courseId as string, node._lessonId as string | undefined);
       }
     });
-    return () => { networkRef.current?.destroy(); networkRef.current = null; };
+    return () => {
+      networkRef.current?.destroy();
+      networkRef.current = null;
+    };
   }, [open, loaded, courses, completedLessons]);
 
   if (!open) return null;
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={onClose} />
-      <aside className="fixed top-0 right-0 h-full w-full md:w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 z-50 flex flex-col shadow-modal" aria-label="Knowledge mindmap">
+      <aside
+        className="fixed top-0 right-0 h-full w-full md:w-80 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 z-50 flex flex-col shadow-modal"
+        aria-label="Knowledge mindmap"
+      >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-white">🧠 Knowledge Map</h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            ✕
+          </Button>
         </div>
-        <div ref={containerRef} className="flex-1 min-h-0" tabIndex={0} role="img" aria-label="Knowledge mindmap graph" />
-        {!loaded && <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">Loading mindmap…</div>}
-        <p className="text-[10px] text-gray-400 px-3 py-2 text-center">Click a node to navigate • Arrow keys to pan</p>
+        <div
+          ref={containerRef}
+          className="flex-1 min-h-0"
+          tabIndex={0}
+          role="img"
+          aria-label="Knowledge mindmap graph"
+        />
+        {!loaded && (
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-gray-500">
+            Loading mindmap…
+          </div>
+        )}
+        <p className="text-[10px] text-gray-400 px-3 py-2 text-center">
+          Click a node to navigate • Arrow keys to pan
+        </p>
       </aside>
     </>
   );
@@ -131,10 +209,17 @@ function MarkdownContent({ content }: { content: string }) {
         code: ({ className, children, ...props }) => {
           const isBlock = className?.startsWith('language-') || className?.startsWith('hljs');
           if (isBlock) {
-            return <code className={className} {...props}>{children}</code>;
+            return (
+              <code className={className} {...props}>
+                {children}
+              </code>
+            );
           }
           return (
-            <code className="bg-black/10 dark:bg-white/10 px-1 rounded text-xs font-mono" {...props}>
+            <code
+              className="bg-black/10 dark:bg-white/10 px-1 rounded text-xs font-mono"
+              {...props}
+            >
               {children}
             </code>
           );
@@ -146,15 +231,36 @@ function MarkdownContent({ content }: { content: string }) {
         ),
         table: ({ children }) => (
           <div className="overflow-x-auto my-2">
-            <table className="min-w-full text-sm border-collapse border border-gray-300 dark:border-gray-600">{children}</table>
+            <table className="min-w-full text-sm border-collapse border border-gray-300 dark:border-gray-600">
+              {children}
+            </table>
           </div>
         ),
-        th: ({ children }) => <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 bg-gray-100 dark:bg-gray-800 font-semibold text-left">{children}</th>,
-        td: ({ children }) => <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{children}</td>,
+        th: ({ children }) => (
+          <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 bg-gray-100 dark:bg-gray-800 font-semibold text-left">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{children}</td>
+        ),
         sup: ({ children }) => <sup className="text-accent font-medium">{children}</sup>,
-        a: ({ href, children }) => <a href={href} className="text-accent underline hover:opacity-80" target="_blank" rel="noopener noreferrer">{children}</a>,
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            className="text-accent underline hover:opacity-80"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {children}
+          </a>
+        ),
         strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-        blockquote: ({ children }) => <blockquote className="border-l-2 border-accent pl-3 my-2 italic text-sm opacity-80">{children}</blockquote>,
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-2 border-accent pl-3 my-2 italic text-sm opacity-80">
+            {children}
+          </blockquote>
+        ),
       }}
     >
       {content}
@@ -259,14 +365,16 @@ export function Conversation() {
           });
         }
         if (evt.data?.sources?.length) {
-          setDrawerSources(evt.data.sources.map((s: any, i: number) => ({
-            id: i + 1,
-            title: s.title || `Source ${i + 1}`,
-            author: s.author || 'Source',
-            publication: s.publication || '',
-            year: s.year || 2024,
-            url: s.url || '#',
-          })));
+          setDrawerSources(
+            evt.data.sources.map((s: any, i: number) => ({
+              id: i + 1,
+              title: s.title || `Source ${i + 1}`,
+              author: s.author || 'Source',
+              publication: s.publication || '',
+              year: s.year || 2024,
+              url: s.url || '#',
+            })),
+          );
         }
         setStreamingContent('');
         setActiveAgent(null);
@@ -292,7 +400,10 @@ export function Conversation() {
           notification: {
             id: `notif-${Date.now()}`,
             type: 'progress',
-            message: evt.data?.metric === 'lesson_completed' ? 'Lesson completed! 🎉' : `Progress updated: ${evt.data?.metric || 'learning'}`,
+            message:
+              evt.data?.metric === 'lesson_completed'
+                ? 'Lesson completed! 🎉'
+                : `Progress updated: ${evt.data?.metric || 'learning'}`,
             timestamp: new Date().toISOString(),
             read: false,
           },
@@ -322,7 +433,12 @@ export function Conversation() {
     if (wsConnected) {
       dispatch({
         type: 'ADD_CHAT_MESSAGE',
-        message: { id: `msg-${Date.now()}`, role: 'user', content: msg, timestamp: new Date().toISOString() },
+        message: {
+          id: `msg-${Date.now()}`,
+          role: 'user',
+          content: msg,
+          timestamp: new Date().toISOString(),
+        },
       });
       dispatch({ type: 'SET_LOADING', key: 'chat', value: true });
       setStreamingContent('');
@@ -346,16 +462,14 @@ export function Conversation() {
       {/* Header */}
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => nav('/dashboard')}
-          >
+          <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>
             ←
           </Button>
           <div>
             <h1 className="text-base font-semibold text-gray-900 dark:text-white">LearnFlow AI</h1>
-            <p className="text-xs text-gray-600 dark:text-gray-300">Your personal learning assistant</p>
+            <p className="text-xs text-gray-600 dark:text-gray-300">
+              Your personal learning assistant
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -369,11 +483,32 @@ export function Conversation() {
               + New Chat
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={() => setDrawerOpen(!drawerOpen)} className="border border-gray-200 dark:border-gray-700" title="View sources">📚</Button>
-          <Button variant="ghost" size="sm" onClick={() => setMindmapOpen(!mindmapOpen)} className="border border-gray-200 dark:border-gray-700" title="Knowledge mindmap">🧠</Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            className="border border-gray-200 dark:border-gray-700"
+            title="View sources"
+          >
+            📚
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMindmapOpen(!mindmapOpen)}
+            className="border border-gray-200 dark:border-gray-700"
+            title="Knowledge mindmap"
+          >
+            🧠
+          </Button>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-            <span className="text-xs text-gray-600 dark:text-gray-300" title="AI assistant is ready to help">Online</span>
+            <span
+              className="text-xs text-gray-600 dark:text-gray-300"
+              title="AI assistant is ready to help"
+            >
+              Online
+            </span>
           </div>
         </div>
       </header>
@@ -396,14 +531,30 @@ export function Conversation() {
                 Ask me anything about your learning
               </h2>
               <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto text-sm leading-relaxed">
-                I can create courses, quiz you, generate study notes, and research topics with real sources.
+                I can create courses, quiz you, generate study notes, and research topics with real
+                sources.
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl">
               {[
-                { icon: '📚', title: 'Create a course', desc: 'On any topic from the web', text: 'Create a course on Rust programming' },
-                { icon: '🧠', title: 'Quiz me', desc: 'Test your knowledge', text: 'Quiz me on React hooks' },
-                { icon: '📝', title: 'Summarize notes', desc: 'From your lessons', text: 'Summarize my machine learning notes' },
+                {
+                  icon: '📚',
+                  title: 'Create a course',
+                  desc: 'On any topic from the web',
+                  text: 'Create a course on Rust programming',
+                },
+                {
+                  icon: '🧠',
+                  title: 'Quiz me',
+                  desc: 'Test your knowledge',
+                  text: 'Quiz me on React hooks',
+                },
+                {
+                  icon: '📝',
+                  title: 'Summarize notes',
+                  desc: 'From your lessons',
+                  text: 'Summarize my machine learning notes',
+                },
               ].map((s) => (
                 <Button
                   key={s.title}
@@ -412,14 +563,19 @@ export function Conversation() {
                   className="flex-col items-center gap-2 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-accent hover:shadow-card-hover h-auto"
                 >
                   <span className="text-2xl">{s.icon}</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{s.title}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {s.title}
+                  </span>
                   <span className="text-xs text-gray-600 dark:text-gray-300">{s.desc}</span>
                 </Button>
               ))}
             </div>
             <div className="flex flex-wrap justify-center gap-2">
               {[
-                { label: '💡 Explain transformers', text: 'Explain transformer architecture simply' },
+                {
+                  label: '💡 Explain transformers',
+                  text: 'Explain transformer architecture simply',
+                },
                 { label: '🔍 Research agentic AI', text: 'Teach me about Agentic AI' },
                 { label: '🗺️ DevOps roadmap', text: 'Create a learning roadmap for DevOps' },
               ].map((s) => (
@@ -460,7 +616,9 @@ export function Conversation() {
                       const match = msg.content.match(/```improved\n([\s\S]*?)```/);
                       if (match) {
                         navigator.clipboard.writeText(match[1].trim());
-                        alert('Improved content copied to clipboard! You can paste it into the lesson editor.');
+                        alert(
+                          'Improved content copied to clipboard! You can paste it into the lesson editor.',
+                        );
                       }
                     }}
                     className="mt-2 rounded-full bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20"
@@ -564,7 +722,9 @@ export function Conversation() {
                 {agentInfo ? (
                   <>
                     <span className="text-lg">{agentInfo.icon}</span>
-                    <span className="font-medium text-gray-900 dark:text-white">{agentInfo.label}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {agentInfo.label}
+                    </span>
                     <span className="text-gray-500 dark:text-gray-300">{agentInfo.activity}</span>
                   </>
                 ) : (
@@ -575,8 +735,14 @@ export function Conversation() {
                 )}
                 <span className="flex gap-1 ml-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.15s' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.3s' }} />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce"
+                    style={{ animationDelay: '0.15s' }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce"
+                    style={{ animationDelay: '0.3s' }}
+                  />
                 </span>
               </div>
             </div>
@@ -594,11 +760,27 @@ export function Conversation() {
               <span className="font-medium text-gray-600 dark:text-gray-300">{contextBadge}</span>
             ) : (
               <>
-                {state.activeCourse && <span className="font-medium text-gray-600 dark:text-gray-300">{state.activeCourse.title}</span>}
-                {state.activeLesson && <><span>›</span><span className="text-accent">{state.activeLesson.title}</span></>}
+                {state.activeCourse && (
+                  <span className="font-medium text-gray-600 dark:text-gray-300">
+                    {state.activeCourse.title}
+                  </span>
+                )}
+                {state.activeLesson && (
+                  <>
+                    <span>›</span>
+                    <span className="text-accent">{state.activeLesson.title}</span>
+                  </>
+                )}
               </>
             )}
-            <Button variant="ghost" size="sm" onClick={() => setContextBadge(null)} className="ml-auto text-gray-300 hover:text-gray-500 h-6 w-6 p-0">✕</Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setContextBadge(null)}
+              className="ml-auto text-gray-300 hover:text-gray-500 h-6 w-6 p-0"
+            >
+              ✕
+            </Button>
           </div>
         )}
         <div className="max-w-4xl mx-auto flex gap-2">

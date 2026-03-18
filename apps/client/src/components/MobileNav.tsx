@@ -34,10 +34,7 @@ export function MobileNav() {
 
       {/* Backdrop */}
       {open && (
-        <div
-          className="fixed inset-0 bg-black/40 z-50 md:hidden"
-          onClick={() => setOpen(false)}
-        />
+        <div className="fixed inset-0 bg-black/40 z-50 md:hidden" onClick={() => setOpen(false)} />
       )}
 
       {/* Slide-out drawer */}
@@ -51,7 +48,12 @@ export function MobileNav() {
           <span className="font-bold text-lg flex items-center gap-2">
             <span>🧠</span> LearnFlow
           </span>
-          <Button variant="ghost" size="sm" onClick={() => setOpen(false)} aria-label="Close navigation">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setOpen(false)}
+            aria-label="Close navigation"
+          >
             ✕
           </Button>
         </div>
@@ -61,8 +63,17 @@ export function MobileNav() {
               key={item.path}
               variant="ghost"
               fullWidth
-              onClick={() => { nav(item.path); setOpen(false); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav(item.path); setOpen(false); } }}
+              onClick={() => {
+                nav(item.path);
+                setOpen(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  nav(item.path);
+                  setOpen(false);
+                }
+              }}
               tabIndex={0}
               aria-current={location.pathname.startsWith(item.path) ? 'page' : undefined}
               className={`justify-start gap-3 text-sm font-medium py-3 ${

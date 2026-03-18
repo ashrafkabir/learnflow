@@ -21,7 +21,11 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
       {/* Nav */}
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => nav('/')} className="flex items-center gap-2 font-bold text-xl p-0 h-auto">
+          <Button
+            variant="ghost"
+            onClick={() => nav('/')}
+            className="flex items-center gap-2 font-bold text-xl p-0 h-auto"
+          >
             <span className="text-2xl">🧠</span>
             <span>LearnFlow</span>
           </Button>
@@ -56,7 +60,12 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
           </div>
 
           {/* Mobile hamburger */}
-          <Button variant="ghost" size="icon" className="md:hidden text-2xl" onClick={() => setMobileOpen(!mobileOpen)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden text-2xl"
+            onClick={() => setMobileOpen(!mobileOpen)}
+          >
             {mobileOpen ? '✕' : '☰'}
           </Button>
         </div>
@@ -69,15 +78,22 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
                 key={l.href}
                 variant="ghost"
                 fullWidth
-                onClick={() => { nav(l.href); setMobileOpen(false); }}
+                onClick={() => {
+                  nav(l.href);
+                  setMobileOpen(false);
+                }}
                 className="justify-start text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
               >
                 {l.label}
               </Button>
             ))}
             <div className="flex gap-3 pt-2">
-              <Button variant="ghost" size="sm" onClick={() => nav('/login')}>Sign In</Button>
-              <Button variant="primary" size="sm" onClick={() => nav('/register')}>Get Started</Button>
+              <Button variant="ghost" size="sm" onClick={() => nav('/login')}>
+                Sign In
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => nav('/register')}>
+                Get Started
+              </Button>
             </div>
           </div>
         )}
@@ -94,15 +110,32 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Product</h3>
               <div className="space-y-2">
                 {['Features', 'Pricing', 'Download', 'Changelog'].map((t) => (
-                  <Button key={t} variant="ghost" size="sm" onClick={() => nav(`/${t.toLowerCase()}`)} className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
+                  <Button
+                    key={t}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => nav(`/${t.toLowerCase()}`)}
+                    className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto"
+                  >
+                    {t}
+                  </Button>
                 ))}
               </div>
             </div>
             <div>
-              <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Resources</h3>
+              <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">
+                Resources
+              </h3>
               <div className="space-y-2">
                 {['Blog', 'Documentation', 'API Reference', 'Community'].map((t) => (
-                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
+                  <Button
+                    key={t}
+                    variant="ghost"
+                    size="sm"
+                    className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto"
+                  >
+                    {t}
+                  </Button>
                 ))}
               </div>
             </div>
@@ -110,7 +143,14 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Company</h3>
               <div className="space-y-2">
                 {['About', 'Careers', 'Privacy', 'Terms'].map((t) => (
-                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
+                  <Button
+                    key={t}
+                    variant="ghost"
+                    size="sm"
+                    className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto"
+                  >
+                    {t}
+                  </Button>
                 ))}
               </div>
             </div>
@@ -118,7 +158,14 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <h3 className="font-semibold text-sm mb-3 text-gray-900 dark:text-white">Connect</h3>
               <div className="space-y-2">
                 {['Twitter', 'Discord', 'GitHub', 'YouTube'].map((t) => (
-                  <Button key={t} variant="ghost" size="sm" className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto">{t}</Button>
+                  <Button
+                    key={t}
+                    variant="ghost"
+                    size="sm"
+                    className="block text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white p-0 h-auto"
+                  >
+                    {t}
+                  </Button>
                 ))}
               </div>
             </div>
@@ -129,9 +176,27 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <span>© {new Date().getFullYear()} LearnFlow. All rights reserved.</span>
             </div>
             <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-300">
-              <Button variant="ghost" size="sm" className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300">Privacy</Button>
-              <Button variant="ghost" size="sm" className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300">Terms</Button>
-              <Button variant="ghost" size="sm" className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300">Cookies</Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300"
+              >
+                Privacy
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300"
+              >
+                Terms
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300"
+              >
+                Cookies
+              </Button>
             </div>
           </div>
         </div>

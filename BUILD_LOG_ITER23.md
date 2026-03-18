@@ -5,9 +5,11 @@
 ## Tasks Completed
 
 ### 1. ✅ TSC Fix
+
 Already fixed by prior work. TSC passes cleanly.
 
 ### 2. ✅ CreatorDashboard Expanded (60 → 357 lines)
+
 - Published courses table with title, status badges, enrollments, rating, revenue
 - Analytics tab with stat cards, weekly views bar chart, per-course performance
 - Earnings tab with total/pending payout cards and payout history table
@@ -15,6 +17,7 @@ Already fixed by prior work. TSC passes cleanly.
 - Draft management with Continue Editing and Delete actions
 
 ### 3. ✅ AgentMarketplace Expanded (134 → 255 lines)
+
 - 8 agents with categories (Study, Research, Assessment, Creative, Productivity)
 - Category filter tabs: All | Study | Research | Assessment | Creative | Productivity
 - Search input for name/description
@@ -25,6 +28,7 @@ Already fixed by prior work. TSC passes cleanly.
 - Agent count summary
 
 ### 4. ✅ aria-live Regions (0 → 8)
+
 - Conversation message list: `aria-live="polite"`
 - Toast item: `aria-live="assertive"`
 - Toast container: `aria-live="assertive"`
@@ -37,6 +41,7 @@ Already fixed by prior work. TSC passes cleanly.
 ### 5. ✅ Tests (already at 344/30 — well above 150/20 target)
 
 ### 6. ✅ Subscription Management
+
 - Usage stats bar (API calls this month)
 - "Downgrade to Free" button with confirmation
 - "Cancel Subscription" button with confirmation
@@ -53,6 +58,7 @@ Already fixed by prior work. TSC passes cleanly.
 ### 11. ✅ CitationTooltip (already at 50 lines)
 
 ### 12. ✅ OnboardingTooltips Component Created
+
 - 3-step onboarding tour (Create Course → Mindmap → Marketplace)
 - Progress bar, Next/Skip/Got it buttons
 - localStorage flag to show only on first visit

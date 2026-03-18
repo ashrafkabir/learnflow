@@ -49,8 +49,10 @@ describe('S07-A01: All REST endpoints exist', () => {
     ];
 
     for (const ep of endpoints) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const res = await (request(app) as any)[ep.method](ep.path);
+      // supertest's request object is dynamically indexed by HTTP method name.
+      const res = await (request(app) as unknown as Record<string, (p: string) => any>)[ep.method](
+        ep.path,
+      );
       expect(res.status).toBe(401);
     }
   });
@@ -171,48 +173,52 @@ describe('S07-A14: Types compile', () => {
 
 // S07-A15: Full API flow: register → login → create course → get lessons
 describe('S07-A15: Full API flow', () => {
-  it('register → login → create course → get course → complete lesson', { timeout: 60000 }, async () => {
-    // 1. Register
-    const reg = await request(app)
-      .post('/api/v1/auth/register')
-      .send({ email: 'flow@test.com', password: 'password123', displayName: 'Flow' });
-    expect(reg.status).toBe(201);
+  it(
+    'register → login → create course → get course → complete lesson',
+    { timeout: 60000 },
+    async () => {
+      // 1. Register
+      const reg = await request(app)
+        .post('/api/v1/auth/register')
+        .send({ email: 'flow@test.com', password: 'password123', displayName: 'Flow' });
+      expect(reg.status).toBe(201);
 
-    // 2. Login
-    const login = await request(app)
-      .post('/api/v1/auth/login')
-      .send({ email: 'flow@test.com', password: 'password123' });
-    expect(login.status).toBe(200);
-    const token = login.body.accessToken;
+      // 2. Login
+      const login = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: 'flow@test.com', password: 'password123' });
+      expect(login.status).toBe(200);
+      const token = login.body.accessToken;
 
-    // 3. Create course
-    const createCourse = await request(app)
-      .post('/api/v1/courses')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ title: 'Test Course', topic: 'Testing' });
-    expect(createCourse.status).toBe(201);
-    const courseId = createCourse.body.id;
+      // 3. Create course
+      const createCourse = await request(app)
+        .post('/api/v1/courses')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'Test Course', topic: 'Testing' });
+      expect(createCourse.status).toBe(201);
+      const courseId = createCourse.body.id;
 
-    // 4. Get course
-    const getCourse = await request(app)
-      .get(`/api/v1/courses/${courseId}`)
-      .set('Authorization', `Bearer ${token}`);
-    expect(getCourse.status).toBe(200);
-    expect(getCourse.body.modules.length).toBeGreaterThan(0);
-    expect(getCourse.body.modules[0].lessons.length).toBeGreaterThan(0);
-    const lessonId = getCourse.body.modules[0].lessons[0].id;
+      // 4. Get course
+      const getCourse = await request(app)
+        .get(`/api/v1/courses/${courseId}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(getCourse.status).toBe(200);
+      expect(getCourse.body.modules.length).toBeGreaterThan(0);
+      expect(getCourse.body.modules[0].lessons.length).toBeGreaterThan(0);
+      const lessonId = getCourse.body.modules[0].lessons[0].id;
 
-    // 5. Get lesson
-    const getLesson = await request(app)
-      .get(`/api/v1/courses/${courseId}/lessons/${lessonId}`)
-      .set('Authorization', `Bearer ${token}`);
-    expect(getLesson.status).toBe(200);
+      // 5. Get lesson
+      const getLesson = await request(app)
+        .get(`/api/v1/courses/${courseId}/lessons/${lessonId}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(getLesson.status).toBe(200);
 
-    // 6. Complete lesson
-    const complete = await request(app)
-      .post(`/api/v1/courses/${courseId}/lessons/${lessonId}/complete`)
-      .set('Authorization', `Bearer ${token}`);
-    expect(complete.status).toBe(200);
-    expect(complete.body.progress).toBe(1);
-  });
+      // 6. Complete lesson
+      const complete = await request(app)
+        .post(`/api/v1/courses/${courseId}/lessons/${lessonId}/complete`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(complete.status).toBe(200);
+      expect(complete.body.progress).toBe(1);
+    },
+  );
 });

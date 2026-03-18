@@ -7,15 +7,53 @@ import { db } from '../db.js';
 import { subscriptionRouter } from '../routes/subscription.js';
 import { NotesAgent, ExamAgent, SummarizerAgent, ResearchAgent } from '@learnflow/agents';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const mockContext: any = {
+import type { StudentContextObject } from '@learnflow/core';
+
+const mockContext: StudentContextObject = {
   userId: 'test-user',
+  user: {
+    id: 'test-user',
+    email: 'test@example.com',
+    displayName: 'Test User',
+    role: 'student',
+    tier: 'free',
+    goals: ['learn quantum computing'],
+    preferredLanguage: 'en',
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  enrolledCourseIds: [],
+  completedLessonIds: [],
   goals: ['learn quantum computing'],
-  knowledgeLevel: 'intermediate',
-  progress: {},
-  preferences: { noteFormat: 'cornell' },
-  courses: [],
-  currentCourse: null,
+  strengths: [],
+  weaknesses: [],
+  learningStyle: 'reading',
+  quizScores: {},
+  studyStreak: 0,
+  totalStudyMinutes: 0,
+  lastActiveAt: new Date(),
+
+  goalDetails: [{ goal: 'learn quantum computing', priority: 'medium' }],
+  interests: [],
+  browseHistory: [],
+  searchQueries: [],
+  bookmarkedContent: [],
+  sessionFrequency: 0,
+  preferredTimeOfDay: 'morning',
+  preferredLessonLength: 10,
+  subscriptionTier: 'free',
+  billingStatus: 'active',
+  apiKeyProvider: undefined,
+  usageQuotas: {},
+  notificationSettings: { email: true, push: true, inApp: true },
+  preferredAgents: [],
+  displayPreferences: { theme: 'light', fontSize: 16 },
+  collaborationOptIn: false,
+  peerConnections: [],
+  sharedCourses: [],
+  lessonRatings: {},
+  agentRatings: {},
+  courseReviews: [],
 };
 
 const sampleLesson = `
@@ -42,7 +80,6 @@ describe('S13-A06: Agent output format regression', () => {
     });
     expect(result.status).toBe('success');
     expect(result.agentName).toContain('notes');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = result.data as any;
     // data = { text, notes: CornellNote, format }
     expect(data.notes).toBeDefined();
@@ -58,7 +95,6 @@ describe('S13-A06: Agent output format regression', () => {
       params: { content: sampleLesson, questionType: 'multiple_choice' },
     });
     expect(result.status).toBe('success');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = result.data as any;
     expect(Array.isArray(data.questions || data)).toBe(true);
   });
@@ -71,7 +107,6 @@ describe('S13-A06: Agent output format regression', () => {
       params: { content: sampleLesson, maxWords: 500 },
     });
     expect(result.status).toBe('success');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = result.data as any;
     // data = { text: string, summary: Summary }
     const text = data.text || '';
@@ -86,7 +121,6 @@ describe('S13-A06: Agent output format regression', () => {
       params: { topic: 'quantum error correction', input: 'quantum error correction' },
     });
     expect(result.status).toBe('success');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data = result.data as any;
     expect(data.papers || data.results).toBeDefined();
   });

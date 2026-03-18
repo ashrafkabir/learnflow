@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-export type PipelineStage = 'scraping' | 'organizing' | 'synthesizing' | 'quality_check' | 'reviewing' | 'published' | 'personal' | 'failed';
+export type PipelineStage =
+  | 'scraping'
+  | 'organizing'
+  | 'synthesizing'
+  | 'quality_check'
+  | 'reviewing'
+  | 'published'
+  | 'personal'
+  | 'failed';
 
 export interface CrawlThread {
   id: string;
@@ -67,13 +75,15 @@ export function usePipeline(pipelineId: string | null) {
 
     // First, fetch current state via GET
     fetch(`${API}/pipeline/${pipelineId}`)
-      .then(r => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data: PipelineState | null) => {
         if (!data) return;
         setState(data);
         // If already completed, don't open SSE
         if (['reviewing', 'published', 'personal', 'failed'].includes(data.stage)) {
-          setComplete(data.stage === 'reviewing' || data.stage === 'published' || data.stage === 'personal');
+          setComplete(
+            data.stage === 'reviewing' || data.stage === 'published' || data.stage === 'personal',
+          );
           return;
         }
         // Open SSE for active pipelines
@@ -84,7 +94,9 @@ export function usePipeline(pipelineId: string | null) {
           try {
             const d = JSON.parse(e.data) as PipelineState;
             setState(d);
-          } catch { /* ignore */ } // eslint-disable-line no-empty
+          } catch {
+            // ignore malformed SSE payload
+          }
         });
 
         es.addEventListener('pipeline:complete', () => {
@@ -92,20 +104,33 @@ export function usePipeline(pipelineId: string | null) {
           es.close();
         });
 
-        es.onerror = () => { es.close(); };
+        es.onerror = () => {
+          es.close();
+        };
       })
       .catch(() => {
         // Fallback: try SSE anyway
         const es = new EventSource(`${API}/pipeline/${pipelineId}/events`);
         esRef.current = es;
         es.addEventListener('pipeline:update', (e) => {
-          try { setState(JSON.parse(e.data)); } catch { /* ignore */ } // eslint-disable-line no-empty
+          try {
+            setState(JSON.parse(e.data));
+          } catch {
+            // ignore malformed SSE payload
+          }
         });
-        es.addEventListener('pipeline:complete', () => { setComplete(true); es.close(); });
-        es.onerror = () => { es.close(); };
+        es.addEventListener('pipeline:complete', () => {
+          setComplete(true);
+          es.close();
+        });
+        es.onerror = () => {
+          es.close();
+        };
       });
 
-    return () => { esRef.current?.close(); };
+    return () => {
+      esRef.current?.close();
+    };
   }, [pipelineId]);
 
   return { state, complete };
@@ -114,22 +139,25 @@ export function usePipeline(pipelineId: string | null) {
 export function useStartPipeline() {
   const [loading, setLoading] = useState(false);
 
-  const start = useCallback(async (topic: string): Promise<{ pipelineId: string; courseId: string } | null> => {
-    setLoading(true);
-    try {
-      const res = await fetch(`${API}/pipeline`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic }),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch {
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const start = useCallback(
+    async (topic: string): Promise<{ pipelineId: string; courseId: string } | null> => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API}/pipeline`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic }),
+        });
+        if (!res.ok) return null;
+        return await res.json();
+      } catch {
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   return { start, loading };
 }
@@ -144,10 +172,14 @@ export function usePipelineList() {
         const data = await res.json();
         setPipelines(data.pipelines || []);
       }
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return { pipelines, refresh };
 }

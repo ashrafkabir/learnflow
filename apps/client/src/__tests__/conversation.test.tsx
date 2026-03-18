@@ -25,7 +25,13 @@ function renderAt(path: string) {
   cleanup();
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <ThemeProvider><AppProvider><ToastProvider><App /></ToastProvider></AppProvider></ThemeProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </AppProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }
@@ -42,7 +48,9 @@ describe('Conversation screen', () => {
   it('has message input area', async () => {
     renderAt('/conversation');
     // Look for textarea or input for messages
-    const input = await screen.findByRole('textbox').catch(() => document.querySelector('textarea, input[type="text"]'));
+    const input = await screen
+      .findByRole('textbox')
+      .catch(() => document.querySelector('textarea, input[type="text"]'));
     expect(input).toBeTruthy();
   });
 
@@ -79,7 +87,9 @@ describe('Conversation screen', () => {
   it('has a scrollable message area', async () => {
     renderAt('/conversation');
     await waitFor(() => {
-      const scrollable = document.querySelector('[class*="overflow"], [class*="scroll"], [style*="overflow"]');
+      const scrollable = document.querySelector(
+        '[class*="overflow"], [class*="scroll"], [style*="overflow"]',
+      );
       expect(scrollable || document.querySelector('[data-screen="conversation"]')).toBeTruthy();
     });
   });

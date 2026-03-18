@@ -100,11 +100,16 @@ export function SubscriptionChoice() {
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{plan.name}</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
                   {plan.price}
-                  <span className="text-sm font-normal text-gray-500 dark:text-gray-300">{plan.period}</span>
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-300">
+                    {plan.period}
+                  </span>
                 </p>
                 <ul className="mt-4 space-y-2">
                   {plan.features.map((f) => (
-                    <li key={f} className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                    <li
+                      key={f}
+                      className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2"
+                    >
                       <span className="text-success">✓</span> {f}
                     </li>
                   ))}
@@ -115,7 +120,11 @@ export function SubscriptionChoice() {
         </div>
 
         <div className="flex gap-3 items-center">
-          <Button variant="secondary" onClick={() => nav('/onboarding/api-keys')} className="px-6 py-4">
+          <Button
+            variant="secondary"
+            onClick={() => nav('/onboarding/api-keys')}
+            className="px-6 py-4"
+          >
             Back
           </Button>
           <Button variant="primary" fullWidth onClick={next} className="py-4">
@@ -124,7 +133,10 @@ export function SubscriptionChoice() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 }); nav('/onboarding/first-course'); }}
+            onClick={() => {
+              dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 });
+              nav('/onboarding/first-course');
+            }}
           >
             Skip
           </Button>
@@ -133,13 +145,22 @@ export function SubscriptionChoice() {
 
       {/* Pro upgrade modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-elevated" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-elevated"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="text-center">
               <div className="text-4xl mb-3">🚀</div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Pro Coming Soon!</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                Pro Coming Soon!
+              </h2>
               <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
-                Payment integration is being finalized. Leave your email and we'll notify you when Pro is ready.
+                Payment integration is being finalized. Leave your email and we'll notify you when
+                Pro is ready.
               </p>
             </div>
             <input

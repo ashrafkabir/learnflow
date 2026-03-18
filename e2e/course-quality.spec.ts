@@ -5,7 +5,7 @@
  * Tests course generation effectiveness, material completeness, syllabus accuracy,
  * content pipeline quality, agent behavior, and spec compliance.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars, no-empty-pattern, no-useless-escape */
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { test, expect } from '@playwright/test';
 
 const SS = '/home/aifactory/onedrive-learnflow/evals/screenshots/quality';
@@ -490,7 +490,7 @@ test.describe('E. Core Agent Output Quality — Spec §4.2', () => {
     }
 
     const lessonRes = await request.get(`${API}/courses/${course.id}/lessons/${lessonRef.id}`);
-    const lesson = await lessonRes.json();
+    const _lesson = await lessonRes.json();
 
     // Call notes endpoint (if available via chat or direct API)
     const notesRes = await request.post(`${API}/chat`, {
@@ -521,7 +521,7 @@ test.describe('E. Core Agent Output Quality — Spec §4.2', () => {
       saveArtifact('exam-output.txt', content);
 
       // §4.2: MCQ + short-answer + scoring + gap analysis
-      const hasMCQ = /\b[A-D]\)|\b[a-d]\)|option|choice|multiple.choice/i.test(content);
+      const _hasMCQ = /\b[A-D]\)|\b[a-d]\)|option|choice|multiple.choice/i.test(content);
       const hasQuestion = /\?/.test(content);
       expect(hasQuestion).toBe(true);
     }

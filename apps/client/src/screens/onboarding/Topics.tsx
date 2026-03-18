@@ -63,8 +63,14 @@ export function OnboardingTopics() {
       const token = localStorage.getItem('learnflow-token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      await fetch(`${apiBase()}/api/v1/profile/goals`, { method: 'POST', headers, body: JSON.stringify({ topics: selected }) });
-    } catch { /* best effort */ }
+      await fetch(`${apiBase()}/api/v1/profile/goals`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ topics: selected }),
+      });
+    } catch {
+      /* best effort */
+    }
     nav('/onboarding/api-keys');
   };
 
@@ -130,19 +136,34 @@ export function OnboardingTopics() {
         )}
 
         {selected.length === 0 && (
-          <p className="text-xs text-gray-500 dark:text-gray-300 mb-2">Select at least one topic to continue, or skip this step.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-300 mb-2">
+            Select at least one topic to continue, or skip this step.
+          </p>
         )}
         <div className="flex gap-3 items-center">
-          <Button variant="secondary" onClick={() => nav('/onboarding/goals')} className="px-6 py-4">
+          <Button
+            variant="secondary"
+            onClick={() => nav('/onboarding/goals')}
+            className="px-6 py-4"
+          >
             Back
           </Button>
-          <Button variant="primary" fullWidth onClick={next} disabled={selected.length === 0} className="py-4">
+          <Button
+            variant="primary"
+            fullWidth
+            onClick={next}
+            disabled={selected.length === 0}
+            className="py-4"
+          >
             Continue
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => { dispatch({ type: 'SET_ONBOARDING_STEP', step: 2 }); nav('/onboarding/api-keys'); }}
+            onClick={() => {
+              dispatch({ type: 'SET_ONBOARDING_STEP', step: 2 });
+              nav('/onboarding/api-keys');
+            }}
           >
             Skip
           </Button>

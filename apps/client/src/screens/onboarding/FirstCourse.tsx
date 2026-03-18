@@ -83,8 +83,8 @@ export function FirstCourse() {
                     i === stageIdx
                       ? 'bg-accent/10 text-accent font-medium'
                       : i < stageIdx
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                      : 'text-gray-400'
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                        : 'text-gray-400'
                   }`}
                 >
                   {i < stageIdx ? '✓' : s.emoji} {s.label.replace('...', '')}

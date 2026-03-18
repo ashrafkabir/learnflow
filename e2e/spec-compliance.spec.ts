@@ -7,7 +7,7 @@
  * §9.2 Context Utilization, §10 Behavioral Adaptation & Error Handling,
  * §11.2 WebSocket Events, §12 Marketing Website, §15 Quality Gates
  */
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports, @typescript-eslint/no-unused-vars, no-empty-pattern */
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { test, expect } from '@playwright/test';
 
 const SS = '/home/aifactory/onedrive-learnflow/evals/screenshots/compliance';
@@ -550,7 +550,7 @@ test.describe('§12 Marketing Website', () => {
 
 test.describe('§15 Quality Gates', () => {
   // Spec: Unit test coverage >85% for new code
-  test('Vitest runs successfully with all tests passing', async ({}) => {
+  test('Vitest runs successfully with all tests passing', async () => {
     const { execSync } = require('child_process');
     try {
       const output = execSync(
@@ -575,7 +575,7 @@ test.describe('§15 Quality Gates', () => {
   });
 
   // Spec: No TypeScript type errors
-  test('TypeScript compiles with zero errors', async ({}) => {
+  test('TypeScript compiles with zero errors', async () => {
     const { execSync } = require('child_process');
     try {
       const output = execSync(
@@ -594,7 +594,7 @@ test.describe('§15 Quality Gates', () => {
   });
 
   // Spec: All code passes linting
-  test('ESLint passes with zero errors', async ({}) => {
+  test('ESLint passes with zero errors', async () => {
     const { execSync } = require('child_process');
     try {
       const output = execSync(

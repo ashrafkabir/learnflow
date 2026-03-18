@@ -15,19 +15,22 @@ const STEPS: TooltipStep[] = [
     target: 'create-course',
     title: 'Create a Course',
     icon: '🚀',
-    description: 'Start here! Tell the AI what you want to learn and it will generate a personalized course for you.',
+    description:
+      'Start here! Tell the AI what you want to learn and it will generate a personalized course for you.',
   },
   {
     target: 'mindmap-nav',
     title: 'Knowledge Mindmap',
     icon: '🧠',
-    description: 'Watch your knowledge grow as you learn. Your mindmap visualizes connections between topics.',
+    description:
+      'Watch your knowledge grow as you learn. Your mindmap visualizes connections between topics.',
   },
   {
     target: 'marketplace-nav',
     title: 'Course Marketplace',
     icon: '🏪',
-    description: 'Browse courses created by the community and find AI agents to enhance your learning.',
+    description:
+      'Browse courses created by the community and find AI agents to enhance your learning.',
   },
 ];
 
@@ -95,7 +98,9 @@ export function OnboardingTooltips() {
               Skip tour
             </button>
             <div className="flex gap-2">
-              <span className="text-xs text-gray-400 self-center">{step + 1} / {STEPS.length}</span>
+              <span className="text-xs text-gray-400 self-center">
+                {step + 1} / {STEPS.length}
+              </span>
               <Button variant="primary" size="sm" onClick={next}>
                 {step < STEPS.length - 1 ? 'Next' : 'Got it'}
               </Button>

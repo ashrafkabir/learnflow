@@ -38,12 +38,15 @@ test.describe('LearnFlow Learning Journey', () => {
     await page.screenshot({ path: 'evals/screenshots/06-dashboard.png' });
 
     // Type a topic and create course
-    const input = page.locator('input[placeholder*="topic"]').or(page.locator('input[placeholder*="Topic"]')).or(page.locator('input[type="text"]').first());
+    const input = page
+      .locator('input[placeholder*="topic"]')
+      .or(page.locator('input[placeholder*="Topic"]'))
+      .or(page.locator('input[type="text"]').first());
     await input.fill('Agentic AI');
-    
+
     // Click create button
     await page.click('text=Create Course');
-    
+
     // Wait for course creation (may take time due to LLM calls)
     await page.waitForURL(/\/courses\//, { timeout: 120000 });
     await expect(page.locator('[data-screen="course-view"]')).toBeVisible();
@@ -65,7 +68,7 @@ test.describe('LearnFlow Learning Journey', () => {
 
     // Click first lesson
     const lessonLink = page.locator('a[href*="/lessons/"]').or(page.locator('text=Lesson').first());
-    if (await lessonLink.count() > 0) {
+    if ((await lessonLink.count()) > 0) {
       await lessonLink.first().click();
       await page.waitForURL(/\/lessons\//);
       await expect(page.locator('[data-screen="lesson-reader"]')).toBeVisible();
@@ -74,7 +77,7 @@ test.describe('LearnFlow Learning Journey', () => {
       // Check structured elements exist
       const content = page.locator('[data-component="lesson-content"]');
       await expect(content).toBeVisible();
-      
+
       // Check for learning objectives section
       const objectives = page.locator('text=Learning Objectives');
       expect(await objectives.count()).toBeGreaterThanOrEqual(1);

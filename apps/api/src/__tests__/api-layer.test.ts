@@ -39,7 +39,11 @@ beforeAll(async () => {
   // Register a pro user
   const proRegRes = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email: `pro-api-${uid}@example.com`, password: 'Password123!', displayName: 'Pro User' });
+    .send({
+      email: `pro-api-${uid}@example.com`,
+      password: 'Password123!',
+      displayName: 'Pro User',
+    });
   const rawProToken = proRegRes.body.accessToken;
 
   // Manually create a pro token for testing

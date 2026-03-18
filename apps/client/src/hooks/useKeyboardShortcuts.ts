@@ -5,26 +5,29 @@ export function useKeyboardShortcuts() {
   const [showHelp, setShowHelp] = useState(false);
   const nav = useNavigate();
 
-  const handleKey = useCallback((e: KeyboardEvent) => {
-    const mod = e.metaKey || e.ctrlKey;
+  const handleKey = useCallback(
+    (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
 
-    // Ctrl/Cmd + K → go to conversation
-    if (mod && e.key === 'k') {
-      e.preventDefault();
-      nav('/conversation');
-    }
+      // Ctrl/Cmd + K → go to conversation
+      if (mod && e.key === 'k') {
+        e.preventDefault();
+        nav('/conversation');
+      }
 
-    // Ctrl/Cmd + / → toggle shortcuts help
-    if (mod && e.key === '/') {
-      e.preventDefault();
-      setShowHelp(prev => !prev);
-    }
+      // Ctrl/Cmd + / → toggle shortcuts help
+      if (mod && e.key === '/') {
+        e.preventDefault();
+        setShowHelp((prev) => !prev);
+      }
 
-    // Escape → close help modal
-    if (e.key === 'Escape') {
-      setShowHelp(false);
-    }
-  }, [nav]);
+      // Escape → close help modal
+      if (e.key === 'Escape') {
+        setShowHelp(false);
+      }
+    },
+    [nav],
+  );
 
   useEffect(() => {
     window.addEventListener('keydown', handleKey);

@@ -13,7 +13,10 @@ export function OnboardingProgress({ current }: { current: string }) {
   const currentIdx = STEPS.findIndex((s) => s.path === current);
 
   return (
-    <nav aria-label="Onboarding progress" className="flex items-center justify-center gap-1 py-4 mb-4">
+    <nav
+      aria-label="Onboarding progress"
+      className="flex items-center justify-center gap-1 py-4 mb-4"
+    >
       {STEPS.map((step, i) => (
         <div key={step.path} className="flex items-center gap-1">
           <div className="flex flex-col items-center">
@@ -28,14 +31,22 @@ export function OnboardingProgress({ current }: { current: string }) {
             >
               {i < currentIdx ? '✓' : i + 1}
             </div>
-            <span className={`text-[10px] mt-1 font-medium ${
-              i === currentIdx ? 'text-accent' : i < currentIdx ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-300'
-            }`}>
+            <span
+              className={`text-[10px] mt-1 font-medium ${
+                i === currentIdx
+                  ? 'text-accent'
+                  : i < currentIdx
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-gray-500 dark:text-gray-300'
+              }`}
+            >
               {step.label}
             </span>
           </div>
           {i < STEPS.length - 1 && (
-            <div className={`w-4 sm:w-8 h-0.5 mb-4 ${i < currentIdx ? 'bg-green-400' : 'bg-gray-200 dark:bg-gray-700'}`} />
+            <div
+              className={`w-4 sm:w-8 h-0.5 mb-4 ${i < currentIdx ? 'bg-green-400' : 'bg-gray-200 dark:bg-gray-700'}`}
+            />
           )}
         </div>
       ))}

@@ -10,7 +10,13 @@ interface SEOProps {
 
 const BASE_URL = 'https://learnflow.ai';
 
-export function SEO({ title, description, ogImage = '/og-image.png', path = '', jsonLd }: SEOProps) {
+export function SEO({
+  title,
+  description,
+  ogImage = '/og-image.png',
+  path = '',
+  jsonLd,
+}: SEOProps) {
   useEffect(() => {
     const fullTitle = `${title} | LearnFlow`;
     const fullUrl = `${BASE_URL}${path}`;

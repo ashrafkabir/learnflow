@@ -62,12 +62,7 @@ export function OnboardingApiKeys() {
           >
             Back
           </Button>
-          <Button
-            variant="primary"
-            onClick={next}
-            fullWidth
-            className="py-4"
-          >
+          <Button variant="primary" onClick={next} fullWidth className="py-4">
             {key ? 'Save & Continue' : 'Skip for now'}
           </Button>
         </div>

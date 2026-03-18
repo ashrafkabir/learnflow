@@ -18,14 +18,10 @@
     "passwordHash": "$2a$12$7jGMie2KpLt6e2RaItZCVOZ3Qj8xRefjdrtuQfTmTgTBTwsGs92X2",
     "role": "student",
     "tier": "free",
-    "goals": [
-      "Intellectual curiosity"
-    ],
+    "goals": ["Intellectual curiosity"],
     "preferredLanguage": "en",
     "createdAt": "2026-03-17T21:19:33.416Z",
     "updatedAt": "2026-03-17T21:22:42.836Z",
-    "topics": [
-      "data"
-    ]
+    "topics": ["data"]
   }
 ]

@@ -2,12 +2,21 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LessonSynthesis } from '../../hooks/usePipeline.js';
 
-export function SynthesisList({ lessons, courseId }: { lessons: LessonSynthesis[]; courseId?: string }) {
+export function SynthesisList({
+  lessons,
+  courseId,
+}: {
+  lessons?: LessonSynthesis[];
+  courseId?: string;
+}) {
   const nav = useNavigate();
-  if (!lessons.length) return <p className="text-gray-400 text-center py-2">Preparing...</p>;
+  const safeLessons = lessons ?? [];
+  if (!safeLessons.length) return <p className="text-gray-400 text-center py-2">Preparing...</p>;
 
-  const doneLessons = lessons.filter(l => l.status === 'done');
-  const stillGenerating = lessons.some(l => l.status === 'generating' || l.status === 'pending');
+  const doneLessons = safeLessons.filter((l) => l.status === 'done');
+  const stillGenerating = safeLessons.some(
+    (l) => l.status === 'generating' || l.status === 'pending',
+  );
 
   return (
     <div className="space-y-1.5">
@@ -20,8 +29,11 @@ export function SynthesisList({ lessons, courseId }: { lessons: LessonSynthesis[
           ▶ Start reading ({doneLessons.length} lesson{doneLessons.length > 1 ? 's' : ''} ready)
         </button>
       )}
-      {lessons.map(l => (
-        <div key={l.lessonId} className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded-lg px-2 py-1.5 border border-gray-100 dark:border-gray-700">
+      {safeLessons.map((l) => (
+        <div
+          key={l.lessonId}
+          className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded-lg px-2 py-1.5 border border-gray-100 dark:border-gray-700"
+        >
           {l.status === 'pending' && <span className="text-gray-400 text-[10px]">○</span>}
           {l.status === 'generating' && (
             <span className="inline-block w-3 h-3 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
@@ -31,7 +43,9 @@ export function SynthesisList({ lessons, courseId }: { lessons: LessonSynthesis[
           <div className="flex-1 min-w-0">
             <p className="truncate text-gray-700 dark:text-gray-300">{l.lessonTitle}</p>
             {l.status === 'done' && (
-              <p className="text-gray-400">{l.wordCount} words · {l.sourcesUsed} sources</p>
+              <p className="text-gray-400">
+                {l.wordCount} words · {l.sourcesUsed} sources
+              </p>
             )}
             {l.status === 'generating' && (
               <div className="h-1 bg-gray-200 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">

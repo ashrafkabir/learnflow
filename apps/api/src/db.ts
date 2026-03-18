@@ -166,68 +166,106 @@ sqlite.exec(`
 
 const stmts = {
   // Users
-  insertUser: sqlite.prepare(`INSERT INTO users (id, email, displayName, passwordHash, role, tier, goals, topics, experience, schedule, preferredLanguage, oauthProvider, oauthId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
-  updateUser: sqlite.prepare(`UPDATE users SET email=?, displayName=?, passwordHash=?, role=?, tier=?, goals=?, topics=?, experience=?, schedule=?, preferredLanguage=?, oauthProvider=?, oauthId=?, updatedAt=? WHERE id=?`),
+  insertUser: sqlite.prepare(
+    `INSERT INTO users (id, email, displayName, passwordHash, role, tier, goals, topics, experience, schedule, preferredLanguage, oauthProvider, oauthId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ),
+  updateUser: sqlite.prepare(
+    `UPDATE users SET email=?, displayName=?, passwordHash=?, role=?, tier=?, goals=?, topics=?, experience=?, schedule=?, preferredLanguage=?, oauthProvider=?, oauthId=?, updatedAt=? WHERE id=?`,
+  ),
   findUserById: sqlite.prepare(`SELECT * FROM users WHERE id = ?`),
   findUserByEmail: sqlite.prepare(`SELECT * FROM users WHERE email = ?`),
   findUserByOAuth: sqlite.prepare(`SELECT * FROM users WHERE oauthProvider = ? AND oauthId = ?`),
 
   // Refresh tokens
-  insertRefreshToken: sqlite.prepare(`INSERT OR REPLACE INTO refresh_tokens (token, userId, expiresAt) VALUES (?, ?, ?)`),
+  insertRefreshToken: sqlite.prepare(
+    `INSERT OR REPLACE INTO refresh_tokens (token, userId, expiresAt) VALUES (?, ?, ?)`,
+  ),
   findRefreshToken: sqlite.prepare(`SELECT * FROM refresh_tokens WHERE token = ?`),
   deleteRefreshToken: sqlite.prepare(`DELETE FROM refresh_tokens WHERE token = ?`),
 
   // API keys
-  insertApiKey: sqlite.prepare(`INSERT INTO api_keys (id, userId, provider, encryptedKey, iv, label, lastFour, active, expiresAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  insertApiKey: sqlite.prepare(
+    `INSERT INTO api_keys (id, userId, provider, encryptedKey, iv, label, lastFour, active, expiresAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ),
   getKeysByUserId: sqlite.prepare(`SELECT * FROM api_keys WHERE userId = ?`),
   findApiKeyById: sqlite.prepare(`SELECT * FROM api_keys WHERE id = ?`),
   deleteApiKey: sqlite.prepare(`DELETE FROM api_keys WHERE id = ?`),
 
   // Token usage
-  insertTokenUsage: sqlite.prepare(`INSERT INTO token_usage (userId, agentId, tokensUsed, timestamp) VALUES (?, ?, ?, ?)`),
-  getTokenUsageByAgent: sqlite.prepare(`SELECT COALESCE(SUM(tokensUsed), 0) as total FROM token_usage WHERE userId = ? AND agentId = ?`),
+  insertTokenUsage: sqlite.prepare(
+    `INSERT INTO token_usage (userId, agentId, tokensUsed, timestamp) VALUES (?, ?, ?, ?)`,
+  ),
+  getTokenUsageByAgent: sqlite.prepare(
+    `SELECT COALESCE(SUM(tokensUsed), 0) as total FROM token_usage WHERE userId = ? AND agentId = ?`,
+  ),
 
   // Courses
-  insertCourse: sqlite.prepare(`INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`),
+  insertCourse: sqlite.prepare(
+    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ),
   findCourseById: sqlite.prepare(`SELECT * FROM courses WHERE id = ?`),
   getAllCourses: sqlite.prepare(`SELECT * FROM courses`),
   deleteCourse: sqlite.prepare(`DELETE FROM courses WHERE id = ?`),
 
   // Progress
-  upsertProgress: sqlite.prepare(`INSERT OR REPLACE INTO progress (userId, lessonId, courseId, completed, completedAt) VALUES (?, ?, ?, 1, ?)`),
-  getProgressByUserCourse: sqlite.prepare(`SELECT lessonId FROM progress WHERE userId = ? AND courseId = ?`),
+  upsertProgress: sqlite.prepare(
+    `INSERT OR REPLACE INTO progress (userId, lessonId, courseId, completed, completedAt) VALUES (?, ?, ?, 1, ?)`,
+  ),
+  getProgressByUserCourse: sqlite.prepare(
+    `SELECT lessonId FROM progress WHERE userId = ? AND courseId = ?`,
+  ),
   getAllProgressByUser: sqlite.prepare(`SELECT courseId, lessonId FROM progress WHERE userId = ?`),
 
   // Pipelines
-  insertPipeline: sqlite.prepare(`INSERT OR REPLACE INTO pipelines (id, courseId, topic, stage, state, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`),
+  insertPipeline: sqlite.prepare(
+    `INSERT OR REPLACE INTO pipelines (id, courseId, topic, stage, state, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ),
   findPipelineById: sqlite.prepare(`SELECT * FROM pipelines WHERE id = ?`),
   getAllPipelines: sqlite.prepare(`SELECT * FROM pipelines`),
   updatePipeline: sqlite.prepare(`UPDATE pipelines SET stage=?, state=?, updatedAt=? WHERE id=?`),
 
   // Invoices
-  insertInvoice: sqlite.prepare(`INSERT INTO invoices (id, userId, amount, status, date) VALUES (?, ?, ?, ?, ?)`),
+  insertInvoice: sqlite.prepare(
+    `INSERT INTO invoices (id, userId, amount, status, date) VALUES (?, ?, ?, ?, ?)`,
+  ),
   getInvoicesByUser: sqlite.prepare(`SELECT * FROM invoices WHERE userId = ?`),
 
   // Mindmaps
-  upsertMindmap: sqlite.prepare(`INSERT OR REPLACE INTO mindmaps (userId, nodes, edges) VALUES (?, ?, ?)`),
+  upsertMindmap: sqlite.prepare(
+    `INSERT OR REPLACE INTO mindmaps (userId, nodes, edges) VALUES (?, ?, ?)`,
+  ),
   getMindmap: sqlite.prepare(`SELECT * FROM mindmaps WHERE userId = ?`),
 
   // Marketplace agent activation
-  activateAgent: sqlite.prepare(`INSERT OR IGNORE INTO marketplace_agents_activated (userId, agentId) VALUES (?, ?)`),
-  getActivatedAgents: sqlite.prepare(`SELECT agentId FROM marketplace_agents_activated WHERE userId = ?`),
+  activateAgent: sqlite.prepare(
+    `INSERT OR IGNORE INTO marketplace_agents_activated (userId, agentId) VALUES (?, ?)`,
+  ),
+  getActivatedAgents: sqlite.prepare(
+    `SELECT agentId FROM marketplace_agents_activated WHERE userId = ?`,
+  ),
 
   // Illustrations
-  insertIllustration: sqlite.prepare(`INSERT INTO illustrations (id, lessonId, sectionIndex, prompt, imageUrl, createdAt) VALUES (?, ?, ?, ?, ?, ?)`),
-  getIllustrationsByLesson: sqlite.prepare(`SELECT * FROM illustrations WHERE lessonId = ? ORDER BY sectionIndex, createdAt`),
+  insertIllustration: sqlite.prepare(
+    `INSERT INTO illustrations (id, lessonId, sectionIndex, prompt, imageUrl, createdAt) VALUES (?, ?, ?, ?, ?, ?)`,
+  ),
+  getIllustrationsByLesson: sqlite.prepare(
+    `SELECT * FROM illustrations WHERE lessonId = ? ORDER BY sectionIndex, createdAt`,
+  ),
   deleteIllustration: sqlite.prepare(`DELETE FROM illustrations WHERE id = ?`),
 
   // Annotations
-  insertAnnotation: sqlite.prepare(`INSERT INTO annotations (id, lessonId, selectedText, startOffset, endOffset, note, type, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`),
-  getAnnotationsByLesson: sqlite.prepare(`SELECT * FROM annotations WHERE lessonId = ? ORDER BY startOffset`),
+  insertAnnotation: sqlite.prepare(
+    `INSERT INTO annotations (id, lessonId, selectedText, startOffset, endOffset, note, type, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ),
+  getAnnotationsByLesson: sqlite.prepare(
+    `SELECT * FROM annotations WHERE lessonId = ? ORDER BY startOffset`,
+  ),
   deleteAnnotation: sqlite.prepare(`DELETE FROM annotations WHERE id = ?`),
 
   // Notes
-  upsertNote: sqlite.prepare(`INSERT OR REPLACE INTO notes (id, lessonId, userId, content, illustrations, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`),
+  upsertNote: sqlite.prepare(
+    `INSERT OR REPLACE INTO notes (id, lessonId, userId, content, illustrations, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ),
   getNoteByLessonUser: sqlite.prepare(`SELECT * FROM notes WHERE lessonId = ? AND userId = ?`),
   deleteNote: sqlite.prepare(`DELETE FROM notes WHERE id = ?`),
 };
@@ -328,8 +366,12 @@ class SqliteDb {
 
   addUser(user: DbUser): void {
     stmts.insertUser.run(
-      user.id, user.email, user.displayName, user.passwordHash,
-      user.role, user.tier,
+      user.id,
+      user.email,
+      user.displayName,
+      user.passwordHash,
+      user.role,
+      user.tier,
       JSON.stringify(user.goals || []),
       JSON.stringify(user.topics || []),
       user.experience || '',
@@ -344,8 +386,11 @@ class SqliteDb {
 
   updateUser(user: DbUser): void {
     stmts.updateUser.run(
-      user.email, user.displayName, user.passwordHash,
-      user.role, user.tier,
+      user.email,
+      user.displayName,
+      user.passwordHash,
+      user.role,
+      user.tier,
       JSON.stringify(user.goals || []),
       JSON.stringify(user.topics || []),
       user.experience || '',
@@ -360,10 +405,17 @@ class SqliteDb {
 
   addApiKey(key: DbApiKey): void {
     stmts.insertApiKey.run(
-      key.id, key.userId, key.provider, key.encryptedKey,
-      key.iv, key.label, key.lastFour, key.active ? 1 : 0,
+      key.id,
+      key.userId,
+      key.provider,
+      key.encryptedKey,
+      key.iv,
+      key.label,
+      key.lastFour,
+      key.active ? 1 : 0,
       key.expiresAt?.toISOString() || null,
-      key.createdAt.toISOString(), key.updatedAt.toISOString(),
+      key.createdAt.toISOString(),
+      key.updatedAt.toISOString(),
     );
   }
 
@@ -377,7 +429,12 @@ class SqliteDb {
   }
 
   addTokenUsage(record: TokenUsageRecord): void {
-    stmts.insertTokenUsage.run(record.userId, record.agentId, record.tokensUsed, record.timestamp.toISOString());
+    stmts.insertTokenUsage.run(
+      record.userId,
+      record.agentId,
+      record.tokensUsed,
+      record.timestamp.toISOString(),
+    );
   }
 
   getTokenUsageByAgent(userId: string, agentId: string): number {
@@ -386,7 +443,9 @@ class SqliteDb {
   }
 
   clear(): void {
-    sqlite.exec(`DELETE FROM users; DELETE FROM api_keys; DELETE FROM refresh_tokens; DELETE FROM token_usage; DELETE FROM courses; DELETE FROM progress; DELETE FROM pipelines; DELETE FROM invoices; DELETE FROM mindmaps; DELETE FROM marketplace_agents_activated;`);
+    sqlite.exec(
+      `DELETE FROM users; DELETE FROM api_keys; DELETE FROM refresh_tokens; DELETE FROM token_usage; DELETE FROM courses; DELETE FROM progress; DELETE FROM pipelines; DELETE FROM invoices; DELETE FROM mindmaps; DELETE FROM marketplace_agents_activated;`,
+    );
   }
 }
 
@@ -396,7 +455,7 @@ export const db = new SqliteDb();
 
 export const dbCourses = {
   getAll(): any[] {
-    return (stmts.getAllCourses.all() as any[]).map(row => ({
+    return (stmts.getAllCourses.all() as any[]).map((row) => ({
       ...row,
       modules: JSON.parse(row.modules || '[]'),
       progress: JSON.parse(row.progress || '{}'),
@@ -415,8 +474,11 @@ export const dbCourses = {
 
   save(course: any): void {
     stmts.insertCourse.run(
-      course.id, course.title, course.description || '',
-      course.topic || '', course.depth || 'intermediate',
+      course.id,
+      course.title,
+      course.description || '',
+      course.topic || '',
+      course.depth || 'intermediate',
       course.authorId || 'anonymous',
       JSON.stringify(course.modules || []),
       JSON.stringify(course.progress || {}),
@@ -437,12 +499,17 @@ export const dbProgress = {
   },
 
   getCompletedLessons(userId: string, courseId: string): string[] {
-    return (stmts.getProgressByUserCourse.all(userId, courseId) as any[]).map(r => r.lessonId);
+    return (stmts.getProgressByUserCourse.all(userId, courseId) as any[]).map((r) => r.lessonId);
   },
 
-  getUserStats(userId: string): { totalCoursesEnrolled: number; totalLessonsCompleted: number; totalStudyMinutes: number; currentStreak: number } {
+  getUserStats(userId: string): {
+    totalCoursesEnrolled: number;
+    totalLessonsCompleted: number;
+    totalStudyMinutes: number;
+    currentStreak: number;
+  } {
     const rows = stmts.getAllProgressByUser.all(userId) as any[];
-    const courseIds = new Set(rows.map(r => r.courseId));
+    const courseIds = new Set(rows.map((r) => r.courseId));
     const totalLessons = rows.length;
     return {
       totalCoursesEnrolled: courseIds.size,
@@ -459,20 +526,44 @@ export const dbPipelines = {
   save(p: any): void {
     const { id, courseId, topic, stage, ...rest } = p;
     const now = new Date().toISOString();
-    stmts.insertPipeline.run(id, courseId, topic, stage, JSON.stringify(rest), p.createdAt || now, now);
+    stmts.insertPipeline.run(
+      id,
+      courseId,
+      topic,
+      stage,
+      JSON.stringify(rest),
+      p.createdAt || now,
+      now,
+    );
   },
 
   getById(id: string): any | undefined {
     const row = stmts.findPipelineById.get(id) as any;
     if (!row) return undefined;
     const state = JSON.parse(row.state || '{}');
-    return { id: row.id, courseId: row.courseId, topic: row.topic, stage: row.stage, ...state, createdAt: row.createdAt, updatedAt: row.updatedAt };
+    return {
+      id: row.id,
+      courseId: row.courseId,
+      topic: row.topic,
+      stage: row.stage,
+      ...state,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    };
   },
 
   getAll(): any[] {
-    return (stmts.getAllPipelines.all() as any[]).map(row => {
+    return (stmts.getAllPipelines.all() as any[]).map((row) => {
       const state = JSON.parse(row.state || '{}');
-      return { id: row.id, courseId: row.courseId, topic: row.topic, stage: row.stage, ...state, createdAt: row.createdAt, updatedAt: row.updatedAt };
+      return {
+        id: row.id,
+        courseId: row.courseId,
+        topic: row.topic,
+        stage: row.stage,
+        ...state,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      };
     });
   },
 
@@ -515,7 +606,7 @@ export const dbMarketplace = {
   },
 
   getActivatedAgents(userId: string): string[] {
-    return (stmts.getActivatedAgents.all(userId) as any[]).map(r => r.agentId);
+    return (stmts.getActivatedAgents.all(userId) as any[]).map((r) => r.agentId);
   },
 };
 
@@ -541,7 +632,15 @@ export const dbNotes = {
     const now = new Date().toISOString();
     const id = existing?.id || `note-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const createdAt = existing?.createdAt || now;
-    stmts.upsertNote.run(id, lessonId, userId, JSON.stringify(content), JSON.stringify(illustrations), createdAt, now);
+    stmts.upsertNote.run(
+      id,
+      lessonId,
+      userId,
+      JSON.stringify(content),
+      JSON.stringify(illustrations),
+      createdAt,
+      now,
+    );
     return { id, lessonId, userId, content, illustrations, createdAt, updatedAt: now };
   },
 
@@ -573,10 +672,26 @@ export const dbAnnotations = {
   getByLesson(lessonId: string): any[] {
     return stmts.getAnnotationsByLesson.all(lessonId) as any[];
   },
-  create(lessonId: string, selectedText: string, startOffset: number, endOffset: number, note: string, type: string): any {
+  create(
+    lessonId: string,
+    selectedText: string,
+    startOffset: number,
+    endOffset: number,
+    note: string,
+    type: string,
+  ): any {
     const id = `ann-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const createdAt = new Date().toISOString();
-    stmts.insertAnnotation.run(id, lessonId, selectedText, startOffset, endOffset, note, type, createdAt);
+    stmts.insertAnnotation.run(
+      id,
+      lessonId,
+      selectedText,
+      startOffset,
+      endOffset,
+      note,
+      type,
+      createdAt,
+    );
     return { id, lessonId, selectedText, startOffset, endOffset, note, type, createdAt };
   },
   delete(id: string): void {

@@ -1,1 +1,9 @@
-{"/_not-found/page":"/_not-found","/blog/page":"/blog","/features/page":"/features","/page":"/","/download/page":"/download","/sitemap.xml/route":"/sitemap.xml","/pricing/page":"/pricing"}
+{
+  "/_not-found/page": "/_not-found",
+  "/blog/page": "/blog",
+  "/features/page": "/features",
+  "/page": "/",
+  "/download/page": "/download",
+  "/sitemap.xml/route": "/sitemap.xml",
+  "/pricing/page": "/pricing"
+}

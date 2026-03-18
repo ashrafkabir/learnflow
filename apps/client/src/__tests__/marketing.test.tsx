@@ -12,10 +12,18 @@ import { App } from '../App.js';
 // Polyfill IntersectionObserver for jsdom
 beforeEach(() => {
   globalThis.IntersectionObserver = class IntersectionObserver {
-    constructor(_cb: unknown) { /* noop */ }
-    observe() { return null; }
-    unobserve() { return null; }
-    disconnect() { return null; }
+    constructor(_cb: unknown) {
+      /* noop */
+    }
+    observe() {
+      return null;
+    }
+    unobserve() {
+      return null;
+    }
+    disconnect() {
+      return null;
+    }
   } as any;
 
   localStorage.removeItem('learnflow-token');
@@ -33,7 +41,13 @@ function renderAt(path: string) {
   cleanup();
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <ThemeProvider><AppProvider><ToastProvider><App /></ToastProvider></AppProvider></ThemeProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </AppProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }

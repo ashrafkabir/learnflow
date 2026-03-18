@@ -1,10 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import OpenAI from 'openai';
-import {
-  crawlSourcesForTopic,
-  type FirecrawlSource,
-} from '@learnflow/agents';
+import { crawlSourcesForTopic, type FirecrawlSource } from '@learnflow/agents';
 import { dbCourses, dbProgress, dbNotes, dbIllustrations, dbAnnotations } from '../db.js';
 
 const router = Router();
@@ -760,15 +757,18 @@ async function generateLessonContentWithLLM(
   crawledSources?: FirecrawlSource[],
 ): Promise<string> {
   // Build source context from crawled content
-  const sourceContext = crawledSources && crawledSources.length > 0
-    ? crawledSources.slice(0, 4).map((s, i) => 
-        `[Source ${i+1}] "${s.title}" by ${s.author || 'Unknown'} (${s.domain})\nURL: ${s.url}\nContent excerpt: ${(s.content || '').slice(0, 1500)}`
-      ).join('\n\n')
-    : '';
+  const sourceContext =
+    crawledSources && crawledSources.length > 0
+      ? crawledSources
+          .slice(0, 4)
+          .map(
+            (s, i) =>
+              `[Source ${i + 1}] "${s.title}" by ${s.author || 'Unknown'} (${s.domain})\nURL: ${s.url}\nContent excerpt: ${(s.content || '').slice(0, 1500)}`,
+          )
+          .join('\n\n')
+      : '';
 
-  const sourceRefs = crawledSources && crawledSources.length > 0
-    ? crawledSources.slice(0, 4)
-    : [];
+  const sourceRefs = crawledSources && crawledSources.length > 0 ? crawledSources.slice(0, 4) : [];
 
   const openai = getOpenAI();
   if (openai) {
@@ -788,7 +788,7 @@ Requirements:
 - Include inline citations like [1], [2] referencing the provided sources
 - Be specific and technical — avoid generic platitudes
 - Use markdown formatting with headers, bold, lists, and code blocks
-- Structure: Learning Objectives → Estimated Time → Core Content (3-4 subsections) → Key Takeaways → Sources → Next Steps`
+- Structure: Learning Objectives → Estimated Time → Core Content (3-4 subsections) → Key Takeaways → Sources → Next Steps`,
           },
           {
             role: 'user',
@@ -801,11 +801,11 @@ ${sourceContext ? `Use these real sources as the basis for your content:\n\n${so
 Format the output as markdown starting with # ${lessonTitle}
 
 End with a ## Sources section listing:
-${sourceRefs.map((s, i) => `[${i+1}] ${s.author || 'Unknown'}. "${s.title}". ${s.source || s.domain}, ${s.publishDate ? new Date(s.publishDate).getFullYear() : 2024}. ${s.url}`).join('\n') || '[1] Use your knowledge to cite relevant works.'}
+${sourceRefs.map((s, i) => `[${i + 1}] ${s.author || 'Unknown'}. "${s.title}". ${s.source || s.domain}, ${s.publishDate ? new Date(s.publishDate).getFullYear() : 2024}. ${s.url}`).join('\n') || '[1] Use your knowledge to cite relevant works.'}
 
-Then a ## Next Steps section.`
-          }
-        ]
+Then a ## Next Steps section.`,
+          },
+        ],
       });
       const content = completion.choices[0]?.message?.content;
       if (content && content.length > 200) {
@@ -817,19 +817,40 @@ Then a ## Next Steps section.`
   }
 
   // Fallback: structured template (better than before but still template-based)
-  const sources = sourceRefs.length > 0
-    ? sourceRefs.map((s) => ({
-        url: s.url,
-        author: s.author || 'Unknown',
-        publication: s.source || s.domain,
-        year: s.publishDate ? new Date(s.publishDate).getFullYear() : 2024,
-      }))
-    : [
-        { url: 'https://arxiv.org/abs/2305.10601', author: 'Wang et al.', publication: 'arXiv', year: 2023 },
-        { url: 'https://www.nature.com/articles/s41586-023-06096-3', author: 'Smith & Johnson', publication: 'Nature', year: 2023 },
-        { url: 'https://dl.acm.org/doi/10.1145/3580305', author: 'Chen et al.', publication: 'ACM Computing Surveys', year: 2024 },
-        { url: 'https://ieeexplore.ieee.org/document/10234567', author: 'Patel & Kumar', publication: 'IEEE Transactions', year: 2024 },
-      ];
+  const sources =
+    sourceRefs.length > 0
+      ? sourceRefs.map((s) => ({
+          url: s.url,
+          author: s.author || 'Unknown',
+          publication: s.source || s.domain,
+          year: s.publishDate ? new Date(s.publishDate).getFullYear() : 2024,
+        }))
+      : [
+          {
+            url: 'https://arxiv.org/abs/2305.10601',
+            author: 'Wang et al.',
+            publication: 'arXiv',
+            year: 2023,
+          },
+          {
+            url: 'https://www.nature.com/articles/s41586-023-06096-3',
+            author: 'Smith & Johnson',
+            publication: 'Nature',
+            year: 2023,
+          },
+          {
+            url: 'https://dl.acm.org/doi/10.1145/3580305',
+            author: 'Chen et al.',
+            publication: 'ACM Computing Surveys',
+            year: 2024,
+          },
+          {
+            url: 'https://ieeexplore.ieee.org/document/10234567',
+            author: 'Patel & Kumar',
+            publication: 'IEEE Transactions',
+            year: 2024,
+          },
+        ];
 
   const sel = sources.sort(() => Math.random() - 0.5).slice(0, 4);
   while (sel.length < 4) sel.push(sel[0]);
@@ -968,7 +989,9 @@ router.post('/', async (req: Request, res: Response) => {
   const _crawlStart = Date.now();
   try {
     crawledSources = await crawlSourcesForTopic(topic);
-    console.log(`[LearnFlow] crawlSourcesForTopic took ${Date.now() - _crawlStart}ms, got ${crawledSources.length} sources`);
+    console.log(
+      `[LearnFlow] crawlSourcesForTopic took ${Date.now() - _crawlStart}ms, got ${crawledSources.length} sources`,
+    );
     if (!process.env.FIRECRAWL_API_KEY) {
       console.warn(
         '[LearnFlow] FIRECRAWL_API_KEY not set — using mock sources for course generation',
@@ -1025,7 +1048,9 @@ router.post('/', async (req: Request, res: Response) => {
 
   courses.set(course.id, course);
   dbCourses.save(course);
-  console.log(`[LearnFlow] Lesson generation took ${Date.now() - _lessonStart}ms for ${topicData.modules.length} modules`);
+  console.log(
+    `[LearnFlow] Lesson generation took ${Date.now() - _lessonStart}ms for ${topicData.modules.length} modules`,
+  );
   res.status(201).json(course);
 });
 
@@ -1110,7 +1135,7 @@ router.post('/:id/lessons/:lessonId/notes', async (req: Request, res: Response) 
   let lesson: Lesson | undefined;
   if (course) {
     for (const mod of course.modules) {
-      lesson = mod.lessons.find(l => l.id === lessonId);
+      lesson = mod.lessons.find((l) => l.id === lessonId);
       if (lesson) break;
     }
   }
@@ -1137,7 +1162,11 @@ router.post('/:id/lessons/:lessonId/notes', async (req: Request, res: Response) 
           temperature: 0.5,
           max_tokens: 2000,
           messages: [
-            { role: 'system', content: 'You are an expert note-taker and study skills instructor. Generate clear, well-organized notes that help students review and retain information.' },
+            {
+              role: 'system',
+              content:
+                'You are an expert note-taker and study skills instructor. Generate clear, well-organized notes that help students review and retain information.',
+            },
             { role: 'user', content: prompt },
           ],
         });
@@ -1148,7 +1177,10 @@ router.post('/:id/lessons/:lessonId/notes', async (req: Request, res: Response) 
       }
     } catch (err) {
       console.warn('[LearnFlow] AI note generation failed:', err);
-      noteContent = { format, text: `# Notes: ${lesson?.title || 'Lesson'}\n\n_AI generation failed. Write your own notes here._` };
+      noteContent = {
+        format,
+        text: `# Notes: ${lesson?.title || 'Lesson'}\n\n_AI generation failed. Write your own notes here._`,
+      };
     }
   } else if (content) {
     noteContent = content;
@@ -1214,7 +1246,9 @@ router.post('/:id/lessons/:lessonId/notes/illustrate', async (req: Request, res:
     res.status(200).json({ illustration: { url: imageUrl, description } });
   } catch (err: any) {
     console.error('[LearnFlow] DALL-E generation failed:', err);
-    res.status(500).json({ error: 'generation_failed', message: err.message || 'Image generation failed' });
+    res
+      .status(500)
+      .json({ error: 'generation_failed', message: err.message || 'Image generation failed' });
   }
 });
 
@@ -1247,7 +1281,10 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
       n: 1,
     });
     const imageUrl = imageResponse.data?.[0]?.url;
-    if (!imageUrl) { res.status(500).json({ error: 'generation_failed' }); return; }
+    if (!imageUrl) {
+      res.status(500).json({ error: 'generation_failed' });
+      return;
+    }
     const illustration = dbIllustrations.create(lessonId, sectionIndex ?? 0, prompt, imageUrl);
     res.status(201).json({ illustration });
   } catch (err: any) {
@@ -1270,7 +1307,10 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
   const lessonId = String(req.params.lessonId);
 
   const openai = getOpenAI();
-  if (!openai) { res.status(400).json({ error: 'openai_unavailable' }); return; }
+  if (!openai) {
+    res.status(400).json({ error: 'openai_unavailable' });
+    return;
+  }
 
   // Get lesson content
   const course = dbCourses.getById(courseId);
@@ -1284,18 +1324,28 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
   }
   // Also try the lessons table
   const { sqlite } = await import('../db.js');
-  const lessonRow = (sqlite.prepare('SELECT content FROM lessons WHERE id = ?').get(lessonId) as any);
+  const lessonRow = sqlite.prepare('SELECT content FROM lessons WHERE id = ?').get(lessonId) as any;
   if (lessonRow?.content) lessonContent = lessonRow.content;
 
-  if (!lessonContent) { res.status(404).json({ error: 'lesson_not_found' }); return; }
+  if (!lessonContent) {
+    res.status(404).json({ error: 'lesson_not_found' });
+    return;
+  }
 
   try {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       response_format: { type: 'json_object' },
       messages: [
-        { role: 'system', content: 'You analyze educational content and create structured comparisons. Always return valid JSON.' },
-        { role: 'user', content: `Analyze this lesson and create a structured comparison of the key concepts discussed. If the lesson compares technologies, frameworks, approaches, or ideas, extract them. Return JSON: { "concepts": string[], "dimensions": string[], "cells": string[][] (rows=dimensions, cols=concepts), "summary": string }. If there are no comparable concepts, return { "concepts": [], "dimensions": [], "cells": [], "summary": "No comparable concepts found in this lesson." }\n\nLesson content:\n${lessonContent.slice(0, 8000)}` },
+        {
+          role: 'system',
+          content:
+            'You analyze educational content and create structured comparisons. Always return valid JSON.',
+        },
+        {
+          role: 'user',
+          content: `Analyze this lesson and create a structured comparison of the key concepts discussed. If the lesson compares technologies, frameworks, approaches, or ideas, extract them. Return JSON: { "concepts": string[], "dimensions": string[], "cells": string[][] (rows=dimensions, cols=concepts), "summary": string }. If there are no comparable concepts, return { "concepts": [], "dimensions": [], "cells": [], "summary": "No comparable concepts found in this lesson." }\n\nLesson content:\n${lessonContent.slice(0, 8000)}`,
+        },
       ],
     });
     const text = completion.choices[0]?.message?.content || '{}';
@@ -1327,9 +1377,10 @@ router.post('/:id/lessons/:lessonId/annotations', async (req: Request, res: Resp
     const openai = getOpenAI();
     if (openai) {
       try {
-        const prompt = type === 'explain'
-          ? `Explain this concept clearly and concisely for a student:\n\n"${selectedText}"`
-          : `Give a practical, real-world example of this concept:\n\n"${selectedText}"`;
+        const prompt =
+          type === 'explain'
+            ? `Explain this concept clearly and concisely for a student:\n\n"${selectedText}"`
+            : `Give a practical, real-world example of this concept:\n\n"${selectedText}"`;
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
           messages: [
@@ -1344,7 +1395,14 @@ router.post('/:id/lessons/:lessonId/annotations', async (req: Request, res: Resp
     }
   }
 
-  const annotation = dbAnnotations.create(lessonId, selectedText, startOffset ?? 0, endOffset ?? 0, finalNote, type || 'note');
+  const annotation = dbAnnotations.create(
+    lessonId,
+    selectedText,
+    startOffset ?? 0,
+    endOffset ?? 0,
+    finalNote,
+    type || 'note',
+  );
   res.status(201).json({ annotation });
 });
 

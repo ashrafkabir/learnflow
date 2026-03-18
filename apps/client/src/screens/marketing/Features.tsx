@@ -3,7 +3,10 @@ import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { motion } from 'framer-motion';
 
-const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
 const stagger = { visible: { transition: { staggerChildren: 0.15 } } };
 
 const GRADIENT_COLORS = [
@@ -20,7 +23,11 @@ const FEATURES = [
     icon: '🤖',
     title: 'AI Course Generation',
     desc: 'Enter any topic and our multi-agent pipeline researches the web, synthesizes content, and builds a structured course with modules, lessons, and citations.',
-    benefits: ['Real web sources with citations', 'Quality-gated content', 'Retry logic for comprehensive coverage'],
+    benefits: [
+      'Real web sources with citations',
+      'Quality-gated content',
+      'Retry logic for comprehensive coverage',
+    ],
   },
   {
     icon: '📝',
@@ -44,7 +51,11 @@ const FEATURES = [
     icon: '💬',
     title: 'AI Chat Assistant',
     desc: 'Have conversations with specialized AI agents. Ask questions, get research summaries, or create new courses — all through chat.',
-    benefits: ['Markdown + LaTeX rendering', 'Contextual quick-action chips', 'Source drawer with citations'],
+    benefits: [
+      'Markdown + LaTeX rendering',
+      'Contextual quick-action chips',
+      'Source drawer with citations',
+    ],
   },
   {
     icon: '🏪',
@@ -57,27 +68,47 @@ const FEATURES = [
 export function FeaturesPage() {
   return (
     <MarketingLayout>
-      <SEO title="Features" description="Explore LearnFlow's AI-powered features: course generation, smart notes, adaptive quizzes, knowledge mindmaps, and more." path="/features" />
+      <SEO
+        title="Features"
+        description="Explore LearnFlow's AI-powered features: course generation, smart notes, adaptive quizzes, knowledge mindmaps, and more."
+        path="/features"
+      />
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h1 className="text-4xl font-extrabold tracking-tight mb-4">Features</h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            A complete AI-powered learning platform with agents that research, teach, quiz, and track your progress.
+            A complete AI-powered learning platform with agents that research, teach, quiz, and
+            track your progress.
           </p>
         </div>
 
-        <motion.div className="space-y-16" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
+        <motion.div
+          className="space-y-16"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={stagger}
+        >
           {FEATURES.map((f, i) => (
-            <motion.div key={f.title} variants={fadeUp} className={`flex flex-col md:flex-row gap-8 items-center ${i % 2 === 1 ? 'md:flex-row-reverse' : ''} group`}>
+            <motion.div
+              key={f.title}
+              variants={fadeUp}
+              className={`flex flex-col md:flex-row gap-8 items-center ${i % 2 === 1 ? 'md:flex-row-reverse' : ''} group`}
+            >
               <div className="flex-1">
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${GRADIENT_COLORS[i % GRADIENT_COLORS.length]} flex items-center justify-center mb-4 shadow-elevated group-hover:scale-110 transition-transform duration-300`}>
+                <div
+                  className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${GRADIENT_COLORS[i % GRADIENT_COLORS.length]} flex items-center justify-center mb-4 shadow-elevated group-hover:scale-110 transition-transform duration-300`}
+                >
                   <span className="text-2xl filter drop-shadow-sm">{f.icon}</span>
                 </div>
                 <h2 className="text-2xl font-bold mb-3">{f.title}</h2>
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{f.desc}</p>
                 <ul className="space-y-2">
                   {f.benefits.map((b) => (
-                    <li key={b} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                    <li
+                      key={b}
+                      className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
+                    >
                       <span className="text-accent">✓</span> {b}
                     </li>
                   ))}
@@ -90,7 +121,12 @@ export function FeaturesPage() {
                 <span className="text-7xl drop-shadow-sm">{f.icon}</span>
                 <div className="flex flex-wrap justify-center gap-2">
                   {f.benefits.slice(0, 3).map((b, j) => (
-                    <span key={j} className="text-[10px] px-2.5 py-1 rounded-full bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 font-medium shadow-card border border-gray-200/50 dark:border-gray-600/50">{b}</span>
+                    <span
+                      key={j}
+                      className="text-[10px] px-2.5 py-1 rounded-full bg-white/80 dark:bg-gray-700/80 text-gray-700 dark:text-gray-300 font-medium shadow-card border border-gray-200/50 dark:border-gray-600/50"
+                    >
+                      {b}
+                    </span>
                   ))}
                 </div>
               </div>
@@ -98,16 +134,42 @@ export function FeaturesPage() {
           ))}
         </motion.div>
         {/* How It Works */}
-        <motion.div className="mt-24 mb-24" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+        <motion.div
+          className="mt-24 mb-24"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeUp}
+        >
           <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { step: '1', icon: '💬', title: 'Tell Us What to Learn', desc: 'Enter any topic or paste a URL. Our AI agents begin researching from real web sources — academic papers, docs, tutorials, and more.' },
-              { step: '2', icon: '⚙️', title: 'AI Builds Your Course', desc: 'Our multi-agent pipeline organizes sources, deduplicates content, checks quality, and synthesizes structured lessons with citations.' },
-              { step: '3', icon: '🚀', title: 'Learn & Master', desc: 'Study at your pace with interactive lessons, adaptive quizzes, smart notes, and a knowledge mindmap that tracks your mastery.' },
+              {
+                step: '1',
+                icon: '💬',
+                title: 'Tell Us What to Learn',
+                desc: 'Enter any topic or paste a URL. Our AI agents begin researching from real web sources — academic papers, docs, tutorials, and more.',
+              },
+              {
+                step: '2',
+                icon: '⚙️',
+                title: 'AI Builds Your Course',
+                desc: 'Our multi-agent pipeline organizes sources, deduplicates content, checks quality, and synthesizes structured lessons with citations.',
+              },
+              {
+                step: '3',
+                icon: '🚀',
+                title: 'Learn & Master',
+                desc: 'Study at your pace with interactive lessons, adaptive quizzes, smart notes, and a knowledge mindmap that tracks your mastery.',
+              },
             ].map((s) => (
-              <div key={s.step} className="text-center p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors relative">
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-accent text-white text-sm font-bold flex items-center justify-center shadow-card">{s.step}</div>
+              <div
+                key={s.step}
+                className="text-center p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors relative"
+              >
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-accent text-white text-sm font-bold flex items-center justify-center shadow-card">
+                  {s.step}
+                </div>
                 <span className="text-4xl block mb-4 mt-2">{s.icon}</span>
                 <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{s.desc}</p>
@@ -117,28 +179,78 @@ export function FeaturesPage() {
         </motion.div>
 
         {/* Comparison Table */}
-        <motion.div className="mb-24" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+        <motion.div
+          className="mb-24"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeUp}
+        >
           <h2 className="text-3xl font-bold text-center mb-10">How LearnFlow Compares</h2>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Feature</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+                    Feature
+                  </th>
                   <th className="py-3 px-4 font-bold text-accent">LearnFlow</th>
-                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">ChatGPT</th>
-                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Coursera</th>
-                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Duolingo</th>
+                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+                    ChatGPT
+                  </th>
+                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+                    Coursera
+                  </th>
+                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">
+                    Duolingo
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {[
-                  { feature: 'AI Course Generation', lf: true, gpt: false, coursera: false, duo: false },
-                  { feature: 'Real Source Citations', lf: true, gpt: false, coursera: true, duo: false },
+                  {
+                    feature: 'AI Course Generation',
+                    lf: true,
+                    gpt: false,
+                    coursera: false,
+                    duo: false,
+                  },
+                  {
+                    feature: 'Real Source Citations',
+                    lf: true,
+                    gpt: false,
+                    coursera: true,
+                    duo: false,
+                  },
                   { feature: 'Adaptive Quizzes', lf: true, gpt: false, coursera: false, duo: true },
-                  { feature: 'Knowledge Mindmap', lf: true, gpt: false, coursera: false, duo: false },
-                  { feature: 'Multi-Agent System', lf: true, gpt: false, coursera: false, duo: false },
-                  { feature: 'BYOAI / Own Keys', lf: true, gpt: false, coursera: false, duo: false },
-                  { feature: 'Offline Support (PWA)', lf: true, gpt: false, coursera: true, duo: true },
+                  {
+                    feature: 'Knowledge Mindmap',
+                    lf: true,
+                    gpt: false,
+                    coursera: false,
+                    duo: false,
+                  },
+                  {
+                    feature: 'Multi-Agent System',
+                    lf: true,
+                    gpt: false,
+                    coursera: false,
+                    duo: false,
+                  },
+                  {
+                    feature: 'BYOAI / Own Keys',
+                    lf: true,
+                    gpt: false,
+                    coursera: false,
+                    duo: false,
+                  },
+                  {
+                    feature: 'Offline Support (PWA)',
+                    lf: true,
+                    gpt: false,
+                    coursera: true,
+                    duo: true,
+                  },
                   { feature: 'Open Source', lf: true, gpt: false, coursera: false, duo: false },
                 ].map((row) => (
                   <tr key={row.feature}>
@@ -155,16 +267,41 @@ export function FeaturesPage() {
         </motion.div>
 
         {/* Testimonials */}
-        <motion.div className="mb-24" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+        <motion.div
+          className="mb-24"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeUp}
+        >
           <h2 className="text-3xl font-bold text-center mb-10">What Learners Say</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { quote: 'LearnFlow built me a better ML course than I found anywhere online — with real citations I could verify.', name: 'Sarah K.', role: 'Data Scientist' },
-              { quote: 'The mindmap feature changed how I study. I can see exactly where my knowledge gaps are.', name: 'James M.', role: 'CS Student' },
-              { quote: 'Finally a learning tool that respects my privacy. BYOAI is brilliant.', name: 'Priya L.', role: 'Software Engineer' },
+              {
+                quote:
+                  'LearnFlow built me a better ML course than I found anywhere online — with real citations I could verify.',
+                name: 'Sarah K.',
+                role: 'Data Scientist',
+              },
+              {
+                quote:
+                  'The mindmap feature changed how I study. I can see exactly where my knowledge gaps are.',
+                name: 'James M.',
+                role: 'CS Student',
+              },
+              {
+                quote: 'Finally a learning tool that respects my privacy. BYOAI is brilliant.',
+                name: 'Priya L.',
+                role: 'Software Engineer',
+              },
             ].map((t) => (
-              <div key={t.name} className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800">
-                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4 italic">"{t.quote}"</p>
+              <div
+                key={t.name}
+                className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800"
+              >
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4 italic">
+                  "{t.quote}"
+                </p>
                 <p className="text-sm font-semibold">{t.name}</p>
                 <p className="text-xs text-gray-500">{t.role}</p>
               </div>
@@ -173,10 +310,22 @@ export function FeaturesPage() {
         </motion.div>
 
         {/* CTA */}
-        <motion.div className="text-center py-16 rounded-2xl bg-gradient-to-r from-accent/10 to-purple-500/10 border border-accent/20" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+        <motion.div
+          className="text-center py-16 rounded-2xl bg-gradient-to-r from-accent/10 to-purple-500/10 border border-accent/20"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={fadeUp}
+        >
           <h2 className="text-3xl font-bold mb-4">Ready to Transform How You Learn?</h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-lg mx-auto">Start with a free account. No credit card required. Build your first AI-generated course in minutes.</p>
-          <a href="/register" className="inline-flex items-center gap-2 bg-accent text-white font-semibold px-8 py-3 rounded-xl hover:bg-accent-dark transition-colors shadow-card">
+          <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-lg mx-auto">
+            Start with a free account. No credit card required. Build your first AI-generated course
+            in minutes.
+          </p>
+          <a
+            href="/register"
+            className="inline-flex items-center gap-2 bg-accent text-white font-semibold px-8 py-3 rounded-xl hover:bg-accent-dark transition-colors shadow-card"
+          >
             ✨ Get Started Free
           </a>
         </motion.div>

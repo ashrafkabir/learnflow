@@ -5,10 +5,7 @@ import { authRouter } from '../auth.js';
 import { db } from '../db.js';
 import { subscriptionRouter } from '../routes/subscription.js';
 import { authMiddleware } from '../middleware.js';
-import {
-  UpdateAgent,
-  MockWebSearchProvider,
-} from '@learnflow/agents';
+import { UpdateAgent, MockWebSearchProvider } from '@learnflow/agents';
 
 function createTestApp() {
   const app = express();

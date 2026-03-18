@@ -19,7 +19,8 @@ export const BLOG_POSTS: BlogPost[] = [
   {
     id: 'introducing-learnflow',
     title: 'Introducing LearnFlow',
-    excerpt: 'Meet LearnFlow — an AI-powered learning platform that builds personalized courses from the real web using multi-agent AI systems.',
+    excerpt:
+      'Meet LearnFlow — an AI-powered learning platform that builds personalized courses from the real web using multi-agent AI systems.',
     date: '2025-03-15',
     author: 'LearnFlow Team',
     readTime: '6 min read',
@@ -64,7 +65,8 @@ Try it today at [learnflow.app](https://learnflow.app).
   {
     id: 'how-ai-agents-build-courses',
     title: 'How AI Agents Build Your Courses',
-    excerpt: 'A deep dive into the multi-agent pipeline that transforms a topic into a full structured course with real citations.',
+    excerpt:
+      'A deep dive into the multi-agent pipeline that transforms a topic into a full structured course with real citations.',
     date: '2025-03-10',
     author: 'LearnFlow Team',
     readTime: '8 min read',
@@ -133,7 +135,8 @@ The result: a university-quality course generated in under a minute.
   {
     id: 'byoai-bring-your-own-keys',
     title: 'BYOAI: Why We Let You Bring Your Own Keys',
-    excerpt: 'Privacy, cost control, and freedom of choice. Here\'s why LearnFlow uses a Bring Your Own API Key model.',
+    excerpt:
+      "Privacy, cost control, and freedom of choice. Here's why LearnFlow uses a Bring Your Own API Key model.",
     date: '2025-03-05',
     author: 'LearnFlow Team',
     readTime: '5 min read',
@@ -193,7 +196,8 @@ We believe the future of AI apps is transparency. You should know what model is 
   {
     id: 'ai-learning-revolution',
     title: 'The AI Learning Revolution: How Agents Are Changing Education',
-    excerpt: 'Multi-agent AI systems are transforming how we learn. From content generation to adaptive quizzes, discover how LearnFlow uses AI agents to create personalized learning experiences.',
+    excerpt:
+      'Multi-agent AI systems are transforming how we learn. From content generation to adaptive quizzes, discover how LearnFlow uses AI agents to create personalized learning experiences.',
     date: '2025-02-28',
     author: 'LearnFlow Team',
     readTime: '8 min read',
@@ -240,7 +244,8 @@ The future of learning isn't watching videos. It's having a team of AI agents th
   {
     id: 'cornell-notes-guide',
     title: 'The Complete Guide to Cornell Notes with AI',
-    excerpt: 'Cornell notes are one of the most effective study methods. Learn how to combine this proven technique with AI-generated cue questions and summaries for maximum retention.',
+    excerpt:
+      'Cornell notes are one of the most effective study methods. Learn how to combine this proven technique with AI-generated cue questions and summaries for maximum retention.',
     date: '2025-02-20',
     author: 'LearnFlow Team',
     readTime: '6 min read',
@@ -266,7 +271,7 @@ LearnFlow's Notes Agent takes this to the next level with automatic cue question
 ];
 
 export function getBlogPost(id: string): BlogPost | undefined {
-  return BLOG_POSTS.find(p => p.id === id);
+  return BLOG_POSTS.find((p) => p.id === id);
 }
 
 export function getAllBlogPosts(): BlogPost[] {

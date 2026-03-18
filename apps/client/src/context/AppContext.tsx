@@ -127,14 +127,31 @@ type Action =
   | { type: 'SET_SUBSCRIPTION'; tier: SubscriptionTier }
   | { type: 'ADD_NOTIFICATION'; notification: Notification }
   | { type: 'DISMISS_NOTIFICATION'; id: string }
-  | { type: 'SET_ANALYTICS'; streak: number; totalStudyMinutes: number; totalLessonsCompleted: number };
+  | {
+      type: 'SET_ANALYTICS';
+      streak: number;
+      totalStudyMinutes: number;
+      totalLessonsCompleted: number;
+    };
 
 const initialState: AppState = {
-  onboarding: { completed: localStorage.getItem('learnflow-onboarding-complete') === 'true', step: 0, goals: [], topics: [], experience: '' },
+  onboarding: {
+    completed: localStorage.getItem('learnflow-onboarding-complete') === 'true',
+    step: 0,
+    goals: [],
+    topics: [],
+    experience: '',
+  },
   courses: [],
   activeCourse: null,
   activeLesson: null,
-  chat: (() => { try { return JSON.parse(localStorage.getItem('learnflow-chat') || '[]'); } catch { return []; } })(),
+  chat: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('learnflow-chat') || '[]');
+    } catch {
+      return [];
+    }
+  })(),
   notes: null,
   quiz: null,
   profile: {
@@ -169,13 +186,17 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, onboarding: { ...state.onboarding, completed: true } };
     case 'SET_COURSES': {
       // Deduplicate by ID
-      const map = new Map(action.courses.map(c => [c.id, c]));
+      const map = new Map(action.courses.map((c) => [c.id, c]));
       return { ...state, courses: Array.from(map.values()) };
     }
     case 'ADD_COURSE': {
       // Avoid duplicates
-      const exists = state.courses.find(c => c.id === action.course.id);
-      if (exists) return { ...state, courses: state.courses.map(c => c.id === action.course.id ? action.course : c) };
+      const exists = state.courses.find((c) => c.id === action.course.id);
+      if (exists)
+        return {
+          ...state,
+          courses: state.courses.map((c) => (c.id === action.course.id ? action.course : c)),
+        };
       return { ...state, courses: [...state.courses, action.course] };
     }
     case 'SET_ACTIVE_COURSE':
@@ -184,11 +205,19 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, activeLesson: action.lesson };
     case 'ADD_CHAT_MESSAGE': {
       const newChat = [...state.chat, action.message];
-      try { localStorage.setItem('learnflow-chat', JSON.stringify(newChat.slice(-100))); } catch { /* quota */ }
+      try {
+        localStorage.setItem('learnflow-chat', JSON.stringify(newChat.slice(-100)));
+      } catch {
+        /* quota */
+      }
       return { ...state, chat: newChat };
     }
     case 'SET_CHAT':
-      try { localStorage.setItem('learnflow-chat', JSON.stringify(action.messages.slice(-100))); } catch { /* quota */ }
+      try {
+        localStorage.setItem('learnflow-chat', JSON.stringify(action.messages.slice(-100)));
+      } catch {
+        /* quota */
+      }
       return { ...state, chat: action.messages };
     case 'SET_NOTES':
       return { ...state, notes: action.notes };
@@ -221,7 +250,7 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, notifications: notifs };
     }
     case 'DISMISS_NOTIFICATION': {
-      const notifs2 = state.notifications.filter(n => n.id !== action.id);
+      const notifs2 = state.notifications.filter((n) => n.id !== action.id);
       localStorage.setItem('learnflow-notifications', JSON.stringify(notifs2));
       return { ...state, notifications: notifs2 };
     }
@@ -262,7 +291,9 @@ async function refreshTokenIfNeeded(): Promise<void> {
         localStorage.removeItem('learnflow-user');
       }
     }
-  } catch { /* ignore decode errors */ }
+  } catch {
+    /* ignore decode errors */
+  }
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -273,7 +304,11 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 export function apiBase(): string {
-  if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
+  if (
+    typeof window !== 'undefined' &&
+    window.location?.origin &&
+    window.location.origin !== 'null'
+  ) {
     return '';
   }
   return 'http://localhost:3002';
@@ -378,42 +413,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const sendChat = useCallback(async (message: string) => {
-    const userMsg: ChatMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content: message,
-      timestamp: new Date().toISOString(),
-    };
-    dispatch({ type: 'ADD_CHAT_MESSAGE', message: userMsg });
-    dispatch({ type: 'SET_LOADING', key: 'chat', value: true });
-    try {
-      // Pass current lesson/course context and conversation history
-      const recentHistory = state.chat.slice(-10).map(m => ({ role: m.role, content: m.content }));
-      const payload: Record<string, unknown> = { message, history: recentHistory };
-      if (state.activeCourse) payload.courseId = state.activeCourse.id;
-      if (state.activeLesson) payload.lessonId = state.activeLesson.id;
-      
-      const data = await apiPost('/chat', payload);
-      const assistantMsg: ChatMessage = {
-        id: `msg-${Date.now()}-reply`,
-        role: 'assistant',
-        content: data.reply || data.message || 'I can help you with that!',
+  const sendChat = useCallback(
+    async (message: string) => {
+      const userMsg: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        content: message,
         timestamp: new Date().toISOString(),
       };
-      dispatch({ type: 'ADD_CHAT_MESSAGE', message: assistantMsg });
-    } catch {
-      const errMsg: ChatMessage = {
-        id: `msg-${Date.now()}-err`,
-        role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
-        timestamp: new Date().toISOString(),
-      };
-      dispatch({ type: 'ADD_CHAT_MESSAGE', message: errMsg });
-    } finally {
-      dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
-    }
-  }, [state.activeCourse, state.activeLesson]);
+      dispatch({ type: 'ADD_CHAT_MESSAGE', message: userMsg });
+      dispatch({ type: 'SET_LOADING', key: 'chat', value: true });
+      try {
+        // Pass current lesson/course context and conversation history
+        const recentHistory = state.chat
+          .slice(-10)
+          .map((m) => ({ role: m.role, content: m.content }));
+        const payload: Record<string, unknown> = { message, history: recentHistory };
+        if (state.activeCourse) payload.courseId = state.activeCourse.id;
+        if (state.activeLesson) payload.lessonId = state.activeLesson.id;
+
+        const data = await apiPost('/chat', payload);
+        const assistantMsg: ChatMessage = {
+          id: `msg-${Date.now()}-reply`,
+          role: 'assistant',
+          content: data.reply || data.message || 'I can help you with that!',
+          timestamp: new Date().toISOString(),
+        };
+        dispatch({ type: 'ADD_CHAT_MESSAGE', message: assistantMsg });
+      } catch {
+        const errMsg: ChatMessage = {
+          id: `msg-${Date.now()}-err`,
+          role: 'assistant',
+          content: 'Sorry, something went wrong. Please try again.',
+          timestamp: new Date().toISOString(),
+        };
+        dispatch({ type: 'ADD_CHAT_MESSAGE', message: errMsg });
+      } finally {
+        dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
+      }
+    },
+    [state.activeCourse, state.activeLesson],
+  );
 
   const generateNotes = useCallback(async (lessonId: string, format: string): Promise<Notes> => {
     dispatch({ type: 'SET_LOADING', key: 'notes', value: true });

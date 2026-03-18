@@ -48,7 +48,10 @@ export function LoginScreen() {
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Sign in to LearnFlow</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4"
+        >
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-700 dark:text-red-400">
               {error}
@@ -56,11 +59,13 @@ export function LoginScreen() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email
+            </label>
             <input
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
               placeholder="you@example.com"
@@ -68,12 +73,14 @@ export function LoginScreen() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="••••••••"
@@ -101,13 +108,7 @@ export function LoginScreen() {
             </button>
           </div>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            variant="primary"
-            size="large"
-            fullWidth
-          >
+          <Button type="submit" disabled={loading} variant="primary" size="large" fullWidth>
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
 
@@ -152,12 +153,16 @@ export function LoginScreen() {
 
         <p className="text-center text-sm text-gray-600 dark:text-gray-300 mt-3">
           Don't have an account?{' '}
-          <Link to="/register" className="text-accent font-medium hover:underline">Sign up</Link>
+          <Link to="/register" className="text-accent font-medium hover:underline">
+            Sign up
+          </Link>
         </p>
 
         {import.meta.env.DEV && (
           <p className="text-center text-sm text-gray-500 dark:text-gray-300 mt-2">
-            <Link to="/dashboard" className="hover:underline opacity-50">Skip (dev mode) →</Link>
+            <Link to="/dashboard" className="hover:underline opacity-50">
+              Skip (dev mode) →
+            </Link>
           </p>
         )}
       </div>

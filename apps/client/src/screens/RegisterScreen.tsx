@@ -46,10 +46,15 @@ export function RegisterScreen() {
             <span className="text-2xl">🧠</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create your account</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Start learning with LearnFlow</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+            Start learning with LearnFlow
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4"
+        >
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-3 text-sm text-red-700 dark:text-red-400">
               {error}
@@ -57,11 +62,13 @@ export function RegisterScreen() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Name
+            </label>
             <input
               type="text"
               value={displayName}
-              onChange={e => setDisplayName(e.target.value)}
+              onChange={(e) => setDisplayName(e.target.value)}
               required
               className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
               placeholder="Your name"
@@ -69,11 +76,13 @@ export function RegisterScreen() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Email
+            </label>
             <input
               type="email"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
               placeholder="you@example.com"
@@ -81,12 +90,14 @@ export function RegisterScreen() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Password
+            </label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={8}
                 className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
@@ -105,13 +116,7 @@ export function RegisterScreen() {
             </div>
           </div>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            variant="primary"
-            size="large"
-            fullWidth
-          >
+          <Button type="submit" disabled={loading} variant="primary" size="large" fullWidth>
             {loading ? 'Creating account...' : 'Create Account'}
           </Button>
 
@@ -156,7 +161,9 @@ export function RegisterScreen() {
 
         <p className="text-center text-sm text-gray-600 dark:text-gray-300 mt-3">
           Already have an account?{' '}
-          <Link to="/login" className="text-accent font-medium hover:underline">Sign in</Link>
+          <Link to="/login" className="text-accent font-medium hover:underline">
+            Sign in
+          </Link>
         </p>
       </div>
     </section>

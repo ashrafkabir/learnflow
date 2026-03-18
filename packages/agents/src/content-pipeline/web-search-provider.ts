@@ -7,9 +7,17 @@
  */
 
 // Re-export compatible types (shared across providers)
-export type { FirecrawlSource, FirecrawlSearchResult, FirecrawlConfig } from './firecrawl-provider.js';
+export type {
+  FirecrawlSource,
+  FirecrawlSearchResult,
+  FirecrawlConfig,
+} from './firecrawl-provider.js';
 
-import type { FirecrawlSource, FirecrawlSearchResult, FirecrawlConfig } from './firecrawl-provider.js';
+import type {
+  FirecrawlSource,
+  FirecrawlSearchResult,
+  FirecrawlConfig,
+} from './firecrawl-provider.js';
 
 import {
   scoreCredibility,
@@ -80,7 +88,10 @@ function uniqueByUrl<T extends { url: string }>(arr: T[]): T[] {
   return out;
 }
 
-function toSourcesFromSearchResults(results: FirecrawlSearchResult[], topic: string): FirecrawlSource[] {
+function toSourcesFromSearchResults(
+  results: FirecrawlSearchResult[],
+  topic: string,
+): FirecrawlSource[] {
   return results.map((r) => {
     const content = r.markdown || r.description || '';
     const domain = extractDomain(r.url);
@@ -100,7 +111,10 @@ function toSourcesFromSearchResults(results: FirecrawlSearchResult[], topic: str
   });
 }
 
-async function multiSourceSearch(query: string, perSourceLimit = 5): Promise<FirecrawlSearchResult[]> {
+async function multiSourceSearch(
+  query: string,
+  perSourceLimit = 5,
+): Promise<FirecrawlSearchResult[]> {
   const half = Math.max(3, Math.floor(perSourceLimit / 2));
   const results = await Promise.all([
     wikipediaSearch(query, perSourceLimit),
@@ -317,6 +331,8 @@ export async function searchForLesson(
     return sb - sa;
   });
 
-  console.log(`[WebSearch] Lesson "${lessonTitle}" — scraped sources: ${scraped.length}, total: ${merged.length}`);
+  console.log(
+    `[WebSearch] Lesson "${lessonTitle}" — scraped sources: ${scraped.length}, total: ${merged.length}`,
+  );
   return merged.slice(0, 6);
 }

@@ -122,28 +122,28 @@ export const shadows = {
 
 /** Dark mode overrides — Spec §5.3 */
 export const darkColors = {
-  bg: colors.background.dark,        // #020617
-  surface: colors.surface.dark,       // #0F172A
-  surfaceHover: colors.neutral[700],  // #334155
-  text: colors.primary.dark,          // #F8FAFC
+  bg: colors.background.dark, // #020617
+  surface: colors.surface.dark, // #0F172A
+  surfaceHover: colors.neutral[700], // #334155
+  text: colors.primary.dark, // #F8FAFC
   textSecondary: colors.neutral[400], // #94A3B8
-  border: colors.neutral[700],        // #334155
-  accent: colors.accent.dark,         // #60A5FA
-  success: colors.success.dark,       // #4ADE80
-  warning: colors.warning.dark,       // #FCD34D
-  error: colors.error.dark,           // #F87171
+  border: colors.neutral[700], // #334155
+  accent: colors.accent.dark, // #60A5FA
+  success: colors.success.dark, // #4ADE80
+  warning: colors.warning.dark, // #FCD34D
+  error: colors.error.dark, // #F87171
 } as const;
 
 /** Light mode defaults — Spec §5.3 */
 export const lightColors = {
-  bg: colors.background.light,        // #F8FAFC
-  surface: colors.surface.light,      // #FFFFFF
-  surfaceHover: colors.neutral[100],  // #F1F5F9
-  text: colors.primary.light,         // #1A1A2E
+  bg: colors.background.light, // #F8FAFC
+  surface: colors.surface.light, // #FFFFFF
+  surfaceHover: colors.neutral[100], // #F1F5F9
+  text: colors.primary.light, // #1A1A2E
   textSecondary: colors.neutral[500], // #64748B
-  border: colors.neutral[200],        // #E2E8F0
-  accent: colors.accent.light,        // #2563EB
-  success: colors.success.light,      // #16A34A
-  warning: colors.warning.light,      // #F59E0B
-  error: colors.error.light,          // #DC2626
+  border: colors.neutral[200], // #E2E8F0
+  accent: colors.accent.light, // #2563EB
+  success: colors.success.light, // #16A34A
+  warning: colors.warning.light, // #F59E0B
+  error: colors.error.light, // #DC2626
 } as const;

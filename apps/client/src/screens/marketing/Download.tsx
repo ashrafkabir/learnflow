@@ -4,14 +4,41 @@ import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
 import { motion } from 'framer-motion';
 
-const fadeUp = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } } };
+const fadeUp = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+};
 
 const PLATFORMS = [
-  { icon: '🍎', name: 'macOS', key: 'mac', req: 'Requires macOS 12 or later', formats: ['Universal (.dmg)', 'Apple Silicon (.dmg)'] },
-  { icon: '🪟', name: 'Windows', key: 'windows', req: 'Requires Windows 10 or later', formats: ['Installer (.exe)', 'Portable (.zip)'] },
-  { icon: '🐧', name: 'Linux', key: 'linux', req: 'Ubuntu 20.04+, Fedora 36+', formats: ['AppImage', '.deb package', '.rpm package'] },
+  {
+    icon: '🍎',
+    name: 'macOS',
+    key: 'mac',
+    req: 'Requires macOS 12 or later',
+    formats: ['Universal (.dmg)', 'Apple Silicon (.dmg)'],
+  },
+  {
+    icon: '🪟',
+    name: 'Windows',
+    key: 'windows',
+    req: 'Requires Windows 10 or later',
+    formats: ['Installer (.exe)', 'Portable (.zip)'],
+  },
+  {
+    icon: '🐧',
+    name: 'Linux',
+    key: 'linux',
+    req: 'Ubuntu 20.04+, Fedora 36+',
+    formats: ['AppImage', '.deb package', '.rpm package'],
+  },
   { icon: '📱', name: 'iOS', key: 'ios', req: 'Requires iOS 16 or later', formats: ['App Store'] },
-  { icon: '🤖', name: 'Android', key: 'android', req: 'Requires Android 12 or later', formats: ['Google Play', 'APK download'] },
+  {
+    icon: '🤖',
+    name: 'Android',
+    key: 'android',
+    req: 'Requires Android 12 or later',
+    formats: ['Google Play', 'APK download'],
+  },
 ];
 
 function detectOS(): string {
@@ -37,20 +64,38 @@ export function DownloadPage() {
 
   return (
     <MarketingLayout>
-      <SEO title="Download" description="Download LearnFlow on macOS, Windows, Linux, iOS, and Android. Learn anywhere, anytime." path="/download" />
+      <SEO
+        title="Download"
+        description="Download LearnFlow on macOS, Windows, Linux, iOS, and Android. Learn anywhere, anytime."
+        path="/download"
+      />
       <section className="max-w-4xl mx-auto px-6 py-20">
-        <motion.div className="text-center mb-12" initial="hidden" animate="visible" variants={fadeUp}>
+        <motion.div
+          className="text-center mb-12"
+          initial="hidden"
+          animate="visible"
+          variants={fadeUp}
+        >
           <h1 className="text-4xl font-extrabold tracking-tight mb-4">Download LearnFlow</h1>
-          <p className="text-lg text-gray-500 dark:text-gray-300">Available on all major platforms. Learn anywhere, anytime.</p>
+          <p className="text-lg text-gray-500 dark:text-gray-300">
+            Available on all major platforms. Learn anywhere, anytime.
+          </p>
         </motion.div>
 
         {/* Recommended platform CTA */}
         {recommendedPlatform && (
-          <motion.div className="mb-10 text-center" initial="hidden" animate="visible" variants={fadeUp}>
+          <motion.div
+            className="mb-10 text-center"
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+          >
             <Button variant="primary" size="large">
               Download for {recommendedPlatform.name}
             </Button>
-            <p className="text-xs text-gray-500 dark:text-gray-300 mt-2">Auto-detected based on your device</p>
+            <p className="text-xs text-gray-500 dark:text-gray-300 mt-2">
+              Auto-detected based on your device
+            </p>
           </motion.div>
         )}
 
@@ -78,7 +123,12 @@ export function DownloadPage() {
               <p className="text-xs text-gray-500 dark:text-gray-300 mb-4">{p.req}</p>
               <div className="space-y-2">
                 {p.formats.map((f) => (
-                  <Button key={f} variant={p.key === recommended ? 'primary' : 'secondary'} fullWidth size="sm">
+                  <Button
+                    key={f}
+                    variant={p.key === recommended ? 'primary' : 'secondary'}
+                    fullWidth
+                    size="sm"
+                  >
                     {f}
                   </Button>
                 ))}
@@ -89,8 +139,13 @@ export function DownloadPage() {
 
         <div className="text-center p-8 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
           <h3 className="font-bold text-lg mb-2">Or use the web version</h3>
-          <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">No download required. Works in any modern browser.</p>
-          <a href="/register" className="inline-block px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent-dark transition-colors">
+          <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
+            No download required. Works in any modern browser.
+          </p>
+          <a
+            href="/register"
+            className="inline-block px-6 py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent-dark transition-colors"
+          >
             Open Web App
           </a>
         </div>

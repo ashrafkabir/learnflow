@@ -1,5 +1,7 @@
 # Build Log — Iteration 17
+
 ## Date: 2025-07-19
+
 ## Focus: Conversation mindmap, landing contrast, accessibility, button fixes
 
 ### Tasks Completed
@@ -35,10 +37,12 @@
 12. **✅ Mobile Touch Targets** — Added `@media (pointer: coarse)` rule in index.css ensuring 44px min-height on all interactive elements.
 
 ### Test Results
+
 - TypeScript: 0 errors
 - Vitest: 262 tests passed, 16 suites, 0 failures
 
 ### Files Modified
+
 - `screens/Conversation.tsx` — MindmapPanel, source/mindmap toggles, `<main>` landmark
 - `screens/marketing/Home.tsx` — Contrast fix
 - `screens/marketplace/CourseDetail.tsx` — Button migration

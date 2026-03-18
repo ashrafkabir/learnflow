@@ -52,9 +52,16 @@ export function Dashboard() {
     (async () => {
       try {
         const data = await apiGet('/analytics');
-        dispatch({ type: 'SET_ANALYTICS', streak: data.currentStreak || 0, totalStudyMinutes: data.totalStudyMinutes || 0, totalLessonsCompleted: data.totalLessonsCompleted || 0 });
+        dispatch({
+          type: 'SET_ANALYTICS',
+          streak: data.currentStreak || 0,
+          totalStudyMinutes: data.totalStudyMinutes || 0,
+          totalLessonsCompleted: data.totalLessonsCompleted || 0,
+        });
         if (data.weeklyProgress) setWeeklyData(data.weeklyProgress);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
   }, []);
 
@@ -66,13 +73,19 @@ export function Dashboard() {
         if (data.courses && data.courses.length > 0) {
           const fullCourses = await Promise.all(
             data.courses.map(async (c: { id: string }) => {
-              try { return await apiGet(`/courses/${c.id}`); } catch { return null; }
-            })
+              try {
+                return await apiGet(`/courses/${c.id}`);
+              } catch {
+                return null;
+              }
+            }),
           );
           const valid = fullCourses.filter(Boolean);
           if (valid.length > 0) dispatch({ type: 'SET_COURSES', courses: valid });
         }
-      } catch { /* ignore */ } finally {
+      } catch {
+        /* ignore */
+      } finally {
         setInitialLoading(false);
       }
     })();
@@ -95,10 +108,14 @@ export function Dashboard() {
               try {
                 const course = await apiGet(`/courses/${c.id}`);
                 dispatch({ type: 'ADD_COURSE', course });
-              } catch { /* ignore */ }
+              } catch {
+                /* ignore */
+              }
             }
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
       };
       fetchNewCourse();
     }
@@ -147,13 +164,28 @@ export function Dashboard() {
             </h1>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={toggleDarkMode} aria-label="Toggle dark mode">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleDarkMode}
+              aria-label="Toggle dark mode"
+            >
               {themeMode === 'dark' ? '☀️' : '🌙'}
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => nav('/conversation')} aria-label="Chat">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => nav('/conversation')}
+              aria-label="Chat"
+            >
               💬
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => nav('/settings')} aria-label="Settings">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => nav('/settings')}
+              aria-label="Settings"
+            >
               ⚙️
             </Button>
           </div>
@@ -165,535 +197,688 @@ export function Dashboard() {
         {initialLoading ? (
           <SkeletonDashboard />
         ) : (
-        <>
-        {/* Hero CTA */}
-        {todaysLessons.length > 0 ? (
-          <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-6 sm:p-8 text-white shadow-card">
-            <p className="text-sm font-medium opacity-80 mb-1">Continue Learning</p>
-            <h2 className="text-xl sm:text-2xl font-bold mb-1">{todaysLessons[0].lessonTitle}</h2>
-            <p className="text-sm opacity-75 mb-4">
-              {todaysLessons[0].courseTitle} · {todaysLessons[0].estimatedTime} min
-            </p>
-            <Button
-              onClick={() => nav(`/courses/${todaysLessons[0].courseId}/lessons/${todaysLessons[0].lessonId}`)}
-              variant="secondary"
-              className="bg-white text-accent hover:bg-white/90 border-0 shadow-card"
-            >
-              Resume →
-            </Button>
-          </div>
-        ) : state.courses.length === 0 ? (
-          <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-6 sm:p-8 text-white shadow-card">
-            <h2 className="text-xl sm:text-2xl font-bold mb-2">Start Your Learning Journey</h2>
-            <p className="text-sm opacity-80 mb-4">
-              Enter any topic and our AI agents will build a personalized course for you in minutes.
-            </p>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {['Agentic AI', 'Rust Programming', 'Quantum Computing'].map((t) => (
+          <>
+            {/* Hero CTA */}
+            {todaysLessons.length > 0 ? (
+              <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-6 sm:p-8 text-white shadow-card">
+                <p className="text-sm font-medium opacity-80 mb-1">Continue Learning</p>
+                <h2 className="text-xl sm:text-2xl font-bold mb-1">
+                  {todaysLessons[0].lessonTitle}
+                </h2>
+                <p className="text-sm opacity-75 mb-4">
+                  {todaysLessons[0].courseTitle} · {todaysLessons[0].estimatedTime} min
+                </p>
                 <Button
-                  key={t}
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setNewTopic(t)}
-                  className="text-white bg-white/20 hover:bg-white/30 border-0"
+                  onClick={() =>
+                    nav(
+                      `/courses/${todaysLessons[0].courseId}/lessons/${todaysLessons[0].lessonId}`,
+                    )
+                  }
+                  variant="secondary"
+                  className="bg-white text-accent hover:bg-white/90 border-0 shadow-card"
                 >
-                  {t}
+                  Resume →
                 </Button>
-              ))}
-            </div>
-            <Button
-              onClick={() => {
-                const el = document.querySelector<HTMLInputElement>('input[placeholder*="Enter a topic"]');
-                el?.focus();
-              }}
-              variant="secondary"
-              className="bg-white text-accent hover:bg-white/90 border-0 shadow-card"
-            >
-              Create Your First Course
-            </Button>
-          </div>
-        ) : null}
-
-        {/* Streak & Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div
-            data-component="streak-tracker"
-            aria-label="Learning streak"
-            className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-4 text-white card stat-animate"
-          >
-            <p className="text-sm font-medium opacity-90">Streak</p>
-            <p className="text-3xl font-bold"><span className="flame-flicker">🔥</span> {state.streak}</p>
-            <p className="text-xs opacity-75 mt-1">days in a row</p>
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-1">
-            <p className="text-sm text-gray-600 dark:text-gray-300">Courses</p>
-            <p className="text-3xl font-bold text-gray-900 dark:text-white">
-              {state.courses.length}
-            </p>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">active</p>
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-2">
-            <p className="text-sm text-gray-600 dark:text-gray-300">Completed</p>
-            <p className="text-3xl font-bold text-success">{state.completedLessons.size}</p>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">lessons</p>
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-3">
-            <p className="text-sm text-gray-600 dark:text-gray-300">Today</p>
-            <p className="text-3xl font-bold text-accent">0/3</p>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">daily goal</p>
-          </div>
-        </div>
-
-        {/* Review Queue */}
-        {state.completedLessons.size > 0 && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5 card">
-            <div className="flex items-center gap-2 mb-3">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Review Queue</h2>
-              <span className="bg-accent/10 text-accent text-xs font-bold px-2 py-0.5 rounded-full">
-                {Math.min(state.completedLessons.size, 3)} due
-              </span>
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">Spaced repetition keeps knowledge fresh. Review these lessons today.</p>
-            <div className="space-y-2">
-              {state.courses.slice(0, 2).flatMap(c =>
-                (c.modules || []).flatMap(m => m.lessons || []).filter((l: {id: string; title: string}) => state.completedLessons.has(l.id)).slice(0, 2).map((l: {id: string; title: string}) => (
-                  <Button
-                    key={l.id}
-                    variant="ghost"
-                    fullWidth
-                    onClick={() => { window.location.href = `/courses/${c.id}/lessons/${l.id}`; }}
-                    className="justify-start text-left px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30"
-                  >
-                    <span className="font-medium text-gray-900 dark:text-white">🔄 {l.title}</span>
-                    <span className="text-gray-600 dark:text-gray-300 ml-2">— Review due</span>
-                  </Button>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Weekly Progress Chart */}
-        {weeklyData.length > 0 && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">This Week</h2>
-            {(() => {
-              const maxMin = Math.max(...weeklyData.map(d => d.minutes), 1);
-              const hasData = weeklyData.some(d => d.minutes > 0);
-              if (!hasData) return (
-                <div className="text-center py-6">
-                  <div className="flex items-end justify-center gap-2 h-20 mb-4 opacity-20">
-                    {['M','T','W','T','F','S','S'].map((d, i) => (
-                      <div key={d+i} className="flex-1 max-w-8">
-                        <div className="bg-gray-300 dark:bg-gray-600 rounded-t-md" style={{ height: `${20 + Math.random() * 40}px` }} />
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">No activity yet this week</p>
-                  {todaysLessons.length > 0 ? (
+              </div>
+            ) : state.courses.length === 0 ? (
+              <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-6 sm:p-8 text-white shadow-card">
+                <h2 className="text-xl sm:text-2xl font-bold mb-2">Start Your Learning Journey</h2>
+                <p className="text-sm opacity-80 mb-4">
+                  Enter any topic and our AI agents will build a personalized course for you in
+                  minutes.
+                </p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {['Agentic AI', 'Rust Programming', 'Quantum Computing'].map((t) => (
                     <Button
+                      key={t}
                       variant="ghost"
-                      onClick={() => nav(`/courses/${todaysLessons[0].courseId}/lessons/${todaysLessons[0].lessonId}`)}
-                      className="text-accent"
+                      size="sm"
+                      onClick={() => setNewTopic(t)}
+                      className="text-white bg-white/20 hover:bg-white/30 border-0"
                     >
-                      Complete your first lesson to see activity here →
+                      {t}
                     </Button>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      onClick={() => { const el = document.querySelector<HTMLInputElement>('input[placeholder*="Enter a topic"]'); el?.focus(); }}
-                      className="text-accent"
-                    >
-                      Create a course to get started →
-                    </Button>
-                  )}
-                </div>
-              );
-              return (
-                <div className="flex items-end gap-2 h-32">
-                  {weeklyData.map((d) => (
-                    <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                      <span className="text-[10px] text-gray-600 dark:text-gray-300">{d.minutes > 0 ? `${d.minutes}m` : ''}</span>
-                      <div className="w-full flex flex-col justify-end" style={{ height: '80px' }}>
-                        <div
-                          className="w-full bg-accent/80 rounded-t-md transition-all duration-500"
-                          style={{ height: `${Math.max((d.minutes / maxMin) * 100, d.minutes > 0 ? 8 : 0)}%` }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">{d.day}</span>
-                    </div>
                   ))}
                 </div>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* Today's Lessons */}
-        {todaysLessons.length > 0 && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-              📅 Today's Lessons
-            </h2>
-            <div className="space-y-2">
-              {todaysLessons.map((tl, i) => (
                 <Button
-                  key={tl.lessonId}
-                  variant="ghost"
-                  fullWidth
-                  onClick={() => nav(`/courses/${tl.courseId}/lessons/${tl.lessonId}`)}
-                  className="justify-start text-left gap-3 p-3 h-auto"
-                >
-                  <span className="w-8 h-8 rounded-full bg-accent/10 text-accent font-bold text-sm flex items-center justify-center">
-                    {i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {tl.lessonTitle}
-                    </p>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
-                      {tl.courseTitle} · {tl.estimatedTime} min
-                    </p>
-                  </div>
-                  <span className="text-gray-300 dark:text-gray-600">→</span>
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* New Course */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-            Start Learning Something New
-          </h2>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              value={newTopic}
-              onChange={(e) => setNewTopic(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()}
-              placeholder="Enter a topic (e.g., Agentic AI, Rust, Quantum Computing)..."
-              className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
-            />
-            <Button
-              onClick={handleCreateCourse}
-              disabled={creating || pipelineLoading || !newTopic.trim()}
-              variant="primary"
-              size="large"
-              className="w-full sm:w-auto whitespace-nowrap"
-            >
-              {creating || pipelineLoading ? '⏳ Starting...' : '✨ Create Course'}
-            </Button>
-          </div>
-        </div>
-
-        {/* Active Pipeline with Live indicator */}
-        {activePipelineState && activePipelineState.stage !== 'reviewing' && activePipelineState.stage !== 'published' && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-sky-200 dark:border-sky-800 shadow-card p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
-              </span>
-              <span className="text-xs font-medium text-green-600 dark:text-green-400">Live — real-time updates</span>
-            </div>
-            <PipelineView
-              state={activePipelineState}
-              onViewCourse={(courseId) => {
-                setActivePipelineId(null);
-                nav(`/courses/${courseId}`);
-              }}
-            />
-          </div>
-        )}
-
-        {/* WIP Pipelines */}
-        {pipelineList.filter(p => p.id !== activePipelineId && !['reviewing', 'published', 'personal'].includes(p.stage)).length > 0 && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-              🔄 Courses In Progress
-            </h2>
-            <div className="space-y-2">
-              {pipelineList
-                .filter(p => p.id !== activePipelineId && !['reviewing', 'published', 'personal'].includes(p.stage))
-                .map(p => (
-                  <Button
-                    key={p.id}
-                    variant="ghost"
-                    fullWidth
-                    onClick={() => nav(`/pipeline/${p.id}`)}
-                    className="justify-start text-left gap-3 p-3 h-auto"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center">
-                      <span className="text-lg">
-                        {p.stage === 'scraping' ? '🔍' : p.stage === 'organizing' ? '📊' : p.stage === 'synthesizing' ? '🤖' : p.stage === 'quality_check' ? '✅' : '📝'}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {p.courseTitle || p.topic}
-                      </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-300 capitalize">{p.stage.replace('_', ' ')} · {p.progress}%</p>
-                    </div>
-                    <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-sky-400 rounded-full transition-all" style={{ width: `${p.progress}%` }} />
-                    </div>
-                  </Button>
-                ))}
-            </div>
-          </div>
-        )}
-
-        {/* Notifications Feed */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5" aria-live="polite">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              🔔 Notifications
-              {state.notifications.filter(n => !n.read).length > 0 && (
-                <span className="ml-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">
-                  {state.notifications.filter(n => !n.read).length}
-                </span>
-              )}
-            </h2>
-          </div>
-          {state.notifications.length === 0 && state.courses.length === 0 ? (
-            <p className="text-sm text-gray-600 dark:text-gray-300 text-center py-4">
-              No notifications yet. Create a course to get started!
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {state.notifications.slice(0, 5).map((n) => (
-                <div key={n.id} className="flex items-center gap-3 p-2 text-sm group">
-                  <span>{n.type === 'agent' ? '🤖' : n.type === 'progress' ? '📈' : '💡'}</span>
-                  <span className="flex-1 text-gray-600 dark:text-gray-300">{n.message}</span>
-                  <span className="text-xs text-gray-300">{new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => dispatch({ type: 'DISMISS_NOTIFICATION', id: n.id })}
-                    className="text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100"
-                  >
-                    ✕
-                  </Button>
-                </div>
-              ))}
-              {state.courses.length > 0 && (
-                <div className="flex items-center gap-3 p-2 text-sm">
-                  <span className="text-blue-500">📚</span>
-                  <span className="text-gray-600 dark:text-gray-300">
-                    You have {state.courses.length} active course{state.courses.length !== 1 ? 's' : ''}. Keep up the momentum!
-                  </span>
-                </div>
-              )}
-              {state.completedLessons.size > 0 && (
-                <div className="flex items-center gap-3 p-2 text-sm">
-                  <span className="text-green-500">🎉</span>
-                  <span className="text-gray-600 dark:text-gray-300">
-                    {state.completedLessons.size} lesson{state.completedLessons.size !== 1 ? 's' : ''} completed. Great progress!
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center gap-3 p-2 text-sm">
-                <span className="text-orange-500">🔥</span>
-                <span className="text-gray-700 dark:text-gray-300">
-                  {state.streak === 0
-                    ? 'Start your streak! Complete a lesson today.'
-                    : state.streak === 1
-                      ? '1-day streak! Keep it going!'
-                      : `${state.streak}-day streak! Don't break the chain.`}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Courses with Progress Rings */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your Courses</h2>
-            {state.courses.length >= 3 && (
-              <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full font-medium">
-                PRO — Unlimited Courses
-              </span>
-            )}
-          </div>
-          {state.courses.length === 0 ? (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-dashed border-accent/30 dark:border-accent/20 shadow-card p-12 text-center">
-              <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-accent/10 flex items-center justify-center">
-                <span className="text-4xl">🚀</span>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Create your first course</h3>
-              <p className="text-gray-600 dark:text-gray-300 text-sm max-w-md mx-auto mb-6">
-                Enter any topic above and our AI agents will research, organize, and build a personalized course for you in minutes.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                <Button
-                  variant="primary"
-                  size="large"
                   onClick={() => {
-                    const el = document.querySelector<HTMLInputElement>('input[placeholder*="Enter a topic"]');
+                    const el = document.querySelector<HTMLInputElement>(
+                      'input[placeholder*="Enter a topic"]',
+                    );
                     el?.focus();
                   }}
-                >
-                  Start Learning Now
-                </Button>
-                <Button
                   variant="secondary"
-                  onClick={() => nav('/marketplace/courses')}
+                  className="bg-white text-accent hover:bg-white/90 border-0 shadow-card"
                 >
-                  Browse Marketplace
+                  Create Your First Course
                 </Button>
               </div>
-              <div className="mt-6 flex flex-wrap gap-2 justify-center">
-                {['Agentic AI', 'Rust Programming', 'Quantum Computing', 'Machine Learning'].map((topic) => (
-                  <Button
-                    key={topic}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setNewTopic(topic)}
-                    className="rounded-full border border-gray-200 dark:border-gray-700"
+            ) : null}
+
+            {/* Streak & Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div
+                data-component="streak-tracker"
+                aria-label="Learning streak"
+                className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-4 text-white card stat-animate"
+              >
+                <p className="text-sm font-medium opacity-90">Streak</p>
+                <p className="text-3xl font-bold">
+                  <span className="flame-flicker">🔥</span> {state.streak}
+                </p>
+                <p className="text-xs opacity-75 mt-1">days in a row</p>
+              </div>
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-1">
+                <p className="text-sm text-gray-600 dark:text-gray-300">Courses</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {state.courses.length}
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">active</p>
+              </div>
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-2">
+                <p className="text-sm text-gray-600 dark:text-gray-300">Completed</p>
+                <p className="text-3xl font-bold text-success">{state.completedLessons.size}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">lessons</p>
+              </div>
+              <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-3">
+                <p className="text-sm text-gray-600 dark:text-gray-300">Today</p>
+                <p className="text-3xl font-bold text-accent">0/3</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">daily goal</p>
+              </div>
+            </div>
+
+            {/* Review Queue */}
+            {state.completedLessons.size > 0 && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5 card">
+                <div className="flex items-center gap-2 mb-3">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Review Queue
+                  </h2>
+                  <span className="bg-accent/10 text-accent text-xs font-bold px-2 py-0.5 rounded-full">
+                    {Math.min(state.completedLessons.size, 3)} due
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                  Spaced repetition keeps knowledge fresh. Review these lessons today.
+                </p>
+                <div className="space-y-2">
+                  {state.courses.slice(0, 2).flatMap((c) =>
+                    (c.modules || [])
+                      .flatMap((m) => m.lessons || [])
+                      .filter((l: { id: string; title: string }) =>
+                        state.completedLessons.has(l.id),
+                      )
+                      .slice(0, 2)
+                      .map((l: { id: string; title: string }) => (
+                        <Button
+                          key={l.id}
+                          variant="ghost"
+                          fullWidth
+                          onClick={() => {
+                            window.location.href = `/courses/${c.id}/lessons/${l.id}`;
+                          }}
+                          className="justify-start text-left px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30"
+                        >
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            🔄 {l.title}
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-300 ml-2">
+                            — Review due
+                          </span>
+                        </Button>
+                      )),
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Weekly Progress Chart */}
+            {weeklyData.length > 0 && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  This Week
+                </h2>
+                {(() => {
+                  const maxMin = Math.max(...weeklyData.map((d) => d.minutes), 1);
+                  const hasData = weeklyData.some((d) => d.minutes > 0);
+                  if (!hasData)
+                    return (
+                      <div className="text-center py-6">
+                        <div className="flex items-end justify-center gap-2 h-20 mb-4 opacity-20">
+                          {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                            <div key={d + i} className="flex-1 max-w-8">
+                              <div
+                                className="bg-gray-300 dark:bg-gray-600 rounded-t-md"
+                                style={{ height: `${20 + Math.random() * 40}px` }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                          No activity yet this week
+                        </p>
+                        {todaysLessons.length > 0 ? (
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              nav(
+                                `/courses/${todaysLessons[0].courseId}/lessons/${todaysLessons[0].lessonId}`,
+                              )
+                            }
+                            className="text-accent"
+                          >
+                            Complete your first lesson to see activity here →
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              const el = document.querySelector<HTMLInputElement>(
+                                'input[placeholder*="Enter a topic"]',
+                              );
+                              el?.focus();
+                            }}
+                            className="text-accent"
+                          >
+                            Create a course to get started →
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  return (
+                    <div className="flex items-end gap-2 h-32">
+                      {weeklyData.map((d) => (
+                        <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                          <span className="text-[10px] text-gray-600 dark:text-gray-300">
+                            {d.minutes > 0 ? `${d.minutes}m` : ''}
+                          </span>
+                          <div
+                            className="w-full flex flex-col justify-end"
+                            style={{ height: '80px' }}
+                          >
+                            <div
+                              className="w-full bg-accent/80 rounded-t-md transition-all duration-500"
+                              style={{
+                                height: `${Math.max((d.minutes / maxMin) * 100, d.minutes > 0 ? 8 : 0)}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">
+                            {d.day}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
+            {/* Today's Lessons */}
+            {todaysLessons.length > 0 && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  📅 Today's Lessons
+                </h2>
+                <div className="space-y-2">
+                  {todaysLessons.map((tl, i) => (
+                    <Button
+                      key={tl.lessonId}
+                      variant="ghost"
+                      fullWidth
+                      onClick={() => nav(`/courses/${tl.courseId}/lessons/${tl.lessonId}`)}
+                      className="justify-start text-left gap-3 p-3 h-auto"
+                    >
+                      <span className="w-8 h-8 rounded-full bg-accent/10 text-accent font-bold text-sm flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {tl.lessonTitle}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
+                          {tl.courseTitle} · {tl.estimatedTime} min
+                        </p>
+                      </div>
+                      <span className="text-gray-300 dark:text-gray-600">→</span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* New Course */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                Start Learning Something New
+              </h2>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  value={newTopic}
+                  onChange={(e) => setNewTopic(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()}
+                  placeholder="Enter a topic (e.g., Agentic AI, Rust, Quantum Computing)..."
+                  className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-all"
+                />
+                <Button
+                  onClick={handleCreateCourse}
+                  disabled={creating || pipelineLoading || !newTopic.trim()}
+                  variant="primary"
+                  size="large"
+                  className="w-full sm:w-auto whitespace-nowrap"
+                >
+                  {creating || pipelineLoading ? '⏳ Starting...' : '✨ Create Course'}
+                </Button>
+              </div>
+            </div>
+
+            {/* Active Pipeline with Live indicator */}
+            {activePipelineState &&
+              activePipelineState.stage !== 'reviewing' &&
+              activePipelineState.stage !== 'published' && (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-sky-200 dark:border-sky-800 shadow-card p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                    </span>
+                    <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                      Live — real-time updates
+                    </span>
+                  </div>
+                  <PipelineView
+                    state={activePipelineState}
+                    onViewCourse={(courseId) => {
+                      setActivePipelineId(null);
+                      nav(`/courses/${courseId}`);
+                    }}
+                  />
+                </div>
+              )}
+
+            {/* WIP Pipelines */}
+            {pipelineList.filter(
+              (p) =>
+                p.id !== activePipelineId &&
+                !['reviewing', 'published', 'personal'].includes(p.stage),
+            ).length > 0 && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+                  🔄 Courses In Progress
+                </h2>
+                <div className="space-y-2">
+                  {pipelineList
+                    .filter(
+                      (p) =>
+                        p.id !== activePipelineId &&
+                        !['reviewing', 'published', 'personal'].includes(p.stage),
+                    )
+                    .map((p) => (
+                      <Button
+                        key={p.id}
+                        variant="ghost"
+                        fullWidth
+                        onClick={() => nav(`/pipeline/${p.id}`)}
+                        className="justify-start text-left gap-3 p-3 h-auto"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center">
+                          <span className="text-lg">
+                            {p.stage === 'scraping'
+                              ? '🔍'
+                              : p.stage === 'organizing'
+                                ? '📊'
+                                : p.stage === 'synthesizing'
+                                  ? '🤖'
+                                  : p.stage === 'quality_check'
+                                    ? '✅'
+                                    : '📝'}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {p.courseTitle || p.topic}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 capitalize">
+                            {p.stage.replace('_', ' ')} · {p.progress}%
+                          </p>
+                        </div>
+                        <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-sky-400 rounded-full transition-all"
+                            style={{ width: `${p.progress}%` }}
+                          />
+                        </div>
+                      </Button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Notifications Feed */}
+            <div
+              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5"
+              aria-live="polite"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  🔔 Notifications
+                  {state.notifications.filter((n) => !n.read).length > 0 && (
+                    <span className="ml-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">
+                      {state.notifications.filter((n) => !n.read).length}
+                    </span>
+                  )}
+                </h2>
+              </div>
+              {state.notifications.length === 0 && state.courses.length === 0 ? (
+                <p className="text-sm text-gray-600 dark:text-gray-300 text-center py-4">
+                  No notifications yet. Create a course to get started!
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {state.notifications.slice(0, 5).map((n) => (
+                    <div key={n.id} className="flex items-center gap-3 p-2 text-sm group">
+                      <span>{n.type === 'agent' ? '🤖' : n.type === 'progress' ? '📈' : '💡'}</span>
+                      <span className="flex-1 text-gray-600 dark:text-gray-300">{n.message}</span>
+                      <span className="text-xs text-gray-300">
+                        {new Date(n.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => dispatch({ type: 'DISMISS_NOTIFICATION', id: n.id })}
+                        className="text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                  {state.courses.length > 0 && (
+                    <div className="flex items-center gap-3 p-2 text-sm">
+                      <span className="text-blue-500">📚</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        You have {state.courses.length} active course
+                        {state.courses.length !== 1 ? 's' : ''}. Keep up the momentum!
+                      </span>
+                    </div>
+                  )}
+                  {state.completedLessons.size > 0 && (
+                    <div className="flex items-center gap-3 p-2 text-sm">
+                      <span className="text-green-500">🎉</span>
+                      <span className="text-gray-600 dark:text-gray-300">
+                        {state.completedLessons.size} lesson
+                        {state.completedLessons.size !== 1 ? 's' : ''} completed. Great progress!
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-3 p-2 text-sm">
+                    <span className="text-orange-500">🔥</span>
+                    <span className="text-gray-700 dark:text-gray-300">
+                      {state.streak === 0
+                        ? 'Start your streak! Complete a lesson today.'
+                        : state.streak === 1
+                          ? '1-day streak! Keep it going!'
+                          : `${state.streak}-day streak! Don't break the chain.`}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Courses with Progress Rings */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Your Courses
+                </h2>
+                {state.courses.length >= 3 && (
+                  <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-1 rounded-full font-medium">
+                    PRO — Unlimited Courses
+                  </span>
+                )}
+              </div>
+              {state.courses.length === 0 ? (
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-dashed border-accent/30 dark:border-accent/20 shadow-card p-12 text-center">
+                  <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-accent/10 flex items-center justify-center">
+                    <span className="text-4xl">🚀</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    Create your first course
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm max-w-md mx-auto mb-6">
+                    Enter any topic above and our AI agents will research, organize, and build a
+                    personalized course for you in minutes.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+                    <Button
+                      variant="primary"
+                      size="large"
+                      onClick={() => {
+                        const el = document.querySelector<HTMLInputElement>(
+                          'input[placeholder*="Enter a topic"]',
+                        );
+                        el?.focus();
+                      }}
+                    >
+                      Start Learning Now
+                    </Button>
+                    <Button variant="secondary" onClick={() => nav('/marketplace/courses')}>
+                      Browse Marketplace
+                    </Button>
+                  </div>
+                  <div className="mt-6 flex flex-wrap gap-2 justify-center">
+                    {[
+                      'Agentic AI',
+                      'Rust Programming',
+                      'Quantum Computing',
+                      'Machine Learning',
+                    ].map((topic) => (
+                      <Button
+                        key={topic}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setNewTopic(topic)}
+                        className="rounded-full border border-gray-200 dark:border-gray-700"
+                      >
+                        {topic}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  data-component="course-carousel"
+                  aria-label="Your courses"
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                >
+                  {state.courses.map((course) => {
+                    const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
+                    const completed = course.modules.reduce(
+                      (s, m) =>
+                        s + m.lessons.filter((l) => state.completedLessons.has(l.id)).length,
+                      0,
+                    );
+                    const pct = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
+                    return (
+                      <div
+                        key={course.id}
+                        role="article"
+                        aria-label={course.title}
+                        onClick={() => {
+                          dispatch({ type: 'SET_ACTIVE_COURSE', course });
+                          nav(`/courses/${course.id}`);
+                        }}
+                        className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card hover:shadow-card-hover p-5 cursor-pointer hover:border-accent dark:hover:border-accent transition-all group"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <h3
+                            className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-accent transition-colors line-clamp-2 flex-1"
+                            title={course.title}
+                          >
+                            {course.title}
+                          </h3>
+                          <ProgressRing
+                            percent={pct}
+                            size={44}
+                            stroke={3}
+                            className="ml-3 flex-shrink-0"
+                          />
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                          {course.description}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
+                          <span>
+                            {completed}/{totalLessons} lessons
+                          </span>
+                          <span className="font-medium text-accent bg-accent/10 px-2 py-1 rounded-full">
+                            {course.depth}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Knowledge Map Preview — Spec §5.2.2 */}
+            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                  🗺️ Knowledge Map
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => nav('/mindmap')}>
+                  Explore →
+                </Button>
+              </div>
+              {state.courses.length > 0 ? (
+                <div className="relative h-32 bg-gradient-to-br from-accent/5 via-purple-50/50 to-blue-50/50 dark:from-accent/10 dark:via-gray-800/50 dark:to-gray-800/50 rounded-xl overflow-hidden flex items-center justify-center">
+                  <svg
+                    viewBox="0 0 200 100"
+                    className="w-full h-full opacity-60"
+                    aria-hidden="true"
                   >
-                    {topic}
-                  </Button>
+                    <circle
+                      cx="100"
+                      cy="50"
+                      r="12"
+                      fill="currentColor"
+                      className="text-accent"
+                      opacity="0.8"
+                    />
+                    {state.courses.slice(0, 5).map((c: any, i: number) => {
+                      const angle =
+                        (i / Math.min(state.courses.length, 5)) * Math.PI * 2 - Math.PI / 2;
+                      const x = 100 + Math.cos(angle) * 45;
+                      const y = 50 + Math.sin(angle) * 30;
+                      return (
+                        <g key={c.id}>
+                          <line
+                            x1="100"
+                            y1="50"
+                            x2={x}
+                            y2={y}
+                            stroke="currentColor"
+                            className="text-gray-300 dark:text-gray-600"
+                            strokeWidth="1"
+                          />
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="6"
+                            fill="currentColor"
+                            className="text-accent"
+                            opacity="0.5"
+                          />
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  <p className="absolute bottom-2 text-xs text-gray-500 dark:text-gray-300">
+                    {state.courses.length} topics mapped
+                  </p>
+                </div>
+              ) : (
+                <div className="h-32 bg-gray-50 dark:bg-gray-800/50 rounded-xl flex items-center justify-center">
+                  <p className="text-sm text-gray-400">
+                    Start a course to build your knowledge map
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Mindmap Overview Preview — Spec §5.2.2 */}
+            <div
+              onClick={() => nav('/mindmap')}
+              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5 cursor-pointer hover:border-accent/50 transition-colors"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  🗺️ Knowledge Mindmap
+                </h2>
+                <span className="text-xs text-accent font-medium">View Full Map →</span>
+              </div>
+              <div className="flex items-center justify-center gap-6 py-4">
+                {/* Mini mindmap teaser nodes */}
+                {[
+                  {
+                    label: state.courses[0]?.title || 'Machine Learning',
+                    color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                  },
+                  {
+                    label: state.courses[1]?.title || 'Data Structures',
+                    color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+                  },
+                  {
+                    label: state.courses[2]?.title || 'Web Development',
+                    color:
+                      'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+                  },
+                ].map((node, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1">
+                    <div
+                      className={`w-14 h-14 rounded-full ${node.color} flex items-center justify-center text-lg font-bold`}
+                    >
+                      {node.label.charAt(0)}
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[80px] truncate text-center">
+                      {node.label}
+                    </span>
+                    {i < 2 && <div className="hidden sm:block absolute" />}
+                  </div>
                 ))}
               </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                Explore your interactive knowledge graph — see mastery levels and connections across
+                all topics.
+              </p>
             </div>
-          ) : (
-            <div
-              data-component="course-carousel"
-              aria-label="Your courses"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-            >
-              {state.courses.map((course) => {
-                const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
-                const completed = course.modules.reduce(
-                  (s, m) => s + m.lessons.filter((l) => state.completedLessons.has(l.id)).length,
-                  0,
-                );
-                const pct = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
-                return (
-                  <div
-                    key={course.id}
-                    role="article"
-                    aria-label={course.title}
-                    onClick={() => {
-                      dispatch({ type: 'SET_ACTIVE_COURSE', course });
-                      nav(`/courses/${course.id}`);
-                    }}
-                    className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card hover:shadow-card-hover p-5 cursor-pointer hover:border-accent dark:hover:border-accent transition-all group"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-accent transition-colors line-clamp-2 flex-1" title={course.title}>
-                        {course.title}
-                      </h3>
-                      <ProgressRing
-                        percent={pct}
-                        size={44}
-                        stroke={3}
-                        className="ml-3 flex-shrink-0"
-                      />
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
-                      {course.description}
-                    </p>
-                    <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
-                      <span>
-                        {completed}/{totalLessons} lessons
-                      </span>
-                      <span className="font-medium text-accent bg-accent/10 px-2 py-1 rounded-full">
-                        {course.depth}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
-        {/* Knowledge Map Preview — Spec §5.2.2 */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">🗺️ Knowledge Map</h2>
-            <Button variant="ghost" size="sm" onClick={() => nav('/mindmap')}>Explore →</Button>
-          </div>
-          {state.courses.length > 0 ? (
-            <div className="relative h-32 bg-gradient-to-br from-accent/5 via-purple-50/50 to-blue-50/50 dark:from-accent/10 dark:via-gray-800/50 dark:to-gray-800/50 rounded-xl overflow-hidden flex items-center justify-center">
-              <svg viewBox="0 0 200 100" className="w-full h-full opacity-60" aria-hidden="true">
-                <circle cx="100" cy="50" r="12" fill="currentColor" className="text-accent" opacity="0.8" />
-                {state.courses.slice(0, 5).map((c: any, i: number) => {
-                  const angle = (i / Math.min(state.courses.length, 5)) * Math.PI * 2 - Math.PI / 2;
-                  const x = 100 + Math.cos(angle) * 45;
-                  const y = 50 + Math.sin(angle) * 30;
-                  return (
-                    <g key={c.id}>
-                      <line x1="100" y1="50" x2={x} y2={y} stroke="currentColor" className="text-gray-300 dark:text-gray-600" strokeWidth="1" />
-                      <circle cx={x} cy={y} r="6" fill="currentColor" className="text-accent" opacity="0.5" />
-                    </g>
-                  );
-                })}
-              </svg>
-              <p className="absolute bottom-2 text-xs text-gray-500 dark:text-gray-300">{state.courses.length} topics mapped</p>
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { icon: '💬', label: 'Chat', path: '/conversation' },
+                { icon: '🗺️', label: 'Mind Map', path: '/mindmap' },
+                { icon: '🏪', label: 'Marketplace', path: '/marketplace/courses' },
+                { icon: '⚙️', label: 'Settings', path: '/settings' },
+              ].map((action) => (
+                <Button
+                  key={action.label}
+                  variant="ghost"
+                  onClick={() => nav(action.path)}
+                  className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4 text-center hover:border-accent h-auto flex-col gap-1"
+                >
+                  <span className="text-2xl block">{action.icon}</span>
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {action.label}
+                  </span>
+                </Button>
+              ))}
             </div>
-          ) : (
-            <div className="h-32 bg-gray-50 dark:bg-gray-800/50 rounded-xl flex items-center justify-center">
-              <p className="text-sm text-gray-400">Start a course to build your knowledge map</p>
-            </div>
-          )}
-        </div>
-
-        {/* Mindmap Overview Preview — Spec §5.2.2 */}
-        <div
-          onClick={() => nav('/mindmap')}
-          className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5 cursor-pointer hover:border-accent/50 transition-colors"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">🗺️ Knowledge Mindmap</h2>
-            <span className="text-xs text-accent font-medium">View Full Map →</span>
-          </div>
-          <div className="flex items-center justify-center gap-6 py-4">
-            {/* Mini mindmap teaser nodes */}
-            {[
-              { label: state.courses[0]?.title || 'Machine Learning', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' },
-              { label: state.courses[1]?.title || 'Data Structures', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
-              { label: state.courses[2]?.title || 'Web Development', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' },
-            ].map((node, i) => (
-              <div key={i} className="flex flex-col items-center gap-1">
-                <div className={`w-14 h-14 rounded-full ${node.color} flex items-center justify-center text-lg font-bold`}>
-                  {node.label.charAt(0)}
-                </div>
-                <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[80px] truncate text-center">{node.label}</span>
-                {i < 2 && <div className="hidden sm:block absolute" />}
-              </div>
-            ))}
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            Explore your interactive knowledge graph — see mastery levels and connections across all topics.
-          </p>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { icon: '💬', label: 'Chat', path: '/conversation' },
-            { icon: '🗺️', label: 'Mind Map', path: '/mindmap' },
-            { icon: '🏪', label: 'Marketplace', path: '/marketplace/courses' },
-            { icon: '⚙️', label: 'Settings', path: '/settings' },
-          ].map((action) => (
-            <Button
-              key={action.label}
-              variant="ghost"
-              onClick={() => nav(action.path)}
-              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4 text-center hover:border-accent h-auto flex-col gap-1"
-            >
-              <span className="text-2xl block">{action.icon}</span>
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {action.label}
-              </span>
-            </Button>
-          ))}
-        </div>
-        </>
+          </>
         )}
       </main>
     </section>

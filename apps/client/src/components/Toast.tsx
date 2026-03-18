@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -48,7 +55,9 @@ function ToastItem({ item, onRemove }: { item: ToastItem; onRemove: () => void }
     >
       <span>{ICONS[item.type]}</span>
       <p className="text-sm font-medium flex-1">{item.message}</p>
-      <button onClick={onRemove} className="opacity-50 hover:opacity-100 text-xs">✕</button>
+      <button onClick={onRemove} className="opacity-50 hover:opacity-100 text-xs">
+        ✕
+      </button>
     </div>
   );
 }
@@ -58,26 +67,31 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
   const toast = useCallback((message: string, type: ToastType = 'info', duration = 4000) => {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    setToasts(prev => [...prev.slice(-4), { id, message, type, duration }]);
+    setToasts((prev) => [...prev.slice(-4), { id, message, type, duration }]);
   }, []);
 
   const remove = useCallback((id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      {typeof document !== 'undefined' && createPortal(
-        <div className="fixed top-4 right-4 z-[9999] space-y-2 max-w-sm w-full pointer-events-none" aria-live="assertive" role="alert">
-          {toasts.map(t => (
-            <div key={t.id} className="pointer-events-auto">
-              <ToastItem item={t} onRemove={() => remove(t.id)} />
-            </div>
-          ))}
-        </div>,
-        document.body
-      )}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed top-4 right-4 z-[9999] space-y-2 max-w-sm w-full pointer-events-none"
+            aria-live="assertive"
+            role="alert"
+          >
+            {toasts.map((t) => (
+              <div key={t.id} className="pointer-events-auto">
+                <ToastItem item={t} onRemove={() => remove(t.id)} />
+              </div>
+            ))}
+          </div>,
+          document.body,
+        )}
     </ToastContext.Provider>
   );
 }

@@ -74,9 +74,9 @@ const CREDIBILITY_MAP: Record<string, number> = {
   'github.com': 0.75,
   'reddit.com': 0.55,
   'substack.com': 0.68,
-  'quora.com': 0.50,
+  'quora.com': 0.5,
   'thenewstack.io': 0.78,
-  'news.ycombinator.com': 0.60,
+  'news.ycombinator.com': 0.6,
 };
 
 /**
@@ -462,7 +462,10 @@ Sources (indexed; cite as [n]):
         const contentArr = (data as { content?: Array<{ text?: string }> })?.content;
         const contentObj = (data as { content?: { text?: string } })?.content;
         const text = Array.isArray(contentArr)
-          ? contentArr.map((c) => c?.text).filter(Boolean).join('\n')
+          ? contentArr
+              .map((c) => c?.text)
+              .filter(Boolean)
+              .join('\n')
           : contentObj?.text;
         const content = (text || '').trim();
         if (content && content.length > 400) {
@@ -473,7 +476,11 @@ Sources (indexed; cite as [n]):
           };
         }
       } else {
-        console.warn('[synthesizeFromSources] Anthropic HTTP error:', resp.status, await resp.text());
+        console.warn(
+          '[synthesizeFromSources] Anthropic HTTP error:',
+          resp.status,
+          await resp.text(),
+        );
       }
     } catch (err) {
       console.warn('[synthesizeFromSources] Anthropic synthesis failed:', err);
@@ -493,10 +500,66 @@ Sources (indexed; cite as [n]):
 
   // Keep the old keyword-based scaffolding (but in a more narrative form).
   const stop = new Set([
-    'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'your', 'you', 'are', 'was', 'were', 'has', 'have', 'had',
-    'will', 'can', 'could', 'should', 'may', 'might', 'also', 'than', 'then', 'their', 'there', 'about', 'over', 'under',
-    'between', 'within', 'using', 'use', 'used', 'more', 'most', 'such', 'often', 'many', 'some', 'other', 'these', 'those',
-    'they', 'them', 'its', 'it', 'in', 'on', 'at', 'to', 'of', 'a', 'an', 'as', 'is', 'be', 'by', 'or',
+    'the',
+    'and',
+    'for',
+    'with',
+    'that',
+    'this',
+    'from',
+    'into',
+    'your',
+    'you',
+    'are',
+    'was',
+    'were',
+    'has',
+    'have',
+    'had',
+    'will',
+    'can',
+    'could',
+    'should',
+    'may',
+    'might',
+    'also',
+    'than',
+    'then',
+    'their',
+    'there',
+    'about',
+    'over',
+    'under',
+    'between',
+    'within',
+    'using',
+    'use',
+    'used',
+    'more',
+    'most',
+    'such',
+    'often',
+    'many',
+    'some',
+    'other',
+    'these',
+    'those',
+    'they',
+    'them',
+    'its',
+    'it',
+    'in',
+    'on',
+    'at',
+    'to',
+    'of',
+    'a',
+    'an',
+    'as',
+    'is',
+    'be',
+    'by',
+    'or',
   ]);
 
   const collectKeywords = (text: string): string[] => {
@@ -557,7 +620,9 @@ Sources (indexed; cite as [n]):
 
   sections.push(`## Key Takeaways\n`);
   sections.push(`1. ${lessonTitle} is best learned as a mental model, not a glossary. [1]\n`);
-  sections.push(`2. Use multiple sources to triangulate what matters vs. what’s just implementation detail. [2]\n`);
+  sections.push(
+    `2. Use multiple sources to triangulate what matters vs. what’s just implementation detail. [2]\n`,
+  );
   sections.push(`3. The fastest learning loop is: explain → test with examples → refine. [3]\n`);
   sections.push(`4. Frontier work is where the most interesting trade-offs live. [1]\n`);
   sections.push(`5. Keep the references handy; they’re your “next rabbit holes.” [2]\n`);
@@ -604,7 +669,7 @@ export async function searchForLesson(
       console.warn(`[Firecrawl] Search failed for query "${query}":`, err);
     }
     // Rate limit delay
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 300));
   }
 
   // Scrape top results (up to 8 unique URLs)
@@ -644,7 +709,7 @@ export async function searchForLesson(
       continue;
     }
     // Rate limit delay
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 250));
   }
 
   // Sort by relevance to THIS lesson (not just credibility)
@@ -674,7 +739,7 @@ function generateLessonQueries(
   ];
 
   // Add a comparison/advanced query
-  const words = lessonTitle.split(/\s+/).filter(w => w.length > 3);
+  const words = lessonTitle.split(/\s+/).filter((w) => w.length > 3);
   if (words.length >= 2) {
     queries.push(`${words.join(' ')} best practices techniques`);
   }
@@ -722,7 +787,7 @@ export async function searchTopicTrending(
     } catch (err) {
       console.warn(`[Firecrawl] Trending search failed for "${query}":`, err);
     }
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise((r) => setTimeout(r, 300));
   }
 
   console.log(`[Firecrawl] Trending research found ${allResults.length} unique results`);
@@ -730,7 +795,7 @@ export async function searchTopicTrending(
   // Convert search results to sources WITHOUT individual scraping (fast path for planning).
   // The search API returns title + description which is enough for course planning.
   // Per-lesson scraping in Stage 2 will get the full content.
-  const sources: FirecrawlSource[] = allResults.map(result => {
+  const sources: FirecrawlSource[] = allResults.map((result) => {
     const content = result.markdown || result.description || '';
     const domain = extractDomain(result.url);
     const source: FirecrawlSource = {

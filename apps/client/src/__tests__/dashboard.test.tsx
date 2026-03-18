@@ -25,7 +25,13 @@ function renderAt(path: string) {
   cleanup();
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <ThemeProvider><AppProvider><ToastProvider><App /></ToastProvider></AppProvider></ThemeProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </AppProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }

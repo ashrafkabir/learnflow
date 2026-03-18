@@ -25,7 +25,13 @@ function renderAt(path: string) {
   cleanup();
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <ThemeProvider><AppProvider><ToastProvider><App /></ToastProvider></AppProvider></ThemeProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </AppProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }
@@ -43,7 +49,9 @@ describe('Marketplace', () => {
 
   it('renders creator dashboard', async () => {
     renderAt('/marketplace/creator');
-    await waitFor(() => expect(document.querySelector('[data-screen="creator-dashboard"]')).toBeTruthy());
+    await waitFor(() =>
+      expect(document.querySelector('[data-screen="creator-dashboard"]')).toBeTruthy(),
+    );
   });
 
   it('marketplace has search or filter', async () => {

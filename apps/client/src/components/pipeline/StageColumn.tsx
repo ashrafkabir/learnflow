@@ -8,26 +8,31 @@ interface Props {
 }
 
 export function StageColumn({ icon, label, status, children }: Props) {
-  const borderColor = status === 'complete'
-    ? 'border-teal-400 dark:border-teal-500'
-    : status === 'active'
-    ? 'border-sky-400 dark:border-sky-500'
-    : 'border-gray-200 dark:border-gray-700';
+  const borderColor =
+    status === 'complete'
+      ? 'border-teal-400 dark:border-teal-500'
+      : status === 'active'
+        ? 'border-sky-400 dark:border-sky-500'
+        : 'border-gray-200 dark:border-gray-700';
 
-  const bgColor = status === 'complete'
-    ? 'bg-teal-50 dark:bg-teal-900/20'
-    : status === 'active'
-    ? 'bg-sky-50 dark:bg-sky-900/20'
-    : 'bg-gray-50 dark:bg-gray-800/50';
+  const bgColor =
+    status === 'complete'
+      ? 'bg-teal-50 dark:bg-teal-900/20'
+      : status === 'active'
+        ? 'bg-sky-50 dark:bg-sky-900/20'
+        : 'bg-gray-50 dark:bg-gray-800/50';
 
-  const headerBg = status === 'complete'
-    ? 'bg-teal-100 dark:bg-teal-900/40'
-    : status === 'active'
-    ? 'bg-sky-100 dark:bg-sky-900/40'
-    : 'bg-gray-100 dark:bg-gray-800';
+  const headerBg =
+    status === 'complete'
+      ? 'bg-teal-100 dark:bg-teal-900/40'
+      : status === 'active'
+        ? 'bg-sky-100 dark:bg-sky-900/40'
+        : 'bg-gray-100 dark:bg-gray-800';
 
   return (
-    <div className={`flex-shrink-0 w-56 rounded-xl border-2 ${borderColor} ${bgColor} overflow-hidden transition-all duration-300`}>
+    <div
+      className={`flex-shrink-0 w-56 rounded-xl border-2 ${borderColor} ${bgColor} overflow-hidden transition-all duration-300`}
+    >
       {/* Header */}
       <div className={`${headerBg} px-3 py-2 flex items-center gap-2`}>
         <span className="text-lg">{icon}</span>

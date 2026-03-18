@@ -21,10 +21,12 @@ await shot(p, 'http://127.0.0.1:3001/features', '04-features');
 await shot(p, 'http://127.0.0.1:3001/pricing', '05-pricing');
 
 // Auth
+/* eslint-disable no-undef */
 await p.evaluate(() => {
   localStorage.setItem('learnflow-token', 'demo-token');
   localStorage.setItem('learnflow-onboarding-complete', 'true');
 });
+/* eslint-enable no-undef */
 
 await shot(p, 'http://127.0.0.1:3001/dashboard', '06-dashboard');
 await shot(p, 'http://127.0.0.1:3001/conversation', '07-conversation');
@@ -34,7 +36,9 @@ await shot(p, 'http://127.0.0.1:3001/settings', '10-settings');
 await shot(p, 'http://127.0.0.1:3001/mindmap', '11-mindmap');
 
 // Onboarding
+/* eslint-disable no-undef */
 await p.evaluate(() => localStorage.removeItem('learnflow-onboarding-complete'));
+/* eslint-enable no-undef */
 await shot(p, 'http://127.0.0.1:3001/onboarding/welcome', '12-onboard-welcome');
 await shot(p, 'http://127.0.0.1:3001/onboarding/goals', '13-onboard-goals');
 await shot(p, 'http://127.0.0.1:3001/onboarding/topics', '14-onboard-topics');
@@ -42,10 +46,12 @@ await shot(p, 'http://127.0.0.1:3001/onboarding/topics', '14-onboard-topics');
 // Mobile
 const mCtx = await browser.newContext({ viewport: { width: 375, height: 812 } });
 const m = await mCtx.newPage();
+/* eslint-disable no-undef */
 await m.evaluate(() => {
   localStorage.setItem('learnflow-token', 'demo-token');
   localStorage.setItem('learnflow-onboarding-complete', 'true');
 });
+/* eslint-enable no-undef */
 await shot(m, 'http://127.0.0.1:3001/', '15-mobile-home');
 await shot(m, 'http://127.0.0.1:3001/dashboard', '16-mobile-dashboard');
 await shot(m, 'http://127.0.0.1:3001/marketplace', '17-mobile-marketplace');

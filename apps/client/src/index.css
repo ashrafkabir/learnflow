@@ -22,61 +22,75 @@
 
   --color-surface: #f9fafb;
   --color-surface-dark: #1f2937;
-  --color-bg: #F8FAFC;
+  --color-bg: #f8fafc;
   --color-bg-dark: #020617;
 
   --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
-  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-modal: 0 8px 30px rgba(0,0,0,0.12);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 /* Task 2: Unified design tokens as CSS custom properties */
 :root {
-  --color-primary: #2563EB;
-  --color-primary-hover: #1D4ED8;
-  --color-secondary: #7C3AED;
+  --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+  --color-secondary: #7c3aed;
   --radius-button: 12px;
   --radius-card: 16px;
   --radius-input: 12px;
   --radius-modal: 20px;
-  --color-success: #16A34A;
-  --color-error: #DC2626;
-  --color-warning: #F59E0B;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
-  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-modal: 0 8px 30px rgba(0,0,0,0.12);
+  --color-success: #16a34a;
+  --color-error: #dc2626;
+  --color-warning: #f59e0b;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-modal: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .dark {
-  --color-primary: #60A5FA;
-  --color-primary-hover: #3B82F6;
-  --color-secondary: #A78BFA;
-  --color-success: #4ADE80;
-  --color-error: #F87171;
-  --color-warning: #FCD34D;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.2);
-  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.3);
-  --shadow-modal: 0 8px 30px rgba(0,0,0,0.4);
+  --color-primary: #60a5fa;
+  --color-primary-hover: #3b82f6;
+  --color-secondary: #a78bfa;
+  --color-success: #4ade80;
+  --color-error: #f87171;
+  --color-warning: #fcd34d;
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-modal: 0 8px 30px rgba(0, 0, 0, 0.4);
 }
 
 /* High-contrast mode — Spec §5.3 accessibility */
 @media (prefers-contrast: more) {
-  :root { --shadow-card: 0 0 0 1px rgba(0,0,0,0.3); }
-  body { color: #000; }
-  button, a, [role="button"] { border-width: 2px; }
+  :root {
+    --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.3);
+  }
+  body {
+    color: #000;
+  }
+  button,
+  a,
+  [role='button'] {
+    border-width: 2px;
+  }
 }
 html.high-contrast {
-  --shadow-card: 0 0 0 1px rgba(0,0,0,0.3);
+  --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.3);
 }
-html.high-contrast body { color: #0a0a0a; }
-html.high-contrast.dark body { color: #fff; }
+html.high-contrast body {
+  color: #0a0a0a;
+}
+html.high-contrast.dark body {
+  color: #fff;
+}
 html.high-contrast button,
 html.high-contrast a,
-html.high-contrast [role="button"] { border-width: 2px; }
-html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([class*="bg-error"]) {
+html.high-contrast [role='button'] {
+  border-width: 2px;
+}
+html.high-contrast *:not([class*='bg-accent']):not([class*='bg-success']):not([class*='bg-error']) {
   opacity: 1 !important;
 }
 
@@ -92,7 +106,8 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
   }
 
   /* Mobile: prevent horizontal overflow */
-  html, body {
+  html,
+  body {
     overflow-x: hidden;
   }
 
@@ -103,18 +118,26 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
 
   /* Task 7: Ensure touch targets are at least 44px on mobile */
   @media (max-width: 640px) {
-    button, a, [role="button"], select {
+    button,
+    a,
+    [role='button'],
+    select {
       min-height: 44px;
     }
     /* Icon-only buttons need min-width too */
-    button:not([class*="w-full"]):not([class*="flex-1"]) {
+    button:not([class*='w-full']):not([class*='flex-1']) {
       min-width: 44px;
     }
   }
 
   /* Touch target sizing for coarse pointers (mobile) */
   @media (pointer: coarse) {
-    button, a, [role="button"], select, input, textarea {
+    button,
+    a,
+    [role='button'],
+    select,
+    input,
+    textarea {
       min-height: 44px;
     }
   }
@@ -130,7 +153,7 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
   input:focus-visible,
   select:focus-visible,
   textarea:focus-visible,
-  [role="button"]:focus-visible,
+  [role='button']:focus-visible,
   [tabindex]:focus-visible {
     @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
   }
@@ -146,8 +169,14 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
 }
 
 @keyframes pageIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ============================================
@@ -155,30 +184,45 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
    ============================================ */
 @layer components {
   /* Buttons */
-  button, [role="button"], a.btn {
+  button,
+  [role='button'],
+  a.btn {
     transition: all 150ms ease;
   }
-  button:hover:not(:disabled), [role="button"]:hover:not(:disabled) {
+  button:hover:not(:disabled),
+  [role='button']:hover:not(:disabled) {
     transform: scale(1.02);
   }
-  button:active:not(:disabled), [role="button"]:active:not(:disabled) {
+  button:active:not(:disabled),
+  [role='button']:active:not(:disabled) {
     transform: scale(0.98);
   }
 
   /* Cards */
-  .card, [class*="rounded"][class*="shadow"], [class*="rounded"][class*="border"][class*="p-"] {
-    transition: transform 200ms ease, box-shadow 200ms ease;
+  .card,
+  [class*='rounded'][class*='shadow'],
+  [class*='rounded'][class*='border'][class*='p-'] {
+    transition:
+      transform 200ms ease,
+      box-shadow 200ms ease;
   }
-  .card:hover, .card-hover:hover {
+  .card:hover,
+  .card-hover:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 
   /* Inputs */
-  input, select, textarea {
-    transition: border-color 150ms ease, box-shadow 150ms ease;
+  input,
+  select,
+  textarea {
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease;
   }
-  input:focus, select:focus, textarea:focus {
+  input:focus,
+  select:focus,
+  textarea:focus {
     border-color: var(--color-accent);
     box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
   }
@@ -188,8 +232,14 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
    TASK 5: Celebration confetti
    ============================================ */
 @keyframes confettiFall {
-  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
 }
 
 .confetti-piece {
@@ -207,22 +257,41 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
    TASK 8: Stat number count-up animation
    ============================================ */
 @keyframes countUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .stat-animate {
   animation: countUp 400ms ease-out forwards;
   opacity: 0;
 }
-.stat-animate-delay-1 { animation-delay: 100ms; }
-.stat-animate-delay-2 { animation-delay: 200ms; }
-.stat-animate-delay-3 { animation-delay: 300ms; }
+.stat-animate-delay-1 {
+  animation-delay: 100ms;
+}
+.stat-animate-delay-2 {
+  animation-delay: 200ms;
+}
+.stat-animate-delay-3 {
+  animation-delay: 300ms;
+}
 
 @keyframes flameFlicker {
-  0%, 100% { transform: scale(1); }
-  25% { transform: scale(1.05) rotate(-2deg); }
-  75% { transform: scale(0.95) rotate(2deg); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.05) rotate(-2deg);
+  }
+  75% {
+    transform: scale(0.95) rotate(2deg);
+  }
 }
 
 .flame-flicker {
@@ -234,8 +303,12 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
    TASK 13: Skeleton shimmer
    ============================================ */
 @keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .skeleton {
@@ -254,13 +327,25 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
    TASK 15: Onboarding step transitions
    ============================================ */
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(30px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes slideInLeft {
-  from { opacity: 0; transform: translateX(-30px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .slide-in-right {
@@ -273,8 +358,13 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
 
 /* Pulse for CTA buttons */
 @keyframes subtlePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+  }
 }
 
 .pulse-cta {
@@ -285,8 +375,12 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
    TASK 12: Notes panel slide-in
    ============================================ */
 @keyframes slideFromRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 .notes-panel-enter {
@@ -306,6 +400,12 @@ html.high-contrast *:not([class*="bg-accent"]):not([class*="bg-success"]):not([c
   animation: fadeIn 300ms ease-out forwards;
 }
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

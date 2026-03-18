@@ -56,7 +56,9 @@ export async function wikipediaSearch(query: string, limit = 5): Promise<Firecra
   }
 }
 
-export async function wikipediaSummary(titleOrTopic: string): Promise<{ title: string; extract: string; url: string } | null> {
+export async function wikipediaSummary(
+  titleOrTopic: string,
+): Promise<{ title: string; extract: string; url: string } | null> {
   try {
     const slug = titleOrTopic.replace(/ /g, '_');
     const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`;
@@ -87,8 +89,12 @@ export async function arxivSearch(query: string, maxResults = 5): Promise<Firecr
     const entries = text.split('<entry>').slice(1);
     const results: FirecrawlSearchResult[] = [];
     for (const chunk of entries) {
-      const title = (chunk.split('<title>')[1]?.split('</title>')[0] || '').replace(/\s+/g, ' ').trim();
-      const summary = (chunk.split('<summary>')[1]?.split('</summary>')[0] || '').replace(/\s+/g, ' ').trim();
+      const title = (chunk.split('<title>')[1]?.split('</title>')[0] || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const summary = (chunk.split('<summary>')[1]?.split('</summary>')[0] || '')
+        .replace(/\s+/g, ' ')
+        .trim();
       const id = (chunk.split('<id>')[1]?.split('</id>')[0] || '').trim();
       if (!id || !title) continue;
       results.push({ url: id, title, description: summary.slice(0, 240) });
@@ -101,7 +107,10 @@ export async function arxivSearch(query: string, maxResults = 5): Promise<Firecr
   }
 }
 
-export async function githubRepoSearch(query: string, maxResults = 5): Promise<FirecrawlSearchResult[]> {
+export async function githubRepoSearch(
+  query: string,
+  maxResults = 5,
+): Promise<FirecrawlSearchResult[]> {
   try {
     // Public GitHub search API. Unauthenticated is rate-limited; keep usage low.
     const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=${maxResults}`;
@@ -135,7 +144,9 @@ function tryDeriveGithubReadmeRaw(repoUrl: string): string | null {
   }
 }
 
-export async function scrapeWithReadability(url: string): Promise<{ content: string; title: string }> {
+export async function scrapeWithReadability(
+  url: string,
+): Promise<{ content: string; title: string }> {
   const cached = scrapeCache.get(url);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
     return { content: cached.content, title: cached.title };
@@ -170,7 +181,11 @@ export async function scrapeWithReadability(url: string): Promise<{ content: str
 
     const contentType = resp.headers.get('content-type') || '';
     // arXiv API returns HTML on /abs/
-    if (!contentType.includes('text/html') && !contentType.includes('application/xhtml') && !contentType.includes('text/plain')) {
+    if (
+      !contentType.includes('text/html') &&
+      !contentType.includes('application/xhtml') &&
+      !contentType.includes('text/plain')
+    ) {
       throw new Error(`Not HTML/text: ${contentType}`);
     }
 
@@ -277,8 +292,10 @@ export async function redditSearch(query: string, limit = 5): Promise<FirecrawlS
     const children = data?.data?.children || [];
     return children.slice(0, limit).map((c: any) => {
       const d = c.data;
-      const postUrl = d.url?.startsWith('/') ? `https://old.reddit.com${d.url}` : (d.url || `https://old.reddit.com${d.permalink}`);
-      const description = d.selftext ? d.selftext.slice(0, 300) : (d.title || '');
+      const postUrl = d.url?.startsWith('/')
+        ? `https://old.reddit.com${d.url}`
+        : d.url || `https://old.reddit.com${d.permalink}`;
+      const description = d.selftext ? d.selftext.slice(0, 300) : d.title || '';
       return { url: postUrl, title: d.title || 'Reddit post', description };
     });
   } catch (err) {
@@ -323,7 +340,11 @@ export async function hackerNewsSearch(query: string, limit = 5): Promise<Firecr
   }
 }
 
-async function duckDuckGoSiteSearch(site: string, query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+async function duckDuckGoSiteSearch(
+  site: string,
+  query: string,
+  limit = 5,
+): Promise<FirecrawlSearchResult[]> {
   try {
     const searchUrl = `https://html.duckduckgo.com/html/?q=site:${site}+${encodeURIComponent(query)}`;
     await limiter.waitForDomain('html.duckduckgo.com');
@@ -348,13 +369,19 @@ async function duckDuckGoSiteSearch(site: string, query: string, limit = 5): Pro
   }
 }
 
-async function googleSiteSearch(site: string, query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+async function googleSiteSearch(
+  site: string,
+  query: string,
+  limit = 5,
+): Promise<FirecrawlSearchResult[]> {
   try {
     const searchUrl = `https://www.google.com/search?q=site:${site}+${encodeURIComponent(query)}&num=${limit}`;
     await limiter.waitForDomain('www.google.com');
     const resp = await fetchWithTimeout(searchUrl, 10000);
     if (!resp.ok) {
-      console.warn(`[WebSearch] Google site:${site} returned ${resp.status}, falling back to DuckDuckGo`);
+      console.warn(
+        `[WebSearch] Google site:${site} returned ${resp.status}, falling back to DuckDuckGo`,
+      );
       return duckDuckGoSiteSearch(site, query, limit);
     }
     const html = await resp.text();
@@ -378,7 +405,11 @@ async function googleSiteSearch(site: string, query: string, limit = 5): Promise
     }
     return results;
   } catch (err) {
-    console.warn(`[WebSearch] Google site:${site} search failed:`, (err as Error).message, '— trying DuckDuckGo');
+    console.warn(
+      `[WebSearch] Google site:${site} search failed:`,
+      (err as Error).message,
+      '— trying DuckDuckGo',
+    );
     return duckDuckGoSiteSearch(site, query, limit);
   }
 }
@@ -395,18 +426,26 @@ export async function quoraSearch(query: string, limit = 3): Promise<FirecrawlSe
   return googleSiteSearch('quora.com', query, limit);
 }
 
-export async function theNewStackSearch(query: string, limit = 3): Promise<FirecrawlSearchResult[]> {
+export async function theNewStackSearch(
+  query: string,
+  limit = 3,
+): Promise<FirecrawlSearchResult[]> {
   return googleSiteSearch('thenewstack.io', query, limit);
 }
 
 // --- Additional Sources ---
 
-export async function stackOverflowSearch(query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+export async function stackOverflowSearch(
+  query: string,
+  limit = 5,
+): Promise<FirecrawlSearchResult[]> {
   try {
     const url = `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=relevance&q=${encodeURIComponent(query)}&site=stackoverflow&pagesize=${limit}&filter=withbody`;
     await limiter.waitForDomain('api.stackexchange.com');
     const resp = await fetchWithTimeout(url);
-    const data = await resp.json() as { items?: Array<{ title: string; link: string; body?: string; score: number }> };
+    const data = (await resp.json()) as {
+      items?: Array<{ title: string; link: string; body?: string; score: number }>;
+    };
     return (data.items || []).map((item) => ({
       url: item.link,
       title: item.title,
@@ -418,15 +457,24 @@ export async function stackOverflowSearch(query: string, limit = 5): Promise<Fir
   }
 }
 
-export async function freeCodeCampSearch(query: string, limit = 3): Promise<FirecrawlSearchResult[]> {
+export async function freeCodeCampSearch(
+  query: string,
+  limit = 3,
+): Promise<FirecrawlSearchResult[]> {
   return googleSiteSearch('freecodecamp.org', query, limit);
 }
 
-export async function towardsDataScienceSearch(query: string, limit = 3): Promise<FirecrawlSearchResult[]> {
+export async function towardsDataScienceSearch(
+  query: string,
+  limit = 3,
+): Promise<FirecrawlSearchResult[]> {
   return googleSiteSearch('towardsdatascience.com', query, limit);
 }
 
-export async function digitalOceanSearch(query: string, limit = 3): Promise<FirecrawlSearchResult[]> {
+export async function digitalOceanSearch(
+  query: string,
+  limit = 3,
+): Promise<FirecrawlSearchResult[]> {
   return googleSiteSearch('digitalocean.com/community/tutorials', query, limit);
 }
 
@@ -434,7 +482,10 @@ export async function mdnSearch(query: string, limit = 3): Promise<FirecrawlSear
   return googleSiteSearch('developer.mozilla.org', query, limit);
 }
 
-export async function smashingMagSearch(query: string, limit = 3): Promise<FirecrawlSearchResult[]> {
+export async function smashingMagSearch(
+  query: string,
+  limit = 3,
+): Promise<FirecrawlSearchResult[]> {
   return googleSiteSearch('smashingmagazine.com', query, limit);
 }
 
@@ -442,6 +493,9 @@ export async function courseraSearch(query: string, limit = 3): Promise<Firecraw
   return googleSiteSearch('coursera.org', query, limit);
 }
 
-export async function baiduScholarSearch(query: string, limit = 3): Promise<FirecrawlSearchResult[]> {
+export async function baiduScholarSearch(
+  query: string,
+  limit = 3,
+): Promise<FirecrawlSearchResult[]> {
   return duckDuckGoSiteSearch('scholar.google.com', query, limit);
 }

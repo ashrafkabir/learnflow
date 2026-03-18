@@ -75,23 +75,38 @@ async function main() {
 
   await runTest('Lesson content has learning objectives', async () => {
     const content = course.modules[0].lessons[0].content.toLowerCase();
-    assert(content.includes('learning objectives') || content.includes('objectives'), 'Has learning objectives section');
+    assert(
+      content.includes('learning objectives') || content.includes('objectives'),
+      'Has learning objectives section',
+    );
   });
 
   await runTest('Lesson content has key takeaways', async () => {
     const content = course.modules[0].lessons[0].content.toLowerCase();
-    assert(content.includes('takeaway') || content.includes('key takeaway'), 'Has takeaways section');
+    assert(
+      content.includes('takeaway') || content.includes('key takeaway'),
+      'Has takeaways section',
+    );
   });
 
   await runTest('Lesson content has sources/references', async () => {
     const content = course.modules[0].lessons[0].content;
-    assert(content.includes('[1]') || content.toLowerCase().includes('sources') || content.toLowerCase().includes('references'), 'Has sources');
+    assert(
+      content.includes('[1]') ||
+        content.toLowerCase().includes('sources') ||
+        content.toLowerCase().includes('references'),
+      'Has sources',
+    );
   });
 
   // 3. Notes Generation
   await runTest('Notes agent generates Cornell notes', async () => {
     const lesson = course.modules[0].lessons[0];
-    const notes = await api('POST', '/chat', { text: 'Take notes', agent: 'notes', lessonId: lesson.id });
+    const notes = await api('POST', '/chat', {
+      text: 'Take notes',
+      agent: 'notes',
+      lessonId: lesson.id,
+    });
     assert(!!notes.notes, 'Response has notes');
     assert(notes.notes.format === 'cornell', 'Format is cornell');
     assert(!!notes.notes.content, 'Notes have content');
@@ -100,16 +115,28 @@ async function main() {
 
   await runTest('Notes agent generates flashcards', async () => {
     const lesson = course.modules[0].lessons[0];
-    const notes = await api('POST', '/chat', { text: 'Flashcards', agent: 'notes', lessonId: lesson.id, format: 'flashcard' });
+    const notes = await api('POST', '/chat', {
+      text: 'Flashcards',
+      agent: 'notes',
+      lessonId: lesson.id,
+      format: 'flashcard',
+    });
     assert(!!notes.notes, 'Response has notes');
     assert(notes.notes.format === 'flashcard', 'Format is flashcard');
     assert(Array.isArray(notes.notes.flashcards), 'Has flashcards array');
-    assert(notes.notes.flashcards.length >= 2, `Has ≥2 flashcards (got ${notes.notes.flashcards.length})`);
+    assert(
+      notes.notes.flashcards.length >= 2,
+      `Has ≥2 flashcards (got ${notes.notes.flashcards.length})`,
+    );
   });
 
   // 4. Quiz Generation
   await runTest('Exam agent generates quiz with questions', async () => {
-    const quiz = await api('POST', '/chat', { text: 'Quiz me', agent: 'exam', courseId: course.id });
+    const quiz = await api('POST', '/chat', {
+      text: 'Quiz me',
+      agent: 'exam',
+      courseId: course.id,
+    });
     assert(Array.isArray(quiz.questions), 'Has questions array');
     assert(quiz.questions.length >= 4, `Has ≥4 questions (got ${quiz.questions.length})`);
     for (const q of quiz.questions) {
@@ -187,9 +214,16 @@ async function main() {
   // Save results
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const outputPath = `evals/journey-test-results-${timestamp}.json`;
-  const Bun = globalThis as any;
+  // (reserved for Bun runtime compatibility)
   const fs = await import('fs');
-  fs.writeFileSync(outputPath, JSON.stringify({ timestamp: new Date().toISOString(), tests: results, passed, total, assertions }, null, 2));
+  fs.writeFileSync(
+    outputPath,
+    JSON.stringify(
+      { timestamp: new Date().toISOString(), tests: results, passed, total, assertions },
+      null,
+      2,
+    ),
+  );
   console.log(`Results saved to ${outputPath}\n`);
 
   process.exit(passed === total ? 0 : 1);

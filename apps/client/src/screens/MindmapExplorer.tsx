@@ -25,11 +25,20 @@ export function MindmapExplorer() {
   const { state, dispatch } = useApp();
   const containerRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
-  const networkRef = useRef<null | { destroy: () => void; fit: (...args: unknown[]) => void; moveTo: (opts: Record<string, unknown>) => void; getScale: () => number }>(null);
+  const networkRef = useRef<null | {
+    destroy: () => void;
+    fit: (...args: unknown[]) => void;
+    moveTo: (opts: Record<string, unknown>) => void;
+    getScale: () => number;
+  }>(null);
   const [showAddNode, setShowAddNode] = useState(false);
   const [newNodeLabel, setNewNodeLabel] = useState('');
   const [customNodes, setCustomNodes] = useState<Array<{ id: string; label: string }>>(() => {
-    try { return JSON.parse(localStorage.getItem('learnflow-custom-nodes') || '[]'); } catch { return []; }
+    try {
+      return JSON.parse(localStorage.getItem('learnflow-custom-nodes') || '[]');
+    } catch {
+      return [];
+    }
   });
 
   const addCustomNode = () => {
@@ -50,13 +59,19 @@ export function MindmapExplorer() {
         if (data.courses && data.courses.length > 0) {
           const fullCourses = await Promise.all(
             data.courses.map(async (c: { id: string }) => {
-              try { return await apiGet(`/courses/${c.id}`); } catch { return null; }
-            })
+              try {
+                return await apiGet(`/courses/${c.id}`);
+              } catch {
+                return null;
+              }
+            }),
           );
           const valid = fullCourses.filter(Boolean);
           if (valid.length > 0) dispatch({ type: 'SET_COURSES', courses: valid });
         }
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
   }, []);
 
@@ -139,9 +154,10 @@ export function MindmapExplorer() {
         edges.push({ from: courseNodeId, to: modNodeId, color: { color: '#94A3B8' }, width: 2 });
 
         // Derive "in progress" lesson: first incomplete lesson in a module that has at least one completed lesson
-        const firstIncompleteLessonId = modCompleted > 0 && modCompleted < mod.lessons.length
-          ? mod.lessons.find(l => !state.completedLessons.has(l.id))?.id ?? null
-          : null;
+        const firstIncompleteLessonId =
+          modCompleted > 0 && modCompleted < mod.lessons.length
+            ? (mod.lessons.find((l) => !state.completedLessons.has(l.id))?.id ?? null)
+            : null;
 
         for (const lesson of mod.lessons) {
           const lessonNodeId = nodeId++;
@@ -201,8 +217,16 @@ export function MindmapExplorer() {
         stabilization: { iterations: 100 },
       },
       autoResize: true,
-      interaction: { hover: true, tooltipDelay: 200, keyboard: { enabled: true, speed: { x: 10, y: 10, zoom: 0.02 } } },
-      nodes: { borderWidth: 2, shadow: { enabled: true, size: 4, x: 0, y: 2, color: 'rgba(0,0,0,0.1)' }, font: { size: 14, face: 'system-ui, sans-serif' } },
+      interaction: {
+        hover: true,
+        tooltipDelay: 200,
+        keyboard: { enabled: true, speed: { x: 10, y: 10, zoom: 0.02 } },
+      },
+      nodes: {
+        borderWidth: 2,
+        shadow: { enabled: true, size: 4, x: 0, y: 2, color: 'rgba(0,0,0,0.1)' },
+        font: { size: 14, face: 'system-ui, sans-serif' },
+      },
       edges: { smooth: { type: 'continuous' } },
     };
 
@@ -210,7 +234,10 @@ export function MindmapExplorer() {
     networkRef.current = network as any;
 
     network.on('stabilizationIterationsDone', () => {
-      network.fit({ animation: { duration: 500, easingFunction: 'easeOutQuart' }, maxZoomLevel: 1.5 });
+      network.fit({
+        animation: { duration: 500, easingFunction: 'easeOutQuart' },
+        maxZoomLevel: 1.5,
+      });
     });
 
     network.on('stabilized' as string, () => {
@@ -246,25 +273,35 @@ export function MindmapExplorer() {
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>←</Button>
+            <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>
+              ←
+            </Button>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">🗺️ Knowledge Map</h1>
           </div>
           <div className="hidden sm:flex items-center gap-4 text-xs">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowAddNode(true)}
-            >
+            <Button variant="primary" size="sm" onClick={() => setShowAddNode(true)}>
               + Add Node
             </Button>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-              <span className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600 inline-block border border-gray-400" aria-hidden="true" /> Not started
+              <span
+                className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600 inline-block border border-gray-400"
+                aria-hidden="true"
+              />{' '}
+              Not started
             </span>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-              <span className="w-3 h-3 rounded-full bg-warning inline-block border border-amber-500" aria-hidden="true" /> In progress
+              <span
+                className="w-3 h-3 rounded-full bg-warning inline-block border border-amber-500"
+                aria-hidden="true"
+              />{' '}
+              In progress
             </span>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-              <span className="w-3 h-3 rounded-full bg-success inline-block border border-green-600" aria-hidden="true" /> Mastered
+              <span
+                className="w-3 h-3 rounded-full bg-success inline-block border border-green-600"
+                aria-hidden="true"
+              />{' '}
+              Mastered
             </span>
           </div>
         </div>
@@ -285,11 +322,7 @@ export function MindmapExplorer() {
                 <p className="text-gray-500 dark:text-gray-300 text-lg">
                   Create a course to see your knowledge map
                 </p>
-                <Button
-                  variant="primary"
-                  onClick={() => nav('/dashboard')}
-                  className="mt-4"
-                >
+                <Button variant="primary" onClick={() => nav('/dashboard')} className="mt-4">
                   Go to Dashboard
                 </Button>
               </div>
@@ -303,10 +336,21 @@ export function MindmapExplorer() {
               <div ref={containerRef} className="w-full h-full" />
               {/* Mastery legend */}
               <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-3 shadow-card z-10 text-xs space-y-1.5">
-                <div className="font-semibold text-gray-700 dark:text-gray-200 mb-1">Mastery Level Legend</div>
-                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: '#9CA3AF' }} /> <span className="text-gray-600 dark:text-gray-300">Not started</span></div>
-                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: '#F59E0B' }} /> <span className="text-gray-600 dark:text-gray-300">In progress</span></div>
-                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: '#16A34A' }} /> <span className="text-gray-600 dark:text-gray-300">Mastered</span></div>
+                <div className="font-semibold text-gray-700 dark:text-gray-200 mb-1">
+                  Mastery Level Legend
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ background: '#9CA3AF' }} />{' '}
+                  <span className="text-gray-600 dark:text-gray-300">Not started</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ background: '#F59E0B' }} />{' '}
+                  <span className="text-gray-600 dark:text-gray-300">In progress</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ background: '#16A34A' }} />{' '}
+                  <span className="text-gray-600 dark:text-gray-300">Mastered</span>
+                </div>
               </div>
               {/* Zoom controls */}
               <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
@@ -316,7 +360,10 @@ export function MindmapExplorer() {
                   onClick={() => {
                     if (networkRef.current) {
                       const scale = networkRef.current.getScale();
-                      networkRef.current.moveTo({ scale: scale * 1.3, animation: { duration: 300 } });
+                      networkRef.current.moveTo({
+                        scale: scale * 1.3,
+                        animation: { duration: 300 },
+                      });
                     }
                   }}
                   title="Zoom in"
@@ -330,7 +377,10 @@ export function MindmapExplorer() {
                   onClick={() => {
                     if (networkRef.current) {
                       const scale = networkRef.current.getScale();
-                      networkRef.current.moveTo({ scale: scale * 0.7, animation: { duration: 300 } });
+                      networkRef.current.moveTo({
+                        scale: scale * 0.7,
+                        animation: { duration: 300 },
+                      });
                     }
                   }}
                   title="Zoom out"
@@ -359,21 +409,38 @@ export function MindmapExplorer() {
 
       {/* Add Node Modal */}
       {showAddNode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAddNode(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-modal" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Add Custom Node</h3>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setShowAddNode(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              Add Custom Node
+            </h3>
             <input
               type="text"
               value={newNodeLabel}
-              onChange={e => setNewNodeLabel(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addCustomNode()}
+              onChange={(e) => setNewNodeLabel(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addCustomNode()}
               placeholder="Node label (e.g., Machine Learning)"
               className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent mb-4"
               autoFocus
             />
             <div className="flex gap-3">
-              <Button variant="secondary" fullWidth onClick={() => setShowAddNode(false)}>Cancel</Button>
-              <Button variant="primary" fullWidth onClick={addCustomNode} disabled={!newNodeLabel.trim()}>Add</Button>
+              <Button variant="secondary" fullWidth onClick={() => setShowAddNode(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={addCustomNode}
+                disabled={!newNodeLabel.trim()}
+              >
+                Add
+              </Button>
             </div>
           </div>
         </div>

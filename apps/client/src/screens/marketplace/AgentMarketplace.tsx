@@ -21,14 +21,105 @@ type Category = (typeof CATEGORIES)[number];
 type SortOption = 'popularity' | 'rating' | 'newest';
 
 const AGENTS: Agent[] = [
-  { id: 'a1', name: 'Code Tutor', description: 'Reviews and explains code with detailed feedback. Supports Python, JavaScript, TypeScript, Rust, and Go.', capabilities: ['code_review', 'explain_code'], tier: 'free', rating: 4.7, usageCount: 3200, requiredProvider: 'OpenAI', category: 'Study', official: true },
-  { id: 'a2', name: 'Research Pro', description: 'Deep research with academic paper access and citation generation.', capabilities: ['deep_research', 'paper_analysis'], tier: 'pro', rating: 4.9, usageCount: 1800, requiredProvider: 'OpenAI', category: 'Research', official: true },
-  { id: 'a3', name: 'Math Solver', description: 'Step-by-step math problem solving with visual proof checking.', capabilities: ['math_solve', 'proof_check'], tier: 'free', rating: 4.5, usageCount: 2500, requiredProvider: 'OpenAI', category: 'Study', official: true },
-  { id: 'a4', name: 'Language Coach', description: 'Personalized language learning with real-time conversation practice.', capabilities: ['translation', 'grammar_check', 'conversation'], tier: 'pro', rating: 4.6, usageCount: 1200, requiredProvider: 'Anthropic', category: 'Study', official: false },
-  { id: 'a5', name: 'Quiz Master', description: 'Generates adaptive quizzes from any learning material with spaced repetition scheduling.', capabilities: ['quiz_generation', 'spaced_repetition'], tier: 'free', rating: 4.4, usageCount: 980, requiredProvider: 'OpenAI', category: 'Assessment', official: true },
-  { id: 'a6', name: 'Creative Writer', description: 'Helps with essays, stories, and creative writing with style feedback.', capabilities: ['creative_writing', 'style_analysis'], tier: 'free', rating: 4.3, usageCount: 760, requiredProvider: 'Anthropic', category: 'Creative', official: false },
-  { id: 'a7', name: 'Study Planner', description: 'Creates personalized study schedules based on goals, deadlines, and learning pace.', capabilities: ['scheduling', 'goal_tracking'], tier: 'free', rating: 4.2, usageCount: 1450, requiredProvider: 'OpenAI', category: 'Productivity', official: true },
-  { id: 'a8', name: 'Data Analyst', description: 'Analyzes datasets, creates visualizations, and explains statistical concepts.', capabilities: ['data_analysis', 'visualization'], tier: 'pro', rating: 4.8, usageCount: 620, requiredProvider: 'OpenAI', category: 'Research', official: false },
+  {
+    id: 'a1',
+    name: 'Code Tutor',
+    description:
+      'Reviews and explains code with detailed feedback. Supports Python, JavaScript, TypeScript, Rust, and Go.',
+    capabilities: ['code_review', 'explain_code'],
+    tier: 'free',
+    rating: 4.7,
+    usageCount: 3200,
+    requiredProvider: 'OpenAI',
+    category: 'Study',
+    official: true,
+  },
+  {
+    id: 'a2',
+    name: 'Research Pro',
+    description: 'Deep research with academic paper access and citation generation.',
+    capabilities: ['deep_research', 'paper_analysis'],
+    tier: 'pro',
+    rating: 4.9,
+    usageCount: 1800,
+    requiredProvider: 'OpenAI',
+    category: 'Research',
+    official: true,
+  },
+  {
+    id: 'a3',
+    name: 'Math Solver',
+    description: 'Step-by-step math problem solving with visual proof checking.',
+    capabilities: ['math_solve', 'proof_check'],
+    tier: 'free',
+    rating: 4.5,
+    usageCount: 2500,
+    requiredProvider: 'OpenAI',
+    category: 'Study',
+    official: true,
+  },
+  {
+    id: 'a4',
+    name: 'Language Coach',
+    description: 'Personalized language learning with real-time conversation practice.',
+    capabilities: ['translation', 'grammar_check', 'conversation'],
+    tier: 'pro',
+    rating: 4.6,
+    usageCount: 1200,
+    requiredProvider: 'Anthropic',
+    category: 'Study',
+    official: false,
+  },
+  {
+    id: 'a5',
+    name: 'Quiz Master',
+    description:
+      'Generates adaptive quizzes from any learning material with spaced repetition scheduling.',
+    capabilities: ['quiz_generation', 'spaced_repetition'],
+    tier: 'free',
+    rating: 4.4,
+    usageCount: 980,
+    requiredProvider: 'OpenAI',
+    category: 'Assessment',
+    official: true,
+  },
+  {
+    id: 'a6',
+    name: 'Creative Writer',
+    description: 'Helps with essays, stories, and creative writing with style feedback.',
+    capabilities: ['creative_writing', 'style_analysis'],
+    tier: 'free',
+    rating: 4.3,
+    usageCount: 760,
+    requiredProvider: 'Anthropic',
+    category: 'Creative',
+    official: false,
+  },
+  {
+    id: 'a7',
+    name: 'Study Planner',
+    description:
+      'Creates personalized study schedules based on goals, deadlines, and learning pace.',
+    capabilities: ['scheduling', 'goal_tracking'],
+    tier: 'free',
+    rating: 4.2,
+    usageCount: 1450,
+    requiredProvider: 'OpenAI',
+    category: 'Productivity',
+    official: true,
+  },
+  {
+    id: 'a8',
+    name: 'Data Analyst',
+    description: 'Analyzes datasets, creates visualizations, and explains statistical concepts.',
+    capabilities: ['data_analysis', 'visualization'],
+    tier: 'pro',
+    rating: 4.8,
+    usageCount: 620,
+    requiredProvider: 'OpenAI',
+    category: 'Research',
+    official: false,
+  },
 ];
 
 /** Spec §5.2.6, §7.2 — Agent Marketplace with activation flow, categories, search, sort */
@@ -50,7 +141,11 @@ export function AgentMarketplace() {
   const handleToggleActivate = async (agent: Agent) => {
     const isActive = activatedIds.has(agent.id);
     if (isActive) {
-      setActivatedIds(prev => { const next = new Set(prev); next.delete(agent.id); return next; });
+      setActivatedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(agent.id);
+        return next;
+      });
       return;
     }
     setActivating(agent.id);
@@ -71,7 +166,7 @@ export function AgentMarketplace() {
   };
 
   const filteredAgents = useMemo(() => {
-    const filtered = AGENTS.filter(a => {
+    const filtered = AGENTS.filter((a) => {
       if (category !== 'All' && a.category !== category) return false;
       if (search) {
         const q = search.toLowerCase();
@@ -95,7 +190,9 @@ export function AgentMarketplace() {
     >
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>←</Button>
+          <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>
+            ←
+          </Button>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">🤖 Agent Marketplace</h1>
         </div>
       </header>
@@ -104,10 +201,15 @@ export function AgentMarketplace() {
         {/* My Activated Agents */}
         {activatedIds.size > 0 && (
           <div className="mb-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">✅ My Agents</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+              ✅ My Agents
+            </h2>
             <div className="flex flex-wrap gap-2">
               {AGENTS.filter((a) => activatedIds.has(a.id)).map((a) => (
-                <span key={a.id} className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-sm">
+                <span
+                  key={a.id}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-sm"
+                >
                   🤖 {a.name}
                 </span>
               ))}
@@ -121,7 +223,7 @@ export function AgentMarketplace() {
             <input
               type="text"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               placeholder="Search agents..."
               aria-label="Search agents"
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
@@ -130,7 +232,7 @@ export function AgentMarketplace() {
           </div>
           <select
             value={sortBy}
-            onChange={e => setSortBy(e.target.value as SortOption)}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
             aria-label="Sort agents"
             className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
           >
@@ -142,7 +244,7 @@ export function AgentMarketplace() {
 
         {/* Category Filter Tabs */}
         <nav className="flex gap-1 mb-6 overflow-x-auto pb-1" aria-label="Agent categories">
-          {CATEGORIES.map(cat => (
+          {CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => setCategory(cat)}
@@ -158,12 +260,16 @@ export function AgentMarketplace() {
         </nav>
 
         {/* Agent Grid */}
-        {loading ? <SkeletonMarketplace /> : (
+        {loading ? (
+          <SkeletonMarketplace />
+        ) : (
           <>
             {filteredAgents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
                 <span className="text-4xl">🔍</span>
-                <p className="text-gray-600 dark:text-gray-300">No results found. Try a different search or category.</p>
+                <p className="text-gray-600 dark:text-gray-300">
+                  No results found. Try a different search or category.
+                </p>
               </div>
             ) : (
               <div
@@ -182,18 +288,28 @@ export function AgentMarketplace() {
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <h3 className="text-base font-semibold text-gray-900 dark:text-white">{a.name}</h3>
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                            {a.name}
+                          </h3>
                           {a.official ? (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium">Official</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium">
+                              Official
+                            </span>
                           ) : (
-                            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 font-medium">Community</span>
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 font-medium">
+                              Community
+                            </span>
                           )}
                         </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.tier === 'free' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'}`}>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.tier === 'free' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'}`}
+                        >
                           {a.tier}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">{a.description}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
+                        {a.description}
+                      </p>
                       <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-300 mb-2">
                         <span>⭐ {a.rating}</span>
                         <span>·</span>
@@ -206,14 +322,19 @@ export function AgentMarketplace() {
                       </div>
                       <div className="flex flex-wrap gap-1.5 mb-4">
                         {a.capabilities.map((c) => (
-                          <span key={c} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded">
+                          <span
+                            key={c}
+                            className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded"
+                          >
                             {c}
                           </span>
                         ))}
                       </div>
                       {/* Activation Toggle */}
                       <div className="mt-auto flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
-                        <span className="text-sm text-gray-700 dark:text-gray-300">{isActivated ? 'Active' : 'Inactive'}</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          {isActivated ? 'Active' : 'Inactive'}
+                        </span>
                         <button
                           onClick={() => handleToggleActivate(a)}
                           disabled={activating === a.id}

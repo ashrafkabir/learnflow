@@ -39,8 +39,14 @@ export function OnboardingGoals() {
       const token = localStorage.getItem('learnflow-token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
-      await fetch(`${apiBase()}/api/v1/profile/goals`, { method: 'POST', headers, body: JSON.stringify({ goals }) });
-    } catch { /* best effort */ }
+      await fetch(`${apiBase()}/api/v1/profile/goals`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ goals }),
+      });
+    } catch {
+      /* best effort */
+    }
     nav('/onboarding/topics');
   };
 
@@ -77,11 +83,7 @@ export function OnboardingGoals() {
               placeholder="e.g., I want to learn machine learning for my career..."
               className="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent text-sm"
             />
-            <Button
-              variant="primary"
-              onClick={() => addGoal(goalText)}
-              disabled={!goalText.trim()}
-            >
+            <Button variant="primary" onClick={() => addGoal(goalText)} disabled={!goalText.trim()}>
               Add
             </Button>
           </div>
@@ -95,7 +97,12 @@ export function OnboardingGoals() {
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-sm"
               >
                 {g}
-                <Button variant="ghost" size="sm" onClick={() => removeGoal(g)} className="ml-1 text-accent/50 hover:text-accent p-0 h-auto">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeGoal(g)}
+                  className="ml-1 text-accent/50 hover:text-accent p-0 h-auto"
+                >
                   ✕
                 </Button>
               </span>
@@ -119,7 +126,11 @@ export function OnboardingGoals() {
         </div>
 
         <div className="flex gap-3">
-          <Button variant="secondary" onClick={() => nav('/onboarding/welcome')} className="px-6 py-4">
+          <Button
+            variant="secondary"
+            onClick={() => nav('/onboarding/welcome')}
+            className="px-6 py-4"
+          >
             Back
           </Button>
           <Button

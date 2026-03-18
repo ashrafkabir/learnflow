@@ -7,9 +7,30 @@ import { CitationTooltip, type Source } from '../components/CitationTooltip.js';
 
 /* Mock sources for inline citation hover previews — Spec §5.2.4 */
 const MOCK_SOURCES: Source[] = [
-  { id: 1, author: 'Smith et al.', title: 'Foundations of Modern Learning', publication: 'Journal of Educational Technology', url: 'https://example.com/foundations', year: 2024 },
-  { id: 2, author: 'OpenAI Research', title: 'Scaling Laws for Neural Language Models', publication: 'arXiv Preprint', url: 'https://arxiv.org/abs/2001.08361', year: 2023 },
-  { id: 3, author: 'García & Chen', title: 'Adaptive Learning Pathways', publication: 'IEEE Learning Sciences', url: 'https://example.com/adaptive', year: 2024 },
+  {
+    id: 1,
+    author: 'Smith et al.',
+    title: 'Foundations of Modern Learning',
+    publication: 'Journal of Educational Technology',
+    url: 'https://example.com/foundations',
+    year: 2024,
+  },
+  {
+    id: 2,
+    author: 'OpenAI Research',
+    title: 'Scaling Laws for Neural Language Models',
+    publication: 'arXiv Preprint',
+    url: 'https://arxiv.org/abs/2001.08361',
+    year: 2023,
+  },
+  {
+    id: 3,
+    author: 'García & Chen',
+    title: 'Adaptive Learning Pathways',
+    publication: 'IEEE Learning Sciences',
+    url: 'https://example.com/adaptive',
+    year: 2024,
+  },
 ];
 
 /* Estimate read time from lesson description length and estimatedTime */
@@ -26,7 +47,11 @@ export function CourseView() {
   const [expandedModule, setExpandedModule] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selectedLesson, setSelectedLesson] = useState<{ id: string; title: string; courseId: string } | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<{
+    id: string;
+    title: string;
+    courseId: string;
+  } | null>(null);
 
   const course = state.activeCourse;
 
@@ -35,7 +60,7 @@ export function CourseView() {
       setLoading(true);
       setError('');
       fetchCourse(courseId)
-        .catch(e => setError(e?.message || 'Failed to load course'))
+        .catch((e) => setError(e?.message || 'Failed to load course'))
         .finally(() => setLoading(false));
     }
   }, [courseId]);
@@ -49,14 +74,30 @@ export function CourseView() {
 
   if (error) {
     return (
-      <section data-screen="course-view" className="min-h-screen bg-bg dark:bg-bg-dark flex items-center justify-center">
+      <section
+        data-screen="course-view"
+        className="min-h-screen bg-bg dark:bg-bg-dark flex items-center justify-center"
+      >
         <div className="text-center space-y-3 max-w-sm">
           <span className="text-4xl">❌</span>
           <p className="text-gray-700 dark:text-gray-300 font-medium">Failed to load course</p>
           <p className="text-sm text-gray-500">{error}</p>
           <div className="flex gap-3 justify-center">
-            <Button variant="primary" onClick={() => { setError(''); setLoading(true); fetchCourse(courseId!).catch(e => setError(e?.message)).finally(() => setLoading(false)); }}>Retry</Button>
-            <Button variant="secondary" onClick={() => nav('/dashboard')}>Back</Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                setError('');
+                setLoading(true);
+                fetchCourse(courseId!)
+                  .catch((e) => setError(e?.message))
+                  .finally(() => setLoading(false));
+              }}
+            >
+              Retry
+            </Button>
+            <Button variant="secondary" onClick={() => nav('/dashboard')}>
+              Back
+            </Button>
           </div>
         </div>
       </section>
@@ -77,9 +118,10 @@ export function CourseView() {
     );
   }
 
-  const totalLessons = course.modules.reduce((s, m) => s + m.lessons.length, 0);
-  const completed = course.modules.reduce(
-    (s, m) => s + m.lessons.filter((l) => state.completedLessons.has(l.id)).length,
+  const modules = course.modules ?? [];
+  const totalLessons = modules.reduce((s, m) => s + (m.lessons?.length ?? 0), 0);
+  const completed = modules.reduce(
+    (s, m) => s + (m.lessons ?? []).filter((l) => state.completedLessons.has(l.id)).length,
     0,
   );
   const pct = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
@@ -105,7 +147,11 @@ export function CourseView() {
           <p className="text-primary-200 text-sm mb-4">{course.description}</p>
 
           {/* Progress */}
-          <div data-component="progress-tracker" aria-label={`Course progress: ${pct}%`} className="flex items-center gap-4">
+          <div
+            data-component="progress-tracker"
+            aria-label={`Course progress: ${pct}%`}
+            className="flex items-center gap-4"
+          >
             <div className="flex-1">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-primary-200">
@@ -121,7 +167,8 @@ export function CourseView() {
               </div>
               {pct > 0 && pct < 100 && (
                 <p className="text-xs text-primary-300 mt-1.5">
-                  {totalLessons - completed} lesson{totalLessons - completed !== 1 ? 's' : ''} remaining
+                  {totalLessons - completed} lesson{totalLessons - completed !== 1 ? 's' : ''}{' '}
+                  remaining
                 </p>
               )}
               {pct === 100 && (
@@ -131,10 +178,22 @@ export function CourseView() {
             {/* Circular progress indicator */}
             <div className="relative w-16 h-16 flex-shrink-0">
               <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
-                <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
                 <circle
-                  cx="18" cy="18" r="15.9" fill="none" stroke="currentColor"
-                  strokeWidth="3" strokeLinecap="round"
+                  cx="18"
+                  cy="18"
+                  r="15.9"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.2)"
+                  strokeWidth="3"
+                />
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15.9"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
                   strokeDasharray={`${pct}, 100`}
                   className="text-accent transition-all duration-500"
                 />
@@ -153,7 +212,7 @@ export function CourseView() {
           Course Syllabus
         </h2>
         <div data-component="syllabus" aria-label="Course syllabus" className="space-y-3">
-          {course.modules.map((mod, mi) => (
+          {modules.map((mod, mi) => (
             <div
               key={mod.id}
               className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card overflow-hidden"
@@ -174,12 +233,16 @@ export function CourseView() {
                       {mod.title}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">
-                      {mod.objective} · {mod.lessons.filter(l => state.completedLessons.has(l.id)).length}/{mod.lessons.length} lessons
+                      {mod.objective} ·{' '}
+                      {(mod.lessons ?? []).filter((l) => state.completedLessons.has(l.id)).length}/
+                      {(mod.lessons ?? []).length} lessons
                     </p>
                     <div className="mt-1.5 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-accent rounded-full transition-all duration-500"
-                        style={{ width: `${mod.lessons.length > 0 ? Math.round((mod.lessons.filter(l => state.completedLessons.has(l.id)).length / mod.lessons.length) * 100) : 0}%` }}
+                        style={{
+                          width: `${(mod.lessons ?? []).length > 0 ? Math.round(((mod.lessons ?? []).filter((l) => state.completedLessons.has(l.id)).length / (mod.lessons ?? []).length) * 100) : 0}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -193,7 +256,7 @@ export function CourseView() {
               </Button>
               {expandedModule === mod.id && (
                 <div className="border-t border-gray-100 dark:border-gray-800">
-                  {mod.lessons.map((lesson, li) => {
+                  {(mod.lessons ?? []).map((lesson, li) => {
                     const isComplete = state.completedLessons.has(lesson.id);
                     return (
                       <div
@@ -201,7 +264,11 @@ export function CourseView() {
                         role="article"
                         aria-label={lesson.title}
                         onClick={() => {
-                          setSelectedLesson({ id: lesson.id, title: lesson.title, courseId: courseId! });
+                          setSelectedLesson({
+                            id: lesson.id,
+                            title: lesson.title,
+                            courseId: courseId!,
+                          });
                           nav(`/courses/${courseId}/lessons/${lesson.id}`);
                         }}
                         className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800/50 last:border-0"
@@ -220,7 +287,10 @@ export function CourseView() {
                             {/* Inline citation hover previews — Spec §5.2.4 */}
                             {li < MOCK_SOURCES.length && (
                               <span className="inline-flex ml-1 align-middle">
-                                <CitationTooltip num={MOCK_SOURCES[li].id} source={MOCK_SOURCES[li]} />
+                                <CitationTooltip
+                                  num={MOCK_SOURCES[li].id}
+                                  source={MOCK_SOURCES[li]}
+                                />
                               </span>
                             )}
                           </p>
@@ -239,7 +309,9 @@ export function CourseView() {
                             e.stopPropagation();
                             nav(`/courses/${courseId}/lessons/${lesson.id}`);
                           }}
-                          className={isComplete ? 'bg-success/10 text-success hover:bg-success/20' : ''}
+                          className={
+                            isComplete ? 'bg-success/10 text-success hover:bg-success/20' : ''
+                          }
                         >
                           {isComplete ? 'Review' : 'Start'}
                         </Button>
@@ -258,7 +330,7 @@ export function CourseView() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
             <span className="text-2xl block mb-1">📚</span>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{course.modules.length}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{modules.length}</p>
             <p className="text-xs text-gray-500">Modules</p>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
@@ -269,7 +341,10 @@ export function CourseView() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
             <span className="text-2xl block mb-1">⏱️</span>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
-              {course.modules.reduce((s, m) => s + m.lessons.reduce((ls, l) => ls + estimateReadTime(l), 0), 0)}
+              {modules.reduce(
+                (s, m) => s + (m.lessons ?? []).reduce((ls, l) => ls + estimateReadTime(l), 0),
+                0,
+              )}
             </p>
             <p className="text-xs text-gray-500">Total Minutes</p>
           </div>
@@ -277,11 +352,17 @@ export function CourseView() {
 
         {/* Module Progress Overview */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-6">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Module Progress</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
+            Module Progress
+          </h3>
           <div className="space-y-3">
-            {course.modules.map((mod, mi) => {
-              const modCompleted = mod.lessons.filter(l => state.completedLessons.has(l.id)).length;
-              const modPct = mod.lessons.length > 0 ? Math.round((modCompleted / mod.lessons.length) * 100) : 0;
+            {modules.map((mod, mi) => {
+              const modLessons = mod.lessons ?? [];
+              const modCompleted = modLessons.filter((l) =>
+                state.completedLessons.has(l.id),
+              ).length;
+              const modPct =
+                modLessons.length > 0 ? Math.round((modCompleted / modLessons.length) * 100) : 0;
               return (
                 <div key={mod.id} className="flex items-center gap-3">
                   <span className="w-6 h-6 rounded-lg bg-accent/10 text-accent text-xs font-bold flex items-center justify-center flex-shrink-0">
@@ -290,7 +371,9 @@ export function CourseView() {
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between text-xs mb-1">
                       <span className="text-gray-700 dark:text-gray-300 truncate">{mod.title}</span>
-                      <span className="text-gray-500 ml-2">{modCompleted}/{mod.lessons.length}</span>
+                      <span className="text-gray-500 ml-2">
+                        {modCompleted}/{modLessons.length}
+                      </span>
                     </div>
                     <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                       <div
@@ -307,9 +390,12 @@ export function CourseView() {
 
         {/* Source References */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">📎 Sources & References</h3>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
+            📎 Sources & References
+          </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            This course draws from the following research and materials. Hover over inline citations for previews.
+            This course draws from the following research and materials. Hover over inline citations
+            for previews.
           </p>
           <div className="space-y-2">
             {MOCK_SOURCES.map((src) => (
@@ -317,7 +403,10 @@ export function CourseView() {
                 <span className="text-accent font-semibold">[{src.id}]</span>
                 <div>
                   <span className="text-gray-900 dark:text-white font-medium">{src.title}</span>
-                  <span className="text-gray-500 dark:text-gray-400"> — {src.author} ({src.year})</span>
+                  <span className="text-gray-500 dark:text-gray-400">
+                    {' '}
+                    — {src.author} ({src.year})
+                  </span>
                 </div>
               </div>
             ))}
@@ -332,21 +421,31 @@ export function CourseView() {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => {/* mark complete logic */}}
+              onClick={() => {
+                /* mark complete logic */
+              }}
             >
               ✅ Mark Complete
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => nav(`/conversation?courseId=${selectedLesson.courseId}&lessonId=${selectedLesson.id}&action=quiz`)}
+              onClick={() =>
+                nav(
+                  `/conversation?courseId=${selectedLesson.courseId}&lessonId=${selectedLesson.id}&action=quiz`,
+                )
+              }
             >
               🧪 Quiz Me
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => nav(`/conversation?courseId=${selectedLesson.courseId}&lessonId=${selectedLesson.id}&action=notes`)}
+              onClick={() =>
+                nav(
+                  `/conversation?courseId=${selectedLesson.courseId}&lessonId=${selectedLesson.id}&action=notes`,
+                )
+              }
             >
               📝 Take Notes
             </Button>

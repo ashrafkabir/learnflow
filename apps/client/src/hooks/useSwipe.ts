@@ -19,12 +19,15 @@ export function useSwipe({ onSwipeLeft, onSwipeRight }: SwipeHandlers): SwipePro
     startX.current = e.touches[0].clientX;
   }, []);
 
-  const onTouchEnd = useCallback((e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - startX.current;
-    if (Math.abs(dx) < MIN_SWIPE_DISTANCE) return;
-    if (dx < 0) onSwipeLeft?.();
-    else onSwipeRight?.();
-  }, [onSwipeLeft, onSwipeRight]);
+  const onTouchEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const dx = e.changedTouches[0].clientX - startX.current;
+      if (Math.abs(dx) < MIN_SWIPE_DISTANCE) return;
+      if (dx < 0) onSwipeLeft?.();
+      else onSwipeRight?.();
+    },
+    [onSwipeLeft, onSwipeRight],
+  );
 
   return { onTouchStart, onTouchEnd };
 }

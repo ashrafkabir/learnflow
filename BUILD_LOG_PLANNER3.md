@@ -1,6 +1,7 @@
 # BUILD_LOG — Planner 3
 
 ## Actions Taken
+
 1. Read IMPROVEMENT_QUEUE.md (iteration 2) and ITERATE.md
 2. Checked running processes — API (port 3002) and client (port 3001) running in tmux
 3. Listed all UI and API files
@@ -18,6 +19,7 @@
 15. Notes/quiz via direct API call with auth token returns template content (LLM fallback used, content too short/generic)
 
 ## Key Findings
+
 - **Auth is completely broken on client** — no Bearer token sent
 - **Content is all template fallback** — LLM generation may be failing or was never invoked for existing courses
 - **Course view and lesson reader are blank** — 401 responses
@@ -26,4 +28,5 @@
 - **Conversation doesn't pass lesson context** — notes/quiz can't be lesson-specific
 
 ## Output
+
 Wrote IMPROVEMENT_QUEUE.md with 13 prioritized tasks for iteration 3.

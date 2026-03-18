@@ -38,7 +38,9 @@ export function useWebSocket(onEvent: WsHandler) {
         try {
           const evt = JSON.parse(e.data) as WsEvent;
           handlersRef.current(evt);
-        } catch { /* ignore */ } // eslint-disable-line no-empty
+        } catch {
+          // ignore malformed ws payload
+        }
       };
     }
 

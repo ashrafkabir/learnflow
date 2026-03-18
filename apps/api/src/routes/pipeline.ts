@@ -16,7 +16,15 @@ const openai = process.env.OPENAI_API_KEY
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type PipelineStage = 'scraping' | 'organizing' | 'synthesizing' | 'quality_check' | 'reviewing' | 'published' | 'personal' | 'failed';
+export type PipelineStage =
+  | 'scraping'
+  | 'organizing'
+  | 'synthesizing'
+  | 'quality_check'
+  | 'reviewing'
+  | 'published'
+  | 'personal'
+  | 'failed';
 
 export interface CrawlThread {
   id: string;
@@ -87,7 +95,11 @@ function broadcast(pipelineId: string, event: string, data: unknown) {
   if (!clients) return;
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const res of clients) {
-    try { res.write(msg); } catch { clients.delete(res); }
+    try {
+      res.write(msg);
+    } catch {
+      clients.delete(res);
+    }
   }
 }
 
@@ -113,8 +125,14 @@ function getGenericModules(topic: string): TopicModule[] {
       title: `Foundations of ${topic}`,
       objective: `Understand the core principles and history of ${topic}`,
       lessons: [
-        { title: `Introduction to ${topic}`, description: `Core concepts and definitions in ${topic}` },
-        { title: `History and Evolution of ${topic}`, description: `How ${topic} developed over time` },
+        {
+          title: `Introduction to ${topic}`,
+          description: `Core concepts and definitions in ${topic}`,
+        },
+        {
+          title: `History and Evolution of ${topic}`,
+          description: `How ${topic} developed over time`,
+        },
         { title: `Key Terminology in ${topic}`, description: `Essential vocabulary and concepts` },
       ],
     },
@@ -123,7 +141,10 @@ function getGenericModules(topic: string): TopicModule[] {
       objective: `Master the fundamental techniques and methodologies`,
       lessons: [
         { title: `Fundamental Techniques`, description: `Primary methods used in ${topic}` },
-        { title: `Advanced Patterns and Frameworks`, description: `Higher-level abstractions and patterns` },
+        {
+          title: `Advanced Patterns and Frameworks`,
+          description: `Higher-level abstractions and patterns`,
+        },
         { title: `Tools and Technologies`, description: `Key tools and platforms for ${topic}` },
       ],
     },
@@ -132,20 +153,29 @@ function getGenericModules(topic: string): TopicModule[] {
       objective: `Apply knowledge to real-world scenarios`,
       lessons: [
         { title: `Real-World Use Cases`, description: `How ${topic} is applied in industry` },
-        { title: `Best Practices and Common Pitfalls`, description: `Expert recommendations and mistakes to avoid` },
+        {
+          title: `Best Practices and Common Pitfalls`,
+          description: `Expert recommendations and mistakes to avoid`,
+        },
         { title: `Future Directions`, description: `Emerging trends and the roadmap ahead` },
       ],
     },
   ];
 }
 
-async function generateModulesForTopic(topic: string, scrapedSources: FirecrawlSource[] = []): Promise<TopicModule[]> {
+async function generateModulesForTopic(
+  topic: string,
+  scrapedSources: FirecrawlSource[] = [],
+): Promise<TopicModule[]> {
   if (!openai) return getGenericModules(topic);
 
   // Build source context for informed planning
-  const sourceContext = scrapedSources.slice(0, 15).map((s, i) =>
-    `[Source ${i + 1}] "${s.title}" (${s.domain})\n${(s.content || '').slice(0, 800)}`
-  ).join('\n---\n');
+  const sourceContext = scrapedSources
+    .slice(0, 15)
+    .map(
+      (s, i) => `[Source ${i + 1}] "${s.title}" (${s.domain})\n${(s.content || '').slice(0, 800)}`,
+    )
+    .join('\n---\n');
 
   const hasRealSources = scrapedSources.length > 0;
 
@@ -180,7 +210,10 @@ Rules:
 - Each lesson title should be unique and descriptive
 ${hasRealSources ? `- You have REAL scraped web sources below. Use them to inform what topics are trending, important, and practically relevant. Base your module/lesson titles on what the sources actually cover — not generic templates.` : ''}`,
         },
-        { role: 'user', content: `Create a comprehensive intermediate-level course syllabus for: "${topic}"${hasRealSources ? `\n\nHere are real sources scraped from the web to inform your plan:\n\n${sourceContext}` : ''}` },
+        {
+          role: 'user',
+          content: `Create a comprehensive intermediate-level course syllabus for: "${topic}"${hasRealSources ? `\n\nHere are real sources scraped from the web to inform your plan:\n\n${sourceContext}` : ''}`,
+        },
       ],
     });
 
@@ -188,9 +221,13 @@ ${hasRealSources ? `- You have REAL scraped web sources below. Use them to infor
     if (content) {
       const parsed = JSON.parse(content);
       if (parsed.modules && Array.isArray(parsed.modules) && parsed.modules.length >= 3) {
-        const valid = parsed.modules.every((m: any) =>
-          m.title && m.objective && Array.isArray(m.lessons) && m.lessons.length >= 2 &&
-          m.lessons.every((l: any) => l.title && l.description)
+        const valid = parsed.modules.every(
+          (m: any) =>
+            m.title &&
+            m.objective &&
+            Array.isArray(m.lessons) &&
+            m.lessons.length >= 2 &&
+            m.lessons.every((l: any) => l.title && l.description),
         );
         if (valid) {
           // Store course title/description from LLM if provided
@@ -231,11 +268,14 @@ async function runPipeline(pipelineId: string) {
 
   // Use searchTopicTrending for bulk research
   let crawledSources: FirecrawlSource[] = [];
-  
+
   // Update threads visually as we go
   for (let i = 0; i < threads.length; i++) {
     threads[i].status = 'crawling';
-    updatePipeline(p, { crawlThreads: [...threads], progress: 5 + Math.round((i / threads.length) * 20) });
+    updatePipeline(p, {
+      crawlThreads: [...threads],
+      progress: 5 + Math.round((i / threads.length) * 20),
+    });
   }
 
   try {
@@ -244,15 +284,22 @@ async function runPipeline(pipelineId: string) {
       threads[i].status = 'done';
       const chunk = crawledSources.slice(i * 4, (i + 1) * 4);
       threads[i].title = chunk.length > 0 ? `Found ${chunk.length} sources` : 'Completed';
-      threads[i].contentPreview = chunk.map(s => s.title).join(', ').slice(0, 100);
+      threads[i].contentPreview = chunk
+        .map((s) => s.title)
+        .join(', ')
+        .slice(0, 100);
       threads[i].wordCount = chunk.reduce((s, c) => s + c.wordCount, 0);
     }
   } catch (err) {
     console.warn('[Pipeline] Bulk research failed, falling back to crawlSourcesForTopic:', err);
     try {
       crawledSources = await crawlSourcesForTopic(topic);
-    } catch { /* will use empty sources */ }
-    for (const t of threads) { t.status = crawledSources.length > 0 ? 'done' : 'failed'; }
+    } catch {
+      /* will use empty sources */
+    }
+    for (const t of threads) {
+      t.status = crawledSources.length > 0 ? 'done' : 'failed';
+    }
   }
   updatePipeline(p, { crawlThreads: [...threads], progress: 25 });
 
@@ -277,11 +324,11 @@ async function runPipeline(pipelineId: string) {
   updatePipeline(p, { stage: 'organizing', progress: 35 });
 
   // Deduplicate and score
-  const uniqueSources = crawledSources.filter((s, i, arr) => 
-    arr.findIndex(x => x.url === s.url) === i
+  const uniqueSources = crawledSources.filter(
+    (s, i, arr) => arr.findIndex((x) => x.url === s.url) === i,
   );
-  const credScores = uniqueSources.map(s => s.credibilityScore);
-  const themes = [...new Set(modules.map(m => m.title))];
+  const credScores = uniqueSources.map((s) => s.credibilityScore);
+  const themes = [...new Set(modules.map((m) => m.title))];
 
   updatePipeline(p, {
     organizedSources: uniqueSources.length,
@@ -291,15 +338,19 @@ async function runPipeline(pipelineId: string) {
     progress: 45,
   });
 
-  await new Promise(r => setTimeout(r, 1000));
+  await new Promise((r) => setTimeout(r, 1000));
 
   // ── STAGE 3: Synthesizing (per-lesson scraping + generation) ─────────
   updatePipeline(p, { stage: 'synthesizing', progress: 50 });
 
   const syntheses: LessonSynthesis[] = [];
   const allLessons: Array<{
-    id: string; title: string; description: string; content: string;
-    estimatedTime: number; wordCount: number;
+    id: string;
+    title: string;
+    description: string;
+    content: string;
+    estimatedTime: number;
+    wordCount: number;
   }> = [];
 
   let lessonIdx = 0;
@@ -323,7 +374,7 @@ async function runPipeline(pipelineId: string) {
     for (let li = 0; li < modules[mi].lessons.length; li++) {
       const les = modules[mi].lessons[li];
       const lessonId = `${p.courseId}-m${mi}-l${li}`;
-      const synthIdx = syntheses.findIndex(s => s.lessonId === lessonId);
+      const synthIdx = syntheses.findIndex((s) => s.lessonId === lessonId);
 
       syntheses[synthIdx].status = 'generating';
       updatePipeline(p, {
@@ -336,9 +387,17 @@ async function runPipeline(pipelineId: string) {
         console.log(`[Pipeline] Scraping sources for lesson: "${les.title}"`);
         let lessonSources: FirecrawlSource[];
         try {
-          lessonSources = await searchForLesson(topic, modules[mi].title, les.title, les.description);
+          lessonSources = await searchForLesson(
+            topic,
+            modules[mi].title,
+            les.title,
+            les.description,
+          );
         } catch (err) {
-          console.warn(`[Pipeline] Per-lesson scrape failed for "${les.title}", falling back to course sources:`, err);
+          console.warn(
+            `[Pipeline] Per-lesson scrape failed for "${les.title}", falling back to course sources:`,
+            err,
+          );
           lessonSources = uniqueSources.slice(0, 6);
         }
 
@@ -352,18 +411,31 @@ async function runPipeline(pipelineId: string) {
 
         // Try up to 3 times to get adequate content
         for (let attempt = 0; attempt < 3; attempt++) {
-          const minWordHint = attempt > 0 ? ` The response MUST be at least 800 words. Be thorough and detailed.` : '';
+          const minWordHint =
+            attempt > 0
+              ? ` The response MUST be at least 800 words. Be thorough and detailed.`
+              : '';
           const temp = attempt >= 2 ? 0.9 : 0.7;
-          content = await generateLesson(topic, modules[mi].title, les.title, les.description, lessonSources, minWordHint, temp);
-          wc = content.split(/\s+/).filter(w => w).length;
+          content = await generateLesson(
+            topic,
+            modules[mi].title,
+            les.title,
+            les.description,
+            lessonSources,
+            minWordHint,
+            temp,
+          );
+          wc = content.split(/\s+/).filter((w) => w).length;
           if (wc >= MIN_WORDS) break;
-          console.warn(`[Pipeline] Lesson "${les.title}" attempt ${attempt + 1}: ${wc} words (min ${MIN_WORDS})`);
+          console.warn(
+            `[Pipeline] Lesson "${les.title}" attempt ${attempt + 1}: ${wc} words (min ${MIN_WORDS})`,
+          );
         }
 
         // If still short after retries, use enhanced fallback
         if (wc < MIN_WORDS) {
           content = generateEnhancedFallback(topic, modules[mi].title, les.title, les.description);
-          wc = content.split(/\s+/).filter(w => w).length;
+          wc = content.split(/\s+/).filter((w) => w).length;
         }
 
         syntheses[synthIdx].status = 'done';
@@ -381,8 +453,13 @@ async function runPipeline(pipelineId: string) {
       } catch {
         syntheses[synthIdx].status = 'failed';
         syntheses[synthIdx].wordCount = 0;
-        const fallback = generateEnhancedFallback(topic, modules[mi].title, les.title, les.description);
-        const wc = fallback.split(/\s+/).filter(w => w).length;
+        const fallback = generateEnhancedFallback(
+          topic,
+          modules[mi].title,
+          les.title,
+          les.description,
+        );
+        const wc = fallback.split(/\s+/).filter((w) => w).length;
         allLessons.push({
           id: lessonId,
           title: les.title,
@@ -403,20 +480,35 @@ async function runPipeline(pipelineId: string) {
   // ── STAGE 4: Quality Check ─────────────────────────────────────────────
   updatePipeline(p, { stage: 'quality_check', progress: 85 });
 
-  const qualityResults: QualityResult[] = allLessons.map(lesson => {
+  const qualityResults: QualityResult[] = allLessons.map((lesson) => {
     const objectivesMatch = lesson.content.match(/^- .+$/gm);
     const takeawaysMatch = lesson.content.match(/^\d+\. .+$/gm);
     const sourcesMatch = lesson.content.match(/^\[\d+\]/gm);
-    const readability = Math.min(100, Math.max(40, 60 + (lesson.wordCount > 500 ? 20 : 0) + (objectivesMatch ? 10 : 0)));
+    const readability = Math.min(
+      100,
+      Math.max(40, 60 + (lesson.wordCount > 500 ? 20 : 0) + (objectivesMatch ? 10 : 0)),
+    );
 
     return {
       lessonId: lesson.id,
       lessonTitle: lesson.title,
       checks: {
         wordCount: { pass: lesson.wordCount >= 500, value: lesson.wordCount, min: 500 },
-        objectives: { pass: (objectivesMatch?.length || 0) >= 2, count: objectivesMatch?.length || 0, min: 2 },
-        takeaways: { pass: (takeawaysMatch?.length || 0) >= 3, count: takeawaysMatch?.length || 0, min: 3 },
-        sources: { pass: (sourcesMatch?.length || 0) >= 2, count: sourcesMatch?.length || 0, min: 2 },
+        objectives: {
+          pass: (objectivesMatch?.length || 0) >= 2,
+          count: objectivesMatch?.length || 0,
+          min: 2,
+        },
+        takeaways: {
+          pass: (takeawaysMatch?.length || 0) >= 3,
+          count: takeawaysMatch?.length || 0,
+          min: 3,
+        },
+        sources: {
+          pass: (sourcesMatch?.length || 0) >= 2,
+          count: sourcesMatch?.length || 0,
+          min: 2,
+        },
         readability: { pass: readability >= 60, score: readability },
       },
       overallPass: lesson.wordCount >= 500 && readability >= 60,
@@ -424,7 +516,7 @@ async function runPipeline(pipelineId: string) {
   });
 
   updatePipeline(p, { qualityResults, progress: 92 });
-  await new Promise(r => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 500));
 
   // ── STAGE 5: Ready for Review ──────────────────────────────────────────
   // Build the course object and store it
@@ -435,7 +527,7 @@ async function runPipeline(pipelineId: string) {
     title: mod.title,
     objective: mod.objective,
     description: mod.objective,
-    lessons: allLessons.filter(l => l.id.startsWith(`${p.courseId}-m${mi}-`)),
+    lessons: allLessons.filter((l) => l.id.startsWith(`${p.courseId}-m${mi}-`)),
   }));
 
   const course = {
@@ -457,7 +549,12 @@ async function runPipeline(pipelineId: string) {
   broadcast(p.id, 'pipeline:complete', { courseId: p.courseId });
 }
 
-function generateEnhancedFallback(topic: string, moduleTitle: string, lessonTitle: string, lessonDesc: string): string {
+function generateEnhancedFallback(
+  topic: string,
+  moduleTitle: string,
+  lessonTitle: string,
+  lessonDesc: string,
+): string {
   return `# ${lessonTitle}
 
 ## Learning Objectives
@@ -526,15 +623,22 @@ This structured approach ensures that you are not just learning theory but build
 }
 
 async function generateLesson(
-  topic: string, moduleTitle: string, lessonTitle: string,
-  lessonDesc: string, sources: FirecrawlSource[],
-  extraInstruction: string = '', temperature: number = 0.7,
+  topic: string,
+  moduleTitle: string,
+  lessonTitle: string,
+  lessonDesc: string,
+  sources: FirecrawlSource[],
+  extraInstruction: string = '',
+  temperature: number = 0.7,
 ): Promise<string> {
   // Pass up to 6 sources with actual content (first 1500 chars each)
   const topSources = sources.slice(0, 6);
-  const srcContext = topSources.map((s, i) =>
-    `[Source ${i + 1}] Title: "${s.title}"\nURL: ${s.url}\nDomain: ${s.domain}\nContent:\n${(s.content || '').slice(0, 1500)}`
-  ).join('\n\n---\n\n');
+  const srcContext = topSources
+    .map(
+      (s, i) =>
+        `[Source ${i + 1}] Title: "${s.title}"\nURL: ${s.url}\nDomain: ${s.domain}\nContent:\n${(s.content || '').slice(0, 1500)}`,
+    )
+    .join('\n\n---\n\n');
 
   const sourceList = topSources.map((s, i) => `${i + 1}. [${s.title}](${s.url})`).join('\n');
 
@@ -637,11 +741,14 @@ Write the lesson now, starting with # ${lessonTitle}`,
 }
 
 function generateSourceAwareFallback(
-  topic: string, moduleTitle: string, lessonTitle: string,
-  lessonDesc: string, sources: FirecrawlSource[],
+  topic: string,
+  moduleTitle: string,
+  lessonTitle: string,
+  lessonDesc: string,
+  sources: FirecrawlSource[],
 ): string {
   const sourceRefs = sources.map((s, _i) => `[${s.title}](${s.url})`);
-  const sourceList = sources.map(s => `- [${s.title}](${s.url})`).join('\n');
+  const sourceList = sources.map((s) => `- [${s.title}](${s.url})`).join('\n');
 
   const sections: string[] = [];
   sections.push(`# ${lessonTitle}\n`);
@@ -653,7 +760,9 @@ function generateSourceAwareFallback(
   sections.push(`## Main Content\n`);
 
   sections.push(`### Overview\n`);
-  sections.push(`${lessonDesc}. This concept is a critical building block within ${topic}, and understanding it deeply will give you a strong foundation for more advanced material in ${moduleTitle}.\n`);
+  sections.push(
+    `${lessonDesc}. This concept is a critical building block within ${topic}, and understanding it deeply will give you a strong foundation for more advanced material in ${moduleTitle}.\n`,
+  );
 
   // Synthesize from actual sources
   if (sources.length > 0) {
@@ -662,14 +771,16 @@ function generateSourceAwareFallback(
       const s = sources[i];
       const snippet = (s.content || '').slice(0, 300).replace(/\n/g, ' ').trim();
       if (snippet) {
-        sections.push(`According to ${sourceRefs[i]}, ${snippet.endsWith('.') ? snippet : snippet + '.'}\n`);
+        sections.push(
+          `According to ${sourceRefs[i]}, ${snippet.endsWith('.') ? snippet : snippet + '.'}\n`,
+        );
       }
     }
 
     sections.push(`### Key Concepts and Techniques\n`);
     for (let i = 0; i < Math.min(sources.length, 3); i++) {
       const s = sources[i];
-      const sentences = (s.content || '').split(/\.\s+/).filter(sent => sent.length > 40);
+      const sentences = (s.content || '').split(/\.\s+/).filter((sent) => sent.length > 40);
       const points = sentences.slice(1, 4);
       if (points.length > 0) {
         sections.push(`From ${sourceRefs[i]}:\n`);
@@ -682,7 +793,9 @@ function generateSourceAwareFallback(
   }
 
   sections.push(`### Practical Applications\n`);
-  sections.push(`The concepts discussed above have direct practical applications. When working with ${lessonTitle.toLowerCase()}, consider starting with the foundational concepts outlined above, then progressively applying them to your specific use case.\n`);
+  sections.push(
+    `The concepts discussed above have direct practical applications. When working with ${lessonTitle.toLowerCase()}, consider starting with the foundational concepts outlined above, then progressively applying them to your specific use case.\n`,
+  );
 
   sections.push(`## Key Takeaways`);
   sections.push(`1. ${lessonTitle} is foundational to ${topic}`);
@@ -731,7 +844,7 @@ router.post('/', (req: Request, res: Response) => {
   dbPipelines.save(state);
 
   // Start pipeline async
-  runPipeline(pipelineId).catch(err => {
+  runPipeline(pipelineId).catch((err) => {
     const p = pipelines.get(pipelineId);
     if (p) updatePipeline(p, { stage: 'failed', error: String(err) });
   });
@@ -780,7 +893,7 @@ router.get('/:id/events', (req: Request, res: Response) => {
 
 /** GET /api/v1/pipeline — List all pipelines */
 router.get('/', (_req: Request, res: Response) => {
-  const all = Array.from(pipelines.values()).map(p => ({
+  const all = Array.from(pipelines.values()).map((p) => ({
     id: p.id,
     courseId: p.courseId,
     topic: p.topic,
@@ -796,11 +909,17 @@ router.get('/', (_req: Request, res: Response) => {
 /** GET /api/v1/pipeline/:id/lessons — Get all lessons for a pipeline's course */
 router.get('/:id/lessons', async (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
-  if (!p) { res.status(404).json({ error: 'Pipeline not found' }); return; }
+  if (!p) {
+    res.status(404).json({ error: 'Pipeline not found' });
+    return;
+  }
 
   const { courses } = await import('./courses.js');
   const course = courses.get(p.courseId) as any;
-  if (!course) { res.status(404).json({ error: 'Course not found yet' }); return; }
+  if (!course) {
+    res.status(404).json({ error: 'Course not found yet' });
+    return;
+  }
 
   const lessons = course.modules.flatMap((mod: any) =>
     mod.lessons.map((l: any) => ({
@@ -810,7 +929,7 @@ router.get('/:id/lessons', async (req: Request, res: Response) => {
       content: l.content,
       wordCount: l.wordCount,
       estimatedTime: l.estimatedTime,
-    }))
+    })),
   );
   res.json({ lessons });
 });
@@ -818,25 +937,43 @@ router.get('/:id/lessons', async (req: Request, res: Response) => {
 /** POST /api/v1/pipeline/:id/lessons/:lessonId/edit — Edit a lesson with a prompt */
 router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
-  if (!p) { res.status(404).json({ error: 'Pipeline not found' }); return; }
-  if (p.stage !== 'reviewing') { res.status(400).json({ error: 'Pipeline must be in reviewing stage' }); return; }
+  if (!p) {
+    res.status(404).json({ error: 'Pipeline not found' });
+    return;
+  }
+  if (p.stage !== 'reviewing') {
+    res.status(400).json({ error: 'Pipeline must be in reviewing stage' });
+    return;
+  }
 
   const { prompt } = req.body;
-  if (!prompt || typeof prompt !== 'string') { res.status(400).json({ error: 'prompt is required' }); return; }
+  if (!prompt || typeof prompt !== 'string') {
+    res.status(400).json({ error: 'prompt is required' });
+    return;
+  }
 
   const lessonId = String(req.params.lessonId);
 
   // Find the course and lesson
   const { courses } = await import('./courses.js');
   const course = courses.get(p.courseId) as any;
-  if (!course) { res.status(404).json({ error: 'Course not found' }); return; }
+  if (!course) {
+    res.status(404).json({ error: 'Course not found' });
+    return;
+  }
 
   let targetLesson: any = null;
   for (const mod of course.modules) {
     const found = mod.lessons.find((l: any) => l.id === lessonId);
-    if (found) { targetLesson = found; break; }
+    if (found) {
+      targetLesson = found;
+      break;
+    }
   }
-  if (!targetLesson) { res.status(404).json({ error: 'Lesson not found' }); return; }
+  if (!targetLesson) {
+    res.status(404).json({ error: 'Lesson not found' });
+    return;
+  }
 
   if (!openai) {
     res.status(500).json({ error: 'OpenAI not configured' });
@@ -879,8 +1016,14 @@ router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) =
 /** POST /api/v1/pipeline/:id/publish — Publish course to marketplace */
 router.post('/:id/publish', (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
-  if (!p) { res.status(404).json({ error: 'Pipeline not found' }); return; }
-  if (p.stage !== 'reviewing') { res.status(400).json({ error: 'Pipeline must be in reviewing stage' }); return; }
+  if (!p) {
+    res.status(404).json({ error: 'Pipeline not found' });
+    return;
+  }
+  if (p.stage !== 'reviewing') {
+    res.status(400).json({ error: 'Pipeline must be in reviewing stage' });
+    return;
+  }
   updatePipeline(p, { stage: 'published' });
   res.json({ status: 'published', courseId: p.courseId });
 });
@@ -888,8 +1031,14 @@ router.post('/:id/publish', (req: Request, res: Response) => {
 /** POST /api/v1/pipeline/:id/personal — Keep course as personal */
 router.post('/:id/personal', (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
-  if (!p) { res.status(404).json({ error: 'Pipeline not found' }); return; }
-  if (p.stage !== 'reviewing') { res.status(400).json({ error: 'Pipeline must be in reviewing stage' }); return; }
+  if (!p) {
+    res.status(404).json({ error: 'Pipeline not found' });
+    return;
+  }
+  if (p.stage !== 'reviewing') {
+    res.status(400).json({ error: 'Pipeline must be in reviewing stage' });
+    return;
+  }
   updatePipeline(p, { stage: 'personal' });
   res.json({ status: 'personal', courseId: p.courseId });
 });

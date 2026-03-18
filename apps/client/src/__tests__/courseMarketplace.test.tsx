@@ -24,7 +24,13 @@ afterEach(() => cleanup());
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <ThemeProvider><AppProvider><ToastProvider><App /></ToastProvider></AppProvider></ThemeProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </AppProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }
@@ -32,41 +38,56 @@ function renderAt(path: string) {
 describe('CourseMarketplace screen', () => {
   it('renders page', async () => {
     renderAt('/marketplace');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/marketplace|course|browse/i)).toBeTruthy();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/marketplace|course|browse/i)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('shows course titles', async () => {
     renderAt('/marketplace');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/machine learning|python|kubernetes|react/i)).toBeTruthy();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/machine learning|python|kubernetes|react/i)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('has filter or sort controls', async () => {
     renderAt('/marketplace');
-    await waitFor(() => {
-      const controls = document.querySelectorAll('select, input, button');
-      expect(controls.length).toBeGreaterThan(0);
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const controls = document.querySelectorAll('select, input, button');
+        expect(controls.length).toBeGreaterThan(0);
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('shows Free label for free courses', async () => {
     renderAt('/marketplace');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/free/i)).toBeTruthy();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/free/i)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('shows enroll buttons', async () => {
     renderAt('/marketplace');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/enroll/i)).toBeTruthy();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/enroll/i)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 });

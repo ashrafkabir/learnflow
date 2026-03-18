@@ -9,7 +9,11 @@ const { chromium } = require('playwright');
   const res = await fetch('http://127.0.0.1:3000/api/v1/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'screenshotuser' + Date.now() + '@test.com', password: 'TestPass123!', displayName: 'Screenshot User' }),
+    body: JSON.stringify({
+      email: 'screenshotuser' + Date.now() + '@test.com',
+      password: 'TestPass123!',
+      displayName: 'Screenshot User',
+    }),
   });
   const auth = await res.json();
   console.log('Registered:', auth.user.email);
@@ -41,7 +45,9 @@ const { chromium } = require('playwright');
       await page.waitForTimeout(1000);
       await page.screenshot({ path: DIR + '/' + name + '-auth.png', fullPage: true });
       console.log('OK ' + name);
-    } catch (e) { console.log('FAIL ' + name + ': ' + e.message.slice(0, 80)); }
+    } catch (e) {
+      console.log('FAIL ' + name + ': ' + e.message.slice(0, 80));
+    }
   }
 
   // Create a course to get course/lesson screens
@@ -50,12 +56,14 @@ const { chromium } = require('playwright');
     await page.waitForTimeout(1000);
     await page.screenshot({ path: DIR + '/create-course-auth.png', fullPage: true });
     console.log('OK create-course-auth');
-  } catch(e) { console.log('FAIL create-course: ' + e.message.slice(0,80)); }
+  } catch (e) {
+    console.log('FAIL create-course: ' + e.message.slice(0, 80));
+  }
 
   // Check if there are any courses
   try {
     const coursesRes = await fetch('http://127.0.0.1:3000/api/v1/courses', {
-      headers: { 'Authorization': 'Bearer ' + auth.accessToken }
+      headers: { Authorization: 'Bearer ' + auth.accessToken },
     });
     const courses = await coursesRes.json();
     console.log('Courses:', JSON.stringify(courses).slice(0, 200));
@@ -70,26 +78,34 @@ const { chromium } = require('playwright');
 
       // Get lessons
       const lessonsRes = await fetch('http://127.0.0.1:3000/api/v1/courses/' + cid + '/lessons', {
-        headers: { 'Authorization': 'Bearer ' + auth.accessToken }
+        headers: { Authorization: 'Bearer ' + auth.accessToken },
       });
       const lessons = await lessonsRes.json();
       console.log('Lessons:', JSON.stringify(lessons).slice(0, 200));
       if (lessons.length > 0 || (lessons.lessons && lessons.lessons.length > 0)) {
         const lessonList = lessons.lessons || lessons;
         const lid = lessonList[0].id;
-        await page.goto(BASE + '/courses/' + cid + '/lessons/' + lid, { waitUntil: 'networkidle', timeout: 8000 });
+        await page.goto(BASE + '/courses/' + cid + '/lessons/' + lid, {
+          waitUntil: 'networkidle',
+          timeout: 8000,
+        });
         await page.waitForTimeout(1000);
         await page.screenshot({ path: DIR + '/lesson-reader-auth.png', fullPage: true });
         console.log('OK lesson-reader-auth');
       }
 
       // Mindmap
-      await page.goto(BASE + '/courses/' + cid + '/mindmap', { waitUntil: 'networkidle', timeout: 8000 });
+      await page.goto(BASE + '/courses/' + cid + '/mindmap', {
+        waitUntil: 'networkidle',
+        timeout: 8000,
+      });
       await page.waitForTimeout(1000);
       await page.screenshot({ path: DIR + '/mindmap-auth.png', fullPage: true });
       console.log('OK mindmap-auth');
     }
-  } catch(e) { console.log('FAIL courses: ' + e.message.slice(0,120)); }
+  } catch (e) {
+    console.log('FAIL courses: ' + e.message.slice(0, 120));
+  }
 
   // Mobile
   const mctx = await browser.newContext({ viewport: { width: 375, height: 812 } });
@@ -102,13 +118,16 @@ const { chromium } = require('playwright');
     localStorage.setItem('learnflow-onboarding-complete', 'true');
   }, auth);
 
-  for (const [n, p] of [['m-dashboard-auth', '/dashboard'], ['m-settings-auth', '/settings']]) {
+  for (const [n, p] of [
+    ['m-dashboard-auth', '/dashboard'],
+    ['m-settings-auth', '/settings'],
+  ]) {
     try {
       await mp.goto(BASE + p, { waitUntil: 'networkidle', timeout: 5000 });
       await mp.waitForTimeout(1000);
       await mp.screenshot({ path: DIR + '/' + n + '.png', fullPage: true });
       console.log('OK ' + n);
-    } catch(e) {}
+    } catch (e) {}
   }
 
   await browser.close();

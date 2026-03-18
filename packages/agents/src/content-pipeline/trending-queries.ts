@@ -124,8 +124,7 @@ export function createOpenAIQueryGenerator(env = process.env): QueryGenerator {
           },
           {
             role: 'user',
-            content:
-              `Course topic: ${args.topic}\nModule: ${args.moduleTitle}\nLesson: ${args.lessonTitle}\nLesson description: ${args.lessonDescription}`,
+            content: `Course topic: ${args.topic}\nModule: ${args.moduleTitle}\nLesson: ${args.lessonTitle}\nLesson description: ${args.lessonDescription}`,
           },
         ],
       });

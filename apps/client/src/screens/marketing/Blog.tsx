@@ -19,7 +19,10 @@ export function BlogPage() {
   /* Filter posts by search query and tag */
   const filtered = useMemo(() => {
     return posts.filter((post: any) => {
-      const matchesSearch = search === '' || post.title.toLowerCase().includes(search.toLowerCase()) || post.excerpt.toLowerCase().includes(search.toLowerCase());
+      const matchesSearch =
+        search === '' ||
+        post.title.toLowerCase().includes(search.toLowerCase()) ||
+        post.excerpt.toLowerCase().includes(search.toLowerCase());
       const matchesTag = selectedTag === 'All' || post.tag === selectedTag;
       return matchesSearch && matchesTag;
     });
@@ -27,12 +30,18 @@ export function BlogPage() {
 
   return (
     <MarketingLayout>
-      <SEO title="Blog" description="Insights on AI-powered learning, study techniques, and LearnFlow product updates." path="/blog" />
+      <SEO
+        title="Blog"
+        description="Insights on AI-powered learning, study techniques, and LearnFlow product updates."
+        path="/blog"
+      />
       <section className="max-w-4xl mx-auto px-6 py-20">
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-extrabold tracking-tight mb-4">Blog</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">Insights on AI-powered learning, study techniques, and product updates.</p>
+          <p className="text-lg text-gray-600 dark:text-gray-300">
+            Insights on AI-powered learning, study techniques, and product updates.
+          </p>
         </div>
 
         {/* Search & Filter Bar */}
@@ -70,7 +79,9 @@ export function BlogPage() {
 
         {/* Results Count */}
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          {filtered.length} article{filtered.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ''}{selectedTag !== 'All' ? ` in ${selectedTag}` : ''}
+          {filtered.length} article{filtered.length !== 1 ? 's' : ''}
+          {search ? ` matching "${search}"` : ''}
+          {selectedTag !== 'All' ? ` in ${selectedTag}` : ''}
         </p>
 
         {/* Posts List */}
@@ -82,15 +93,23 @@ export function BlogPage() {
               className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 hover:shadow-elevated transition-all cursor-pointer group"
             >
               <div className="flex items-center gap-3 mb-3">
-                <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${post.tagColor}`}>{post.tag}</span>
+                <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${post.tagColor}`}>
+                  {post.tag}
+                </span>
                 <span className="text-xs text-gray-600 dark:text-gray-300">{post.date}</span>
                 <span className="text-xs text-gray-600 dark:text-gray-300">·</span>
                 <span className="text-xs text-gray-600 dark:text-gray-300">{post.readTime}</span>
               </div>
-              <h2 className="text-xl font-bold mb-2 group-hover:text-accent transition-colors">{post.title}</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{post.excerpt}</p>
+              <h2 className="text-xl font-bold mb-2 group-hover:text-accent transition-colors">
+                {post.title}
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                {post.excerpt}
+              </p>
               <div className="mt-3">
-                <span className="text-xs font-medium text-accent group-hover:underline">Read more →</span>
+                <span className="text-xs font-medium text-accent group-hover:underline">
+                  Read more →
+                </span>
               </div>
             </article>
           ))}
@@ -100,7 +119,13 @@ export function BlogPage() {
               <p className="text-4xl mb-3">📝</p>
               <p className="text-lg font-medium">No articles found</p>
               <p className="text-sm mt-1">Try adjusting your search or category filter.</p>
-              <button onClick={() => { setSearch(''); setSelectedTag('All'); }} className="mt-4 text-sm text-accent hover:underline">
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setSelectedTag('All');
+                }}
+                className="mt-4 text-sm text-accent hover:underline"
+              >
                 Clear filters
               </button>
             </div>
@@ -110,10 +135,18 @@ export function BlogPage() {
         {/* Newsletter CTA */}
         <div className="mt-16 p-8 rounded-2xl bg-gradient-to-r from-accent/10 to-purple-500/10 border border-accent/20 text-center">
           <h3 className="text-xl font-bold mb-2">Stay in the Loop</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Get the latest articles on AI-powered learning delivered to your inbox.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            Get the latest articles on AI-powered learning delivered to your inbox.
+          </p>
           <div className="flex max-w-sm mx-auto gap-2">
-            <input type="email" placeholder="your@email.com" className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm outline-none focus:border-accent" />
-            <button className="bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-accent-dark transition-colors">Subscribe</button>
+            <input
+              type="email"
+              placeholder="your@email.com"
+              className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm outline-none focus:border-accent"
+            />
+            <button className="bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-accent-dark transition-colors">
+              Subscribe
+            </button>
           </div>
         </div>
       </section>

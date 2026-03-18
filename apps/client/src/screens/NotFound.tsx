@@ -25,11 +25,14 @@ export function NotFound() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900 px-4">
       {/* 404 Illustration */}
       <div className="text-center mb-8">
-        <div className="text-8xl mb-4" aria-hidden="true">🗺️</div>
+        <div className="text-8xl mb-4" aria-hidden="true">
+          🗺️
+        </div>
         <div className="text-9xl font-black text-accent/20 select-none mb-2">404</div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Page not found</h1>
         <p className="text-gray-500 dark:text-gray-400 text-center max-w-md">
-          The page you're looking for doesn't exist or has been moved. Try searching or pick one of the links below.
+          The page you're looking for doesn't exist or has been moved. Try searching or pick one of
+          the links below.
         </p>
       </div>
 
@@ -49,7 +52,9 @@ export function NotFound() {
 
       {/* Action Buttons */}
       <div className="flex gap-4 mb-10">
-        <Button onClick={() => nav('/')} variant="secondary">Go Home</Button>
+        <Button onClick={() => nav('/')} variant="secondary">
+          Go Home
+        </Button>
         <Button onClick={() => nav('/dashboard')}>Go to Dashboard</Button>
       </div>
 

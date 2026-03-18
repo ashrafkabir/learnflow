@@ -24,7 +24,13 @@ afterEach(() => cleanup());
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <ThemeProvider><AppProvider><ToastProvider><App /></ToastProvider></AppProvider></ThemeProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <ToastProvider>
+            <App />
+          </ToastProvider>
+        </AppProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }
@@ -32,33 +38,45 @@ function renderAt(path: string) {
 describe('Pricing page', () => {
   it('renders the pricing page', async () => {
     renderAt('/pricing');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/pricing|plans|free/i)).toBeTruthy();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/pricing|plans|free/i)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('shows Free and Pro tiers', async () => {
     renderAt('/pricing');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/free|pro/i)).toBeTruthy();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/free|pro/i)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('shows pricing amounts or period', async () => {
     renderAt('/pricing');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/\$|\/mo|month|free/i)).toBeTruthy();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/\$|\/mo|month|free/i)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('has CTA buttons', async () => {
     renderAt('/pricing');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/get started|start|sign up|try/i)).toBeTruthy();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/get started|start|sign up|try/i)).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 });

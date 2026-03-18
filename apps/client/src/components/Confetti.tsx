@@ -3,7 +3,9 @@ import React, { useEffect, useState } from 'react';
 const COLORS = ['#2563eb', '#7c3aed', '#f59e0b', '#10b981', '#ef4444', '#ec4899'];
 
 export function Confetti({ trigger }: { trigger: boolean }) {
-  const [pieces, setPieces] = useState<{ id: number; left: string; color: string; delay: string; size: number }[]>([]);
+  const [pieces, setPieces] = useState<
+    { id: number; left: string; color: string; delay: string; size: number }[]
+  >([]);
 
   useEffect(() => {
     if (!trigger) return;
@@ -23,7 +25,7 @@ export function Confetti({ trigger }: { trigger: boolean }) {
 
   return (
     <>
-      {pieces.map(p => (
+      {pieces.map((p) => (
         <div
           key={p.id}
           className="confetti-piece"

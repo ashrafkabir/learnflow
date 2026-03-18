@@ -5,7 +5,10 @@ import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
 import { motion } from 'framer-motion';
 
-const scaleIn = { hidden: { opacity: 0, scale: 0.95 }, visible: { opacity: 1, scale: 1, transition: { duration: 0.4 } } };
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.95 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.4 } },
+};
 const stagger = { visible: { transition: { staggerChildren: 0.15 } } };
 
 const PLANS = [
@@ -22,7 +25,13 @@ const PLANS = [
       'Knowledge mindmap',
       'Community support',
     ],
-    missing: ['Priority AI agents', 'Managed API keys', 'Update Agent', 'Advanced analytics', 'Priority support'],
+    missing: [
+      'Priority AI agents',
+      'Managed API keys',
+      'Update Agent',
+      'Advanced analytics',
+      'Priority support',
+    ],
     cta: 'Get Started Free',
     highlight: false,
   },
@@ -50,10 +59,22 @@ const PLANS = [
 ];
 
 const FAQ = [
-  { q: 'Can I use my own API keys?', a: 'Yes! Bring your own OpenAI, Anthropic, or Google API keys. They\'re encrypted and never shared. Pro users get managed keys included.' },
-  { q: 'What happens when I hit the course limit?', a: 'Free users can create up to 3 courses. Upgrade to Pro anytime for unlimited courses.' },
-  { q: 'Is there a mobile app?', a: 'Yes! LearnFlow is available on iOS, Android, and desktop (Mac, Windows, Linux).' },
-  { q: 'Can I export my data?', a: 'Pro users can export all courses, notes, and progress as JSON or Markdown at any time.' },
+  {
+    q: 'Can I use my own API keys?',
+    a: "Yes! Bring your own OpenAI, Anthropic, or Google API keys. They're encrypted and never shared. Pro users get managed keys included.",
+  },
+  {
+    q: 'What happens when I hit the course limit?',
+    a: 'Free users can create up to 3 courses. Upgrade to Pro anytime for unlimited courses.',
+  },
+  {
+    q: 'Is there a mobile app?',
+    a: 'Yes! LearnFlow is available on iOS, Android, and desktop (Mac, Windows, Linux).',
+  },
+  {
+    q: 'Can I export my data?',
+    a: 'Pro users can export all courses, notes, and progress as JSON or Markdown at any time.',
+  },
 ];
 
 export function PricingPage() {
@@ -62,12 +83,20 @@ export function PricingPage() {
 
   return (
     <MarketingLayout>
-      <SEO title="Pricing" description="Simple, transparent pricing for LearnFlow. Start free, upgrade to Pro for unlimited courses and priority AI agents." path="/pricing" />
+      <SEO
+        title="Pricing"
+        description="Simple, transparent pricing for LearnFlow. Start free, upgrade to Pro for unlimited courses and priority AI agents."
+        path="/pricing"
+      />
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold tracking-tight mb-4">Simple, transparent pricing</h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">Start free, upgrade when you're ready.</p>
-          
+          <h1 className="text-4xl font-extrabold tracking-tight mb-4">
+            Simple, transparent pricing
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
+            Start free, upgrade when you're ready.
+          </p>
+
           <div className="inline-flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-full p-1">
             <Button
               variant="ghost"
@@ -88,7 +117,13 @@ export function PricingPage() {
           </div>
         </div>
 
-        <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-20" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={stagger}>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto mb-20"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true }}
+          variants={stagger}
+        >
           {PLANS.map((plan) => (
             <motion.div
               variants={scaleIn}
@@ -108,7 +143,9 @@ export function PricingPage() {
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{plan.desc}</p>
               <div className="mb-6">
                 <span className="text-4xl font-bold">${annual ? plan.annual : plan.monthly}</span>
-                {plan.monthly > 0 && <span className="text-gray-500 dark:text-gray-300 text-sm">/month</span>}
+                {plan.monthly > 0 && (
+                  <span className="text-gray-500 dark:text-gray-300 text-sm">/month</span>
+                )}
               </div>
               <Button
                 variant={plan.highlight ? 'primary' : 'secondary'}
@@ -137,7 +174,10 @@ export function PricingPage() {
                   </li>
                 ))}
                 {plan.missing.map((f) => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-300">
+                  <li
+                    key={f}
+                    className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-300"
+                  >
                     <span className="text-red-400 dark:text-red-500">✕</span> {f}
                   </li>
                 ))}
@@ -151,8 +191,12 @@ export function PricingPage() {
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40">
             <span className="text-2xl">🛡️</span>
             <div>
-              <p className="text-sm font-semibold text-green-800 dark:text-green-300">30-day money-back guarantee</p>
-              <p className="text-xs text-green-700 dark:text-green-400">Not happy? Get a full refund, no questions asked.</p>
+              <p className="text-sm font-semibold text-green-800 dark:text-green-300">
+                30-day money-back guarantee
+              </p>
+              <p className="text-xs text-green-700 dark:text-green-400">
+                Not happy? Get a full refund, no questions asked.
+              </p>
             </div>
           </div>
         </div>
@@ -162,12 +206,19 @@ export function PricingPage() {
           <h2 className="text-2xl font-bold text-center mb-8">Frequently asked questions</h2>
           <div className="space-y-4">
             {FAQ.map((item) => (
-              <details key={item.q} className="group border border-gray-200 dark:border-gray-700 rounded-xl hover:border-accent/30 transition-colors">
+              <details
+                key={item.q}
+                className="group border border-gray-200 dark:border-gray-700 rounded-xl hover:border-accent/30 transition-colors"
+              >
                 <summary className="cursor-pointer p-4 font-medium text-sm flex justify-between items-center text-gray-900 dark:text-white">
                   {item.q}
-                  <span className="text-gray-500 dark:text-gray-300 group-open:rotate-180 transition-transform ml-4 flex-shrink-0">▾</span>
+                  <span className="text-gray-500 dark:text-gray-300 group-open:rotate-180 transition-transform ml-4 flex-shrink-0">
+                    ▾
+                  </span>
                 </summary>
-                <p className="px-4 pb-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{item.a}</p>
+                <p className="px-4 pb-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {item.a}
+                </p>
               </details>
             ))}
           </div>

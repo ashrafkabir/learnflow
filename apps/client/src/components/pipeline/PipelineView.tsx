@@ -15,7 +15,7 @@ const STAGES: { key: PipelineStage; label: string; icon: string }[] = [
 ];
 
 function stageIndex(stage: PipelineStage): number {
-  const idx = STAGES.findIndex(s => s.key === stage);
+  const idx = STAGES.findIndex((s) => s.key === stage);
   return idx >= 0 ? idx : STAGES.length;
 }
 
@@ -63,8 +63,12 @@ function LessonEditCard({ lesson, pipelineId }: { lesson: LessonData; pipelineId
     <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{lesson.title}</p>
-          <p className="text-xs text-gray-400">{lesson.moduleTitle} · {wordCount} words · {lesson.estimatedTime} min</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+            {lesson.title}
+          </p>
+          <p className="text-xs text-gray-400">
+            {lesson.moduleTitle} · {wordCount} words · {lesson.estimatedTime} min
+          </p>
         </div>
         <div className="flex gap-1 ml-2">
           <button
@@ -84,7 +88,8 @@ function LessonEditCard({ lesson, pipelineId }: { lesson: LessonData; pipelineId
 
       {expanded && (
         <div className="text-xs text-gray-600 dark:text-gray-300 max-h-60 overflow-y-auto bg-gray-50 dark:bg-gray-900 rounded-lg p-3 whitespace-pre-wrap">
-          {content.slice(0, 2000)}{content.length > 2000 ? '...' : ''}
+          {content.slice(0, 2000)}
+          {content.length > 2000 ? '...' : ''}
         </div>
       )}
 
@@ -108,7 +113,10 @@ function LessonEditCard({ lesson, pipelineId }: { lesson: LessonData; pipelineId
               {loading ? '⏳ Updating...' : 'Apply Edit'}
             </button>
             <button
-              onClick={() => { setEditing(false); setEditPrompt(''); }}
+              onClick={() => {
+                setEditing(false);
+                setEditPrompt('');
+              }}
               className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
             >
               Cancel
@@ -120,14 +128,20 @@ function LessonEditCard({ lesson, pipelineId }: { lesson: LessonData; pipelineId
   );
 }
 
-function ReviewingPanel({ state, onViewCourse }: { state: PipelineState; onViewCourse?: (courseId: string) => void }) {
+function ReviewingPanel({
+  state,
+  onViewCourse,
+}: {
+  state: PipelineState;
+  onViewCourse?: (courseId: string) => void;
+}) {
   const [lessons, setLessons] = useState<LessonData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/v1/pipeline/${state.id}/lessons`)
-      .then(r => r.ok ? r.json() : Promise.reject('Failed'))
-      .then(data => setLessons(data.lessons || []))
+      .then((r) => (r.ok ? r.json() : Promise.reject('Failed')))
+      .then((data) => setLessons(data.lessons || []))
       .catch(() => setLessons([]))
       .finally(() => setLoading(false));
   }, [state.id]);
@@ -152,7 +166,7 @@ function ReviewingPanel({ state, onViewCourse }: { state: PipelineState; onViewC
         <p className="text-xs text-gray-400">Loading lessons...</p>
       ) : (
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {lessons.map(l => (
+          {lessons.map((l) => (
             <LessonEditCard key={l.id} lesson={l} pipelineId={state.id} />
           ))}
         </div>
@@ -186,7 +200,13 @@ function ReviewingPanel({ state, onViewCourse }: { state: PipelineState; onViewC
   );
 }
 
-export function PipelineView({ state, onViewCourse }: { state: PipelineState; onViewCourse?: (courseId: string) => void }) {
+export function PipelineView({
+  state,
+  onViewCourse,
+}: {
+  state: PipelineState;
+  onViewCourse?: (courseId: string) => void;
+}) {
   const currentIdx = stageIndex(state.stage);
 
   return (
@@ -198,14 +218,18 @@ export function PipelineView({ state, onViewCourse }: { state: PipelineState; on
             {state.courseTitle || `Creating: ${state.topic}`}
           </h2>
           <p className="text-sm text-gray-500 dark:text-gray-300">
-            {state.moduleCount ? `${state.moduleCount} modules · ${state.lessonCount} lessons` : 'Preparing...'}
+            {state.moduleCount
+              ? `${state.moduleCount} modules · ${state.lessonCount} lessons`
+              : 'Preparing...'}
           </p>
         </div>
         <div className="text-right">
           <span className="text-2xl font-bold text-accent">{state.progress}%</span>
           <p className="text-xs text-gray-400">complete</p>
           {state.sourceMode && (
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${state.sourceMode === 'real' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${state.sourceMode === 'real' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}
+            >
               {state.sourceMode === 'real' ? '🌐 Live Sources' : '🧪 Mock Sources'}
             </span>
           )}
@@ -218,11 +242,12 @@ export function PipelineView({ state, onViewCourse }: { state: PipelineState; on
           className="h-full rounded-full transition-all duration-500 ease-out"
           style={{
             width: `${state.progress}%`,
-            background: state.stage === 'failed'
-              ? '#ef4444'
-              : state.stage === 'reviewing'
-              ? 'linear-gradient(90deg, #0ea5e9, #14b8a6)'
-              : '#0ea5e9',
+            background:
+              state.stage === 'failed'
+                ? '#ef4444'
+                : state.stage === 'reviewing'
+                  ? 'linear-gradient(90deg, #0ea5e9, #14b8a6)'
+                  : '#0ea5e9',
           }}
         />
       </div>
@@ -230,16 +255,9 @@ export function PipelineView({ state, onViewCourse }: { state: PipelineState; on
       {/* Pipeline stages — horizontal kanban */}
       <div className="flex gap-3 overflow-x-auto pb-2">
         {STAGES.map((s, i) => {
-          const status = i < currentIdx ? 'complete'
-            : i === currentIdx ? 'active'
-            : 'pending';
+          const status = i < currentIdx ? 'complete' : i === currentIdx ? 'active' : 'pending';
           return (
-            <StageColumn
-              key={s.key}
-              icon={s.icon}
-              label={s.label}
-              status={status}
-            >
+            <StageColumn key={s.key} icon={s.icon} label={s.label} status={status}>
               {s.key === 'scraping' && i <= currentIdx && (
                 <CrawlThreadList threads={state.crawlThreads} />
               )}

@@ -1,15 +1,18 @@
 # LearnFlow Improvement Queue — Iteration 12
 
 ## Current Iteration: 12
+
 ## Status: PLANNED
+
 ## Date: 2025-07-15
+
 ## Focus: Cosmetics, Animations/Transitions, Learning Experience Enhancements
 
 ---
 
 ## Assessment Summary
 
-After a full visual audit (desktop + mobile, all screens), the app is **functionally solid** — auth, course pipeline, lessons, dashboard, settings, marketplace all work. But it looks and *feels* like an early beta. The main gaps:
+After a full visual audit (desktop + mobile, all screens), the app is **functionally solid** — auth, course pipeline, lessons, dashboard, settings, marketplace all work. But it looks and _feels_ like an early beta. The main gaps:
 
 1. **Static feel** — zero animations or transitions anywhere. Pages pop in, cards don't animate, buttons don't respond to hover/press.
 2. **Inconsistent visual system** — shadows, radii, spacing, and typography weights vary between screens.
@@ -26,11 +29,13 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Every route change is an instant swap — no fade, slide, or any visual continuity. This makes the app feel like a prototype, not a product.
 
 **Fix:**
+
 - Add a shared `<PageTransition>` wrapper using CSS transitions or framer-motion
 - Fade-in on route enter (200ms ease-out), fade-out on route leave (150ms)
 - Apply to all routes in App.tsx router
 
 **Acceptance Criteria:**
+
 - Every route change has a smooth fade transition (150-200ms)
 - No layout shift or flash during transitions
 - Works on both desktop and mobile viewports
@@ -42,6 +47,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Buttons, cards, and links have no hover/press/focus states beyond browser defaults. The UI feels dead.
 
 **Fix:**
+
 - Add to `index.css` or Tailwind config:
   - Buttons: `hover:scale-[1.02] active:scale-[0.98] transition-all duration-150`
   - Cards (course cards, dashboard cards): `hover:-translate-y-1 hover:shadow-lg transition-all duration-200`
@@ -50,6 +56,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - Add visible focus rings for keyboard accessibility (`:focus-visible` outlines)
 
 **Acceptance Criteria:**
+
 - All buttons scale subtly on hover/press
 - All course/dashboard cards lift on hover
 - All inputs have visible focus states
@@ -63,10 +70,12 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** "Skip (dev mode) →" visible on login and register screens. Undermines trust and looks unprofessional.
 
 **Fix:**
+
 - Wrap skip links in `{import.meta.env.DEV && ...}` or remove entirely
 - Alternatively, hide behind a keyboard shortcut (Ctrl+Shift+D) for dev convenience
 
 **Acceptance Criteria:**
+
 - No "dev mode" text visible in production builds
 - Dev shortcut still works in dev mode if needed
 
@@ -77,6 +86,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Font sizes, weights, and spacing are inconsistent across screens. Hero uses different scale than dashboard, settings cards have different padding than marketplace cards.
 
 **Fix:**
+
 - Define design tokens in Tailwind config or CSS variables:
   - `--text-hero: 48px/700`, `--text-h1: 36px/700`, `--text-h2: 24px/600`, `--text-h3: 18px/600`
   - `--text-body: 16px/400 line-height 1.6`, `--text-small: 14px/400`
@@ -85,6 +95,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - Audit every screen and replace ad-hoc sizes with tokens
 
 **Acceptance Criteria:**
+
 - All headings follow the defined scale (no random font sizes)
 - Card padding is uniform across all card types
 - Body text is consistently 16px with 1.5-1.6 line height
@@ -97,6 +108,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Completing a lesson has no visual reward. The user clicks "complete" and... nothing special happens. This kills motivation.
 
 **Fix:**
+
 - When a lesson is marked complete, show a brief celebration:
   - Confetti burst (use `canvas-confetti` library, ~3KB)
   - Green checkmark animation on the lesson card
@@ -105,6 +117,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - XP/points counter increment animation on dashboard
 
 **Acceptance Criteria:**
+
 - Completing a lesson triggers a 1.5s confetti animation
 - Lesson card shows animated checkmark transition
 - Dashboard progress bar animates when returning
@@ -117,6 +130,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** The "Quiz Me" button in the lesson action bar exists but there's no inline quiz experience. Quizzes are the #1 retention tool and completely absent from the reading flow.
 
 **Fix:**
+
 - Add `<InlineQuiz>` component at the end of each lesson
 - Auto-generate 3 multiple-choice questions from lesson content (via API)
 - Show questions with radio buttons, submit button, immediate feedback
@@ -125,6 +139,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - Score summary at bottom with "Review" or "Next Lesson" CTA
 
 **Acceptance Criteria:**
+
 - Each lesson shows 3 quiz questions after the content
 - Questions have 4 options each with radio selection
 - Immediate visual feedback on answer submission
@@ -138,6 +153,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** No way to save important parts of lessons. Users can't bookmark lessons or highlight text — basic features for any learning platform.
 
 **Fix:**
+
 - Add bookmark toggle (heart/bookmark icon) to lesson header
 - Bookmarked lessons appear in a "Bookmarks" section on dashboard
 - Text selection in lesson content shows a floating toolbar: "Highlight" (yellow), "Note" (opens mini note input)
@@ -145,6 +161,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - "My Highlights" accessible from course detail page
 
 **Acceptance Criteria:**
+
 - Bookmark icon toggles on/off with animation
 - Bookmarked lessons appear on dashboard
 - Text selection shows highlight toolbar
@@ -158,12 +175,14 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Dashboard KPI cards (Streak, Courses, Completed, Today) appear instantly with no visual interest. The "This Week" chart is empty for new users.
 
 **Fix:**
+
 - Animate stat numbers counting up from 0 on page load (400ms stagger between cards)
 - Streak card: add subtle flame flicker animation (CSS keyframes)
 - "This Week" empty state: show a faded placeholder chart outline with "Complete your first lesson to see activity here"
 - Progress bars: animate width from 0 to current value on mount
 
 **Acceptance Criteria:**
+
 - Numbers count up with easing animation on dashboard load
 - Streak flame has subtle CSS animation
 - Empty chart state shows placeholder outline, not just text
@@ -176,6 +195,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Cards, inputs, and buttons use inconsistent border radii (some `rounded-xl`, some `rounded-2xl`, some `rounded-lg`) and shadow depths vary randomly.
 
 **Fix:**
+
 - Define 3 elevation levels:
   - `shadow-sm` (cards at rest): `0 1px 3px rgba(0,0,0,0.04)`
   - `shadow-md` (cards on hover): `0 4px 12px rgba(0,0,0,0.08)`
@@ -188,6 +208,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - Audit all components and replace ad-hoc values
 
 **Acceptance Criteria:**
+
 - All cards use same border radius
 - All buttons use same border radius
 - Shadow depth is consistent within component types
@@ -200,6 +221,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** No spaced repetition or review scheduling. Completed lessons are "done" with no mechanism for retention reinforcement.
 
 **Fix:**
+
 - After completing a lesson, calculate next review date using SM-2 algorithm (simple version)
 - Show "Due for Review" badge on lessons that are past their review date
 - Add "Review Queue" section on dashboard showing lessons due today
@@ -207,6 +229,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - After review, update next review interval
 
 **Acceptance Criteria:**
+
 - Completed lessons get a `nextReviewDate` field
 - Dashboard shows "Review Queue" with count badge
 - Clicking review opens lesson in review mode
@@ -220,6 +243,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Marketplace shows only 2 hardcoded courses with minimal metadata. No categories, no sorting, no pagination. Looks like a placeholder.
 
 **Fix:**
+
 - Add at least 8-10 seed courses across different categories
 - Add category filter chips at top (Programming, Data Science, DevOps, Design, Business)
 - Add sort dropdown (Popular, Newest, Rating, Price)
@@ -227,6 +251,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - Add "Featured" banner section at top with 2-3 highlighted courses
 
 **Acceptance Criteria:**
+
 - At least 8 courses visible in marketplace
 - Category chips filter courses
 - Sort dropdown works
@@ -240,6 +265,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** "Take Notes" button exists in lesson action bar but there's no actual notes UI. Cornell notes are mentioned in the spec and onboarding but not implemented in the reader.
 
 **Fix:**
+
 - Add a slide-out notes panel (right side, 320px) when "Take Notes" is clicked
 - Split into Cornell-style sections: "Notes" (main), "Cues" (left margin), "Summary" (bottom)
 - Auto-save notes to localStorage/API as user types
@@ -247,6 +273,7 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 - Show note indicator on lesson cards that have notes
 
 **Acceptance Criteria:**
+
 - Notes panel slides in from right with animation
 - Cornell layout with 3 sections
 - Auto-saves on debounced input (500ms)
@@ -260,12 +287,14 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Pages show nothing or flash briefly during data loading. No skeleton screens, no loading spinners, no progressive content appearance.
 
 **Fix:**
+
 - Add skeleton components for: dashboard cards, course list, lesson content
 - Skeleton: gray pulsing rectangles matching the layout shape
 - Use React Suspense boundaries where applicable
 - Course pipeline: show progress skeleton with animated shimmer
 
 **Acceptance Criteria:**
+
 - Dashboard shows skeleton cards while loading
 - Course list shows skeleton cards while loading
 - Lesson reader shows content skeleton while loading
@@ -279,12 +308,14 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Light mode uses a mix of blues, purples, and oranges without a clear system. Dark mode exists but likely has contrast issues and inconsistent backgrounds.
 
 **Fix:**
+
 - Define primary palette: Blue (#2563EB), Secondary (#7C3AED purple), Accent (#F59E0B amber), Success (#10B981), Error (#EF4444)
 - Light mode: backgrounds should be `gray-50` → `white`, not random grays
 - Dark mode audit: ensure all text meets WCAG AA (4.5:1 ratio), card backgrounds use `gray-800`/`gray-900` consistently, no pure black (#000)
 - Fix any purple-on-purple or blue-on-blue contrast issues
 
 **Acceptance Criteria:**
+
 - All colors come from the defined palette (no random hex values)
 - Dark mode passes WCAG AA for all text
 - Card backgrounds are consistent in dark mode
@@ -297,12 +328,14 @@ After a full visual audit (desktop + mobile, all screens), the app is **function
 **Problem:** Onboarding steps (Welcome → Goals → Topics → API Keys → Plan → Start) switch instantly. The step indicator at top doesn't animate.
 
 **Fix:**
+
 - Add slide-left/slide-right transition between onboarding steps
 - Step indicator: active dot scales up and fills with color animation
 - Connecting lines between dots fill progressively as steps complete
 - "Get Started" button has a subtle pulse animation to draw attention
 
 **Acceptance Criteria:**
+
 - Moving between steps has a horizontal slide transition (200ms)
 - Step indicator dots animate when step changes
 - Progress line fills between completed dots

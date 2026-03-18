@@ -1,11 +1,13 @@
 # BUILD_LOG — Iteration 3
 
 ## Started: 2026-03-17
+
 ## Status: COMPLETE
 
 ### Completed Work
 
 #### 🔴 #1 PRIORITY — Course Creation Pipeline ✅
+
 - **API**: Created `apps/api/src/routes/pipeline.ts` with full 5-stage pipeline:
   1. 🔍 Web Scraping — Multiple Firecrawl threads with real-time status
   2. 📊 Organizing — Deduplication, credibility scoring, theme clustering
@@ -21,11 +23,13 @@
 - **Tested**: Full pipeline runs end-to-end, creates real courses with LLM content
 
 #### Task 1: Auth Headers in API Calls ✅
+
 - Updated `apiPost`/`apiGet` in AppContext to include `Authorization: Bearer` headers from localStorage
 - Added `getAuthHeaders()` helper
 - devMode API uses `devAuth` (auto-assigns test user) — so 401s were not actually occurring, but auth is now wired for production
 
 #### Task 2: Login/Register Screens ✅
+
 - Created `LoginScreen.tsx` and `RegisterScreen.tsx`
 - Proper forms calling `/api/v1/auth/login` and `/api/v1/auth/register`
 - Token storage in localStorage
@@ -33,29 +37,35 @@
 - "Skip (dev mode)" link for development
 
 #### Task 4: Error States ✅
+
 - `apiPost`/`apiGet` now throw on non-2xx responses (no more silent swallowing)
 - CourseView has error state with retry button
 - Chat shows error message on failure instead of silent fail
 - Proper console logging for all API errors
 
 #### Task 5: Lesson Context in Chat ✅
+
 - `sendChat` now passes `courseId` and `lessonId` from active state
 - Notes and quiz generation already passed context (was working)
 
 #### Task 6: Dashboard Course Listing ✅
+
 - Added `useEffect` to fetch courses on mount
 - Full course details fetched and stored in state
 - Courses now appear on dashboard after creation
 
 #### Task 11: Vite Proxy ✅ (was already configured)
+
 - Confirmed `vite.config.ts` has proxy for `/api` → `http://localhost:3002`
 
 ### Test Results
+
 - **TypeScript**: `npx tsc --noEmit` — ✅ passes clean
 - **Vitest**: 254/257 tests pass (3 timeout failures in API tests due to slow LLM course creation — pre-existing, expected)
 - **Screenshots**: Dashboard, pipeline active, pipeline progress, login, register — all verified
 
 ### Files Created/Modified
+
 - `apps/api/src/routes/pipeline.ts` (NEW)
 - `apps/api/src/app.ts` (added pipeline route)
 - `apps/client/src/hooks/usePipeline.ts` (NEW)

@@ -8,10 +8,18 @@ const { chromium } = require('playwright');
   const DIR = '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter12';
 
   const routes = [
-    ['landing', '/'], ['login', '/login'], ['register', '/register'],
-    ['pricing', '/pricing'], ['features', '/features'], ['dashboard', '/dashboard'],
-    ['onboarding', '/onboarding'], ['settings', '/settings'], ['marketplace', '/marketplace'],
-    ['create-course', '/create-course'], ['about', '/about'], ['blog', '/blog'],
+    ['landing', '/'],
+    ['login', '/login'],
+    ['register', '/register'],
+    ['pricing', '/pricing'],
+    ['features', '/features'],
+    ['dashboard', '/dashboard'],
+    ['onboarding', '/onboarding'],
+    ['settings', '/settings'],
+    ['marketplace', '/marketplace'],
+    ['create-course', '/create-course'],
+    ['about', '/about'],
+    ['blog', '/blog'],
   ];
 
   for (const [name, path] of routes) {
@@ -19,7 +27,9 @@ const { chromium } = require('playwright');
       await page.goto(BASE + path, { waitUntil: 'networkidle', timeout: 8000 });
       await page.screenshot({ path: DIR + '/' + name + '.png', fullPage: true });
       console.log('OK ' + name);
-    } catch (e) { console.log('FAIL ' + name + ': ' + e.message.slice(0,60)); }
+    } catch (e) {
+      console.log('FAIL ' + name + ': ' + e.message.slice(0, 60));
+    }
   }
 
   // Register
@@ -33,45 +43,51 @@ const { chromium } = require('playwright');
     await page.waitForTimeout(2000);
     await page.screenshot({ path: DIR + '/after-register.png', fullPage: true });
     console.log('OK after-register at ' + page.url());
-  } catch(e) { console.log('FAIL register: ' + e.message.slice(0,80)); }
+  } catch (e) {
+    console.log('FAIL register: ' + e.message.slice(0, 80));
+  }
 
   // Dashboard after auth
   try {
     await page.goto(BASE + '/dashboard', { waitUntil: 'networkidle', timeout: 5000 });
     await page.screenshot({ path: DIR + '/dashboard-auth.png', fullPage: true });
     console.log('OK dashboard-auth');
-  } catch(e) {}
+  } catch (e) {}
 
   // Course detail
   try {
     await page.goto(BASE + '/courses/1', { waitUntil: 'networkidle', timeout: 5000 });
     await page.screenshot({ path: DIR + '/course-detail.png', fullPage: true });
     console.log('OK course-detail');
-  } catch(e) {}
+  } catch (e) {}
 
   // Lesson
   try {
     await page.goto(BASE + '/courses/1/lessons/1', { waitUntil: 'networkidle', timeout: 5000 });
     await page.screenshot({ path: DIR + '/lesson-reader.png', fullPage: true });
     console.log('OK lesson-reader');
-  } catch(e) {}
+  } catch (e) {}
 
   // Mindmap
   try {
     await page.goto(BASE + '/courses/1/mindmap', { waitUntil: 'networkidle', timeout: 5000 });
     await page.screenshot({ path: DIR + '/mindmap.png', fullPage: true });
     console.log('OK mindmap');
-  } catch(e) {}
+  } catch (e) {}
 
   // Mobile
   const mctx = await browser.newContext({ viewport: { width: 375, height: 812 } });
   const mp = await mctx.newPage();
-  for (const [n, p] of [['m-landing','/'],['m-dashboard','/dashboard'],['m-lesson','/courses/1/lessons/1']]) {
+  for (const [n, p] of [
+    ['m-landing', '/'],
+    ['m-dashboard', '/dashboard'],
+    ['m-lesson', '/courses/1/lessons/1'],
+  ]) {
     try {
       await mp.goto(BASE + p, { waitUntil: 'networkidle', timeout: 5000 });
       await mp.screenshot({ path: DIR + '/' + n + '.png', fullPage: true });
       console.log('OK ' + n);
-    } catch(e) {}
+    } catch (e) {}
   }
 
   await browser.close();
