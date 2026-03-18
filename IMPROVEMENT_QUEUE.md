@@ -1,7 +1,7 @@
 # LearnFlow Improvement Queue — Iteration 15
 
 ## Current Iteration: 15
-## Status: READY FOR BUILDER
+## Status: DONE
 ## Date: 2025-07-19
 ## Focus: Button component adoption, radius/shadow token enforcement, skeleton loading, conversation polish
 

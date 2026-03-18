@@ -1,7 +1,7 @@
 import React from 'react';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-type ButtonSize = 'default' | 'large';
+type ButtonSize = 'sm' | 'default' | 'large' | 'icon';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -21,8 +21,10 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
+  sm: 'h-8 px-3 text-xs',
   default: 'h-10 px-4 text-sm',
   large: 'h-12 px-6 text-base',
+  icon: 'w-11 h-11 p-0',
 };
 
 export function Button({

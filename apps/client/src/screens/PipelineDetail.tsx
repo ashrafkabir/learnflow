@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePipeline } from '../hooks/usePipeline.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
+import { Button } from '../components/Button.js';
 
 export function PipelineDetail() {
   const { pipelineId } = useParams<{ pipelineId: string }>();
@@ -10,10 +11,10 @@ export function PipelineDetail() {
 
   if (!state) {
     return (
-      <section className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <section className="min-h-screen bg-bg dark:bg-bg-dark">
         <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
-            <button onClick={() => nav('/dashboard')} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300">← Back</button>
+            <Button variant="ghost" onClick={() => nav('/dashboard')}>← Back</Button>
             <div className="animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-6 w-48" />
           </div>
         </header>
@@ -31,15 +32,10 @@ export function PipelineDetail() {
   }
 
   return (
-    <section className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <section className="min-h-screen bg-bg dark:bg-bg-dark">
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
-          <button
-            onClick={() => nav('/dashboard')}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
-          >
-            ← Back
-          </button>
+          <Button variant="ghost" onClick={() => nav('/dashboard')}>← Back</Button>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
               Course Pipeline

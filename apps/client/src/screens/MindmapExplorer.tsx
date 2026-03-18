@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, apiGet } from '../context/AppContext.js';
+import { Button } from '../components/Button.js';
 
 // Dynamically import vis-network to avoid SSR issues
 let Network: unknown = null;
@@ -41,7 +42,7 @@ export function MindmapExplorer() {
     setShowAddNode(false);
   };
 
-  // Fetch courses independently on mount — uses shared apiGet helper
+  // Fetch courses independently on mount
   useEffect(() => {
     (async () => {
       try {
@@ -68,7 +69,6 @@ export function MindmapExplorer() {
         setLoaded(true);
       })
       .catch(() => {
-        // Fallback: vis-network not available
         setLoaded(false);
       });
   }, []);
@@ -104,7 +104,7 @@ export function MindmapExplorer() {
       );
       const coursePct = totalLessons > 0 ? completedLessons / totalLessons : 0;
 
-      // Course node — color by mastery
+      // Color by mastery — Task 8
       const courseColor = coursePct >= 1 ? '#16A34A' : coursePct > 0 ? '#F59E0B' : '#9CA3AF';
       nodes.push({
         id: courseNodeId,
@@ -156,6 +156,21 @@ export function MindmapExplorer() {
       }
     }
 
+    // Custom nodes
+    for (const cn of customNodes) {
+      const cnId = nodeId++;
+      nodes.push({
+        id: cnId,
+        label: cn.label,
+        title: cn.label,
+        shape: 'diamond',
+        color: { background: '#8B5CF6', border: '#7C3AED' },
+        font: { color: '#fff', size: 12 },
+        size: 18,
+      });
+      edges.push({ from: rootId, to: cnId, color: { color: '#DDD6FE' }, dashes: true });
+    }
+
     const data: Record<string, unknown> = {
       nodes: new DataSetCtor(nodes),
       edges: new DataSetCtor(edges),
@@ -182,17 +197,14 @@ export function MindmapExplorer() {
     const network = new NetworkCtor(containerRef.current, data, options);
     networkRef.current = network as any;
 
-    // Auto-fit after stabilization
     network.on('stabilizationIterationsDone', () => {
       network.fit({ animation: { duration: 500, easingFunction: 'easeOutQuart' }, maxZoomLevel: 1.5 });
     });
 
-    // Also fit once on stabilized (belt-and-suspenders)
     network.on('stabilized' as string, () => {
       network.fit({ animation: false, maxZoomLevel: 1.5 });
     });
 
-    // Click handler — navigate to lesson
     network.on('click', (params: unknown) => {
       const p = params as { nodes?: unknown[] };
       if (Array.isArray(p.nodes) && p.nodes.length === 1) {
@@ -211,55 +223,36 @@ export function MindmapExplorer() {
     return () => {
       network.destroy();
     };
-    // Add custom nodes
-    for (const cn of customNodes) {
-      const cnId = nodeId++;
-      nodes.push({
-        id: cnId,
-        label: cn.label,
-        title: cn.label,
-        shape: 'diamond',
-        color: { background: '#8B5CF6', border: '#7C3AED' },
-        font: { color: '#fff', size: 12 },
-        size: 18,
-      });
-      edges.push({ from: rootId, to: cnId, color: { color: '#DDD6FE' }, dashes: true });
-    }
-
   }, [loaded, state.courses, state.completedLessons, customNodes]);
 
   return (
     <section
       aria-label="Mindmap Explorer"
       data-screen="mindmap"
-      className="min-h-screen bg-gray-50 dark:bg-bg-dark"
+      className="min-h-screen bg-bg dark:bg-bg-dark"
     >
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => nav('/dashboard')}
-              className="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-            >
-              ←
-            </button>
+            <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>←</Button>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">🗺️ Knowledge Map</h1>
           </div>
           <div className="hidden sm:flex items-center gap-4 text-xs">
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setShowAddNode(true)}
-              className="px-3 py-1.5 bg-accent text-white text-xs font-medium rounded-lg hover:bg-accent-dark transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               + Add Node
-            </button>
+            </Button>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-              <span className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600 inline-block border border-gray-400" aria-hidden="true" /> ○ Not started
+              <span className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600 inline-block border border-gray-400" aria-hidden="true" /> Not started
             </span>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-              <span className="w-3 h-3 rounded-full bg-warning inline-block border border-amber-500" aria-hidden="true" /> ◐ In progress
+              <span className="w-3 h-3 rounded-full bg-warning inline-block border border-amber-500" aria-hidden="true" /> In progress
             </span>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-              <span className="w-3 h-3 rounded-full bg-success inline-block border border-green-600" aria-hidden="true" /> ● Mastered
+              <span className="w-3 h-3 rounded-full bg-success inline-block border border-green-600" aria-hidden="true" /> Mastered
             </span>
           </div>
         </div>
@@ -268,7 +261,7 @@ export function MindmapExplorer() {
         <div
           data-component="mindmap-preview"
           aria-label="Knowledge mindmap"
-          className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+          className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card overflow-hidden"
           style={{ height: 'calc(100vh - 80px)', position: 'relative' }}
         >
           {state.courses.length === 0 ? (
@@ -278,12 +271,13 @@ export function MindmapExplorer() {
                 <p className="text-gray-500 dark:text-gray-400 text-lg">
                   Create a course to see your knowledge map
                 </p>
-                <button
+                <Button
+                  variant="primary"
                   onClick={() => nav('/dashboard')}
-                  className="mt-4 px-5 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-dark transition-colors"
+                  className="mt-4"
                 >
                   Go to Dashboard
-                </button>
+                </Button>
               </div>
             </div>
           ) : !loaded ? (
@@ -295,41 +289,47 @@ export function MindmapExplorer() {
               <div ref={containerRef} className="w-full h-full" />
               {/* Zoom controls */}
               <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
-                <button
+                <Button
+                  variant="secondary"
+                  size="icon"
                   onClick={() => {
                     if (networkRef.current) {
                       const scale = networkRef.current.getScale();
                       networkRef.current.moveTo({ scale: scale * 1.3, animation: { duration: 300 } });
                     }
                   }}
-                  className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-center text-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   title="Zoom in"
+                  className="shadow-sm"
                 >
                   +
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="icon"
                   onClick={() => {
                     if (networkRef.current) {
                       const scale = networkRef.current.getScale();
                       networkRef.current.moveTo({ scale: scale * 0.7, animation: { duration: 300 } });
                     }
                   }}
-                  className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-center text-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   title="Zoom out"
+                  className="shadow-sm"
                 >
                   −
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="icon"
                   onClick={() => {
                     if (networkRef.current) {
                       networkRef.current.fit({ animation: { duration: 500 } });
                     }
                   }}
-                  className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   title="Fit to screen"
+                  className="shadow-sm"
                 >
                   ⊞
-                </button>
+                </Button>
               </div>
             </>
           )}
@@ -339,7 +339,7 @@ export function MindmapExplorer() {
       {/* Add Node Modal */}
       {showAddNode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAddNode(false)}>
-          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-modal" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Add Custom Node</h3>
             <input
               type="text"
@@ -351,8 +351,8 @@ export function MindmapExplorer() {
               autoFocus
             />
             <div className="flex gap-3">
-              <button onClick={() => setShowAddNode(false)} className="flex-1 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
-              <button onClick={addCustomNode} disabled={!newNodeLabel.trim()} className="flex-1 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-dark disabled:opacity-40">Add</button>
+              <Button variant="secondary" fullWidth onClick={() => setShowAddNode(false)}>Cancel</Button>
+              <Button variant="primary" fullWidth onClick={addCustomNode} disabled={!newNodeLabel.trim()}>Add</Button>
             </div>
           </div>
         </div>

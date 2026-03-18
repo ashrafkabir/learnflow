@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext.js';
+import { Button } from '../components/Button.js';
+import { SkeletonCourseView } from '../components/Skeleton.js';
 
 export function CourseView() {
   const { courseId } = useParams();
@@ -9,6 +11,7 @@ export function CourseView() {
   const [expandedModule, setExpandedModule] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedLesson, setSelectedLesson] = useState<{ id: string; title: string; courseId: string } | null>(null);
 
   const course = state.activeCourse;
 
@@ -31,14 +34,14 @@ export function CourseView() {
 
   if (error) {
     return (
-      <section data-screen="course-view" className="min-h-screen bg-gray-50 dark:bg-bg-dark flex items-center justify-center">
+      <section data-screen="course-view" className="min-h-screen bg-bg dark:bg-bg-dark flex items-center justify-center">
         <div className="text-center space-y-3 max-w-sm">
           <span className="text-4xl">❌</span>
           <p className="text-gray-700 dark:text-gray-300 font-medium">Failed to load course</p>
           <p className="text-sm text-gray-500">{error}</p>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => { setError(''); setLoading(true); fetchCourse(courseId!).catch(e => setError(e?.message)).finally(() => setLoading(false)); }} className="px-4 py-2 bg-accent text-white rounded-xl text-sm">Retry</button>
-            <button onClick={() => nav('/dashboard')} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm">Back</button>
+            <Button variant="primary" onClick={() => { setError(''); setLoading(true); fetchCourse(courseId!).catch(e => setError(e?.message)).finally(() => setLoading(false)); }}>Retry</Button>
+            <Button variant="secondary" onClick={() => nav('/dashboard')}>Back</Button>
           </div>
         </div>
       </section>
@@ -50,11 +53,10 @@ export function CourseView() {
       <section
         data-screen="course-view"
         aria-label="Course View"
-        className="min-h-screen bg-gray-50 dark:bg-bg-dark flex items-center justify-center"
+        className="min-h-screen bg-bg dark:bg-bg-dark"
       >
-        <div className="text-center space-y-3">
-          <div className="inline-block w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-          <p className="text-gray-500">Loading course...</p>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          <SkeletonCourseView />
         </div>
       </section>
     );
@@ -71,17 +73,19 @@ export function CourseView() {
     <section
       aria-label="Course View"
       data-screen="course-view"
-      className="min-h-screen bg-gray-50 dark:bg-bg-dark"
+      className="min-h-screen bg-bg dark:bg-bg-dark"
     >
       {/* Header */}
       <header className="bg-gradient-to-r from-primary-900 to-primary-800 text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => nav('/dashboard')}
-            className="text-primary-200 hover:text-white mb-4 inline-flex items-center gap-1 text-sm transition-colors"
+            className="text-primary-200 hover:text-white mb-4 border-0"
           >
             ← Back to Dashboard
-          </button>
+          </Button>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">{course.title}</h1>
           <p className="text-primary-200 text-sm mb-4">{course.description}</p>
 
@@ -137,15 +141,17 @@ export function CourseView() {
           {course.modules.map((mod, mi) => (
             <div
               key={mod.id}
-              className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card overflow-hidden"
             >
-              <button
+              <Button
+                variant="ghost"
+                fullWidth
                 onClick={() => setExpandedModule(expandedModule === mod.id ? '' : mod.id)}
                 aria-expanded={expandedModule === mod.id}
-                className="w-full px-5 py-4 text-left flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="px-5 py-4 text-left justify-between h-auto rounded-none"
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <span className="w-8 h-8 rounded-lg bg-accent/10 text-accent text-sm font-bold flex items-center justify-center flex-shrink-0">
+                  <span className="w-8 h-8 rounded-xl bg-accent/10 text-accent text-sm font-bold flex items-center justify-center flex-shrink-0">
                     {mi + 1}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -169,7 +175,7 @@ export function CourseView() {
                 >
                   ▼
                 </span>
-              </button>
+              </Button>
               {expandedModule === mod.id && (
                 <div className="border-t border-gray-100 dark:border-gray-800">
                   {mod.lessons.map((lesson, li) => {
@@ -179,7 +185,10 @@ export function CourseView() {
                         key={lesson.id}
                         role="article"
                         aria-label={lesson.title}
-                        onClick={() => nav(`/courses/${courseId}/lessons/${lesson.id}`)}
+                        onClick={() => {
+                          setSelectedLesson({ id: lesson.id, title: lesson.title, courseId: courseId! });
+                          nav(`/courses/${courseId}/lessons/${lesson.id}`);
+                        }}
                         className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800/50 last:border-0"
                       >
                         <span
@@ -196,19 +205,17 @@ export function CourseView() {
                         <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap mr-2">
                           {lesson.estimatedTime} min
                         </span>
-                        <button
+                        <Button
+                          variant={isComplete ? 'ghost' : 'primary'}
+                          size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
                             nav(`/courses/${courseId}/lessons/${lesson.id}`);
                           }}
-                          className={`text-xs font-medium px-3 py-1 rounded-lg transition-colors ${
-                            isComplete
-                              ? 'bg-success/10 text-success hover:bg-success/20'
-                              : 'bg-accent text-white hover:bg-accent-dark'
-                          }`}
+                          className={isComplete ? 'bg-success/10 text-success hover:bg-success/20' : ''}
                         >
                           {isComplete ? 'Review' : 'Start'}
-                        </button>
+                        </Button>
                       </div>
                     );
                   })}
@@ -218,6 +225,35 @@ export function CourseView() {
           ))}
         </div>
       </div>
+
+      {/* Bottom Action Bar — Spec §5.2.4 */}
+      {selectedLesson && (
+        <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 shadow-modal">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-around gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {/* mark complete logic */}}
+            >
+              ✅ Mark Complete
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => nav(`/conversation?courseId=${selectedLesson.courseId}&lessonId=${selectedLesson.id}&action=quiz`)}
+            >
+              🧪 Quiz Me
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => nav(`/conversation?courseId=${selectedLesson.courseId}&lessonId=${selectedLesson.id}&action=notes`)}
+            >
+              📝 Take Notes
+            </Button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

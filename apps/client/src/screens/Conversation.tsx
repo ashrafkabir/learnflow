@@ -11,17 +11,18 @@ import { useApp } from '../context/AppContext.js';
 import { SourceDrawer } from '../components/SourceDrawer.js';
 import type { Source } from '../components/CitationTooltip.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
+import { Button } from '../components/Button.js';
 
-// Agent display names
-const AGENT_LABELS: Record<string, { icon: string; label: string }> = {
-  notes: { icon: '📝', label: 'Notes Agent' },
-  exam: { icon: '❓', label: 'Exam Agent' },
-  research: { icon: '🔍', label: 'Research Agent' },
-  summarizer: { icon: '📄', label: 'Summarizer' },
-  course: { icon: '📚', label: 'Course Builder' },
+// Agent display names and activity messages
+const AGENT_LABELS: Record<string, { icon: string; label: string; activity: string }> = {
+  notes: { icon: '📝', label: 'Notes Agent', activity: 'is organizing your notes...' },
+  exam: { icon: '❓', label: 'Exam Agent', activity: 'is crafting questions...' },
+  research: { icon: '🔍', label: 'Research Agent', activity: 'is finding sources...' },
+  summarizer: { icon: '📄', label: 'Summarizer', activity: 'is condensing content...' },
+  course: { icon: '📚', label: 'Course Builder', activity: 'is synthesizing curriculum...' },
 };
 
-// Rich markdown renderer using react-markdown with syntax highlighting, math, and GFM tables
+// Rich markdown renderer
 function MarkdownContent({ content }: { content: string }) {
   return (
     <ReactMarkdown
@@ -47,7 +48,7 @@ function MarkdownContent({ content }: { content: string }) {
           );
         },
         pre: ({ children }) => (
-          <pre className="bg-gray-900 dark:bg-black text-green-400 rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono">
+          <pre className="bg-gray-900 dark:bg-black text-green-400 rounded-xl p-3 my-2 overflow-x-auto text-xs font-mono">
             {children}
           </pre>
         ),
@@ -73,10 +74,10 @@ function renderMarkdown(content: string): React.ReactNode {
   return <MarkdownContent content={content} />;
 }
 
-// Spec §5.2.3: Contextual quick-action chips that trigger specific agents
+// Quick-action chips
 interface QuickChip {
   label: string;
-  message: string; // actual message sent to trigger the right agent
+  message: string;
 }
 
 function getContextChips(content: string): QuickChip[] {
@@ -147,16 +148,12 @@ export function Conversation() {
   const { connected: wsConnected, send: wsSend } = useWebSocket((evt) => {
     switch (evt.event) {
       case 'agent.spawned':
-        // Spec §11.2: { agent_name, task_summary }
         setActiveAgent(evt.data?.agent_name?.toLowerCase()?.split(' ')[0] || 'orchestrator');
         break;
       case 'response.chunk':
-        // Spec §11.2: { message_id, content_delta, type }
         setStreamingContent((prev) => prev + (evt.data?.content_delta || evt.data?.content || ''));
         break;
       case 'response.end': {
-        // Spec §11.2: { message_id, actions[], sources[] }
-        // Build full response from streaming content
         if (streamingContent) {
           dispatch({
             type: 'ADD_CHAT_MESSAGE',
@@ -168,7 +165,6 @@ export function Conversation() {
             },
           });
         }
-        // Store sources if available
         if (evt.data?.sources?.length) {
           setDrawerSources(evt.data.sources.map((s: any, i: number) => ({
             id: i + 1,
@@ -185,7 +181,6 @@ export function Conversation() {
         break;
       }
       case 'agent.complete':
-        // Spec §11.2: { agent_name, result_summary }
         setActiveAgent(null);
         dispatch({
           type: 'ADD_NOTIFICATION',
@@ -199,7 +194,6 @@ export function Conversation() {
         });
         break;
       case 'progress.update':
-        // Spec §11.2: { user_id, metric, value }
         dispatch({
           type: 'ADD_NOTIFICATION',
           notification: {
@@ -212,7 +206,6 @@ export function Conversation() {
         });
         break;
       case 'mindmap.update':
-        // Spec §11.2: { nodes_added[], nodes_updated[], edges_added[] }
         break;
     }
   });
@@ -226,7 +219,6 @@ export function Conversation() {
     if (!msg || state.loading.chat) return;
     setInput('');
 
-    // Detect agent from message
     const lower = msg.toLowerCase();
     if (lower.includes('note')) setActiveAgent('notes');
     else if (lower.includes('quiz') || lower.includes('test me')) setActiveAgent('exam');
@@ -234,9 +226,7 @@ export function Conversation() {
     else if (lower.includes('course') || lower.includes('create')) setActiveAgent('course');
     else setActiveAgent(null);
 
-    // Try WebSocket first, fall back to REST
     if (wsConnected) {
-      // Add user message manually for WS path
       dispatch({
         type: 'ADD_CHAT_MESSAGE',
         message: { id: `msg-${Date.now()}`, role: 'user', content: msg, timestamp: new Date().toISOString() },
@@ -245,31 +235,31 @@ export function Conversation() {
       setStreamingContent('');
       wsSend('message', { text: msg });
     } else {
-      // REST path — sendChat adds user message internally
       await sendChat(msg);
       setActiveAgent(null);
     }
   };
 
   const agentInfo = activeAgent
-    ? AGENT_LABELS[activeAgent] || { icon: '🤖', label: 'AI Assistant' }
+    ? AGENT_LABELS[activeAgent] || { icon: '🤖', label: 'AI Assistant', activity: 'is thinking...' }
     : null;
 
   return (
     <section
       aria-label="Conversation"
       data-screen="conversation"
-      className="min-h-screen bg-gray-50 dark:bg-bg-dark flex flex-col h-screen"
+      className="min-h-screen bg-bg dark:bg-bg-dark flex flex-col h-screen"
     >
       {/* Header */}
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => nav('/dashboard')}
-            className="text-gray-600 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
           >
             ←
-          </button>
+          </Button>
           <div>
             <h1 className="text-base font-semibold text-gray-900 dark:text-white">LearnFlow AI</h1>
             <p className="text-xs text-gray-600 dark:text-gray-400">Your personal learning assistant</p>
@@ -277,12 +267,14 @@ export function Conversation() {
         </div>
         <div className="flex items-center gap-3">
           {state.chat.length > 0 && (
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => dispatch({ type: 'SET_CHAT', messages: [] })}
-              className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-accent hover:border-accent transition-all"
+              className="border border-gray-200 dark:border-gray-700"
             >
               + New Chat
-            </button>
+            </Button>
           )}
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
@@ -317,15 +309,16 @@ export function Conversation() {
                 { icon: '🧠', title: 'Quiz me', desc: 'Test your knowledge', text: 'Quiz me on React hooks' },
                 { icon: '📝', title: 'Summarize notes', desc: 'From your lessons', text: 'Summarize my machine learning notes' },
               ].map((s) => (
-                <button
+                <Button
                   key={s.title}
+                  variant="ghost"
                   onClick={() => send(s.text)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-accent hover:shadow-md transition-all text-center group"
+                  className="flex-col items-center gap-2 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-accent hover:shadow-card-hover h-auto"
                 >
                   <span className="text-2xl">{s.icon}</span>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-accent">{s.title}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">{s.title}</span>
                   <span className="text-xs text-gray-600 dark:text-gray-400">{s.desc}</span>
-                </button>
+                </Button>
               ))}
             </div>
             <div className="flex flex-wrap justify-center gap-2">
@@ -334,13 +327,15 @@ export function Conversation() {
                 { label: '🔍 Research agentic AI', text: 'Teach me about Agentic AI' },
                 { label: '🗺️ DevOps roadmap', text: 'Create a learning roadmap for DevOps' },
               ].map((s) => (
-                <button
+                <Button
                   key={s.label}
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setInput(s.text)}
-                  className="text-xs px-3 py-2 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-accent hover:text-accent transition-all"
+                  className="rounded-full border border-gray-200 dark:border-gray-700"
                 >
                   {s.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
@@ -355,15 +350,16 @@ export function Conversation() {
                 className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 ${
                   msg.role === 'user'
                     ? 'bg-accent text-white rounded-br-md'
-                    : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'
+                    : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-card text-gray-900 dark:text-gray-100 rounded-bl-md'
                 }`}
               >
                 <div data-component="markdown-content" className="leading-relaxed">
                   {renderMarkdown(msg.content)}
                 </div>
-                {/* Render "Apply to Lesson" for improved blocks */}
                 {msg.role === 'assistant' && msg.content.includes('```improved') && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       const match = msg.content.match(/```improved\n([\s\S]*?)```/);
                       if (match) {
@@ -371,10 +367,10 @@ export function Conversation() {
                         alert('Improved content copied to clipboard! You can paste it into the lesson editor.');
                       }
                     }}
-                    className="mt-2 text-xs px-3 py-1.5 rounded-full bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition-all flex items-center gap-1"
+                    className="mt-2 rounded-full bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20"
                   >
                     ✨ Copy Improved Content
-                  </button>
+                  </Button>
                 )}
                 <p className="text-[10px] mt-1 opacity-50">
                   {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -384,12 +380,14 @@ export function Conversation() {
                 </p>
               </div>
             </div>
-            {/* Quick-action chips after assistant messages (Task 5) */}
+            {/* Quick-action chips after assistant messages */}
             {msg.role === 'assistant' && idx === state.chat.length - 1 && (
               <div className="flex flex-wrap gap-2 mt-2 ml-1">
                 {getContextChips(msg.content).map((chip) => (
-                  <button
+                  <Button
                     key={chip.label}
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
                       if (chip.message === '__open_sources__') {
                         setDrawerOpen(true);
@@ -397,15 +395,16 @@ export function Conversation() {
                         send(chip.message);
                       }
                     }}
-                    className="text-xs px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-accent hover:text-accent transition-all"
+                    className="rounded-full border border-gray-200 dark:border-gray-700"
                   >
                     {chip.label}
-                  </button>
+                  </Button>
                 ))}
                 {msg.content.includes('[1]') && (
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => {
-                      // Parse sources from content
                       const sourceRegex = /\[(\d+)\]\s*(.*?)(?:\.|$)/gm;
                       const parsed: Source[] = [];
                       let m;
@@ -435,10 +434,10 @@ export function Conversation() {
                       );
                       setDrawerOpen(true);
                     }}
-                    className="text-xs px-3 py-1.5 rounded-full border border-accent/30 text-accent hover:bg-accent/10 transition-all"
+                    className="rounded-full border border-accent/30 text-accent hover:bg-accent/10"
                   >
                     📚 View Sources
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
@@ -447,7 +446,7 @@ export function Conversation() {
         {/* Streaming response */}
         {streamingContent && (
           <div className="flex justify-start">
-            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md">
+            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-card text-gray-900 dark:text-gray-100 rounded-bl-md">
               <div data-component="markdown-content" className="leading-relaxed">
                 {renderMarkdown(streamingContent)}
               </div>
@@ -455,7 +454,7 @@ export function Conversation() {
             </div>
           </div>
         )}
-        {/* Agent activity indicator (Task 4) */}
+        {/* Agent activity indicator — Task 5 */}
         {state.loading.chat && !streamingContent && (
           <div
             data-component="agent-activity"
@@ -463,28 +462,24 @@ export function Conversation() {
             data-loading="true"
             className="flex justify-start"
           >
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl rounded-bl-md px-4 py-3">
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-card rounded-2xl rounded-bl-md px-4 py-3">
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 {agentInfo ? (
                   <>
-                    <span>{agentInfo.icon}</span>
-                    <span className="font-medium">{agentInfo.label}</span>
-                    <span className="text-gray-600 dark:text-gray-400">is working...</span>
+                    <span className="text-lg">{agentInfo.icon}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{agentInfo.label}</span>
+                    <span className="text-gray-500 dark:text-gray-400">{agentInfo.activity}</span>
                   </>
                 ) : (
                   <>
-                    <span>🤖</span>
-                    <span className="text-gray-600 dark:text-gray-400">Thinking...</span>
+                    <span className="text-lg">🤖</span>
+                    <span className="text-gray-500 dark:text-gray-400">Thinking...</span>
                   </>
                 )}
-                <span className="flex gap-0.5 ml-1">
-                  <span className="animate-bounce text-accent">●</span>
-                  <span className="animate-bounce text-accent" style={{ animationDelay: '0.1s' }}>
-                    ●
-                  </span>
-                  <span className="animate-bounce text-accent" style={{ animationDelay: '0.2s' }}>
-                    ●
-                  </span>
+                <span className="flex gap-1 ml-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.15s' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-accent animate-bounce" style={{ animationDelay: '0.3s' }} />
                 </span>
               </div>
             </div>
@@ -493,9 +488,8 @@ export function Conversation() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input - Task 4: sticky bottom with safe-area */}
+      {/* Input */}
       <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 safe-area-bottom">
-        {/* Course/lesson context badge */}
         {(contextBadge || state.activeCourse || state.activeLesson) && (
           <div className="max-w-4xl mx-auto mb-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
             <span>📚</span>
@@ -507,7 +501,7 @@ export function Conversation() {
                 {state.activeLesson && <><span>›</span><span className="text-accent">{state.activeLesson.title}</span></>}
               </>
             )}
-            <button onClick={() => setContextBadge(null)} className="ml-auto text-gray-300 hover:text-gray-500">✕</button>
+            <Button variant="ghost" size="sm" onClick={() => setContextBadge(null)} className="ml-auto text-gray-300 hover:text-gray-500 h-6 w-6 p-0">✕</Button>
           </div>
         )}
         <div className="max-w-4xl mx-auto flex gap-2">
@@ -519,18 +513,18 @@ export function Conversation() {
             aria-label="Message input"
             className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent text-sm transition-all"
           />
-          <button
+          <Button
+            variant="primary"
             onClick={() => send()}
             disabled={!input.trim() || state.loading.chat}
             aria-label="Send message"
-            className="px-5 py-3 bg-accent text-white font-medium rounded-xl hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
           >
             Send
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Source Drawer (Task 13) */}
+      {/* Source Drawer */}
       <SourceDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
