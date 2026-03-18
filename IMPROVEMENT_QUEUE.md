@@ -1,277 +1,269 @@
-# LearnFlow Improvement Queue — Iteration 14
+# LearnFlow Improvement Queue — Iteration 15
 
-## Current Iteration: 14
-## Status: DONE
-## Date: 2025-07-18
-## Focus: Lesson content quality, design system tokens, primary action clarity, mobile fixes
+## Current Iteration: 15
+## Status: READY FOR BUILDER
+## Date: 2025-07-19
+## Focus: Button component adoption, radius/shadow token enforcement, skeleton loading, conversation polish
 
 ---
 
 ## Brutal Assessment
 
-After 13 iterations, LearnFlow has solid scaffolding — nice card layouts, working navigation, marketplace, mindmap, AI chat. But three **fundamental problems** remain that make this feel like a prototype, not a product:
+After 14 iterations, the app has good feature coverage — dashboard hero, design tokens, LLM synthesis, marketplace, mindmap, chat with KaTeX/code highlighting, data export. Color token migration to `bg-accent` classes is **done** (zero `bg-blue` or `bg-[#` in screens). CSS custom properties exist in `index.css`. The `Button` component exists.
 
-1. **Lesson content is garbage.** The `synthesizeFromSources()` function is a keyword-extraction template — not AI synthesis. It produces robotic text like "Recurring themes include: quantum, computing, measurement..." followed by "This source is useful for understanding X." There's no Feynman-style explanation, no analogies, no ASCII diagrams, no "Frontiers & Open Questions" section. The spec promises bite-sized mastery content; the app delivers a bibliography with filler sentences. **This is the #1 problem.**
+**But three systemic problems remain that make this a prototype:**
 
-2. **No design system tokens.** After 13 iterations of cosmetic fixes, colors/radii/shadows are STILL inconsistent across screens. Every iteration patches individual screens instead of fixing the root cause: there are no shared CSS custom properties. Blues vary, radii vary, shadows vary. This will never be fixed by screen-by-screen patches.
+1. **The Button component is NEVER used.** `apps/client/src/components/Button.tsx` exists with proper variants (`primary`/`secondary`/`ghost`/`danger`), but **zero screen files import it**. There are **87+ raw `<button>` elements** across 9 screen files (LessonReader: 28, Dashboard: 20, ProfileSettings: 11, Conversation: 9, MindmapExplorer: 8, CourseView: 5, etc.). Each uses ad-hoc Tailwind classes. Build log iter 14 claimed Task 8 was ✅ DONE — it was not. The component was created but never integrated.
 
-3. **Dashboard has no clear primary action.** First-time users see 6+ competing cards with no hierarchy. There's no "Resume your next lesson" hero CTA. The empty states still say "No activity yet" with no actionable guidance.
+2. **CSS custom properties (`var(--radius-*)`, `var(--shadow-*)`) are defined but NEVER referenced.** Zero occurrences of `var(--radius` or `var(--shadow` in any `.tsx` file. Border radii are a chaos of `rounded-xl`, `rounded-2xl`, `rounded-lg`, `rounded-md`, `rounded-full` (250+ instances). Shadows use Tailwind defaults. The tokens exist only on paper.
+
+3. **No skeleton/loading states** except LessonReader. Dashboard, CourseView, Marketplace, Settings all show nothing or a plain "Loading..." while data fetches. This is the fastest way to make an app feel cheap.
 
 ---
 
-## Prioritized Tasks (13 items)
+## Prioritized Tasks (12 items)
 
-### 1. ✅ DONE: Rewrite Lesson Synthesis to Use LLM
+### 1. 🔴 CRITICAL: Adopt Button Component Across ALL Screens
 
-**Problem:** `packages/agents/src/content-pipeline/firecrawl-provider.ts` `synthesizeFromSources()` uses keyword extraction + template strings. Output is a mechanical list of "What to learn from [source]" with zero educational value. No analogies, no simplified explanations, no diagrams, no engagement. This violates the core product promise.
+**Problem:** `Button.tsx` exists but is imported by exactly 0 screens. 87+ raw `<button>` elements use inconsistent ad-hoc Tailwind classes. Some are `rounded-xl`, others `rounded-lg`, `rounded-2xl`, `rounded-full`. Heights vary. This was falsely marked done in iter 14.
 
 **Fix:**
-- Replace the template-based synthesis with an actual LLM call (OpenAI/Anthropic via user's API key)
-- System prompt should enforce Feynman/Kurzgesagt style: explain like you're teaching a curious friend, use analogies, include ASCII diagrams where helpful, add a "🔭 Frontiers & Open Questions" section
-- Target 900-1400 words per lesson
-- Keep inline citations from sources but synthesize actual educational prose, not source summaries
-- Fallback to current template if no API key is configured
+- Replace EVERY `<button>` in these files with `<Button>` from `../components/Button`:
+  - `screens/Dashboard.tsx` (20 buttons)
+  - `screens/LessonReader.tsx` (28 buttons)
+  - `screens/ProfileSettings.tsx` (11 buttons)
+  - `screens/Conversation.tsx` (9 buttons)
+  - `screens/MindmapExplorer.tsx` (8 buttons)
+  - `screens/CourseView.tsx` (5 buttons)
+  - `screens/LoginScreen.tsx` (2 buttons)
+  - `screens/RegisterScreen.tsx` (2 buttons)
+  - `screens/PipelineDetail.tsx` (2 buttons)
+- Map existing styles to appropriate variant: primary CTAs → `variant="primary"`, cancel/dismiss → `variant="ghost"`, delete → `variant="danger"`, secondary actions → `variant="secondary"`
+- Add `icon` variant or `size="sm"` to Button if needed for icon-only buttons (44px square)
 
 **Acceptance Criteria:**
-- Generated lesson reads like a blog post, not a bibliography
-- Contains at least one analogy or metaphor per lesson
-- Contains "🔭 Frontiers & Open Questions" section
-- 900-1400 word range
-- Inline citations preserved from sources
-- Works with both OpenAI and Anthropic keys
+- `grep -rn "<button" apps/client/src/screens/ --include="*.tsx" | wc -l` returns 0
+- `grep -rn "import.*Button.*from.*components/Button" apps/client/src/screens/ --include="*.tsx" | wc -l` returns ≥9
+- All buttons visually consistent per variant across all screens
 
 ---
 
-### 2. 🔴 CRITICAL: Design System Tokens (CSS Custom Properties)
+### 2. 🔴 CRITICAL: Enforce Radius Tokens via Tailwind Theme
 
-**Problem:** 13 iterations of fixing "inconsistent blues" and "different radii" have not solved the problem because there's no single source of truth. Each screen defines its own colors inline or via Tailwind classes.
+**Problem:** 250+ instances of mixed `rounded-xl`, `rounded-2xl`, `rounded-lg`, `rounded-md`, `rounded-full` across screens. CSS custom properties `--radius-button: 12px`, `--radius-card: 16px` etc. are defined in `:root` but never consumed. Tailwind's default radius classes ignore these tokens.
 
 **Fix:**
-- Create `apps/client/src/styles/tokens.css` with CSS custom properties:
+- Map CSS custom properties to Tailwind's `@theme` block in `index.css`:
   ```
-  --color-primary: #2563EB
-  --color-primary-hover: #1D4ED8
-  --color-secondary: #7C3AED
-  --color-success: #16A34A
-  --color-error: #DC2626
-  --color-warning: #F59E0B
-  --radius-button: 8px
-  --radius-card: 12px
-  --radius-input: 8px
-  --radius-modal: 16px
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.04)
-  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08)
-  --shadow-modal: 0 8px 30px rgba(0,0,0,0.12)
+  --radius-sm: 8px;    /* inputs, pills */
+  --radius-md: 12px;   /* buttons */
+  --radius-lg: 16px;   /* cards */
+  --radius-xl: 20px;   /* modals */
+  --radius-full: 9999px; /* chips, avatars */
   ```
-- Extend Tailwind config to use these tokens
-- Replace ALL ad-hoc color/radius/shadow values across every screen with token references
-- Dark mode variants for all tokens
+- Create utility classes or simply standardize: cards → `rounded-2xl`, buttons → `rounded-xl`, inputs → `rounded-xl`, pills/chips → `rounded-full`, modals → `rounded-2xl`
+- Do a single pass through ALL screen files to normalize. The Button component handles its own radius; focus on cards, inputs, containers.
 
 **Acceptance Criteria:**
-- `grep -r "bg-blue\|bg-\[#\|border-\[#\|shadow-\[" apps/client/src/ --include="*.tsx" | grep -v tokens` returns zero results (all values come from tokens)
-- Every button, card, input, and modal uses token-based styling
-- Changing `--color-primary` in one place changes it everywhere
-- Dark mode works correctly with token overrides
+- Cards consistently use ONE radius value (pick `rounded-2xl`)
+- Inputs consistently use ONE radius value (pick `rounded-xl`)
+- No `rounded-md` or `rounded-lg` on cards (those are too small per the design)
+- Modals/dialogs use `rounded-2xl`
 
 ---
 
-### 3. 🔴 CRITICAL: Dashboard Primary Action Hero
+### 3. 🔴 CRITICAL: Enforce Shadow Tokens
 
-**Problem:** Dashboard shows 6+ equal-weight cards. New users have no idea what to do first. There's no "Resume your next lesson" or "Start here" CTA.
+**Problem:** `--shadow-card`, `--shadow-card-hover`, `--shadow-modal` defined in `:root` but never used. Screens use a mix of Tailwind `shadow-sm`, `shadow-lg`, `shadow-accent/20`, and no shadow at all on cards.
 
 **Fix:**
-- Add a hero section at the top of dashboard:
-  - If user has courses in progress: "Continue Learning" card with the next incomplete lesson, title, estimated time, and a prominent "Resume →" button
-  - If user has no courses: "Start Your Learning Journey" with a prominent "Create Your First Course" button and 3 topic suggestion chips
-- Reduce visual weight of secondary cards (stats, notifications, weekly activity)
-- Empty "This Week" chart: replace "No activity yet" with a faded chart skeleton + "Complete your first lesson to see progress here"
+- Add to Tailwind `@theme` in `index.css`:
+  ```
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-modal: 0 8px 30px rgba(0,0,0,0.12);
+  ```
+- These should map to `shadow-card`, `shadow-card-hover`, `shadow-modal` Tailwind utilities
+- Replace all card `shadow-*` classes with `shadow-card hover:shadow-card-hover`
+- Replace modal overlays with `shadow-modal`
+- Dark mode variants already defined in `.dark`
 
 **Acceptance Criteria:**
-- First thing visible on dashboard is ONE clear primary action
-- Hero CTA is visually dominant (larger, primary color, more padding than any other element)
-- Empty states have actionable CTAs that link to relevant screens
-- Returning users see their next lesson prominently
+- All card elements use `shadow-card` (or the Tailwind class mapped to the token)
+- Hover states on interactive cards use `shadow-card-hover`
+- Modals/drawers use `shadow-modal`
+- `grep -rn "shadow-sm\|shadow-lg\|shadow-md" apps/client/src/screens/ --include="*.tsx"` returns minimal results (only non-card elements)
 
 ---
 
-### 4. 🔴 CRITICAL: Mobile Overflow & Safe Area Fixes
+### 4. 🔴 CRITICAL: Skeleton Loading for Dashboard, CourseView, Marketplace
 
-**Problem:** On 375px viewport: course creation row overflows, header icons too small/close, chat input not sticky, no safe-area handling.
+**Problem:** `Skeleton.tsx` component exists but is only used in `LessonReader.tsx`. Dashboard shows raw empty states while fetching analytics/courses. CourseView shows "Loading course..." text. Marketplace has no loading state.
 
 **Fix:**
-- Dashboard header: `flex-wrap: wrap` on course input row, stack vertically on mobile
-- All icon buttons: `min-height: 44px; min-width: 44px`
-- Chat input: `position: sticky; bottom: 0; padding-bottom: env(safe-area-inset-bottom)`
-- Add `overflow-x: hidden` on main containers
-- Test at 320px, 375px, 414px
+- Create skeleton variants in `components/Skeleton.tsx`:
+  - `SkeletonDashboard`: hero placeholder + 4 stat cards + course list placeholders
+  - `SkeletonCourseView`: syllabus sidebar + lesson area placeholder
+  - `SkeletonMarketplace`: filter bar + 6 card grid placeholders
+- Use pulsing `animate-pulse bg-gray-200 dark:bg-gray-800 rounded-xl` blocks
+- Show skeletons while data is loading, swap to real content when ready
+- In Dashboard: show skeleton until both courses and analytics have loaded
 
 **Acceptance Criteria:**
-- Zero horizontal overflow at any width ≥ 320px
-- All interactive elements ≥ 44px tap target
-- Chat input always visible at bottom on mobile
-- No content hidden behind sticky headers
+- Dashboard shows skeleton on first load, not blank space
+- CourseView shows skeleton, not "Loading course..." text
+- CourseMarketplace shows skeleton grid, not empty page
+- Skeletons match the shape/layout of actual content
 
 ---
 
-### 5. 🟡 HIGH: Text Contrast & Focus States (Accessibility)
+### 5. 🟡 HIGH: Conversation Agent Activity Indicator
 
-**Problem:** Secondary text uses `text-gray-400`/`text-gray-500` which fails WCAG AA on white. No visible keyboard focus states. Mindmap legend uses color-only indicators.
+**Problem:** Spec §5.2.3 says "Agent activity indicator: subtle animation showing which agent is currently processing." Current implementation has a generic "is working..." / "Thinking..." text (lines 472-477 of Conversation.tsx). No agent name shown, no subtle animation.
 
 **Fix:**
-- Replace all `text-gray-400`/`text-gray-500` body text with `text-gray-600` minimum
-- Add global `:focus-visible` style: `outline: 2px solid var(--color-primary); outline-offset: 2px`
-- Add text labels to mindmap legend dots
-- Run axe-core audit, fix all critical/serious violations
+- When receiving agent activity via WebSocket, display: "🔍 Research Agent is finding sources..." or "📝 Course Builder is synthesizing..." with the actual agent name
+- Add a subtle dot-pulse animation (3 dots bouncing) next to the agent name
+- Show agent icon/emoji based on type (research=🔍, builder=📝, quiz=🧠, tutor=👨‍🏫)
 
 **Acceptance Criteria:**
-- All text meets 4.5:1 contrast ratio on light backgrounds
-- Tab through entire app shows visible focus ring on every interactive element
-- Zero critical/serious axe-core violations
+- Agent name visible during processing (not just "Thinking...")
+- Animated indicator (pulse or bouncing dots)
+- Different agents show different labels
 
 ---
 
-### 6. 🟡 HIGH: Mindmap Readability
+### 6. 🟡 HIGH: Course View — Mark Complete, Quiz Me, Take Notes Action Bar
 
-**Problem:** Node labels tiny and truncated, connectors hairline-thin, canvas wasted inside padded card, no zoom-to-fit.
+**Problem:** Spec §5.2.4 requires "Bottom action bar: Mark Complete, Take Notes, Quiz Me, Ask Question" on lesson view. LessonReader has some of these but CourseView (the syllabus screen) has no lesson-level quick actions.
 
 **Fix:**
-- Node labels: 14px minimum, allow 2-line wrapping with `line-clamp-2`
-- Tooltips on hover showing full title
-- Connector stroke: 2px, color `#94A3B8`
-- Remove outer card padding — canvas uses full width
-- Add zoom-to-fit button on initial load
+- In `CourseView.tsx`, when a lesson is expanded/selected, show a bottom action bar with:
+  - "Mark Complete" (toggle) — accent button
+  - "Quiz Me" — ghost button, navigates to conversation with quiz prompt
+  - "Take Notes" — ghost button, navigates to conversation with notes prompt
+- Bar should be sticky at bottom, visible only when a lesson is selected
 
 **Acceptance Criteria:**
-- All labels readable without zooming
-- Connectors clearly visible
-- Canvas uses ≥90% available width
-- Zoom-to-fit works on load
+- Selecting a lesson in CourseView shows bottom action bar
+- Mark Complete toggles lesson completion status
+- Quiz Me / Take Notes navigate to Conversation with appropriate prompt
 
 ---
 
-### 7. 🟡 HIGH: Settings Page 2-Column Layout
+### 7. 🟡 HIGH: Background Color Per Spec — `#F8FAFC` not pure white
 
-**Problem:** Single-column scroll-fest on desktop. Inconsistent button styles. PRO badges vary. API key placeholder reveals pattern.
+**Problem:** Spec §5.3 says Background light mode = `#F8FAFC`. Body currently uses `bg-white` (line in index.css: `@apply bg-white`). The spec's background is a warm off-white that reduces eye strain.
 
 **Fix:**
-- Desktop (≥768px): 2-column CSS grid
-- Unify all Save buttons to primary token style
-- Standardize PRO badges: same size, same purple color
-- API key mask: `••••••••••••`
-- Consistent form spacing: 16px label-to-input, 24px between groups
+- Change body background from `bg-white` to `bg-[#F8FAFC]` or use the existing `bg-surface` token
+- Update the `@theme` `--color-bg` if needed (it's already `#ffffff` — should be `#F8FAFC`)
+- Dark mode body should be `#020617` per spec (check current value `#111827` vs spec)
 
 **Acceptance Criteria:**
-- 2-column on desktop, single column on mobile
-- All Save buttons identical
-- All PRO badges identical
-- Page scroll reduced ~30% on desktop
+- Light mode page background is `#F8FAFC`, not `#FFFFFF`
+- Dark mode page background is `#020617` per spec
+- Cards on `#F8FAFC` background use `#FFFFFF` surface (subtle lift effect)
 
 ---
 
-### 8. 🟡 HIGH: Unified Button Component
+### 8. 🟡 HIGH: Mindmap Color-Coding by Mastery Level
 
-**Problem:** Buttons across the app use different sizes, radii, shadows, gradients. Login has gradient blue, settings has flat blue, onboarding has another gradient. Some CTAs are purple.
+**Problem:** Spec §5.2.5 says nodes should be "Color-coded by mastery level (not started, in progress, mastered)." Need to verify if MindmapExplorer actually uses mastery-based colors.
 
 **Fix:**
-- Create a `<Button>` component with variants: `primary`, `secondary`, `ghost`, `danger`
-- All variants use design tokens from task #2
-- Replace every `<button>` and styled CTA across all screens with this component
-- Consistent height: 40px default, 48px large
+- In `MindmapExplorer.tsx`, ensure node colors reflect:
+  - Not started: `gray-300` / neutral
+  - In progress: `accent` / blue
+  - Mastered: `success` / green
+- Add a visible legend with text labels (not just color dots — accessibility)
+- Ensure color tokens from design system are used, not hardcoded hex
 
 **Acceptance Criteria:**
-- Single `Button` component used everywhere
-- No ad-hoc button styling in any screen file
-- Visual audit: all primary buttons look identical across all screens
+- Nodes visually distinguish 3 mastery states
+- Legend with text labels present
+- Colors use design system tokens
 
 ---
 
-### 9. 🟠 MEDIUM: Marketplace Filter Alignment & Grid
+### 9. 🟠 MEDIUM: Marketplace Course Detail Page
 
-**Problem:** Search bar, dropdown, and filter pills have different heights/radii. Large empty space on right. "All" pill indistinguishable from inactive pills.
+**Problem:** Spec §5.2.7 says "Course detail page: syllabus preview, creator profile, reviews, price." Current CourseMarketplace shows cards in a grid but clicking likely just enrolls — no detail page with reviews/preview.
 
 **Fix:**
-- Align all filter controls to same height (40px)
-- Unify border-radius across search, dropdown, and pills
-- Active pill: solid primary color fill (not just outline)
-- Responsive grid: 3 columns on desktop, 2 on tablet, 1 on mobile with no wasted space
+- Create `screens/marketplace/CourseDetail.tsx` with:
+  - Course title, description, creator info
+  - Syllabus preview (module/lesson list)
+  - Rating display with review count
+  - "Enroll" CTA button
+  - Price badge (Free / $X)
+- Add route `/marketplace/course/:id`
+- Course cards in CourseMarketplace link to this detail page
 
 **Acceptance Criteria:**
-- All filter controls same height
-- Active filter clearly distinguishable
-- Grid fills available width with no large empty gutters
+- Clicking a course card opens detail page (not immediate enroll)
+- Detail page shows syllabus, creator, rating
+- Enroll button on detail page triggers enrollment
+- Back navigation works
 
 ---
 
-### 10. 🟠 MEDIUM: Onboarding Visual Consistency
+### 10. 🟠 MEDIUM: Notification Feed on Dashboard
 
-**Problem:** Progress dots small/low-contrast. Brain icon inconsistent size across screens. Feature list spacing excessive. "Get Started" uses different blue than rest of app.
+**Problem:** Spec §5.2.2 includes "Notifications feed: agent updates, peer messages, marketplace recommendations." Dashboard has no notifications section.
 
 **Fix:**
-- Progress dots: 32px, darken inactive to `text-gray-400`
-- Brain icon: same 48px size everywhere
-- Feature list gap: 12px
-- Apply primary button token to "Get Started"
+- Add a "Notifications" card/section to Dashboard below the course list
+- Show recent items: "Course generation complete", "New course available in marketplace", "Quiz ready"
+- Store notifications in app state (mock data for now)
+- Show unread count badge on the bell icon in header
 
 **Acceptance Criteria:**
-- Progress dots visible and tappable
-- Brain icon identical across all screens
-- CTA matches primary button style from design tokens
+- Dashboard shows a notifications section
+- Bell icon in header shows unread count
+- At least 3 mock notification types displayed
 
 ---
 
-### 11. 🟠 MEDIUM: Course Title 2-Line Clamp + Tooltips
+### 11. 🟠 MEDIUM: Onboarding Interest Mapping Screen
 
-**Problem:** Titles truncate to 1 line losing meaning. Progress bar alignment inconsistent.
+**Problem:** Spec §5.2.1 step 3 says "Interest Mapping: tags/chips for related domains; system suggests adjacent topics." Check if this exists in onboarding flow. `Topics.tsx` exists but need to verify it matches spec.
 
 **Fix:**
-- `-webkit-line-clamp: 2` on all course titles
-- `title` attribute for native hover tooltip
-- Progress bar: consistent 6px height, left title + right percentage
+- Verify `Topics.tsx` has:
+  - Pre-populated topic chips user can select
+  - System-suggested adjacent topics based on selections
+  - Visual feedback on selected vs unselected chips
+- If missing suggestion logic, add: when user selects "Machine Learning", suggest "Statistics", "Python", "Neural Networks"
 
 **Acceptance Criteria:**
-- Titles show 2 lines before truncating
-- Full title on hover
-- Progress bars aligned consistently
+- Topics screen shows selectable chips
+- Selecting chips triggers adjacent topic suggestions
+- Selected state is visually clear (accent fill vs outline)
 
 ---
 
-### 12. 🟠 MEDIUM: Landing Page Metrics Single Source of Truth
+### 12. 🟠 MEDIUM: Profile Settings — API Key Usage Stats
 
-**Problem:** "50K+" in hero vs "50k+" in footer. "4.9★" vs "4.8" in different sections.
+**Problem:** Spec §5.2.8 says "API key vault with provider management and usage stats." Settings has API key entry but likely no usage stats display.
 
 **Fix:**
-- Create `METRICS` constant: `{ learners: '50,000+', rating: '4.9', satisfaction: '98%' }`
-- Use everywhere — hero, trust section, footer
-- Remove duplicate stat displays
+- Below each API key input, show usage summary:
+  - "Used X times this month"
+  - "Last used: [date]"
+  - Small bar chart or text indicator
+- Mock data for now; wire to real analytics when backend supports it
 
 **Acceptance Criteria:**
-- Single source of truth for all metrics
-- No conflicting numbers anywhere
+- Each API key section shows usage count
+- Last used date displayed
+- Visual indicator of usage level
 
 ---
 
-### 13. 🟠 MEDIUM: Login/Register Polish
-
-**Problem:** Excessive whitespace above login card. No password show/hide toggle. Input borders too subtle. "Sign up" link too far from card.
-
-**Fix:**
-- Reduce top margin ~30% for better vertical centering
-- Add show/hide password toggle
-- Input borders: `border-gray-300` instead of `border-gray-200`
-- Sign-up link: 12px gap from card instead of 24px
-
-**Acceptance Criteria:**
-- Login form well-centered vertically
-- Password toggle visible and functional
-- Inputs look like editable fields
-- Sign-up link visually connected to card
-
----
-
-## Remaining for Future Iterations (Post-14)
+## Remaining for Future Iterations (Post-15)
 
 - PWA offline support & service worker
-- Skeleton loading screens for marketplace and conversation
 - Mobile hamburger nav for app screens
 - Horizontal scroll for filter chips on mobile marketplace
 - Collaboration Agent peer matching UI
@@ -281,9 +273,14 @@ After 13 iterations, LearnFlow has solid scaffolding — nice card layouts, work
 - CRDT shared mindmap (Yjs)
 - Flashcard deck UI
 - Course progress email digests
-- Social sharing
+- Social sharing / Open Graph meta
 - Gamification: badges, levels, leaderboard
 - Performance audit (Lighthouse ≥90)
 - Dark mode comprehensive audit
 - PostHog analytics initialization
 - Documentation site
+- High-contrast mode (WCAG AAA)
+- Screen reader audit with VoiceOver/NVDA
+- Agent marketplace detail page (similar to course detail)
+- Stripe/payment integration for Pro tier
+- Keyboard shortcut sheet (? key)
