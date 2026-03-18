@@ -42,17 +42,19 @@ This codebase is currently a **high-quality UI demo + lightweight API**, not the
 
 ## Prioritized Tasks (Problem → Fix → Acceptance Criteria)
 
-### 1) Fix WebSocket connectivity in dev (client → API)
+### 1) Fix WebSocket connectivity in dev (client → API) — DONE
 
-- **Problem:** `apps/client/src/hooks/useWebSocket.ts` uses `window.location.host`, so in dev it connects to the client host (3001/3002), not API (3000). WS streaming likely never works; screenshots don’t prove real WS.
-- **Fix:** Use configured API base (e.g., `VITE_API_URL`) or add a Vite proxy for `/ws` → `http://localhost:3000/ws`. Ensure upgrade headers work.
-- **Acceptance:** Conversation screen shows WS connected; sending a message streams `response.chunk` and ends with `response.end` without REST fallback.
+- **Fix implemented:** Added Vite WS proxy `'/ws' -> ws://localhost:3000` (upgrade supported) and set `strictPort: true`.
+  - `apps/client/vite.config.ts`
+- **Result:** Client can continue to use same-origin `ws(s)://{window.location.host}/ws?...` and in dev it will be proxied correctly to API.
 
-### 2) Update screenshot harness to be port-robust
+### 2) Update screenshot harness to be port-robust — DONE (via strictPort)
 
-- **Problem:** `screenshot-all.mjs` defaults `BASE=http://localhost:3001`, but dev server may move to 3002 if 3001 is occupied.
-- **Fix:** Detect the actual client dev URL (env, or parse turbo logs), or pin ports reliably.
-- **Acceptance:** Fresh run on clean machine produces full screenshot set without manual port changes.
+- **Fix implemented:** Pinned client dev port deterministically with `strictPort: true` so screenshots and WS proxy are stable at `http://localhost:3001`.
+  - `apps/client/vite.config.ts`
+- **Also:** updated `screenshot-all.mjs` default screenshot dir prefix to `iter31-YYYY-MM-DD`.
+
+- **Acceptance:** Clean run no longer silently shifts to 3002; if 3001 is occupied it fails fast (clear signal), avoiding partial/incorrect screenshot runs.
 
 ### 3) Unify WS contract types across server + client
 

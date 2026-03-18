@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 import { chromium } from 'playwright';
 
 const BASE = process.env.WEB_BASE_URL || 'http://localhost:3003';

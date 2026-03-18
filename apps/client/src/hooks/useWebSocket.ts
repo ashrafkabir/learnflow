@@ -18,6 +18,8 @@ export function useWebSocket(onEvent: WsHandler) {
     if (!token) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // In dev, /ws is proxied to the API via Vite (see vite.config.ts).
+    // In prod, API and client are expected to be same-origin.
     const host = window.location.host;
     const url = `${protocol}//${host}/ws?token=${encodeURIComponent(token)}`;
 
