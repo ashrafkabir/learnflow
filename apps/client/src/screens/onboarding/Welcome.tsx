@@ -2,14 +2,17 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
+import { useSwipe } from '../../hooks/useSwipe.js';
 
 export function OnboardingWelcome() {
   const nav = useNavigate();
+  const swipeProps = useSwipe({ onSwipeLeft: () => nav('/onboarding/goals') });
 
   return (
     <div
       data-screen="onboarding-welcome"
       className="slide-in-right min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center p-6"
+      {...swipeProps}
     >
       <div className="max-w-lg w-full text-center space-y-8">
         <OnboardingProgress current="welcome" />

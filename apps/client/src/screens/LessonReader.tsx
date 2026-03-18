@@ -5,6 +5,7 @@ import { CitationTooltip, Source } from '../components/CitationTooltip.js';
 import { SkeletonLessonContent } from '../components/Skeleton.js';
 import { Confetti } from '../components/Confetti.js';
 import { Button } from '../components/Button.js';
+import { useSwipe } from '../hooks/useSwipe.js';
 
 // ── Types ──────────────────────────────────────────────────
 interface Illustration {
@@ -182,6 +183,11 @@ export function LessonReader() {
   const currentIdx = allLessons.findIndex((l) => l.id === lessonId);
   const prevLesson = currentIdx > 0 ? allLessons[currentIdx - 1] : null;
   const nextLesson = currentIdx >= 0 && currentIdx < allLessons.length - 1 ? allLessons[currentIdx + 1] : null;
+
+  const swipeProps = useSwipe({
+    onSwipeLeft: () => nextLesson && nav(`/courses/${courseId}/lessons/${nextLesson.id}`),
+    onSwipeRight: () => prevLesson && nav(`/courses/${courseId}/lessons/${prevLesson.id}`),
+  });
 
   useEffect(() => {
     if (courseId && lessonId) {
@@ -365,7 +371,7 @@ export function LessonReader() {
   };
 
   return (
-    <section aria-label="Lesson Reader" data-screen="lesson-reader" className="min-h-screen bg-bg dark:bg-bg-dark">
+    <section aria-label="Lesson Reader" data-screen="lesson-reader" className="min-h-screen bg-bg dark:bg-bg-dark" {...swipeProps}>
       <Confetti trigger={showConfetti} />
       {/* Top bar */}
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">

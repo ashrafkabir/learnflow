@@ -1,37 +1,50 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useApp } from './context/AppContext.js';
-import { OnboardingWelcome } from './screens/onboarding/Welcome.js';
-import { OnboardingGoals } from './screens/onboarding/Goals.js';
-import { OnboardingTopics } from './screens/onboarding/Topics.js';
-import { OnboardingApiKeys } from './screens/onboarding/ApiKeys.js';
-import { SubscriptionChoice } from './screens/onboarding/SubscriptionChoice.js';
-import { FirstCourse } from './screens/onboarding/FirstCourse.js';
-import { Dashboard } from './screens/Dashboard.js';
-import { Conversation } from './screens/Conversation.js';
-import { CourseView } from './screens/CourseView.js';
-import { LessonReader } from './screens/LessonReader.js';
-import { MindmapExplorer } from './screens/MindmapExplorer.js';
-import { CourseMarketplace } from './screens/marketplace/CourseMarketplace.js';
-import { AgentMarketplace } from './screens/marketplace/AgentMarketplace.js';
-import { CourseDetail } from './screens/marketplace/CourseDetail.js';
-import { CreatorDashboard } from './screens/marketplace/CreatorDashboard.js';
-import { ProfileSettings } from './screens/ProfileSettings.js';
-import { PipelineDetail } from './screens/PipelineDetail.js';
-import { LoginScreen } from './screens/LoginScreen.js';
-import { RegisterScreen } from './screens/RegisterScreen.js';
-import { HomePage } from './screens/marketing/Home.js';
-import { FeaturesPage } from './screens/marketing/Features.js';
-import { PricingPage } from './screens/marketing/Pricing.js';
-import { DownloadPage } from './screens/marketing/Download.js';
-import { BlogPage } from './screens/marketing/Blog.js';
-import { BlogPostPage } from './screens/marketing/BlogPost.js';
-import { AboutPage } from './screens/marketing/About.js';
-import { DocsPage } from './screens/marketing/Docs.js';
-import { Collaboration } from './screens/Collaboration.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { PageTransition } from './components/PageTransition.js';
 import { MobileNav } from './components/MobileNav.js';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
+import { ShortcutsModal } from './components/ShortcutsModal.js';
+
+// Code-split all screen components via React.lazy
+const OnboardingWelcome = React.lazy(() => import('./screens/onboarding/Welcome.js').then(m => ({ default: m.OnboardingWelcome })));
+const OnboardingGoals = React.lazy(() => import('./screens/onboarding/Goals.js').then(m => ({ default: m.OnboardingGoals })));
+const OnboardingTopics = React.lazy(() => import('./screens/onboarding/Topics.js').then(m => ({ default: m.OnboardingTopics })));
+const OnboardingApiKeys = React.lazy(() => import('./screens/onboarding/ApiKeys.js').then(m => ({ default: m.OnboardingApiKeys })));
+const SubscriptionChoice = React.lazy(() => import('./screens/onboarding/SubscriptionChoice.js').then(m => ({ default: m.SubscriptionChoice })));
+const FirstCourse = React.lazy(() => import('./screens/onboarding/FirstCourse.js').then(m => ({ default: m.FirstCourse })));
+const Dashboard = React.lazy(() => import('./screens/Dashboard.js').then(m => ({ default: m.Dashboard })));
+const Conversation = React.lazy(() => import('./screens/Conversation.js').then(m => ({ default: m.Conversation })));
+const CourseView = React.lazy(() => import('./screens/CourseView.js').then(m => ({ default: m.CourseView })));
+const LessonReader = React.lazy(() => import('./screens/LessonReader.js').then(m => ({ default: m.LessonReader })));
+const MindmapExplorer = React.lazy(() => import('./screens/MindmapExplorer.js').then(m => ({ default: m.MindmapExplorer })));
+const CourseMarketplace = React.lazy(() => import('./screens/marketplace/CourseMarketplace.js').then(m => ({ default: m.CourseMarketplace })));
+const AgentMarketplace = React.lazy(() => import('./screens/marketplace/AgentMarketplace.js').then(m => ({ default: m.AgentMarketplace })));
+const CourseDetail = React.lazy(() => import('./screens/marketplace/CourseDetail.js').then(m => ({ default: m.CourseDetail })));
+const CreatorDashboard = React.lazy(() => import('./screens/marketplace/CreatorDashboard.js').then(m => ({ default: m.CreatorDashboard })));
+const ProfileSettings = React.lazy(() => import('./screens/ProfileSettings.js').then(m => ({ default: m.ProfileSettings })));
+const PipelineDetail = React.lazy(() => import('./screens/PipelineDetail.js').then(m => ({ default: m.PipelineDetail })));
+const LoginScreen = React.lazy(() => import('./screens/LoginScreen.js').then(m => ({ default: m.LoginScreen })));
+const RegisterScreen = React.lazy(() => import('./screens/RegisterScreen.js').then(m => ({ default: m.RegisterScreen })));
+const HomePage = React.lazy(() => import('./screens/marketing/Home.js').then(m => ({ default: m.HomePage })));
+const FeaturesPage = React.lazy(() => import('./screens/marketing/Features.js').then(m => ({ default: m.FeaturesPage })));
+const PricingPage = React.lazy(() => import('./screens/marketing/Pricing.js').then(m => ({ default: m.PricingPage })));
+const DownloadPage = React.lazy(() => import('./screens/marketing/Download.js').then(m => ({ default: m.DownloadPage })));
+const BlogPage = React.lazy(() => import('./screens/marketing/Blog.js').then(m => ({ default: m.BlogPage })));
+const BlogPostPage = React.lazy(() => import('./screens/marketing/BlogPost.js').then(m => ({ default: m.BlogPostPage })));
+const AboutPage = React.lazy(() => import('./screens/marketing/About.js').then(m => ({ default: m.AboutPage })));
+const DocsPage = React.lazy(() => import('./screens/marketing/Docs.js').then(m => ({ default: m.DocsPage })));
+const Collaboration = React.lazy(() => import('./screens/Collaboration.js').then(m => ({ default: m.Collaboration })));
+const NotFound = React.lazy(() => import('./screens/NotFound.js').then(m => ({ default: m.NotFound })));
+
+function LoadingSpinner() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { state } = useApp();
@@ -40,16 +53,13 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const isPublic = ['/', '/login', '/register', '/features', '/pricing', '/download', '/blog', '/about', '/docs'].includes(location.pathname) || location.pathname.startsWith('/blog/');
   const isAuth = ['/login', '/register'].includes(location.pathname);
 
-  // Check authentication
   const token = localStorage.getItem('learnflow-token');
   const completed = state.onboarding.completed || localStorage.getItem('learnflow-onboarding-complete') === 'true';
 
-  // Unauthenticated users → login (unless on public/auth page)
   if (!token && !isPublic && !isOnboarding && !isAuth) {
     return <Navigate to="/login" replace />;
   }
 
-  // Authenticated but not onboarded → onboarding
   if (token && !completed && !isOnboarding && !isPublic) {
     return <Navigate to="/onboarding/welcome" replace />;
   }
@@ -65,13 +75,16 @@ function AppMobileNav() {
 }
 
 export function App() {
+  const { showHelp, setShowHelp } = useKeyboardShortcuts();
   return (
     <main role="main" aria-label="LearnFlow Application">
+      <ShortcutsModal open={showHelp} onClose={() => setShowHelp(false)} />
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">Skip to content</a>
       <div id="main-content" />
       <AppMobileNav />
       <ErrorBoundary>
       <OnboardingGuard>
+      <Suspense fallback={<LoadingSpinner />}>
       <PageTransition>
       <Routes>
         {/* Onboarding — 6 screens per spec 5.2.1 */}
@@ -122,8 +135,12 @@ export function App() {
 
         {/* Homepage */}
         <Route path="/" element={<HomePage />} />
+
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
       </PageTransition>
+      </Suspense>
       </OnboardingGuard>
       </ErrorBoundary>
     </main>

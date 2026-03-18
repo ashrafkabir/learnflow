@@ -289,6 +289,13 @@ export function MindmapExplorer() {
           ) : (
             <>
               <div ref={containerRef} className="w-full h-full" />
+              {/* Mastery legend */}
+              <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-3 shadow-card z-10 text-xs space-y-1.5">
+                <div className="font-semibold text-gray-700 dark:text-gray-200 mb-1">Mastery Level</div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: '#9CA3AF' }} /> <span className="text-gray-600 dark:text-gray-300">Not started</span></div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: '#F59E0B' }} /> <span className="text-gray-600 dark:text-gray-300">In progress</span></div>
+                <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full" style={{ background: '#16A34A' }} /> <span className="text-gray-600 dark:text-gray-300">Mastered</span></div>
+              </div>
               {/* Zoom controls */}
               <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
                 <Button
