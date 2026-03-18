@@ -60,9 +60,18 @@ describe('Dashboard', () => {
 
   it('renders course cards or empty state', async () => {
     renderAt('/dashboard');
-    // Should render either course cards or a CTA to create one
+
+    // The dashboard starts in a skeleton state and then hydrates.
+    // Assert on stable UI once loading is finished.
+    await waitFor(() => {
+      // Ensure the main dashboard container rendered
+      expect(document.querySelector('[data-screen="dashboard"]')).toBeTruthy();
+      // And that we are not stuck on the skeleton
+      expect(document.querySelector('[data-component="skeleton-dashboard"]')).toBeFalsy();
+    });
+
     const text = document.body.textContent || '';
-    expect(text.match(/course|create|start|explore/i)).toBeTruthy();
+    expect(text.match(/course|create|start|explore|journey/i)).toBeTruthy();
   });
 
   it('has navigation elements', async () => {

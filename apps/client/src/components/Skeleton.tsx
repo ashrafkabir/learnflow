@@ -80,7 +80,7 @@ export function SkeletonLessonContent({ className = '' }: { className?: string }
 
 export function SkeletonDashboard() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-component="skeleton-dashboard">
       <div className={`${shimmer()} h-36 rounded-2xl`} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (

@@ -144,14 +144,20 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const isAuth = ['/login', '/register'].includes(location.pathname);
 
   const token = localStorage.getItem('learnflow-token');
+
+  // Explicit, env-gated bypass for local dev / eval automation.
+  // Usage: set `VITE_DEV_AUTH_BYPASS=1` when running the client.
+  const devAuthBypass =
+    (import.meta as any)?.env?.VITE_DEV_AUTH_BYPASS === '1' ||
+    (import.meta as any)?.env?.DEV_AUTH_BYPASS === '1';
   const completed =
     state.onboarding.completed || localStorage.getItem('learnflow-onboarding-complete') === 'true';
 
-  if (!token && !isPublic && !isOnboarding && !isAuth) {
+  if (!devAuthBypass && !token && !isPublic && !isOnboarding && !isAuth) {
     return <Navigate to="/login" replace />;
   }
 
-  if (token && !completed && !isOnboarding && !isPublic) {
+  if (!devAuthBypass && token && !completed && !isOnboarding && !isPublic) {
     return <Navigate to="/onboarding/welcome" replace />;
   }
   return <>{children}</>;

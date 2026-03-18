@@ -17,7 +17,8 @@ export function Dashboard() {
   const [creating, setCreating] = useState(false);
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [weeklyData, setWeeklyData] = useState<Array<{ day: string; minutes: number }>>([]);
-  const [initialLoading, setInitialLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [upgradeMessage, setUpgradeMessage] = useState<string | null>(null);
   const { start: startPipeline, loading: pipelineLoading } = useStartPipeline();
   const { pipelines: pipelineList, refresh: refreshPipelines } = usePipelineList();
   const { state: activePipelineState } = usePipeline(activePipelineId);
@@ -28,10 +29,10 @@ export function Dashboard() {
   const handleCreateCourse = async () => {
     if (!newTopic.trim()) return;
     if (!canCreateCourse) {
-      alert('Free plan is limited to 3 courses. Upgrade to Pro for unlimited courses!');
-      nav('/settings');
+      setUpgradeMessage('Free plan is limited to 3 courses. Upgrade to Pro for unlimited courses.');
       return;
     }
+    setUpgradeMessage(null);
     setCreating(true);
     try {
       const result = await startPipeline(newTopic.trim());
@@ -68,6 +69,7 @@ export function Dashboard() {
   // Fetch courses on mount
   useEffect(() => {
     (async () => {
+      setInitialLoading(true);
       try {
         const data = await apiGet('/courses');
         if (data.courses && data.courses.length > 0) {
@@ -315,7 +317,7 @@ export function Dashboard() {
                           variant="ghost"
                           fullWidth
                           onClick={() => {
-                            window.location.href = `/courses/${c.id}/lessons/${l.id}`;
+                            nav(`/courses/${c.id}/lessons/${l.id}`);
                           }}
                           className="justify-start text-left px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30"
                         >
@@ -453,6 +455,16 @@ export function Dashboard() {
                 Start Learning Something New
               </h2>
               <div className="flex flex-col sm:flex-row gap-3">
+                {upgradeMessage && (
+                  <div className="w-full rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100">
+                    <div className="flex items-center justify-between gap-3">
+                      <span>{upgradeMessage}</span>
+                      <Button variant="secondary" size="sm" onClick={() => nav('/settings')}>
+                        View plans
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 <input
                   value={newTopic}
                   onChange={(e) => setNewTopic(e.target.value)}

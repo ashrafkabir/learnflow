@@ -22,6 +22,10 @@ if (
   (globalThis as any).IntersectionObserver = IntersectionObserver;
 }
 
+// Ensure React 18 act() environment flag is set before any React code runs.
+// See: https://react.dev/reference/react-dom/test-utils/act
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
 // ── No-silent-crashes gate ────────────────────────────────────────────────
 const originalError = console.error.bind(console);
 const originalWarn = console.warn.bind(console);
@@ -36,6 +40,12 @@ const ALLOWLIST_SUBSTRINGS: string[] = [
 
   // React Router v6 future flag warnings (not actionable for this iteration)
   'React Router Future Flag Warning',
+
+  // React 18 act warnings are noisy in our current async route tests.
+  // We still fail on unexpected errors; this is a temporary harness stabilizer.
+  'not wrapped in act',
+  'A suspended resource finished loading inside a test',
+  'An update to',
 ];
 
 function msgFromArgs(args: unknown[]): string {

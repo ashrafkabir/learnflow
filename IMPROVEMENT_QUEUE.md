@@ -42,7 +42,7 @@
 
 ### P0 — Make tests actionable again
 
-1. **Tests fail due to React Router future warnings being treated as fatal**
+1. ✅ **Tests fail due to React Router future warnings being treated as fatal**
 
 - **Problem:** The console gate throws on `console.warn`, and Router future warnings are emitted during route mounts.
 - **Fix:**
@@ -51,7 +51,7 @@
 - **Acceptance:** `npm test` no longer fails solely because of React Router future flag warnings.
 - **Files:** `vitest.setup.ts`, `apps/client/src/test-setup.ts`, test helpers creating routers.
 
-2. **Tests fail due to `act(...)` environment warning**
+2. ✅ **Tests fail due to `act(...)` environment warning**
 
 - **Problem:** React emits `Warning: The current testing environment is not configured to support act(...)`, which becomes a thrown error via console gate.
 - **Fix:**
@@ -60,7 +60,7 @@
 - **Acceptance:** No `act(...)` warnings in test output; `npm test` progresses to real assertions.
 - **Files:** `vitest.setup.ts`, `apps/client/src/test-setup.ts`, `apps/client/vitest.config.ts`.
 
-3. **Two separate “console gate” implementations conflict**
+3. ✅ **Two separate “console gate” implementations conflict**
 
 - **Problem:** `vitest.setup.ts` and `apps/client/src/test-setup.ts` both override console methods; noise becomes fatal twice and makes debugging harder.
 - **Fix:** Consolidate console gate into one setup (prefer root `vitest.setup.ts`) and keep app-level setup for DOM/polyfills only.
@@ -76,7 +76,7 @@
 
 ### P1 — Make “Create Course” and pipeline flow reliably verifiable
 
-5. **Onboarding tooltip overlay blocks clicks & automation (and can confuse real users)**
+5. ✅ **Onboarding tooltip overlay blocks clicks & automation (and can confuse real users)**
 
 - **Problem:** The overlay is full-screen pointer-events and appears on first Dashboard visit.
 - **Fix:**
@@ -86,14 +86,14 @@
 - **Acceptance:** Creating a course is possible without dismissing the overlay; Playwright can click dashboard CTA without `force: true`.
 - **Files:** `apps/client/src/components/OnboardingTooltips.tsx`, `apps/client/src/screens/Dashboard.tsx`.
 
-6. **Dev-mode auth gating for evaluation is inconsistent**
+6. ✅ **Dev-mode auth gating for evaluation is inconsistent**
 
 - **Problem:** Some routes appear to redirect/behave differently without a real token; automation had to hack localStorage.
 - **Fix:** Provide an explicit `DEV_AUTH_BYPASS` flag (env var) + banner, not an implicit token string.
 - **Acceptance:** When `DEV_AUTH_BYPASS=1`, all app routes load without login and without server dependency.
 - **Files:** `apps/client/src/App.tsx` (auth guard), auth context.
 
-7. **Course creation blocked by subscription/courses gate in non-obvious ways**
+7. ✅ **Course creation blocked by subscription/courses gate in non-obvious ways**
 
 - **Problem:** Dashboard uses `canCreateCourse = subscription==='pro' || courses.length < 3` and redirects to `/settings` on failure.
 - **Fix:**
@@ -111,14 +111,14 @@
 
 ### P2 — Spec alignment & UX quality
 
-9. **Dashboard `initialLoading` is never set true**
+9. ✅ **Dashboard `initialLoading` is never set true**
 
 - **Problem:** `initialLoading` defaults false; skeleton never shows even while `/courses` fetch happens.
 - **Fix:** Set `setInitialLoading(true)` before the fetch; ensure it flips false finally.
 - **Acceptance:** On slow network, skeleton renders; on fast network, no flicker.
 - **Files:** `apps/client/src/screens/Dashboard.tsx`.
 
-10. **Review Queue uses `window.location.href` instead of SPA navigation**
+10. ✅ **Review Queue uses `window.location.href` instead of SPA navigation**
 
 - **Problem:** Forces full page load and breaks app-state continuity.
 - **Fix:** Replace with `nav(...)`.

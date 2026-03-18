@@ -32,40 +32,6 @@ const mockFetch = async (_url: string | URL | Request, _init?: RequestInit): Pro
 
 globalThis.fetch = mockFetch as typeof globalThis.fetch;
 
-// ── "No silent crashes" test gate ──────────────────────────────────────────
-// The suite used to pass while React logged real runtime crashes (ErrorBoundary,
-// uncaught errors, etc.). Fail fast on console.error / console.warn unless an
-// allowlisted message is expected noise.
-const originalError = console.error.bind(console);
-const originalWarn = console.warn.bind(console);
-
-const ALLOWLIST = [
-  // app-branded logs
-  '[LearnFlow]',
-  // fetch/url noise when some tests intentionally use relative URLs
-  'Invalid URL',
-];
-
-function shouldAllowConsoleMessage(args: unknown[]): boolean {
-  const first = args[0];
-  const msg = typeof first === 'string' ? first : first instanceof Error ? first.message : '';
-
-  return ALLOWLIST.some((s) => msg.includes(s));
-}
-
-console.error = (...args: unknown[]) => {
-  if (shouldAllowConsoleMessage(args)) return;
-  originalError(...args);
-  throw new Error(`console.error during test: ${String(args[0])}`);
-};
-
-console.warn = (...args: unknown[]) => {
-  if (shouldAllowConsoleMessage(args)) return;
-  originalWarn(...args);
-  throw new Error(`console.warn during test: ${String(args[0])}`);
-};
-
-// Fail tests on unhandled promise rejections.
-process.on('unhandledRejection', (reason) => {
-  throw reason instanceof Error ? reason : new Error(`UnhandledRejection: ${String(reason)}`);
-});
+// Note: console error/warn gating is centralized in the root `vitest.setup.ts`
+// to avoid double-wrapping and confusing stack traces. Keep this file focused on
+// jsdom polyfills + lightweight network mocks.
