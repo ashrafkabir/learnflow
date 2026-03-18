@@ -4,8 +4,42 @@ import { Button } from '../components/Button.js';
 
 const TABS = ['Find Study Partners', 'My Groups', 'Shared Mindmaps'] as const;
 
+const INTEREST_TAGS = [
+  'Machine Learning', 'Web Development', 'Data Science', 'Rust', 'Python',
+  'Cloud Architecture', 'Cybersecurity', 'Mobile Dev', 'DevOps', 'Blockchain',
+  'UI/UX Design', 'Algorithms', 'System Design', 'Quantum Computing',
+];
+
+const MOCK_GROUPS = [
+  { id: '1', name: 'Rust Systems Programmers', members: 12, topic: 'Rust & Systems Programming', emoji: '🦀', active: true },
+  { id: '2', name: 'ML Paper Reading Club', members: 28, topic: 'Machine Learning Research', emoji: '🧠', active: true },
+  { id: '3', name: 'Full-Stack Builders', members: 19, topic: 'React + Node.js Projects', emoji: '🏗️', active: false },
+];
+
+const MOCK_PARTNERS = [
+  { name: 'Alex K.', avatar: '👨‍💻', topics: ['Rust', 'System Design'], level: 'Intermediate', online: true },
+  { name: 'Maria S.', avatar: '👩‍🔬', topics: ['Machine Learning', 'Python'], level: 'Advanced', online: true },
+  { name: 'Jordan T.', avatar: '🧑‍🎓', topics: ['Web Development', 'DevOps'], level: 'Beginner', online: false },
+];
+
 export function Collaboration() {
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('Find Study Partners');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [groupTopic, setGroupTopic] = useState('');
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags((prev) => prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]);
+  };
+
+  const handleCreateGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    alert(`Group "${groupName}" created for topic "${groupTopic}"! (Mock)`);
+    setShowCreateGroup(false);
+    setGroupName('');
+    setGroupTopic('');
+  };
 
   return (
     <section className="min-h-screen bg-bg dark:bg-bg-dark">
@@ -14,7 +48,6 @@ export function Collaboration() {
         <h1 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Learn Together</h1>
         <p className="text-gray-600 dark:text-gray-300 mb-6">Collaborate with peers to accelerate your learning.</p>
 
-        {/* Coming soon banner */}
         <div className="mb-6 p-4 rounded-xl bg-accent/10 border border-accent/30 text-sm text-accent font-medium flex items-center gap-2">
           <span>🚀</span> Collaboration features are in active development. Early access coming soon!
         </div>
@@ -22,40 +55,120 @@ export function Collaboration() {
         {/* Tabs */}
         <div className="flex gap-2 mb-8 overflow-x-auto">
           {TABS.map((tab) => (
-            <Button
-              key={tab}
-              variant={activeTab === tab ? 'primary' : 'ghost'}
-              size="sm"
-              onClick={() => setActiveTab(tab)}
-            >
+            <Button key={tab} variant={activeTab === tab ? 'primary' : 'ghost'} size="sm" onClick={() => setActiveTab(tab)}>
               {tab}
             </Button>
           ))}
         </div>
 
-        {/* Tab content — empty states */}
+        {/* Find Study Partners */}
         {activeTab === 'Find Study Partners' && (
-          <div className="text-center py-16 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <span className="text-5xl block mb-4">🤝</span>
-            <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Find Your Study Partners</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-6">
-              Our AI matches you with learners who share your topics and goals. Get paired for accountability, discussion, and peer reviews.
-            </p>
-            <Button variant="primary" disabled>Coming Soon</Button>
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">🏷️ Select Your Interests</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Choose topics to match with study partners who share your goals.</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {INTEREST_TAGS.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      selectedTags.includes(tag)
+                        ? 'bg-accent text-white'
+                        : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <Button variant="primary" size="sm" disabled={selectedTags.length === 0} onClick={() => alert('Matching you with partners... (Mock)')}>
+                Find Partners ({selectedTags.length} topics selected)
+              </Button>
+            </div>
+
+            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">🤝 Suggested Partners</h2>
+              <div className="space-y-3">
+                {MOCK_PARTNERS.map((p) => (
+                  <div key={p.name} className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors">
+                    <span className="text-3xl">{p.avatar}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
+                        <span className={`w-2 h-2 rounded-full ${p.online ? 'bg-green-500' : 'bg-gray-400'}`} />
+                        <span className="text-xs text-gray-500">{p.level}</span>
+                      </div>
+                      <div className="flex gap-1 mt-1">
+                        {p.topics.map((t) => (
+                          <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <Button variant="secondary" size="sm" onClick={() => alert(`Invite sent to ${p.name}! (Mock)`)}>Connect</Button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
+        {/* My Groups */}
         {activeTab === 'My Groups' && (
-          <div className="text-center py-16 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <span className="text-5xl block mb-4">👥</span>
-            <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Study Groups</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-6">
-              Create or join study groups around specific courses or topics. Set goals together and track collective progress.
-            </p>
-            <Button variant="primary" disabled>Coming Soon</Button>
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">👥 Study Groups</h2>
+              <Button variant="primary" size="sm" onClick={() => setShowCreateGroup(!showCreateGroup)}>
+                {showCreateGroup ? 'Cancel' : '+ Start a Group'}
+              </Button>
+            </div>
+
+            {showCreateGroup && (
+              <form onSubmit={handleCreateGroup} className="rounded-2xl border border-accent/30 bg-accent/5 p-6 space-y-4">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Create a New Group</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Group Name</label>
+                  <input
+                    value={groupName}
+                    onChange={(e) => setGroupName(e.target.value)}
+                    required
+                    placeholder="e.g., Rust Systems Club"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Topic</label>
+                  <input
+                    value={groupTopic}
+                    onChange={(e) => setGroupTopic(e.target.value)}
+                    required
+                    placeholder="e.g., Systems programming with Rust"
+                    className="w-full px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                </div>
+                <Button type="submit" variant="primary" size="sm">Create Group</Button>
+              </form>
+            )}
+
+            <div className="space-y-3">
+              {MOCK_GROUPS.map((g) => (
+                <div key={g.id} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-accent/30 transition-colors">
+                  <span className="text-3xl">{g.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-gray-900 dark:text-white">{g.name}</span>
+                      {g.active && <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">Active</span>}
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">{g.topic} · {g.members} members</p>
+                  </div>
+                  <Button variant="secondary" size="sm" onClick={() => alert(`Joined ${g.name}! (Mock)`)}>Join</Button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
+        {/* Shared Mindmaps */}
         {activeTab === 'Shared Mindmaps' && (
           <div className="text-center py-16 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
             <span className="text-5xl block mb-4">🗺️</span>
@@ -63,7 +176,7 @@ export function Collaboration() {
             <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-6">
               Collaborate on knowledge graphs in real-time. See what your peers know, identify complementary strengths, and fill gaps together.
             </p>
-            <Button variant="primary" disabled>Coming Soon</Button>
+            <span className="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">Coming Soon</span>
           </div>
         )}
       </div>

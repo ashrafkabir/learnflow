@@ -15,9 +15,12 @@ const SECTIONS = [
   {
     category: 'User Guide',
     items: [
-      { title: 'Dashboard Overview', content: 'The Dashboard shows your active courses, learning streaks, and quick actions. Use the sidebar to navigate to Conversation, Mind Map, Marketplace, and Settings.' },
-      { title: 'AI Conversation', content: 'Chat with specialized AI agents. Ask questions, request research summaries, or create new courses — all through natural conversation with inline citations.' },
-      { title: 'Knowledge Mindmap', content: 'Visualize your knowledge graph. Nodes are color-coded by mastery level. Click to expand, jump to lessons, or add connections. Use keyboard navigation for accessibility.' },
+      { title: 'Dashboard Overview', content: 'The Dashboard shows your active courses, learning streaks, and quick actions. Use the sidebar to navigate to Conversation, Mind Map, Marketplace, and Settings. The "Today\'s Lessons" queue surfaces your most relevant next steps based on spaced repetition and course progress.' },
+      { title: 'AI Conversation', content: 'Chat with specialized AI agents. Ask questions, request research summaries, or create new courses — all through natural conversation with inline citations. Use quick-action chips (Take Notes, Quiz Me, Go Deeper, See Sources) after each assistant response for one-tap workflows.' },
+      { title: 'Knowledge Mindmap', content: 'Visualize your knowledge graph. Nodes are color-coded by mastery level: green (mastered), amber (in progress), gray (not started). Click to expand, jump to lessons, or add connections. Use keyboard navigation for accessibility. Press "?" for keyboard shortcuts.' },
+      { title: 'Lesson Reader', content: 'Each lesson renders with rich formatting: LaTeX equations, syntax-highlighted code blocks, and markdown. Swipe between lessons on mobile. Use flashcards at the bottom of each lesson to test recall, and earn confetti celebrations on completion.' },
+      { title: 'Profile & Settings', content: 'Configure your API keys in the secure API Vault, toggle dark mode, manage notification preferences, and export your data in Markdown or JSON format. All keys are encrypted locally using AES-256.' },
+      { title: 'Collaboration', content: 'Find study partners by selecting interest tags. Create or join study groups around specific topics. Real-time shared mindmaps are coming soon.' },
     ],
   },
   {
@@ -39,74 +42,184 @@ const SECTIONS = [
     items: [
       { title: 'Publishing Courses', content: 'Create courses and publish them to the marketplace for the community. Set pricing, add descriptions, and track analytics from the Creator Dashboard.' },
       { title: 'Earning Revenue', content: 'Pro creators earn revenue from paid course sales. Stripe integration for payouts coming soon.' },
+      { title: 'Course Analytics', content: 'Track enrollments, completion rates, ratings, and revenue from the Creator Dashboard. See which modules have the highest drop-off and optimize your content accordingly.' },
     ],
   },
+  {
+    category: 'Troubleshooting',
+    items: [
+      { title: 'Common Issues', content: 'Course generation stuck? Try refreshing the page or checking your API key configuration. If generation fails, ensure your API key has sufficient credits and the provider is not rate-limiting your requests.' },
+      { title: 'API Key Errors', content: 'If you see "Invalid API Key" errors, go to Settings → API Vault and re-enter your key. Ensure you\'re using the correct provider (OpenAI, Anthropic, or Google). Keys are validated on save.' },
+      { title: 'Performance Tips', content: 'For best performance: use Chrome or Firefox, enable hardware acceleration, close unused tabs during course generation, and ensure a stable internet connection for real-time features.' },
+      { title: 'Contact Support', content: 'Can\'t find what you need? Email support@learnflow.ai or join our Discord community at discord.gg/learnflow for real-time help from the team and community.' },
+    ],
+  },
+];
+
+const QUICK_START_STEPS = [
+  { step: 1, title: 'Download & Install', desc: 'Get LearnFlow for your platform from the Download page. Web, macOS, Windows, Linux, iOS, and Android.' },
+  { step: 2, title: 'Create an Account', desc: 'Sign up with email or use Google/GitHub/Apple OAuth for one-click registration.' },
+  { step: 3, title: 'Add Your API Key', desc: 'Go to Settings → API Vault and add your OpenAI, Anthropic, or Google API key. Keys are encrypted locally.' },
+  { step: 4, title: 'Create Your First Course', desc: 'Type any topic in the Conversation screen — "Learn Rust" or "Quantum Mechanics 101." AI agents build your course.' },
+  { step: 5, title: 'Start Learning', desc: 'Read lessons, take quizzes, build your mindmap, and track your progress on the Dashboard.' },
 ];
 
 export function DocsPage() {
   const [activeCategory, setActiveCategory] = useState('Getting Started');
   const [activeItem, setActiveItem] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
   const section = SECTIONS.find((s) => s.category === activeCategory)!;
+
+  // Filter sections by search query
+  const filteredSections = searchQuery.trim()
+    ? SECTIONS.map((s) => ({
+        ...s,
+        items: s.items.filter(
+          (item) =>
+            item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.content.toLowerCase().includes(searchQuery.toLowerCase())
+        ),
+      })).filter((s) => s.items.length > 0)
+    : null;
 
   return (
     <MarketingLayout>
-      <SEO title="Documentation" description="LearnFlow documentation — getting started, user guide, agent SDK, API reference, and creator guide." path="/docs" />
+      <SEO
+        title="Documentation"
+        description="LearnFlow documentation — getting started, user guide, agent SDK, API reference, and creator guide."
+        path="/docs"
+      />
       <section className="max-w-6xl mx-auto px-6 py-12">
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight mb-2">Documentation</h1>
-          <p className="text-gray-600 dark:text-gray-300">Everything you need to get the most out of LearnFlow.</p>
+          <p className="text-gray-600 dark:text-gray-300">
+            Everything you need to get the most out of LearnFlow.
+          </p>
         </div>
 
-        {/* Search (non-functional stub) */}
+        {/* Search */}
         <div className="mb-8">
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search docs..."
             className="w-full max-w-md px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
             aria-label="Search documentation"
           />
         </div>
 
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Sidebar */}
-          <nav className="md:w-56 flex-shrink-0" aria-label="Documentation sections">
-            <div className="space-y-1">
-              {SECTIONS.map((s) => (
-                <Button
-                  key={s.category}
-                  variant="ghost"
-                  fullWidth
-                  size="sm"
-                  onClick={() => { setActiveCategory(s.category); setActiveItem(0); }}
-                  className={`justify-start text-sm font-medium ${activeCategory === s.category ? 'bg-accent/10 text-accent' : 'text-gray-600 dark:text-gray-300'}`}
-                  aria-current={activeCategory === s.category ? 'page' : undefined}
-                >
-                  {s.category}
-                </Button>
-              ))}
-            </div>
-          </nav>
+        {/* Search results */}
+        {filteredSections ? (
+          <div className="space-y-6 mb-8">
+            {filteredSections.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 py-8 text-center">
+                No results found for &ldquo;{searchQuery}&rdquo;
+              </p>
+            ) : (
+              filteredSections.map((s) => (
+                <div key={s.category}>
+                  <h3 className="font-semibold text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+                    {s.category}
+                  </h3>
+                  {s.items.map((item) => (
+                    <button
+                      key={item.title}
+                      onClick={() => {
+                        setActiveCategory(s.category);
+                        const idx = SECTIONS.find((sec) => sec.category === s.category)!.items.findIndex(
+                          (i) => i.title === item.title
+                        );
+                        setActiveItem(idx);
+                        setSearchQuery('');
+                      }}
+                      className="block w-full text-left p-4 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 mb-2 transition-colors"
+                    >
+                      <p className="font-medium text-gray-900 dark:text-white">{item.title}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 mt-1">
+                        {item.content}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              ))
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col md:flex-row gap-8">
+            {/* Sidebar */}
+            <nav className="md:w-56 flex-shrink-0" aria-label="Documentation sections">
+              <div className="space-y-1">
+                {SECTIONS.map((s) => (
+                  <Button
+                    key={s.category}
+                    variant="ghost"
+                    fullWidth
+                    size="sm"
+                    onClick={() => {
+                      setActiveCategory(s.category);
+                      setActiveItem(0);
+                    }}
+                    className={`justify-start text-sm font-medium ${
+                      activeCategory === s.category
+                        ? 'bg-accent/10 text-accent'
+                        : 'text-gray-600 dark:text-gray-300'
+                    }`}
+                    aria-current={activeCategory === s.category ? 'page' : undefined}
+                  >
+                    {s.category}
+                  </Button>
+                ))}
+              </div>
+            </nav>
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            <div className="flex gap-2 mb-6 flex-wrap">
-              {section.items.map((item, i) => (
-                <Button
-                  key={item.title}
-                  variant={i === activeItem ? 'primary' : 'ghost'}
-                  size="sm"
-                  onClick={() => setActiveItem(i)}
-                >
-                  {item.title}
-                </Button>
-              ))}
-            </div>
-            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-6 bg-white dark:bg-gray-900">
-              <h2 className="text-xl font-bold mb-4">{section.items[activeItem].title}</h2>
-              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">{section.items[activeItem].content}</p>
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              {/* Quick start walkthrough for Getting Started */}
+              {activeCategory === 'Getting Started' && activeItem === 0 && (
+                <div className="mb-8 p-6 rounded-2xl bg-accent/5 border border-accent/20">
+                  <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">
+                    ⚡ Quick Start (5 steps)
+                  </h3>
+                  <div className="space-y-3">
+                    {QUICK_START_STEPS.map((qs) => (
+                      <div key={qs.step} className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 w-7 h-7 rounded-full bg-accent text-white text-sm font-bold flex items-center justify-center">
+                          {qs.step}
+                        </span>
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white text-sm">
+                            {qs.title}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">{qs.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 mb-6 flex-wrap">
+                {section.items.map((item, i) => (
+                  <Button
+                    key={item.title}
+                    variant={i === activeItem ? 'primary' : 'ghost'}
+                    size="sm"
+                    onClick={() => setActiveItem(i)}
+                  >
+                    {item.title}
+                  </Button>
+                ))}
+              </div>
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-6 bg-white dark:bg-gray-900">
+                <h2 className="text-xl font-bold mb-4">{section.items[activeItem].title}</h2>
+                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {section.items[activeItem].content}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </section>
     </MarketingLayout>
   );

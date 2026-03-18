@@ -1,7 +1,7 @@
 # LearnFlow Improvement Queue — Iteration 22
 
 ## Current Iteration: 22
-## Status: READY FOR BUILDER
+## Status: DONE
 ## Date: 2025-07-21
 ## Focus: Test count honesty (STILL broken), visual polish, spec gap closures
 

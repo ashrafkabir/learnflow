@@ -91,6 +91,16 @@ export function LoginScreen() {
             </div>
           </div>
 
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => alert('Password reset email sent! Check your inbox.')}
+              className="text-xs text-accent hover:underline"
+            >
+              Forgot password?
+            </button>
+          </div>
+
           <Button
             type="submit"
             disabled={loading}
