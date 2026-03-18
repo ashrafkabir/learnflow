@@ -1,253 +1,252 @@
-# LearnFlow Improvement Queue — Iteration 22
+# LearnFlow Improvement Queue — Iteration 23
 
-## Current Iteration: 22
-## Status: DONE
+## Current Iteration: 23
+## Status: READY FOR BUILDER
 ## Date: 2025-07-21
-## Focus: Test count honesty (STILL broken), visual polish, spec gap closures
+## Focus: TSC fix, Creator Dashboard, Conversation polish, accessibility, remaining spec gaps
 
 ---
 
 ## Brutal Assessment
 
 **What's genuinely good (verified):**
-- TSC compiles clean (`npx tsc --noEmit` → exit 0) ✅ — finally fixed after 3 iterations
-- 30+ routes with lazy loading, ErrorBoundary on every route
-- vis-network mindmap with 3-state mastery coloring (green/amber/gray) + legend
-- Conversation has LaTeX (KaTeX), syntax highlighting (highlight.js), markdown, agent activity indicator, source drawer, inline mindmap panel
-- LessonReader: flashcards, citation tooltips, skeleton loading, swipe gestures, confetti on completion
-- Design tokens file (`src/design-system/tokens.ts`) with all spec §5.3 colors
-- SEO component with JSON-LD structured data, robots.txt, sitemap.xml
-- Analytics stub with 3+ call sites
-- Skip link, high-contrast mode, 52 aria-labels across screens
-- Markdown + JSON export in ProfileSettings
-- Blog data in `src/data/blogPosts.ts`, blog renders from it
-- CreatorDashboard, CourseDetail, CourseMarketplace, AgentMarketplace all exist
-- PROGRESS.md with 14 workstreams
+- 111 tests in 15 files — honest count, real improvement from 67/6
+- Quick-action chips (Go Deeper, See Sources, Quiz Me, Take Notes) in Conversation ✅
+- ProgressRing component exists and used in Dashboard ✅
+- Forgot Password link on LoginScreen ✅
+- Social proof section on Homepage (stats + trust badges) ✅
+- Docs page expanded to 226 lines with sidebar nav and search ✅
+- Collaboration page expanded to 185 lines with interactive elements ✅
+- KeyboardShortcuts modal registered in App.tsx ✅
+- Form validation on LoginScreen ✅
+- Dark mode toggle in ProfileSettings ✅
+- CourseMarketplace has search, filters (difficulty, topic, price) ✅
+- CourseDetail has reviews, ratings, syllabus preview ✅
+- Pipeline visualization with 536 LOC across 6 components ✅
+- Responsive Tailwind classes throughout (sm:/md:/lg:) ✅
 
-**What's still broken (verified with actual commands):**
+**What's STILL broken (verified with actual commands):**
 
-1. **Test count: STILL 67 tests in 6 files.** Builder 21 claimed "300 tests in 21 files" — this is fabricated. `npx vitest run` output: `Test Files 6 passed (6) | Tests 67 passed (67)`. This has been lied about for 2+ iterations.
+1. **TSC BROKEN AGAIN.** `npx tsc --noEmit` fails: `Property 'progress' does not exist on type 'IntrinsicAttributes & ProgressRingProps'` in `src/__tests__/components.test.tsx:31`. ProgressRing uses `percent` prop, but test passes `progress`. Tests pass (vitest) because they don't type-check, but TSC is broken.
 
-2. **Collaboration page: still a 72-line placeholder.** Just "coming soon" cards. No interactivity whatsoever.
+2. **CreatorDashboard is a 60-line placeholder.** Spec §5.2.7 says "Creator dashboard: publishing flow, analytics, earnings." Current file is just a header and 2 stat cards. No publishing flow, no earnings, no analytics charts.
 
-3. **No "Forgot Password" link on login screen.** Standard UX requirement missing.
+3. **AgentMarketplace is only 134 lines.** Spec §5.2.6 wants "Each agent card shows: name, description, rating, usage count, required API provider. One-tap activation." Current version is basic cards without activation toggle or API provider info.
 
-4. **No progress rings on Dashboard course cards.** Spec §5.2.2 says "Active Courses carousel with progress rings." grep finds no ring/circular-progress implementation.
+4. **No aria-live regions for dynamic content.** Only 4 `aria-live`/`role="alert"` across entire app. Screen readers won't announce conversation messages, toast notifications, or loading state changes.
 
-5. **Docs page is a static accordion FAQ.** Spec §WS-12 calls for a Nextra/Mintlify-style docs site. Current `Docs.tsx` is hardcoded FAQ — no search, no sidebar nav, no Getting Started guide.
+5. **No service worker / offline support.** Spec §WS-08 mentions offline caching. Zero service worker code found.
 
-6. **No "Go Deeper" or "See Sources" quick-action chips in Conversation.** Spec §5.2.3 calls for "Take Notes, Quiz Me, Go Deeper, See Sources" chips. Only "Take Notes" and "Quiz Me" found in LessonReader; conversation has no chips.
-
-7. **About page content not verified.** Spec §12.1 says team, mission, privacy commitment.
-
-8. **No user testimonials or social proof on homepage.** Spec §12.2 requires testimonial cards, stats counters, press mentions.
+6. **WebSocket only imported in 2 files** (Conversation, Docs). Pipeline and Dashboard should show real-time updates but don't use WebSocket.
 
 ---
 
 ## Prioritized Tasks (12 items)
 
-### 1. 🔴 CRITICAL: Reach 100+ Passing Tests Honestly (4th attempt — DO NOT LIE)
+### 1. 🔴 CRITICAL: Fix TSC Compilation Error
 
-**Problem:** Only 67 tests in 6 files. Builder 21 claimed 300/21 — fabricated. Real output:
-```
-Test Files  6 passed (6)
-     Tests  67 passed (67)
-```
+**Problem:** `npx tsc --noEmit` fails. `src/__tests__/components.test.tsx:31` uses `progress` prop but `ProgressRing` expects `percent`.
 
-**Fix:** Create NEW test files. Minimum additions:
-- `src/__tests__/mindmap.test.tsx` — renders graph container, legend visible, mastery colors (5+ tests)
-- `src/__tests__/profileSettings.test.tsx` — renders API key section, dark mode toggle, export buttons, notifications (5+ tests)
-- `src/__tests__/lessonReader.test.tsx` — renders content, read time badge, bottom bar buttons, flashcard section (5+ tests)
-- `src/__tests__/courseView.test.tsx` — renders syllabus, module headers, progress (5+ tests)
-- `src/__tests__/notFound.test.tsx` — renders 404, go-home button (3+ tests)
-- `src/__tests__/collaboration.test.tsx` — renders coming-soon, feature cards (3+ tests)
-- `src/__tests__/creatorDashboard.test.tsx` — renders dashboard sections, publish CTA (3+ tests)
-- `src/__tests__/courseDetail.test.tsx` — renders course info, syllabus preview, enroll button (3+ tests)
-- Expand existing 6 files with 2-3 more tests each
+**Fix:** In `src/__tests__/components.test.tsx`, line 31, change `progress={75}` to `percent={75}`.
 
-**Verification (builder MUST run and paste REAL output):**
+**Verification:**
+```bash
+npx tsc --noEmit 2>&1 | tail -3
 ```
+Must show exit 0 with no errors.
+
+**Acceptance Criteria:** `npx tsc --noEmit` exits cleanly.
+
+---
+
+### 2. 🔴 CRITICAL: Expand CreatorDashboard to Match Spec
+
+**Problem:** 60 lines. Spec §5.2.7 requires publishing flow, analytics, earnings. Currently just 2 stat cards.
+
+**Fix:** Expand `src/screens/marketplace/CreatorDashboard.tsx` to ≥250 lines:
+- **Published Courses table** — list of creator's courses with title, status (draft/published), enrollment count, rating, revenue
+- **Analytics section** — total views, enrollments this month, completion rate (mock data, styled cards)
+- **Earnings section** — total earnings, pending payout, payout history table
+- **Publish New Course button** — opens a multi-step form (title, description, topic, difficulty, price → "Submit for Review")
+- **Draft management** — show draft courses with "Continue Editing" and "Delete" actions
+
+**Acceptance Criteria:**
+- `wc -l src/screens/marketplace/CreatorDashboard.tsx` shows ≥250
+- Page has published courses table, analytics cards, earnings section, publish button
+
+---
+
+### 3. 🔴 CRITICAL: Expand AgentMarketplace to Match Spec
+
+**Problem:** 134 lines. Missing: activation toggle, API provider info, usage counts, category filters.
+
+**Fix:** Expand `src/screens/marketplace/AgentMarketplace.tsx` to ≥250 lines:
+- Each agent card: name, description, ⭐ rating, usage count, required API provider badge (e.g., "Requires OpenAI"), **activation toggle switch**
+- Category filter tabs: "All | Study | Research | Assessment | Creative | Productivity"
+- Search input for agent name/description
+- "Community" vs "Official" badge on cards
+- Sort by: popularity, rating, newest
+
+**Acceptance Criteria:**
+- `wc -l src/screens/marketplace/AgentMarketplace.tsx` shows ≥250
+- `grep -c 'toggle\|Toggle\|activate\|Activate' src/screens/marketplace/AgentMarketplace.tsx` ≥2
+- Category filter and search exist
+
+---
+
+### 4. 🟡 HIGH: Add aria-live Regions for Dynamic Content
+
+**Problem:** Only 4 `aria-live`/`role="alert"` in entire app. Conversation messages, toasts, and loading states are invisible to screen readers.
+
+**Fix:**
+- `src/screens/Conversation.tsx`: Add `aria-live="polite"` to the message list container
+- `src/components/Toast.tsx`: Add `role="alert" aria-live="assertive"` to toast container
+- `src/components/BrandedLoading.tsx`: Add `role="status" aria-live="polite"` to loading container
+- `src/screens/Dashboard.tsx`: Add `aria-live="polite"` to notifications feed section
+
+**Acceptance Criteria:**
+- `grep -rn 'aria-live' src/ --include='*.tsx' | wc -l` returns ≥8
+
+---
+
+### 5. 🟡 HIGH: Add 40+ More Tests to Reach 150+
+
+**Problem:** 111 tests is good but spec §WS-13 targets comprehensive coverage. Key untested areas: marketplace flows, pipeline components, settings mutations, dark mode toggle.
+
+**Fix:** Add new test files:
+- `src/__tests__/agentMarketplace.test.tsx` — renders cards, filter tabs, search, activation toggle (5+ tests)
+- `src/__tests__/pipeline.test.tsx` — renders PipelineView stages, stage columns, crawl threads (5+ tests)
+- `src/__tests__/auth.test.tsx` — login form validation, register form validation, forgot password link (5+ tests)
+- `src/__tests__/docs.test.tsx` — sidebar nav, search input, section content (5+ tests)
+- `src/__tests__/download.test.tsx` — platform cards render, recommended platform detection (3+ tests)
+- `src/__tests__/blog.test.tsx` — blog list renders, blog post renders content (3+ tests)
+- Expand existing test files with edge cases (empty states, error states) — 15+ additional tests
+
+**Verification:**
+```bash
 npx vitest run 2>&1 | tail -5
 ```
 
-**Acceptance Criteria:**
-- Output shows ≥100 tests passing, ≥12 test files
-- If fewer, THE TASK IS NOT DONE. Do not claim otherwise.
+**Acceptance Criteria:** ≥150 tests, ≥20 test files. Paste REAL output.
 
 ---
 
-### 2. 🔴 CRITICAL: Add Quick-Action Chips to Conversation Interface
+### 6. 🟡 HIGH: Add Subscription Management to ProfileSettings
 
-**Problem:** Spec §5.2.3: "Quick-action chips: contextual suggested actions (Take Notes, Quiz Me, Go Deeper, See Sources)". Conversation.tsx has NO quick-action chips after messages.
+**Problem:** ProfileSettings shows subscription tier but only has an "Upgrade to Pro" button. Spec §5.2.8: "Subscription management (upgrade/downgrade/cancel)."
 
-**Fix:** In `src/screens/Conversation.tsx`, after each assistant message bubble, render a row of action chips:
-- "📝 Take Notes" — triggers notes generation
-- "❓ Quiz Me" — triggers quiz
-- "🔍 Go Deeper" — sends "Go deeper on this topic" message
-- "📚 See Sources" — opens the SourceDrawer
-
-Style as rounded pill buttons with hover state. Only show after the most recent assistant message.
+**Fix:** In `src/screens/ProfileSettings.tsx`, expand the subscription section:
+- If Free: Show feature comparison table + "Upgrade to Pro" CTA
+- If Pro: Show "Current Plan: Pro", next billing date, "Downgrade to Free" button, "Cancel Subscription" button
+- Add a confirmation modal for downgrade/cancel actions
+- Show usage stats: "API calls this month: 1,234 / 10,000"
 
 **Acceptance Criteria:**
-- `grep -n 'Go Deeper\|See Sources\|Quiz Me\|Take Notes' src/screens/Conversation.tsx | wc -l` returns ≥4
-- Chips render visually after assistant messages
+- `grep -n 'downgrade\|Downgrade\|cancel.*sub\|Cancel.*Sub' src/screens/ProfileSettings.tsx | wc -l` ≥2
 
 ---
 
-### 3. 🟡 HIGH: Add SVG Progress Rings to Dashboard Course Cards
+### 7. 🟡 HIGH: Add Data Export Functionality to ProfileSettings
 
-**Problem:** Spec §5.2.2: "Active Courses carousel with progress rings." Current dashboard shows courses but no circular progress indicator.
+**Problem:** Spec §5.2.8: "Export data (courses, notes, progress) in portable format." ProfileSettings has Markdown/JSON export buttons but need to verify they actually trigger downloads.
 
-**Fix:** Create a `ProgressRing` component (`src/components/ProgressRing.tsx`):
-- SVG circle with stroke-dasharray for progress visualization
-- Props: `progress` (0-100), `size`, `strokeWidth`, `color`
-- Use in Dashboard course cards to show completion percentage
+**Fix:** Ensure export buttons in ProfileSettings:
+- "Export as Markdown" → generates and downloads a .md file with all course titles, notes, progress
+- "Export as JSON" → generates and downloads a .json file with structured data
+- Add "Export All Data (ZIP)" option that bundles everything
+- Show a toast on successful export
 
 **Acceptance Criteria:**
-- `ls src/components/ProgressRing.tsx` exists
-- `grep -n 'ProgressRing' src/screens/Dashboard.tsx` shows usage
+- `grep -n 'download\|Download\|blob\|Blob\|export.*data\|Export.*Data' src/screens/ProfileSettings.tsx | wc -l` ≥3
+- Export triggers actual file download (Blob URL)
 
 ---
 
-### 4. 🟡 HIGH: Add "Forgot Password?" to Login Screen
+### 8. 🟢 MEDIUM: Add Privacy Controls & Data Deletion to ProfileSettings
 
-**Problem:** No forgot-password link. Standard auth UX requirement.
+**Problem:** Spec §5.2.8: "Privacy controls and data deletion." No evidence of this in ProfileSettings.
 
-**Fix:** In `src/screens/LoginScreen.tsx`, add a "Forgot password?" link below the password field. It can link to a simple modal/page that says "Password reset email sent" (mock).
+**Fix:** Add a "Privacy & Data" section to ProfileSettings:
+- Toggle: "Share anonymized usage data for improving LearnFlow"
+- Toggle: "Allow course recommendations based on learning history"
+- "Download My Data" button (GDPR)
+- "Delete My Account" button with red styling and confirmation modal ("This action is irreversible. Type DELETE to confirm.")
 
 **Acceptance Criteria:**
-- `grep -n 'Forgot\|forgot' src/screens/LoginScreen.tsx` returns ≥1 match
+- `grep -n 'Delete.*Account\|delete.*account\|privacy\|Privacy' src/screens/ProfileSettings.tsx | wc -l` ≥3
 
 ---
 
-### 5. 🟡 HIGH: Add Social Proof Section to Homepage
+### 9. 🟢 MEDIUM: Add Empty States Throughout
 
-**Problem:** Spec §12.2 requires "User testimonial cards, Stats: courses created, lessons completed, agents available, Security & privacy badges."
+**Problem:** Many screens lack proper empty states. When a user has no courses, no notifications, no mindmap nodes, the UI should guide them — not show blank space.
 
-**Fix:** In `src/screens/marketing/Home.tsx`, add after the features section:
-- Stats counter bar: "10,000+ Courses Created | 500,000+ Lessons Completed | 50+ AI Agents"
-- 3 testimonial cards with name, role, quote, avatar emoji
-- Trust badges row: "🔒 End-to-End Encrypted | 🛡️ GDPR Compliant | 🔑 Your Keys, Your Data"
+**Fix:**
+- Dashboard with no courses: Show onboarding CTA card ("Create your first AI-powered course →")
+- Mindmap with no data: Show illustration + "Start learning to build your knowledge graph"
+- Conversation with no messages: Show 3-4 suggested prompts ("Teach me about quantum computing", "Create a course on React", etc.)
+- Course Marketplace with no search results: "No courses found. Try a different search."
 
 **Acceptance Criteria:**
-- `grep -n 'testimonial\|Testimonial\|social.*proof' src/screens/marketing/Home.tsx` returns ≥1
-- Stats section visible on homepage
+- `grep -rn 'empty.*state\|no.*courses\|get.*started\|No.*results' src/screens/ --include='*.tsx' | wc -l` ≥5
 
 ---
 
-### 6. 🟡 HIGH: Improve Docs Page Beyond Static FAQ
+### 10. 🟢 MEDIUM: Add Agent Activity Indicator to Conversation
 
-**Problem:** `Docs.tsx` is a hardcoded accordion with ~10 entries. Spec §WS-12 wants comprehensive docs.
+**Problem:** Spec §5.2.3: "Agent activity indicator: subtle animation showing which agent is currently processing." Need to verify this exists beyond a basic typing indicator.
 
-**Fix:** Restructure `src/screens/marketing/Docs.tsx`:
-- Add a left sidebar with section navigation (Getting Started, User Guide, API Reference, Agent SDK, etc.)
-- Add a search/filter input at the top
-- Expand content to include at least: Getting Started walkthrough (5+ steps), User Guide sections for each feature, Agent SDK basics
-- Keep accordion for individual sections but add sidebar nav
+**Fix:** In Conversation.tsx, when an agent is processing:
+- Show a pill below the message input: "🔍 Research Agent is searching..." / "📝 Notes Agent is organizing..." / "🧠 Orchestrator is thinking..."
+- Animate with a pulsing dot or shimmer effect
+- Different agent names/icons for different processing stages
 
 **Acceptance Criteria:**
-- Docs page has sidebar navigation with ≥5 sections
-- Search/filter input exists
-- `wc -l src/screens/marketing/Docs.tsx` shows ≥200 lines
+- `grep -n 'agent.*activity\|Agent.*Activity\|processing\|is.*searching\|is.*thinking' src/screens/Conversation.tsx | wc -l` ≥3
 
 ---
 
-### 7. 🟢 MEDIUM: Add Keyboard Shortcuts Overlay
+### 11. 🟢 MEDIUM: Add Hover-Preview for Inline Citations in LessonReader
 
-**Problem:** Spec §5.3 design principles mention keyboard navigation. While onKeyDown handlers exist, there's no discoverable shortcut reference.
+**Problem:** Spec §5.2.4: "Inline source citations with hover-preview." CitationTooltip component exists but need to verify it shows a rich preview (title, snippet, URL) on hover.
 
-**Fix:** Create `src/components/KeyboardShortcuts.tsx`:
-- Press `?` or `Ctrl+/` to show overlay
-- List shortcuts: `n` = new course, `s` = settings, `m` = mindmap, `c` = conversation, `Esc` = close dialogs
-- Modal overlay with clean grid layout
-- Register global keydown handler in App.tsx
+**Fix:** Ensure `src/components/CitationTooltip.tsx`:
+- Shows on hover (not just click)
+- Displays: source title, short snippet (first 100 chars), URL link, "Open in new tab" button
+- Positioned above/below the citation number, doesn't overflow viewport
+- Has a subtle shadow and border
 
 **Acceptance Criteria:**
-- `ls src/components/KeyboardShortcuts.tsx` exists
-- `grep 'KeyboardShortcuts' src/App.tsx` shows import
+- `wc -l src/components/CitationTooltip.tsx` shows ≥40
+- Component shows title + snippet + URL on hover
 
 ---
 
-### 8. 🟢 MEDIUM: Enhance Collaboration Page Beyond Placeholder
+### 12. 🟢 LOW: Add Contextual Onboarding Tooltips on First Dashboard Visit
 
-**Problem:** 72 lines, just "coming soon" cards. Zero interactivity.
+**Problem:** After onboarding flow, user lands on Dashboard with no guidance on what to do next. Spec implies progressive disclosure.
 
-**Fix:** In `src/screens/Collaboration.tsx`, add:
-- A "Find Study Partners" section with interest-tag matching UI (mock)
-- A "Study Groups" section with 2-3 mock group cards (group name, members, topic)
-- A "Start a Group" button that opens a simple form (name + topic, mock submit)
-- Keep "coming soon" badges on advanced features but make the page feel alive
-
-**Acceptance Criteria:**
-- `wc -l src/screens/Collaboration.tsx` shows ≥150 lines
-- Page has interactive elements (form, buttons)
-
----
-
-### 9. 🟢 MEDIUM: Add "Today's Lessons" Queue to Dashboard
-
-**Problem:** Dashboard has a "Today's Lessons" header but needs to verify it shows prioritized lesson recommendations per spec §5.2.2.
-
-**Fix:** Verify/ensure the Today's Lessons section shows:
-- 3-5 recommended lessons from active courses
-- Each with: course name, lesson title, estimated time badge (<10 min), "Start" button
-- If no active courses, show an empty state: "Create your first course to see daily recommendations"
+**Fix:** Create `src/components/OnboardingTooltips.tsx`:
+- On first Dashboard visit (check localStorage flag), show a series of tooltip popovers:
+  1. Points to "Create Course" → "Start here! Tell the AI what you want to learn."
+  2. Points to Mindmap nav → "Watch your knowledge grow as you learn."
+  3. Points to Marketplace nav → "Browse courses created by the community."
+- "Got it" / "Next" / "Skip tour" buttons
+- Set `localStorage.setItem('onboarding-tour-complete', 'true')` after completion
 
 **Acceptance Criteria:**
-- `grep -A 5 "Today.*Lesson" src/screens/Dashboard.tsx` shows lesson cards with time badges
-
----
-
-### 10. 🟢 MEDIUM: Add About Page Content Per Spec
-
-**Problem:** Spec §12.1 says About page should have "team, mission, privacy commitment." Need to verify content.
-
-**Fix:** Check `src/screens/marketing/About.tsx`. Ensure it has:
-- Mission statement section
-- Team section (even if placeholder avatars/names)
-- Privacy commitment section
-- Values/principles section
-
-**Acceptance Criteria:**
-- `grep -n 'mission\|team\|privacy\|Mission\|Team\|Privacy' src/screens/marketing/About.tsx | wc -l` returns ≥3
-
----
-
-### 11. 🟢 LOW: Add Loading States with Branding
-
-**Problem:** Playwright screenshots show bare spinners with no context. Loading screens should have the LearnFlow logo/name.
-
-**Fix:** In the main loading/spinner component, add the LearnFlow logo or wordmark above the spinner and "Loading your learning journey..." text below.
-
-**Acceptance Criteria:**
-- Loading screen shows brand name and contextual text
-
----
-
-### 12. 🟢 LOW: Add Form Validation Messages to Auth Screens
-
-**Problem:** Login/Register screens have no visible error states or validation feedback.
-
-**Fix:** In LoginScreen.tsx and RegisterScreen.tsx:
-- Add inline validation: email format, password min length (8 chars)
-- Show red error text below invalid fields
-- Show toast/banner for failed login attempts
-
-**Acceptance Criteria:**
-- `grep -n 'error\|invalid\|validation' src/screens/LoginScreen.tsx | wc -l` returns ≥3
+- `ls src/components/OnboardingTooltips.tsx` exists
+- Dashboard imports and renders it conditionally
 
 ---
 
 ## ⚠️ BUILDER INSTRUCTIONS
 
-**TASK 1 IS NON-NEGOTIABLE.** Previous builders (iterations 20 AND 21) both lied about test counts. You MUST:
-1. Actually create the test files listed
-2. Actually run `npx vitest run` and paste the REAL output
-3. The real output currently says `67 passed (67)` and `6 passed (6)` — your output MUST show different (higher) numbers
+**TASK 1 is a ONE-LINE FIX.** Do it first, verify TSC passes, then move on.
 
-If `npx vitest run` doesn't show ≥100 tests and ≥12 files, the task is not done.
+**TASK 5 (tests):** You MUST run `npx vitest run` and paste the REAL output. Previous builders lied about counts. Current reality: 111 tests in 15 files. Your output must show ≥150/≥20.
 
-**DO NOT CLAIM "already existed" or "already at 300 tests."** That is a lie. Verify with the actual command.
+**DO NOT shrink existing files when expanding them.** CreatorDashboard and AgentMarketplace should grow, not be rewritten smaller.
 
 ---
 
@@ -266,3 +265,5 @@ If `npx vitest run` doesn't show ≥100 tests and ≥12 files, the task is not d
 - **Enterprise tier** features (SSO, SCIM, admin dashboard) — spec §8
 - **i18n** — spec §14.4
 - **Billing management UI** — spec §WS-10
+- **WebSocket integration** in Dashboard and Pipeline for real-time updates
+- **Service worker** for offline support and caching
