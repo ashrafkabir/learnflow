@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev --port 3001",
+    "dev": "next dev --port 3003",
     "lint": "echo 'skip web lint (configured at repo root)'",
     "test": "vitest run"
   },

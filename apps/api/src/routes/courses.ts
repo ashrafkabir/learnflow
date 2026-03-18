@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { emitToUser } from '../wsHub.js';
 import { z } from 'zod';
 import OpenAI from 'openai';
 import { crawlSourcesForTopic, type FirecrawlSource } from '@learnflow/agents';
@@ -1101,10 +1102,21 @@ router.post('/:id/lessons/:lessonId/complete', (req: Request, res: Response) => 
     dbCourses.save(course);
   }
 
+  const totalLessons = course?.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0;
+  const completion_percent = totalLessons ? (completedLessons.length / totalLessons) * 100 : 0;
+
+  // Emit a progress.update WS event for real UI updates.
+  emitToUser(userId, 'progress.update', {
+    course_id: courseId,
+    lesson_id: lessonId,
+    completion_percent,
+  });
+
   res.status(200).json({
     message: 'Lesson marked complete. Great job!',
     progress: completedLessons.length,
     completedLessons,
+    completion_percent,
     nextActions: ['Continue to next lesson', 'Take a quiz', 'Review notes'],
     next: 'Continue learning',
     actions: ['next_lesson', 'quiz', 'notes'],

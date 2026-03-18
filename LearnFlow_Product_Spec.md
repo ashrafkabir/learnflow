@@ -603,17 +603,17 @@ You continuously adapt based on observed behavior:
 
 ## 11.2 WebSocket Events
 
-|                 |                 |                                          |
-| --------------- | --------------- | ---------------------------------------- |
-| **Event**       | **Direction**   | **Payload**                              |
-| message         | Client → Server | { text, attachments, context_overrides } |
-| response.start  | Server → Client | { message_id, agent_name }               |
-| response.chunk  | Server → Client | { message_id, content_delta, type }      |
-| response.end    | Server → Client | { message_id, actions\[\], sources\[\] } |
-| agent.spawned   | Server → Client | { agent_name, task_summary }             |
-| agent.complete  | Server → Client | { agent_name, result_summary }           |
-| mindmap.update  | Server → Client | { nodes_added\[\], edges_added\[\] }     |
-| progress.update | Server → Client | { course_id, lesson_id, completion% }    |
+|                 |                 |                                              |
+| --------------- | --------------- | -------------------------------------------- |
+| **Event**       | **Direction**   | **Payload**                                  |
+| message         | Client → Server | { text, attachments, context_overrides }     |
+| response.start  | Server → Client | { message_id, agent_name }                   |
+| response.chunk  | Server → Client | { message_id, content_delta, type }          |
+| response.end    | Server → Client | { message_id, actions\[\], sources\[\] }     |
+| agent.spawned   | Server → Client | { agent_name, task_summary }                 |
+| agent.complete  | Server → Client | { agent_name, result_summary }               |
+| mindmap.update  | Server → Client | { nodes_added\[\], edges_added\[\] }         |
+| progress.update | Server → Client | { course_id, lesson_id, completion_percent } |
 
 # 12. Marketing Website Specification
 
