@@ -56,10 +56,14 @@ This codebase is currently a **high-quality UI demo + lightweight API**, not the
 
 - **Acceptance:** Clean run no longer silently shifts to 3002; if 3001 is occupied it fails fast (clear signal), avoiding partial/incorrect screenshot runs.
 
-### 3) Unify WS contract types across server + client
+### 3) Unify WS contract types across server + client — DONE
 
-- **Problem:** `apps/api/src/wsContract.ts` exists but client uses ad-hoc event parsing; contract drift risk.
-- **Fix:** Move contract types to `packages/shared` and import in both api+client; align events (including/omitting `connected`).
+- **Problem:** `apps/api/src/wsContract.ts` existed but client used ad-hoc event parsing; contract drift risk.
+- **Fix implemented:** Moved contract types to `packages/shared` and imported in both API + client.
+  - Added: `packages/shared/src/types/ws.ts` (canonical `WsClientMessage`, `WsServerEvent`)
+  - Updated: `packages/shared/src/types/index.ts` to export `ws` types
+  - Updated: `apps/api/src/wsContract.ts` to re-export from `@learnflow/shared`
+  - Updated: `apps/client/src/hooks/useWebSocket.ts` to type messages as `WsServerEvent`
 - **Acceptance:** One canonical type definition; compile-time break if contract changes.
 
 ### 4) Make `progress.update` update course-level progress everywhere

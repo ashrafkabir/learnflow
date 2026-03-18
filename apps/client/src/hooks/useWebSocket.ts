@@ -1,11 +1,8 @@
 import { useRef, useEffect, useCallback, useState } from 'react';
 
-interface WsEvent {
-  event: string;
-  data: any;
-}
+import type { WsServerEvent } from '@learnflow/shared';
 
-type WsHandler = (event: WsEvent) => void;
+type WsHandler = (event: WsServerEvent) => void;
 
 export function useWebSocket(onEvent: WsHandler) {
   const wsRef = useRef<WebSocket | null>(null);
@@ -38,7 +35,7 @@ export function useWebSocket(onEvent: WsHandler) {
       ws.onerror = () => ws.close();
       ws.onmessage = (e) => {
         try {
-          const evt = JSON.parse(e.data) as WsEvent;
+          const evt = JSON.parse(e.data) as WsServerEvent;
           handlersRef.current(evt);
         } catch {
           // ignore malformed ws payload

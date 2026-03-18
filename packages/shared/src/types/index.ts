@@ -1,3 +1,5 @@
+export * from './ws.js';
+
 /** User — represents a platform user (student, creator, admin) */
 export interface User {
   id: string;

@@ -36,6 +36,10 @@ Commands run (all green):
 - `npx vitest run`
 - `npx eslint .`
 
+UI verification:
+
+- `node screenshot-all.mjs --dir evals/screenshots/iter31-wscontract-2026-03-18` (27 PNGs)
+
 Notes:
 
 - WS dev fix requires running the client via Vite dev server (proxy handles upgrade). The API WS server remains at `/ws` on port 3000.
