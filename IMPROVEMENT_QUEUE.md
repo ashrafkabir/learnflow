@@ -1,268 +1,268 @@
-# LearnFlow Improvement Queue — Iteration 17
+# LearnFlow Improvement Queue — Iteration 18
 
-## Current Iteration: 17
-## Status: DONE
+## Current Iteration: 18
+## Status: READY FOR BUILDER
 ## Date: 2025-07-19
-## Focus: Conversation mindmap panel, landing page contrast, accessibility, CourseDetail button fix, marketing Features shadow cleanup
+## Focus: Missing marketing pages, Framer Motion animations, demo section, social login, collaboration stub, dark mode contrast audit
 
 ---
 
 ## Brutal Assessment
 
-After 16 iterations, the app has strong bones: all major screens exist, Button component is 98% adopted, design tokens mostly applied, vis-network mindmap with mastery colors, lesson reader with full spec structure (objectives, takeaways, next steps, quick check), skeleton loading on dashboard/marketplace, mobile nav drawer, dark mode support, notifications feed, streak tracker, progress rings, API key vault with usage stats, data export, privacy/GDPR deletion.
+After 17 iterations, LearnFlow is **solid functionally**: all major app screens exist (onboarding 6-step, dashboard, conversation with mindmap panel + source drawer, course view, lesson reader with full spec structure, mindmap explorer with keyboard nav, both marketplaces with skeletons, creator dashboard stub, profile settings with API vault/export/GDPR deletion). Marketing site has Home, Features, Pricing (with FAQ), Download, Blog (with posts), and BlogPost. Design system has tokens, Button adoption is 100%, shadow tokens cleaned, high-contrast mode, focus-visible, screen reader landmarks, mobile nav, touch targets. SEO component exists. 262 tests passing.
 
-**What's actually broken or missing:**
+**What's actually still wrong or missing (verified by grep):**
 
-1. **Conversation has NO mindmap side panel.** Spec §5.2.3 explicitly says "Mindmap panel: side drawer showing the evolving knowledge graph; nodes are clickable to explore." The Conversation screen just handles `mindmap.update` events but renders nothing — no drawer, no graph. This is a core interaction surface.
+1. **No About page.** Spec §12.1 item 7: "About: team, mission, privacy commitment." `screens/marketing/About.tsx` doesn't exist.
 
-2. **Landing page has extremely low contrast.** Screenshot confirms washed-out text and CTAs. The hero headline, subtext, and buttons barely stand out against the background. Spec says "WCAG 2.1 AA" — this fails.
+2. **No Docs page.** Spec §12.1 item 5: "Docs: comprehensive developer documentation." Zero implementation.
 
-3. **1 raw `<button>` still exists** in `CourseDetail.tsx:173`. Iter 16 claimed all buttons migrated but missed this one.
+3. **Framer Motion not installed.** Spec §12.3 says "Tailwind CSS + Framer Motion." `package.json` has no `framer-motion` dependency. Zero animations on marketing pages — no entrance animations, no scroll-triggered reveals. The marketing site feels static and lifeless compared to spec.
 
-4. **Marketing Features.tsx has 4 stale shadow tokens** (`shadow-lg`, `drop-shadow-sm` ×2, `shadow-sm`). These were supposed to be cleaned in iter 16 task 4 but only main screens were touched.
+4. **No animated knowledge graph background on hero.** Spec §12.2: "Background: subtle animated knowledge graph visualization." Home.tsx hero has no canvas/SVG animation, no particle effect, nothing. Just a plain background.
 
-5. **No high-contrast mode.** Spec design principles: "high-contrast mode." Zero implementation — no CSS custom property toggle, no `prefers-contrast` media query.
+5. **No demo section.** Spec §12.2: "product demo video/animation." The "See How It Works" CTA scrolls to `#demo-section` but no such section exists in Home.tsx. The scroll target goes nowhere.
 
-6. **No keyboard navigation for mindmap.** Spec: "keyboard navigation." MindmapExplorer only has keyboard support on the add-node input. No keyboard traversal of graph nodes.
+6. **No social login (OAuth).** Spec §11.1 + §5.2.1: "social OAuth (Google, GitHub, Apple)." RegisterScreen only has email/password. No OAuth buttons, no social login flow.
 
-7. **No Creator Dashboard.** Spec §7.1: "Creator dashboard: publishing flow, analytics, earnings." Zero implementation.
+7. **No collaboration features at all.** Spec §4.2 Collaboration Agent, spec §5.2.2 mentions collaboration. Zero implementation — no peer matching, study groups, or even a stub screen.
 
-8. **No swipe gestures.** Spec: "swipe gestures" for mobile. Zero touch gesture handling anywhere.
+8. **Dark mode has never been audited for contrast.** Iter 17 fixed light mode contrast on landing. But dark mode text uses `text-gray-300`, `text-gray-400`, `text-gray-500` extensively. Many `text-gray-500 dark:text-gray-400` combinations on `bg-gray-900` may fail WCAG AA (4.5:1). This is a systemic issue.
 
-9. **Blog.tsx has stale `shadow-lg`** on hover cards.
+9. **No platform auto-detection on Download page.** Spec §12.2: "Primary CTA: 'Download Free' (auto-detects platform)." Download.tsx just lists all platforms statically. No `navigator.userAgent` sniffing or highlighting.
 
-10. **CitationTooltip and Toast use raw `shadow-lg`** instead of `shadow-elevated` token.
+10. **Blog has no MDX support.** Spec §12.3: "CMS: MDX for docs/blog." Blog uses hardcoded JS data objects, not MDX files.
 
-11. **Button.tsx primary variant uses `shadow-sm`** instead of `shadow-card` token (line 14).
+11. **No PostHog analytics.** Spec §12.3: "Analytics: PostHog (privacy-first)." Zero analytics integration.
+
+12. **RegisterScreen has no name field visible before email.** Spec onboarding implies a display name. The field exists but UX ordering may need review.
 
 ---
 
 ## Prioritized Tasks (12 items)
 
-### 1. 🔴 CRITICAL: Conversation Mindmap Side Panel
+### 1. 🔴 CRITICAL: Create About Page (Spec §12.1)
 
-**Problem:** Spec §5.2.3 requires "Mindmap panel: side drawer showing the evolving knowledge graph; nodes are clickable to explore." Currently `Conversation.tsx` handles `mindmap.update` WebSocket events (line 208) but renders NO visual mindmap panel. The entire knowledge graph drawer is missing from the conversation UI.
-
-**Fix:**
-- Add a collapsible right-side drawer to `Conversation.tsx` (toggle button in conversation header)
-- Import vis-network (same approach as MindmapExplorer — dynamic import)
-- Render a mini knowledge graph in the drawer using current course nodes from `state.courses`
-- Nodes should be clickable → navigate to related lesson
-- Drawer width: ~320px on desktop, full-width overlay on mobile
-- Add toggle button with 🧠 icon in conversation header
-
-**Acceptance Criteria:**
-- `grep -n "MindmapPanel\|mindmap.*drawer\|vis-network" apps/client/src/screens/Conversation.tsx` returns matches
-- Clicking toggle opens/closes a side panel with interactive graph nodes
-- Clicking a node navigates to lesson or course view
-
----
-
-### 2. 🔴 CRITICAL: Fix Landing Page Contrast (WCAG AA)
-
-**Problem:** Screenshot confirms the hero section has extremely low contrast — headline, supporting text, and CTAs are washed out against the light background. Spec requires WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large text).
+**Problem:** Spec §12.1 item 7: "About: team, mission, privacy commitment." No `About.tsx` exists in `screens/marketing/`.
 
 **Fix:**
-- In `screens/marketing/Home.tsx`:
-  - Hero headline: ensure `text-gray-900` (not any lighter shade)
-  - Supporting text: at least `text-gray-600` (not `text-gray-400` or lighter)
-  - "Get Started Free" CTA: ensure strong `bg-accent text-white` with sufficient contrast
-  - "See How It Works" secondary CTA: ensure visible border/text contrast
-  - Feature badge: verify contrast of text against badge background
-- Check all marketing pages for similar issues
+- Create `screens/marketing/About.tsx` with:
+  - Mission section (pull from spec §2.1 vision statement)
+  - Team section (placeholder team cards with roles)
+  - Privacy commitment section (reference spec §9.3)
+  - Values section (open source, BYOAI, attribution)
+- Add SEO component
+- Add route in `App.tsx`: `/about`
+- Add "About" link in `MarketingLayout.tsx` nav
 
 **Acceptance Criteria:**
-- Hero headline is `text-gray-900 dark:text-white` or equivalent high-contrast color
-- Body text meets 4.5:1 contrast ratio against white background
-- Both CTAs clearly readable with strong visual weight
-
----
-
-### 3. 🟡 HIGH: Fix Last Raw `<button>` in CourseDetail.tsx
-
-**Problem:** `apps/client/src/screens/marketplace/CourseDetail.tsx:173` still has a raw `<button>` element. Iter 16 claimed 100% Button adoption but missed this.
-
-**Fix:**
-- Replace the raw `<button>` at line 173 with `<Button>` component
-- Add import if not already present
-- Apply appropriate variant (likely `ghost` or `secondary` based on context)
-
-**Acceptance Criteria:**
-- `grep -rn "<button" apps/client/src/screens/ --include="*.tsx" | wc -l` returns **0**
-
----
-
-### 4. 🟡 HIGH: Clean Shadow Tokens in Marketing, Components, and Button
-
-**Problem:** Several files still use raw Tailwind shadow classes instead of design tokens:
-- `screens/marketing/Features.tsx:69` — `shadow-lg` → `shadow-elevated`
-- `screens/marketing/Features.tsx:70` — `drop-shadow-sm` (keep, it's on emoji, not a card)
-- `screens/marketing/Features.tsx:86` — `drop-shadow-sm` (keep, emoji)
-- `screens/marketing/Features.tsx:89` — `shadow-sm` → `shadow-card`
-- `screens/marketing/Blog.tsx:25` — `shadow-lg` → `shadow-elevated`
-- `components/CitationTooltip.tsx:31` — `shadow-lg` → `shadow-elevated`
-- `components/Toast.tsx:45` — `shadow-lg` → `shadow-elevated`
-- `components/ErrorBoundary.tsx:35` — `shadow-lg` → `shadow-elevated`
-- `components/Button.tsx:14` — `shadow-sm` → `shadow-card`
-
-**Fix:** Replace each raw shadow class with the appropriate design token. Leave `drop-shadow-*` on individual elements (emoji icons) as-is since those are filter effects, not box shadows.
-
-**Acceptance Criteria:**
-- `grep -rn "shadow-sm\|shadow-lg\|shadow-md" apps/client/src/ --include="*.tsx" | grep -v "drop-shadow\|shadow-card\|shadow-elevated\|shadow-soft\|tailwind\|node_modules" | wc -l` returns **0**
-
----
-
-### 5. 🟡 HIGH: Add High-Contrast Mode Toggle
-
-**Problem:** Spec §5.3 design principles: "Accessibility: WCAG 2.1 AA, screen reader support, high-contrast mode, keyboard navigation." No high-contrast mode exists.
-
-**Fix:**
-- Add a `prefers-contrast: more` media query in `index.css` that boosts borders, text, and interactive element contrast
-- Add a manual toggle in ProfileSettings under the existing theme section
-- Store preference in localStorage as `learnflow-contrast`
-- When active, add `.high-contrast` class to `<html>` which:
-  - Forces `text-gray-950` / `dark:text-white` on all body text
-  - Increases border widths from 1px → 2px
-  - Removes transparency/opacity on interactive elements
-  - Ensures all buttons have visible borders
-
-**Acceptance Criteria:**
-- `grep -rn "high-contrast\|prefers-contrast" apps/client/src/ | wc -l` returns ≥3
-- ProfileSettings has a "High Contrast" toggle
-- Toggling it noticeably increases visual contrast across screens
-
----
-
-### 6. 🟡 HIGH: Keyboard Navigation for Mindmap
-
-**Problem:** Spec requires "keyboard navigation." MindmapExplorer has keyboard support only on the add-node input field (`onKeyDown` for Enter). The vis-network graph nodes are not keyboard-navigable — no Tab traversal, no Enter to select/expand.
-
-**Fix:**
-- vis-network supports keyboard navigation via `interaction.keyboard.enabled: true` in options
-- Enable `keyboard: { enabled: true, speed: { x: 10, y: 10, zoom: 0.02 } }` in network options
-- Add an off-screen instructions text: "Use arrow keys to pan, +/- to zoom, Enter on selected node"
-- Add `tabIndex={0}` to the graph container div so it's focusable
-- Add `role="img"` and `aria-label="Knowledge mindmap"` to container
-
-**Acceptance Criteria:**
-- `grep -n "keyboard.*enabled\|tabIndex\|aria-label.*mindmap" apps/client/src/screens/MindmapExplorer.tsx` returns matches
-- Graph container is focusable with Tab
-- Arrow keys pan the graph when focused
-
----
-
-### 7. 🟡 HIGH: Skeleton Loading for AgentMarketplace
-
-**Problem:** `CourseMarketplace` now has skeleton loading (iter 16 task 3), but `AgentMarketplace` has no loading state. Both marketplace screens should show skeletons during data fetch.
-
-**Fix:**
-- In `screens/marketplace/AgentMarketplace.tsx`:
-  - Import `SkeletonMarketplace` from `../../components/Skeleton`
-  - Show skeleton grid while loading state is true
-
-**Acceptance Criteria:**
-- `grep -n "SkeletonMarketplace\|Skeleton" apps/client/src/screens/marketplace/AgentMarketplace.tsx` returns import + usage
-
----
-
-### 8. 🟢 MEDIUM: Creator Dashboard Stub (Spec §7.1)
-
-**Problem:** Spec §7.1 describes "Creator dashboard: publishing flow, analytics, earnings." No screen exists. This is a significant spec gap. For iteration 17, create a stub page to unblock future iterations.
-
-**Fix:**
-- Create `screens/marketplace/CreatorDashboard.tsx`:
-  - Header: "Creator Dashboard"
-  - Tabs: "My Courses", "Analytics", "Earnings"
-  - Empty state for each tab with helpful copy ("Publish your first course to see analytics here")
-  - "Create Course" CTA button
-- Add route: `/marketplace/creator`
-- Add link from ProfileSettings or marketplace nav
-
-**Acceptance Criteria:**
-- Route `/marketplace/creator` renders CreatorDashboard
-- Three tabs visible with empty states
+- `ls apps/client/src/screens/marketing/About.tsx` succeeds
+- Route `/about` renders the page
+- Nav has "About" link
 - Uses Button component and design tokens
 
 ---
 
-### 9. 🟢 MEDIUM: Focus-Visible Styles Across All Interactive Elements
+### 2. 🔴 CRITICAL: Install Framer Motion + Add Marketing Animations
 
-**Problem:** Only ~15 interactive elements across all screens have explicit `focus:ring` or `focus-visible` styles. Many buttons, links, and form controls lack visible focus indicators, failing WCAG 2.1 AA keyboard accessibility.
+**Problem:** Spec §12.3: "Tailwind CSS + Framer Motion." Not installed. Marketing pages are completely static — no entrance animations, no scroll reveals, no micro-interactions. This makes the marketing site feel unfinished.
 
 **Fix:**
-- Add a global CSS rule in `index.css`:
-  ```css
-  :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-  }
+- `npm install framer-motion`
+- In `Home.tsx`: Add `motion.div` fade-up entrance animations on hero headline, stats, feature cards, testimonials, and CTA sections using `whileInView`
+- In `Features.tsx`: Stagger feature card entrances
+- In `Pricing.tsx`: Animate plan cards scaling in
+- Keep animations subtle and performant (GPU-only transforms)
+
+**Acceptance Criteria:**
+- `grep "framer-motion" apps/client/package.json` returns a match
+- `grep -rn "motion\." apps/client/src/screens/marketing/ --include="*.tsx" | wc -l` returns ≥10
+- Marketing pages have visible entrance animations on scroll
+
+---
+
+### 3. 🔴 CRITICAL: Add Hero Demo Section
+
+**Problem:** Spec §12.2: "product demo video/animation." The "See How It Works" button scrolls to `#demo-section` (line 59 of Home.tsx), but this element doesn't exist. The CTA goes nowhere.
+
+**Fix:**
+- Add a `<section id="demo-section">` between hero and features in Home.tsx
+- Content: 3-step animated walkthrough showing:
+  1. "Tell us your goal" — chat bubble animation
+  2. "AI builds your course" — loading/building animation
+  3. "Learn and master" — progress ring filling
+- Use Framer Motion for step transitions
+- Fallback: if no video, use illustrated step cards with motion
+
+**Acceptance Criteria:**
+- `grep -n 'demo-section' apps/client/src/screens/marketing/Home.tsx` returns an element with that id
+- Clicking "See How It Works" smoothly scrolls to a visible demo section
+- Section has animated content (not just static text)
+
+---
+
+### 4. 🔴 CRITICAL: Add Social Login (OAuth) Buttons
+
+**Problem:** Spec explicitly requires "social OAuth (Google, GitHub, Apple)" in auth (§WS-02, §11.1). RegisterScreen and LoginScreen only have email/password. No OAuth at all.
+
+**Fix:**
+- In both `RegisterScreen.tsx` and `LoginScreen.tsx`:
+  - Add a divider "or continue with"
+  - Add 3 OAuth buttons: Google, GitHub, Apple (styled with brand colors/icons)
+  - onClick handlers should call mock API endpoints (or show toast "OAuth coming soon" for now)
+- Style: full-width buttons with provider icon + text, consistent with Button component
+
+**Acceptance Criteria:**
+- `grep -n "Google\|GitHub\|Apple\|OAuth\|oauth\|social" apps/client/src/screens/RegisterScreen.tsx` returns matches
+- `grep -n "Google\|GitHub\|Apple\|OAuth\|oauth\|social" apps/client/src/screens/LoginScreen.tsx` returns matches
+- Both screens show 3 social login buttons below the form
+
+---
+
+### 5. 🟡 HIGH: Dark Mode Contrast Audit & Fix
+
+**Problem:** `text-gray-400` on `dark:bg-gray-900` (#9CA3AF on #111827) = ~3.5:1 contrast ratio — FAILS WCAG AA (needs 4.5:1). This pattern is used extensively: Dashboard, Conversation, Home, Features, Pricing, Blog, ProfileSettings, CourseView, LessonReader. Spec §5.3 requires WCAG 2.1 AA.
+
+**Fix:**
+- Global search-replace in all screen files:
+  - `dark:text-gray-400` → `dark:text-gray-300` for body/descriptive text (ratio ~5.5:1, passes AA)
+  - `dark:text-gray-500` → `dark:text-gray-400` for truly secondary text (or `dark:text-gray-300` for important text)
+- Verify: `text-gray-300` (#D1D5DB) on `bg-gray-900` (#111827) = ~9.4:1 ✅
+- Exception: placeholder text in inputs can stay `dark:text-gray-500` (not required for AA)
+
+**Acceptance Criteria:**
+- `grep -rn "dark:text-gray-500" apps/client/src/screens/ --include="*.tsx" | wc -l` returns ≤5 (only placeholders)
+- Body text in dark mode is at minimum `dark:text-gray-300`
+
+---
+
+### 6. 🟡 HIGH: Platform Auto-Detection on Download Page
+
+**Problem:** Spec §12.2: "Primary CTA: 'Download Free' (auto-detects platform)." Download.tsx lists all platforms equally with no detection.
+
+**Fix:**
+- In `Download.tsx`:
+  - Add `useEffect` that detects OS via `navigator.userAgent` / `navigator.platform`
+  - Highlight the detected platform card (border-accent, "Recommended for you" badge)
+  - Add a prominent CTA at top: "Download for [Detected OS]"
+  - Other platforms shown below as alternatives
+
+**Acceptance Criteria:**
+- `grep -n "userAgent\|navigator.*platform\|detectOS\|recommended" apps/client/src/screens/marketing/Download.tsx` returns matches
+- Visiting `/download` highlights the user's platform
+
+---
+
+### 7. 🟡 HIGH: Animated Knowledge Graph Background on Hero
+
+**Problem:** Spec §12.2: "Background: subtle animated knowledge graph visualization." Hero section has no background animation at all.
+
+**Fix:**
+- Create a lightweight `KnowledgeGraphBg` component using `<canvas>` or inline SVG
+- Render floating, slowly moving connected nodes (circles + lines) with low opacity
+- Position it absolutely behind the hero section with `pointer-events-none`
+- Use `requestAnimationFrame` for smooth 60fps animation
+- Keep it very subtle: ~10% opacity, slow drift, accent-colored nodes
+
+**Acceptance Criteria:**
+- `grep -n "KnowledgeGraphBg\|canvas\|requestAnimationFrame" apps/client/src/screens/marketing/Home.tsx` returns matches
+- Hero section has visible (but subtle) animated background
+
+---
+
+### 8. 🟡 HIGH: Collaboration Stub Screen
+
+**Problem:** Spec §4.2 describes Collaboration Agent: "Matches students with similar interests/goals; facilitates study groups, peer reviews, and shared mindmaps." Spec §7.2 lists "Collaboration: peer matching, group study facilitators." Zero implementation. Not even a stub.
+
+**Fix:**
+- Create `screens/Collaboration.tsx`:
+  - Header: "Learn Together"
+  - Tabs: "Find Study Partners", "My Groups", "Shared Mindmaps"
+  - Empty states with helpful copy and CTAs
+  - "Collaboration features are coming soon" banner for unimplemented tabs
+- Add route: `/collaborate`
+- Add link in Dashboard sidebar/nav
+
+**Acceptance Criteria:**
+- `ls apps/client/src/screens/Collaboration.tsx` succeeds
+- Route `/collaborate` renders the page
+- MobileNav has "Collaborate" link
+
+---
+
+### 9. 🟢 MEDIUM: Docs Page Stub (Spec §12.1)
+
+**Problem:** Spec §12.1 item 5: "Docs: comprehensive developer documentation (Next.js + MDX)." No docs page exists. For now, create a stub that links to future docs.
+
+**Fix:**
+- Create `screens/marketing/Docs.tsx`:
+  - Sidebar with doc categories: Getting Started, User Guide, Agent SDK, API Reference, Creator Guide
+  - Main content area with placeholder content for "Getting Started"
+  - Search bar (non-functional for now, just UI)
+- Add route `/docs` and nav link
+
+**Acceptance Criteria:**
+- `ls apps/client/src/screens/marketing/Docs.tsx` succeeds
+- Route `/docs` renders the page with sidebar navigation
+
+---
+
+### 10. 🟢 MEDIUM: Fix "See How It Works" Scroll Target
+
+**Problem:** Even if demo section isn't built yet (task 3), the `id="demo-section"` target must exist or the CTA is broken. This is a subset of task 3 but called out separately in case task 3 is deferred.
+
+**Note:** If task 3 is completed, this is automatically resolved. Skip if task 3 is done.
+
+---
+
+### 11. 🟢 MEDIUM: Add `aria-current="page"` to Active Nav Links
+
+**Problem:** Screen readers can't distinguish the current page in navigation. Marketing nav and MobileNav don't mark the active route.
+
+**Fix:**
+- In `MarketingLayout.tsx` nav links: add `aria-current="page"` when `location.pathname` matches
+- In `MobileNav.tsx`: same treatment for active drawer links
+- Visual: active link should also have a distinct style (underline or bold)
+
+**Acceptance Criteria:**
+- `grep -rn "aria-current" apps/client/src/ --include="*.tsx" | wc -l` returns ≥2
+- Active nav link is visually distinct and announced by screen readers
+
+---
+
+### 12. 🟢 MEDIUM: Add Skip-to-Content Link
+
+**Problem:** WCAG 2.1 AA recommends a "Skip to main content" link for keyboard users. No skip link exists anywhere.
+
+**Fix:**
+- In `App.tsx` or the layout wrapper, add a visually hidden but focusable link:
+  ```html
+  <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded">
+    Skip to main content
+  </a>
   ```
-- This provides a baseline for ALL focusable elements without touching individual components
-- Remove redundant per-element `focus:ring-2 focus:ring-accent` where the global rule suffices
+- Ensure all `<main>` elements have `id="main-content"`
 
 **Acceptance Criteria:**
-- `grep -n "focus-visible" apps/client/src/index.css` returns the global rule
-- Tabbing through any screen shows visible focus rings on all interactive elements
-
----
-
-### 10. 🟢 MEDIUM: Add Screen Reader Landmarks
-
-**Problem:** No `<main>`, `<nav>`, `<aside>`, or `role` landmarks on major screen layouts. Screen readers can't navigate by landmark.
-
-**Fix:**
-- Dashboard: wrap main content in `<main>`
-- Conversation: `<main>` for chat, `<aside>` for future mindmap drawer
-- All screens: ensure exactly one `<main>` landmark
-- MobileNav/sidebar: `<nav aria-label="Main navigation">`
-- Marketing layout: `<header>`, `<main>`, `<footer>` landmarks
-
-**Acceptance Criteria:**
-- `grep -rn "<main\|<nav\|<aside\|role=\"navigation\"\|role=\"main\"" apps/client/src/screens/ --include="*.tsx" | wc -l` returns ≥8
-
----
-
-### 11. 🟢 MEDIUM: Conversation Source Drawer Toggle
-
-**Problem:** Spec §5.2.3: "Source drawer: expandable attribution panel showing original articles/papers with links." A `SourceDrawer` component exists in `components/SourceDrawer.tsx` but it's unclear if Conversation screen uses it with a visible toggle.
-
-**Fix:**
-- Verify `SourceDrawer` is imported and rendered in Conversation
-- Add a "📚 Sources" toggle button in the conversation header (next to mindmap toggle)
-- Drawer should list all citations from the current conversation
-
-**Acceptance Criteria:**
-- `grep -n "SourceDrawer\|source.*drawer" apps/client/src/screens/Conversation.tsx` returns import + usage
-- A visible "Sources" toggle exists in conversation UI
-
----
-
-### 12. 🟢 MEDIUM: Mobile Touch Targets Minimum Size
-
-**Problem:** Spec: "touch targets" for mobile-first design. Several clickable elements (chip buttons, nav icons, small action buttons) appear to be under 44×44px minimum touch target size.
-
-**Fix:**
-- Audit all clickable elements and ensure `min-h-[44px] min-w-[44px]` on mobile
-- Key areas: onboarding topic chips, conversation quick-action chips, mindmap add-node button, lesson action bar buttons
-- Use `@media (pointer: coarse)` in index.css to increase padding on touch devices
-
-**Acceptance Criteria:**
-- `grep -n "pointer.*coarse\|min-h-\[44\|touch-target" apps/client/src/index.css` returns matches
-- All interactive elements on mobile have ≥44px touch target
+- `grep -rn "skip.*main\|Skip.*content" apps/client/src/ --include="*.tsx" | wc -l` returns ≥1
+- Pressing Tab on page load reveals the skip link
 
 ---
 
 ## Remaining for Future Iterations
 
-1. **Swipe gestures** (spec: "swipe gestures, adaptive layouts") — horizontal swipe between lessons, swipe to dismiss drawers
-2. **Full Creator Dashboard** with actual publishing flow, analytics charts, earnings tracking
-3. **Collaboration features** — peer matching, study groups (spec §7.2 agent categories)
-4. **Export formats** — PDF, SCORM, Notion, Obsidian (Pro tier, spec §8)
-5. **Proactive skill update notifications** (Pro tier, spec §8)
-6. **Enterprise tier** — SSO, SCIM, admin dashboard
-7. **Offline/PWA support** — service worker, offline lesson access
-8. **Spaced repetition** — integrate with notes/exam agents for scheduled review
-9. **Dark mode contrast audit** — systematic check of all dark mode colors against WCAG AA
-10. **Performance optimization** — code splitting, lazy loading for marketplace/mindmap
-11. **E2E test suite** — Playwright tests for critical user journeys
-12. **i18n/l10n** — internationalization support
+1. **Full Docs site** with MDX content, search, and comprehensive guides (spec §12, §13)
+2. **PostHog analytics** integration (spec §12.3)
+3. **Blog MDX support** replacing hardcoded JS data
+4. **Swipe gestures** for mobile (spec §5.3)
+5. **Full Collaboration features** — peer matching algorithm, real-time shared mindmaps
+6. **Full Creator Dashboard** — publishing flow, analytics charts, earnings tracking, Stripe
+7. **Export formats** — PDF, SCORM, Notion, Obsidian (Pro tier, spec §8)
+8. **Proactive skill update notifications** (Pro tier, spec §8)
+9. **Enterprise tier** — SSO, SCIM, admin dashboard
+10. **Offline/PWA support** — service worker, offline lesson access
+11. **Spaced repetition** integration
+12. **E2E test suite** — Playwright tests for critical user journeys
+13. **i18n/l10n** — internationalization
+14. **Performance optimization** — code splitting, lazy loading
+15. **Real OAuth integration** (currently stub buttons)
