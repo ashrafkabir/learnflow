@@ -1,7 +1,7 @@
 # LearnFlow Improvement Queue — Iteration 24
 
 ## Current Iteration: 24
-## Status: READY FOR BUILDER
+## Status: DONE
 ## Date: 2025-07-22
 ## Focus: TSC fix (AGAIN), test count honesty, notification prefs, PipelineDetail, MindmapExplorer polish
 

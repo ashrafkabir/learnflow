@@ -386,10 +386,12 @@ export function ProfileSettings() {
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Notifications</span>
             {[
               { key: 'notifications', label: 'Push notifications' },
-              { key: 'notifCourseComplete', label: 'Course completion alerts' },
-              { key: 'notifDailyReminder', label: 'Daily learning reminders' },
-              { key: 'notifMarketplace', label: 'Marketplace recommendations' },
-              { key: 'notifAgentActivity', label: 'Agent activity updates' },
+              { key: 'notifCourseComplete', label: 'Email notification for course completion' },
+              { key: 'notifDailyReminder', label: 'Daily notification reminders' },
+              { key: 'notifMarketplace', label: 'Marketplace notification digest' },
+              { key: 'notifAgentActivity', label: 'Agent activity notification alerts' },
+              { key: 'notifWeeklyDigest', label: 'Weekly learning notification summary' },
+              { key: 'notifPeerCollab', label: 'Peer collaboration notification invites' },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between pl-2">
                 <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
@@ -408,6 +410,61 @@ export function ProfileSettings() {
         </div>
 
         </div>{/* end 2-col grid */}
+
+        {/* Learning Goals & Interests */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Learning Goals &amp; Interests</h2>
+          <label className="block">
+            <span className="text-sm text-gray-600 dark:text-gray-300">Primary Goal</span>
+            <input
+              value={(profile as any).primaryGoal || ''}
+              onChange={(e) => update({ primaryGoal: e.target.value } as any)}
+              placeholder="e.g., Master machine learning fundamentals"
+              className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm text-gray-600 dark:text-gray-300">Secondary Goal</span>
+            <input
+              value={(profile as any).secondaryGoal || ''}
+              onChange={(e) => update({ secondaryGoal: e.target.value } as any)}
+              placeholder="e.g., Build a portfolio project"
+              className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm text-gray-600 dark:text-gray-300">Interests (comma-separated)</span>
+            <input
+              value={(profile as any).interests || ''}
+              onChange={(e) => update({ interests: e.target.value } as any)}
+              placeholder="e.g., AI, Web Development, Data Science"
+              className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm text-gray-600 dark:text-gray-300">Target Timeline</span>
+            <select
+              value={(profile as any).targetTimeline || '3months'}
+              onChange={(e) => update({ targetTimeline: e.target.value } as any)}
+              className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+            >
+              <option value="1month">1 month</option>
+              <option value="3months">3 months</option>
+              <option value="6months">6 months</option>
+              <option value="1year">1 year</option>
+            </select>
+          </label>
+          <Button
+            variant="primary"
+            fullWidth
+            onClick={() => {
+              localStorage.setItem('learnflow-profile', JSON.stringify(profile));
+              toast('Goals updated successfully', 'success');
+            }}
+          >
+            Update Goals
+          </Button>
+        </div>
 
         {/* Data Export */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
@@ -456,6 +513,40 @@ export function ProfileSettings() {
                 }}
               >
                 Export MD
+              </Button>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">Export All Data (ZIP)</p>
+                <p className="text-xs text-gray-600 dark:text-gray-300">Bundle JSON + Markdown + metadata into a ZIP archive</p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const { default: JSZip } = await import('jszip');
+                    const zip = new JSZip();
+                    const jsonData = JSON.stringify({ courses: state.courses, profile: state.profile }, null, 2);
+                    zip.file('learnflow-export.json', jsonData);
+                    const md = state.courses.map((c) => {
+                      const lessons = c.modules.map((m) => m.lessons.map((l) => `### ${l.title}\n\n${l.content}`).join('\n\n')).join('\n\n');
+                      return `# ${c.title}\n\n${c.description}\n\n${lessons}`;
+                    }).join('\n\n---\n\n');
+                    zip.file('learnflow-export.md', md);
+                    zip.file('metadata.json', JSON.stringify({ exportedAt: new Date().toISOString(), version: '1.0' }, null, 2));
+                    const blob = await zip.generateAsync({ type: 'blob' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'learnflow-export.zip'; a.click();
+                    URL.revokeObjectURL(url);
+                    toast('Data exported as ZIP', 'success');
+                  } catch {
+                    toast('ZIP export failed — JSZip not available', 'error');
+                  }
+                }}
+              >
+                Export ZIP
               </Button>
             </div>
             {['PDF', 'SCORM', 'Notion', 'Obsidian'].map((fmt) => (

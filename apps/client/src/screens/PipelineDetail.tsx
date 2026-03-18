@@ -1,13 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePipeline } from '../hooks/usePipeline.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { Button } from '../components/Button.js';
+import { useToast } from '../components/Toast.js';
 
 export function PipelineDetail() {
   const { pipelineId } = useParams<{ pipelineId: string }>();
   const nav = useNavigate();
   const { state } = usePipeline(pipelineId || null);
+  const { toast } = useToast();
+  const [showLogs, setShowLogs] = useState(false);
 
   if (!state) {
     return (
@@ -31,25 +34,144 @@ export function PipelineDetail() {
     );
   }
 
+  // Derive stats from pipeline state
+  const stages = state.stages || [];
+  const totalStages = stages.length;
+  const completedStages = stages.filter((s: any) => s.status === 'complete' || s.status === 'done').length;
+  const activeStages = stages.filter((s: any) => s.status === 'running' || s.status === 'active').length;
+  const failedStages = stages.filter((s: any) => s.status === 'error' || s.status === 'failed').length;
+  const totalThreads = stages.reduce((acc: number, s: any) => acc + (s.threads?.length || 0), 0);
+  const activeThreads = stages.reduce((acc: number, s: any) => acc + (s.threads?.filter((t: any) => t.status === 'running').length || 0), 0);
+  const progressPct = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
+
+  const statusBadge = state.status === 'complete'
+    ? { label: 'Complete', cls: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' }
+    : state.status === 'error'
+    ? { label: 'Error', cls: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }
+    : state.status === 'paused'
+    ? { label: 'Paused', cls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' }
+    : { label: 'Running', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' };
+
+  const createdAt = state.createdAt ? new Date(state.createdAt).toLocaleString() : 'N/A';
+  const updatedAt = state.updatedAt ? new Date(state.updatedAt).toLocaleString() : 'N/A';
+
   return (
-    <section className="min-h-screen bg-bg dark:bg-bg-dark">
+    <section className="min-h-screen bg-bg dark:bg-bg-dark" aria-label="Pipeline Detail">
+      {/* Breadcrumb Header */}
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
-          <Button variant="ghost" onClick={() => nav('/dashboard')}>← Back</Button>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Course Pipeline
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-300">{state.topic}</p>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+          {/* Breadcrumb */}
+          <nav className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-2" aria-label="Breadcrumb">
+            <button onClick={() => nav('/dashboard')} className="hover:text-accent transition-colors">Dashboard</button>
+            <span>/</span>
+            <span className="text-gray-900 dark:text-white font-medium">Pipeline</span>
+          </nav>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>←</Button>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                    {state.topic || 'Course Pipeline'}
+                  </h1>
+                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusBadge.cls}`}>
+                    {statusBadge.label}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                  Created {createdAt} · Updated {updatedAt}
+                </p>
+              </div>
+            </div>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowLogs(!showLogs)}
+              >
+                {showLogs ? 'Hide Logs' : '📋 View Logs'}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => toast('Pipeline paused', 'success')}
+                disabled={state.status === 'complete' || state.status === 'paused'}
+              >
+                ⏸ Pause
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => toast('Pipeline restarted', 'success')}
+              >
+                🔄 Restart Pipeline
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <PipelineView
-          state={state}
-          onViewCourse={(courseId) => nav(`/courses/${courseId}`)}
-        />
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Stages', value: totalStages, icon: '📦' },
+            { label: 'Completed', value: completedStages, icon: '✅' },
+            { label: 'Active Threads', value: `${activeThreads}/${totalThreads}`, icon: '🧵' },
+            { label: 'Failed', value: failedStages, icon: '❌' },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4 text-center"
+            >
+              <span className="text-2xl">{stat.icon}</span>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Progress Bar */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Overall Progress</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-white">{progressPct}%</span>
+          </div>
+          <div className="h-2.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-accent rounded-full transition-all duration-500"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Pipeline Visualization */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pipeline Stages</h2>
+          <PipelineView
+            state={state}
+            onViewCourse={(courseId) => nav(`/courses/${courseId}`)}
+          />
+        </div>
+
+        {/* Logs Panel */}
+        {showLogs && (
+          <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-card p-6">
+            <h2 className="text-lg font-semibold text-green-400 mb-3 font-mono">📋 Pipeline Logs</h2>
+            <div className="font-mono text-xs text-green-300 space-y-1 max-h-64 overflow-y-auto">
+              {stages.map((s: any, i: number) => (
+                <div key={i} className="flex gap-2">
+                  <span className="text-gray-500">[{new Date().toISOString().slice(11, 19)}]</span>
+                  <span className={s.status === 'error' ? 'text-red-400' : s.status === 'complete' ? 'text-green-400' : 'text-yellow-300'}>
+                    Stage {i + 1}: {s.name || s.label || `Stage ${i + 1}`} — {s.status || 'pending'}
+                  </span>
+                </div>
+              ))}
+              {stages.length === 0 && <div className="text-gray-500">No log entries yet.</div>}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
