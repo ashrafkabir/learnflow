@@ -135,17 +135,26 @@ export function MindmapExplorer() {
         });
         edges.push({ from: courseNodeId, to: modNodeId, color: { color: '#94A3B8' }, width: 2 });
 
+        // Derive "in progress" lesson: first incomplete lesson in a module that has at least one completed lesson
+        const firstIncompleteLessonId = modCompleted > 0 && modCompleted < mod.lessons.length
+          ? mod.lessons.find(l => !state.completedLessons.has(l.id))?.id ?? null
+          : null;
+
         for (const lesson of mod.lessons) {
           const lessonNodeId = nodeId++;
           const isComplete = state.completedLessons.has(lesson.id);
+          const isInProgress = !isComplete && lesson.id === firstIncompleteLessonId;
+          const lessonBg = isComplete ? '#16A34A' : isInProgress ? '#F59E0B' : '#E5E7EB';
+          const lessonBorder = isComplete ? '#15803D' : isInProgress ? '#D97706' : '#9CA3AF';
+          const statusLabel = isComplete ? ' ✓' : isInProgress ? ' (in progress)' : '';
           nodes.push({
             id: lessonNodeId,
             label: lesson.title.length > 35 ? lesson.title.slice(0, 35) + '…' : lesson.title,
-            title: `${lesson.title}${isComplete ? ' ✓' : ''}`,
+            title: `${lesson.title}${statusLabel}`,
             shape: 'dot',
             color: {
-              background: isComplete ? '#16A34A' : '#E5E7EB',
-              border: isComplete ? '#15803D' : '#9CA3AF',
+              background: lessonBg,
+              border: lessonBorder,
             },
             size: 10,
             _courseId: course.id,

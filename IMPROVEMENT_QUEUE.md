@@ -1,7 +1,7 @@
 # LearnFlow Improvement Queue — Iteration 20
 
 ## Current Iteration: 20
-## Status: READY FOR BUILDER
+## Status: DONE
 ## Date: 2025-07-20
 ## Focus: TSC fix (STILL broken), test count honesty, citation hover-preview, onboarding polish, accessibility gaps
 
