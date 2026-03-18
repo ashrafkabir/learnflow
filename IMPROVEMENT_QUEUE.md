@@ -1,251 +1,226 @@
-# LearnFlow Improvement Queue — Iteration 18
+# LearnFlow Improvement Queue — Iteration 19
 
-## Current Iteration: 18
-## Status: DONE
+## Current Iteration: 19
+## Status: READY FOR BUILDER
 ## Date: 2025-07-19
-## Focus: Missing marketing pages, Framer Motion animations, demo section, social login, collaboration stub, dark mode contrast audit
+## Focus: TypeScript fix, mindmap mastery colors, swipe gestures, test coverage, code splitting, conversation polish
 
 ---
 
 ## Brutal Assessment
 
-After 17 iterations, LearnFlow is **solid functionally**: all major app screens exist (onboarding 6-step, dashboard, conversation with mindmap panel + source drawer, course view, lesson reader with full spec structure, mindmap explorer with keyboard nav, both marketplaces with skeletons, creator dashboard stub, profile settings with API vault/export/GDPR deletion). Marketing site has Home, Features, Pricing (with FAQ), Download, Blog (with posts), and BlogPost. Design system has tokens, Button adoption is 100%, shadow tokens cleaned, high-contrast mode, focus-visible, screen reader landmarks, mobile nav, touch targets. SEO component exists. 262 tests passing.
+After 18 iterations the app is feature-complete at a prototype level. All spec screens exist, design tokens match the spec palette, framer-motion animations are in, marketing pages have proper structure, accessibility basics (skip link, aria-current, focus-visible, landmarks) are present. 29 tests pass, TypeScript has **1 error** (Confetti trigger prop missing in FirstCourse.tsx).
 
-**What's actually still wrong or missing (verified by grep):**
+**What's actually broken or weak (verified):**
 
-1. **No About page.** Spec §12.1 item 7: "About: team, mission, privacy commitment." `screens/marketing/About.tsx` doesn't exist.
+1. **TypeScript build is broken.** `Confetti` requires `{ trigger: boolean }` but `FirstCourse.tsx:98` passes `<Confetti />` with no props. This means production builds fail.
 
-2. **No Docs page.** Spec §12.1 item 5: "Docs: comprehensive developer documentation." Zero implementation.
+2. **Mindmap mastery colors are not spec-compliant.** Spec §5.2.5: "Color-coded by mastery level (not started, in progress, mastered)." Code at `MindmapExplorer.tsx:107` has a comment `// Color by mastery — Task 8` but the actual colors are based on course/module index, not mastery state. There's no legend either.
 
-3. **Framer Motion not installed.** Spec §12.3 says "Tailwind CSS + Framer Motion." `package.json` has no `framer-motion` dependency. Zero animations on marketing pages — no entrance animations, no scroll-triggered reveals. The marketing site feels static and lifeless compared to spec.
+3. **Zero swipe gestures.** Spec §5.3: "swipe gestures, adaptive layouts." `grep -rn "swipe\|gesture\|touch" screens/` returns nothing. Lesson reader and onboarding are prime candidates.
 
-4. **No animated knowledge graph background on hero.** Spec §12.2: "Background: subtle animated knowledge graph visualization." Home.tsx hero has no canvas/SVG animation, no particle effect, nothing. Just a plain background.
+4. **Only 29 tests in 1 file.** Spec §15 Testing Strategy calls for unit + integration + E2E. There's a single `__tests__/client.test.tsx`. No tests for onboarding flow, conversation, marketplace, mindmap, or any marketing pages.
 
-5. **No demo section.** Spec §12.2: "product demo video/animation." The "See How It Works" CTA scrolls to `#demo-section` but no such section exists in Home.tsx. The scroll target goes nowhere.
+5. **No code splitting / lazy loading.** All screens are eagerly imported in `App.tsx`. No `React.lazy()` or dynamic imports. With 30+ screens this hurts initial load.
 
-6. **No social login (OAuth).** Spec §11.1 + §5.2.1: "social OAuth (Google, GitHub, Apple)." RegisterScreen only has email/password. No OAuth buttons, no social login flow.
+6. **Conversation: no "which agent is working" indicator rendered.** The `agentInfo.activity` text exists but is only shown generically. Spec §5.2.3: "subtle animation showing which agent is currently processing" — no pulsing dot, no agent name badge during streaming.
 
-7. **No collaboration features at all.** Spec §4.2 Collaboration Agent, spec §5.2.2 mentions collaboration. Zero implementation — no peer matching, study groups, or even a stub screen.
+7. **LessonReader: no estimated read time.** Spec §5.2.4: "<10 min estimated read time indicator." Not implemented.
 
-8. **Dark mode has never been audited for contrast.** Iter 17 fixed light mode contrast on landing. But dark mode text uses `text-gray-300`, `text-gray-400`, `text-gray-500` extensively. Many `text-gray-500 dark:text-gray-400` combinations on `bg-gray-900` may fail WCAG AA (4.5:1). This is a systemic issue.
+8. **LessonReader: no "Ask Question" in bottom bar.** Spec §5.2.4: "Bottom action bar: Mark Complete, Take Notes, Quiz Me, Ask Question." Only Mark Complete exists.
 
-9. **No platform auto-detection on Download page.** Spec §12.2: "Primary CTA: 'Download Free' (auto-detects platform)." Download.tsx just lists all platforms statically. No `navigator.userAgent` sniffing or highlighting.
+9. **Dashboard: Today's Lessons section is empty-state only.** The section header exists but actual lesson cards rely on API data that never arrives in the prototype. Needs mock data or a meaningful empty state with CTA.
 
-10. **Blog has no MDX support.** Spec §12.3: "CMS: MDX for docs/blog." Blog uses hardcoded JS data objects, not MDX files.
+10. **CourseView: no inline source citations with hover-preview.** Spec §5.2.4: "Inline source citations with hover-preview." LessonReader has citation parsing but CourseView syllabus doesn't show sources.
 
-11. **No PostHog analytics.** Spec §12.3: "Analytics: PostHog (privacy-first)." Zero analytics integration.
+11. **No 404 page.** The catch-all route redirects to `/` silently. Should show a proper 404 with navigation options.
 
-12. **RegisterScreen has no name field visible before email.** Spec onboarding implies a display name. The field exists but UX ordering may need review.
+12. **Marketing nav doesn't highlight active link visually.** `aria-current="page"` is set (good) but no distinct visual style (underline/bold/color) is applied based on it.
 
 ---
 
 ## Prioritized Tasks (12 items)
 
-### 1. 🔴 CRITICAL: Create About Page (Spec §12.1)
+### 1. 🔴 CRITICAL: Fix TypeScript Error in FirstCourse.tsx
 
-**Problem:** Spec §12.1 item 7: "About: team, mission, privacy commitment." No `About.tsx` exists in `screens/marketing/`.
+**Problem:** `src/screens/onboarding/FirstCourse.tsx:98` renders `<Confetti />` without the required `trigger` prop. `npx tsc --noEmit` fails. Production builds broken.
 
 **Fix:**
-- Create `screens/marketing/About.tsx` with:
-  - Mission section (pull from spec §2.1 vision statement)
-  - Team section (placeholder team cards with roles)
-  - Privacy commitment section (reference spec §9.3)
-  - Values section (open source, BYOAI, attribution)
-- Add SEO component
-- Add route in `App.tsx`: `/about`
-- Add "About" link in `MarketingLayout.tsx` nav
+- Line 98: change `<Confetti />` to `<Confetti trigger={true} />` or `<Confetti trigger={done} />` where `done` is the completion state boolean.
 
 **Acceptance Criteria:**
-- `ls apps/client/src/screens/marketing/About.tsx` succeeds
-- Route `/about` renders the page
-- Nav has "About" link
-- Uses Button component and design tokens
+- `npx tsc --noEmit` exits with 0 errors
 
 ---
 
-### 2. 🔴 CRITICAL: Install Framer Motion + Add Marketing Animations
+### 2. 🔴 CRITICAL: Add React.lazy Code Splitting for All Screens
 
-**Problem:** Spec §12.3: "Tailwind CSS + Framer Motion." Not installed. Marketing pages are completely static — no entrance animations, no scroll reveals, no micro-interactions. This makes the marketing site feel unfinished.
+**Problem:** `App.tsx` eagerly imports 30+ screen components. No code splitting at all.
 
 **Fix:**
-- `npm install framer-motion`
-- In `Home.tsx`: Add `motion.div` fade-up entrance animations on hero headline, stats, feature cards, testimonials, and CTA sections using `whileInView`
-- In `Features.tsx`: Stagger feature card entrances
-- In `Pricing.tsx`: Animate plan cards scaling in
-- Keep animations subtle and performant (GPU-only transforms)
+- Replace static imports with `React.lazy(() => import('./screens/...'))` for all screen components
+- Wrap `<Routes>` content in `<Suspense fallback={<LoadingSpinner />}>`
+- Keep only lightweight components (ErrorBoundary, PageTransition, layout wrappers) as static imports
 
 **Acceptance Criteria:**
-- `grep "framer-motion" apps/client/package.json` returns a match
-- `grep -rn "motion\." apps/client/src/screens/marketing/ --include="*.tsx" | wc -l` returns ≥10
-- Marketing pages have visible entrance animations on scroll
+- `grep "React.lazy" src/App.tsx | wc -l` returns ≥15
+- `grep "Suspense" src/App.tsx | wc -l` returns ≥1
+- App still boots and routes work
 
 ---
 
-### 3. 🔴 CRITICAL: Add Hero Demo Section
+### 3. 🟡 HIGH: Mindmap Mastery-Based Color Coding
 
-**Problem:** Spec §12.2: "product demo video/animation." The "See How It Works" button scrolls to `#demo-section` (line 59 of Home.tsx), but this element doesn't exist. The CTA goes nowhere.
+**Problem:** `MindmapExplorer.tsx:107` comments say "Color by mastery" but colors are by course index. Spec §5.2.5: "Color-coded by mastery level (not started, in progress, mastered)."
 
 **Fix:**
-- Add a `<section id="demo-section">` between hero and features in Home.tsx
-- Content: 3-step animated walkthrough showing:
-  1. "Tell us your goal" — chat bubble animation
-  2. "AI builds your course" — loading/building animation
-  3. "Learn and master" — progress ring filling
-- Use Framer Motion for step transitions
-- Fallback: if no video, use illustrated step cards with motion
+- Define 3 mastery colors using design tokens: not-started (gray-400), in-progress (warning/amber), mastered (success/green)
+- Color lesson nodes by completion state from `state.courses[].modules[].lessons[].completed`
+- Add a legend in the top-right corner showing the 3 mastery levels
+- Module nodes: blend based on % of lessons completed
 
 **Acceptance Criteria:**
-- `grep -n 'demo-section' apps/client/src/screens/marketing/Home.tsx` returns an element with that id
-- Clicking "See How It Works" smoothly scrolls to a visible demo section
-- Section has animated content (not just static text)
+- `grep -n "mastered\|not.started\|in.progress" src/screens/MindmapExplorer.tsx | wc -l` returns ≥3
+- Legend is visible in the mindmap screen
 
 ---
 
-### 4. 🔴 CRITICAL: Add Social Login (OAuth) Buttons
+### 4. 🟡 HIGH: Add Estimated Read Time to LessonReader
 
-**Problem:** Spec explicitly requires "social OAuth (Google, GitHub, Apple)" in auth (§WS-02, §11.1). RegisterScreen and LoginScreen only have email/password. No OAuth at all.
+**Problem:** Spec §5.2.4: "<10 min estimated read time indicator." Not implemented.
 
 **Fix:**
-- In both `RegisterScreen.tsx` and `LoginScreen.tsx`:
-  - Add a divider "or continue with"
-  - Add 3 OAuth buttons: Google, GitHub, Apple (styled with brand colors/icons)
-  - onClick handlers should call mock API endpoints (or show toast "OAuth coming soon" for now)
-- Style: full-width buttons with provider icon + text, consistent with Button component
+- Calculate word count from lesson content, divide by 200 wpm, round up
+- Show "~X min read" badge next to the lesson title in `LessonReader.tsx`
+- Use a clock icon (🕐) prefix
 
 **Acceptance Criteria:**
-- `grep -n "Google\|GitHub\|Apple\|OAuth\|oauth\|social" apps/client/src/screens/RegisterScreen.tsx` returns matches
-- `grep -n "Google\|GitHub\|Apple\|OAuth\|oauth\|social" apps/client/src/screens/LoginScreen.tsx` returns matches
-- Both screens show 3 social login buttons below the form
+- `grep -n "min read\|readTime\|wordCount" src/screens/LessonReader.tsx | wc -l` returns ≥2
 
 ---
 
-### 5. 🟡 HIGH: Dark Mode Contrast Audit & Fix
+### 5. 🟡 HIGH: Complete LessonReader Bottom Action Bar
 
-**Problem:** `text-gray-400` on `dark:bg-gray-900` (#9CA3AF on #111827) = ~3.5:1 contrast ratio — FAILS WCAG AA (needs 4.5:1). This pattern is used extensively: Dashboard, Conversation, Home, Features, Pricing, Blog, ProfileSettings, CourseView, LessonReader. Spec §5.3 requires WCAG 2.1 AA.
+**Problem:** Spec §5.2.4 says "Mark Complete, Take Notes, Quiz Me, Ask Question." Only Mark Complete exists.
 
 **Fix:**
-- Global search-replace in all screen files:
-  - `dark:text-gray-400` → `dark:text-gray-300` for body/descriptive text (ratio ~5.5:1, passes AA)
-  - `dark:text-gray-500` → `dark:text-gray-400` for truly secondary text (or `dark:text-gray-300` for important text)
-- Verify: `text-gray-300` (#D1D5DB) on `bg-gray-900` (#111827) = ~9.4:1 ✅
-- Exception: placeholder text in inputs can stay `dark:text-gray-500` (not required for AA)
+- Add 3 more buttons to the bottom bar: "Take Notes" (opens a textarea overlay/modal), "Quiz Me" (navigates to conversation with "quiz me on this lesson" prefilled), "Ask Question" (navigates to conversation with lesson context)
+- Style as secondary Button components
 
 **Acceptance Criteria:**
-- `grep -rn "dark:text-gray-500" apps/client/src/screens/ --include="*.tsx" | wc -l` returns ≤5 (only placeholders)
-- Body text in dark mode is at minimum `dark:text-gray-300`
+- `grep -n "Take Notes\|Quiz Me\|Ask Question" src/screens/LessonReader.tsx | wc -l` returns ≥3
+- All 4 buttons visible in the bottom bar
 
 ---
 
-### 6. 🟡 HIGH: Platform Auto-Detection on Download Page
+### 6. 🟡 HIGH: Agent Activity Indicator in Conversation
 
-**Problem:** Spec §12.2: "Primary CTA: 'Download Free' (auto-detects platform)." Download.tsx lists all platforms equally with no detection.
+**Problem:** Spec §5.2.3: "subtle animation showing which agent is currently processing." Current implementation just shows text. Needs visual polish.
 
 **Fix:**
-- In `Download.tsx`:
-  - Add `useEffect` that detects OS via `navigator.userAgent` / `navigator.platform`
-  - Highlight the detected platform card (border-accent, "Recommended for you" badge)
-  - Add a prominent CTA at top: "Download for [Detected OS]"
-  - Other platforms shown below as alternatives
+- When `agentInfo` is active, show a pill badge with: pulsing dot (CSS animation) + agent name + activity text
+- Use accent color for the pulsing dot
+- Add framer-motion fade in/out for the badge appearance
 
 **Acceptance Criteria:**
-- `grep -n "userAgent\|navigator.*platform\|detectOS\|recommended" apps/client/src/screens/marketing/Download.tsx` returns matches
-- Visiting `/download` highlights the user's platform
+- `grep -n "pulse\|pulsing\|animate-pulse" src/screens/Conversation.tsx | wc -l` returns ≥1
+- Agent name is visible during "thinking" state
 
 ---
 
-### 7. 🟡 HIGH: Animated Knowledge Graph Background on Hero
+### 7. 🟡 HIGH: Add Swipe Gestures for Onboarding and LessonReader
 
-**Problem:** Spec §12.2: "Background: subtle animated knowledge graph visualization." Hero section has no background animation at all.
+**Problem:** Spec §5.3: "swipe gestures." Zero implementation anywhere.
 
 **Fix:**
-- Create a lightweight `KnowledgeGraphBg` component using `<canvas>` or inline SVG
-- Render floating, slowly moving connected nodes (circles + lines) with low opacity
-- Position it absolutely behind the hero section with `pointer-events-none`
-- Use `requestAnimationFrame` for smooth 60fps animation
-- Keep it very subtle: ~10% opacity, slow drift, accent-colored nodes
+- Create a `useSwipe` hook in `hooks/useSwipe.ts` using touch events (touchstart/touchmove/touchend)
+- Apply to onboarding steps: swipe left = next, swipe right = previous
+- Apply to LessonReader: swipe left = next lesson, swipe right = previous lesson
+- Minimum swipe distance threshold: 50px
 
 **Acceptance Criteria:**
-- `grep -n "KnowledgeGraphBg\|canvas\|requestAnimationFrame" apps/client/src/screens/marketing/Home.tsx` returns matches
-- Hero section has visible (but subtle) animated background
+- `ls src/hooks/useSwipe.ts` succeeds
+- `grep -rn "useSwipe" src/screens/ --include="*.tsx" | wc -l` returns ≥2
 
 ---
 
-### 8. 🟡 HIGH: Collaboration Stub Screen
+### 8. 🟡 HIGH: Add Tests for Core Flows (Target: 80+ tests)
 
-**Problem:** Spec §4.2 describes Collaboration Agent: "Matches students with similar interests/goals; facilitates study groups, peer reviews, and shared mindmaps." Spec §7.2 lists "Collaboration: peer matching, group study facilitators." Zero implementation. Not even a stub.
+**Problem:** Only 29 tests in 1 file. Needs significantly more coverage.
 
 **Fix:**
-- Create `screens/Collaboration.tsx`:
-  - Header: "Learn Together"
-  - Tabs: "Find Study Partners", "My Groups", "Shared Mindmaps"
-  - Empty states with helpful copy and CTAs
-  - "Collaboration features are coming soon" banner for unimplemented tabs
-- Add route: `/collaborate`
-- Add link in Dashboard sidebar/nav
+- Add test files:
+  - `__tests__/onboarding.test.tsx` — renders each step, validates navigation
+  - `__tests__/dashboard.test.tsx` — renders with mock data, streak display, course cards
+  - `__tests__/conversation.test.tsx` — renders chat, sends message, shows agent activity
+  - `__tests__/marketing.test.tsx` — renders Home, Features, Pricing, About, Download, Docs
+  - `__tests__/marketplace.test.tsx` — renders course/agent marketplace, detail page
+- Use vitest + @testing-library/react, mock fetch/context as needed
 
 **Acceptance Criteria:**
-- `ls apps/client/src/screens/Collaboration.tsx` succeeds
-- Route `/collaborate` renders the page
-- MobileNav has "Collaborate" link
+- `npx vitest run 2>&1 | grep "Tests"` shows ≥80 tests passing
+- ≥6 test files in `__tests__/`
 
 ---
 
-### 9. 🟢 MEDIUM: Docs Page Stub (Spec §12.1)
+### 9. 🟢 MEDIUM: Create 404 Page
 
-**Problem:** Spec §12.1 item 5: "Docs: comprehensive developer documentation (Next.js + MDX)." No docs page exists. For now, create a stub that links to future docs.
+**Problem:** No 404 page. Unknown routes silently redirect to `/`.
 
 **Fix:**
-- Create `screens/marketing/Docs.tsx`:
-  - Sidebar with doc categories: Getting Started, User Guide, Agent SDK, API Reference, Creator Guide
-  - Main content area with placeholder content for "Getting Started"
-  - Search bar (non-functional for now, just UI)
-- Add route `/docs` and nav link
+- Create `screens/NotFound.tsx` with: "404" large text, "Page not found" message, "Go Home" and "Go to Dashboard" buttons
+- Replace the catch-all `<Navigate to="/" />` in App.tsx with `<Route path="*" element={<NotFound />} />`
 
 **Acceptance Criteria:**
-- `ls apps/client/src/screens/marketing/Docs.tsx` succeeds
-- Route `/docs` renders the page with sidebar navigation
+- `ls src/screens/NotFound.tsx` succeeds
+- Navigating to `/nonexistent` shows the 404 page
 
 ---
 
-### 10. 🟢 MEDIUM: Fix "See How It Works" Scroll Target
+### 10. 🟢 MEDIUM: Visual Active State for Marketing Nav Links
 
-**Problem:** Even if demo section isn't built yet (task 3), the `id="demo-section"` target must exist or the CTA is broken. This is a subset of task 3 but called out separately in case task 3 is deferred.
+**Problem:** `aria-current="page"` is set but no visual distinction. Active link looks identical to inactive ones.
 
-**Note:** If task 3 is completed, this is automatically resolved. Skip if task 3 is done.
+**Fix:**
+- In `MarketingLayout.tsx`, when `aria-current="page"`, add `border-b-2 border-accent text-accent font-semibold` classes
+- In `MobileNav.tsx`, active item gets `bg-accent/10 text-accent font-semibold`
+
+**Acceptance Criteria:**
+- `grep -n "aria-current.*border\|aria-current.*font-semibold\|aria-current.*text-accent" src/screens/marketing/MarketingLayout.tsx | wc -l` returns ≥1
+- Active nav link is visually distinct
 
 ---
 
-### 11. 🟢 MEDIUM: Add `aria-current="page"` to Active Nav Links
+### 11. 🟢 MEDIUM: Dashboard Today's Lessons with Mock Data
 
-**Problem:** Screen readers can't distinguish the current page in navigation. Marketing nav and MobileNav don't mark the active route.
+**Problem:** "Today's Lessons" section always shows empty because no API provides data. Needs mock data for the prototype.
 
 **Fix:**
-- In `MarketingLayout.tsx` nav links: add `aria-current="page"` when `location.pathname` matches
-- In `MobileNav.tsx`: same treatment for active drawer links
-- Visual: active link should also have a distinct style (underline or bold)
+- In Dashboard, if no API lessons are returned, show 3 mock lesson cards with: title, course name, estimated time, "Start" button
+- Cards should link to the first lesson of the user's first course (or show as demo content)
+- Include a "Based on your learning goals" subtitle
 
 **Acceptance Criteria:**
-- `grep -rn "aria-current" apps/client/src/ --include="*.tsx" | wc -l` returns ≥2
-- Active nav link is visually distinct and announced by screen readers
+- Dashboard shows lesson cards even without API data
+- `grep -n "mock\|demo.*lesson\|today.*lesson" src/screens/Dashboard.tsx | wc -l` returns ≥2
 
 ---
 
-### 12. 🟢 MEDIUM: Add Skip-to-Content Link
+### 12. 🟢 MEDIUM: Keyboard Shortcuts for Power Users
 
-**Problem:** WCAG 2.1 AA recommends a "Skip to main content" link for keyboard users. No skip link exists anywhere.
+**Problem:** Spec mentions keyboard navigation for mindmap (already done). But no global shortcuts exist for common actions.
 
 **Fix:**
-- In `App.tsx` or the layout wrapper, add a visually hidden but focusable link:
-  ```html
-  <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded">
-    Skip to main content
-  </a>
-  ```
-- Ensure all `<main>` elements have `id="main-content"`
+- Create `hooks/useKeyboardShortcuts.ts` with:
+  - `Ctrl/Cmd + K` → focus search (if exists) or navigate to conversation
+  - `Ctrl/Cmd + /` → show shortcuts help modal
+  - `Escape` → close any open drawer/modal
+- Add a small "⌨️ Shortcuts" link in settings or help
+- Show a simple shortcuts reference modal
 
 **Acceptance Criteria:**
-- `grep -rn "skip.*main\|Skip.*content" apps/client/src/ --include="*.tsx" | wc -l` returns ≥1
-- Pressing Tab on page load reveals the skip link
+- `ls src/hooks/useKeyboardShortcuts.ts` succeeds
+- `Ctrl+/` shows the shortcuts modal
 
 ---
 
@@ -254,15 +229,15 @@ After 17 iterations, LearnFlow is **solid functionally**: all major app screens 
 1. **Full Docs site** with MDX content, search, and comprehensive guides (spec §12, §13)
 2. **PostHog analytics** integration (spec §12.3)
 3. **Blog MDX support** replacing hardcoded JS data
-4. **Swipe gestures** for mobile (spec §5.3)
-5. **Full Collaboration features** — peer matching algorithm, real-time shared mindmaps
-6. **Full Creator Dashboard** — publishing flow, analytics charts, earnings tracking, Stripe
-7. **Export formats** — PDF, SCORM, Notion, Obsidian (Pro tier, spec §8)
-8. **Proactive skill update notifications** (Pro tier, spec §8)
-9. **Enterprise tier** — SSO, SCIM, admin dashboard
-10. **Offline/PWA support** — service worker, offline lesson access
-11. **Spaced repetition** integration
-12. **E2E test suite** — Playwright tests for critical user journeys
-13. **i18n/l10n** — internationalization
-14. **Performance optimization** — code splitting, lazy loading
-15. **Real OAuth integration** (currently stub buttons)
+4. **Full Collaboration features** — peer matching algorithm, real-time shared mindmaps
+5. **Full Creator Dashboard** — publishing flow, analytics charts, earnings tracking, Stripe
+6. **Export formats** — PDF, SCORM, Notion, Obsidian (Pro tier, spec §8)
+7. **Proactive skill update notifications** (Pro tier, spec §8)
+8. **Enterprise tier** — SSO, SCIM, admin dashboard
+9. **Offline/PWA support** — service worker, offline lesson access
+10. **Spaced repetition** integration
+11. **E2E test suite** — Playwright tests for critical user journeys
+12. **i18n/l10n** — internationalization
+13. **Real OAuth integration** (currently stub buttons)
+14. **CourseView inline citations with hover-preview** (spec §5.2.4)
+15. **Performance profiling** — bundle analysis, lighthouse audit
