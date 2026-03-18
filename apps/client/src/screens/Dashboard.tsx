@@ -8,6 +8,7 @@ import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { usePipeline } from '../hooks/usePipeline.js';
 import { Button } from '../components/Button.js';
 import { SkeletonDashboard } from '../components/Skeleton.js';
+import { OnboardingTooltips } from '../components/OnboardingTooltips.js';
 
 export function Dashboard() {
   const nav = useNavigate();
@@ -135,6 +136,7 @@ export function Dashboard() {
       data-screen="dashboard"
       className="min-h-screen bg-bg dark:bg-bg-dark"
     >
+      <OnboardingTooltips />
       {/* Top bar */}
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
@@ -436,7 +438,7 @@ export function Dashboard() {
         )}
 
         {/* Notifications Feed */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5" aria-live="polite">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               🔔 Notifications

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
@@ -12,21 +12,34 @@ interface Agent {
   rating: number;
   usageCount: number;
   requiredProvider: string;
+  category: Category;
+  official: boolean;
 }
 
+const CATEGORIES = ['All', 'Study', 'Research', 'Assessment', 'Creative', 'Productivity'] as const;
+type Category = (typeof CATEGORIES)[number];
+type SortOption = 'popularity' | 'rating' | 'newest';
+
 const AGENTS: Agent[] = [
-  { id: 'a1', name: 'Code Tutor', description: 'Reviews and explains code with detailed feedback', capabilities: ['code_review', 'explain_code'], tier: 'free', rating: 4.7, usageCount: 3200, requiredProvider: 'openai' },
-  { id: 'a2', name: 'Research Pro', description: 'Deep research with academic paper access', capabilities: ['deep_research', 'paper_analysis'], tier: 'pro', rating: 4.9, usageCount: 1800, requiredProvider: 'openai' },
-  { id: 'a3', name: 'Math Solver', description: 'Step-by-step math problem solving', capabilities: ['math_solve', 'proof_check'], tier: 'free', rating: 4.5, usageCount: 2500, requiredProvider: 'openai' },
-  { id: 'a4', name: 'Language Coach', description: 'Personalized language learning assistant', capabilities: ['translation', 'grammar_check', 'conversation'], tier: 'pro', rating: 4.6, usageCount: 1200, requiredProvider: 'anthropic' },
+  { id: 'a1', name: 'Code Tutor', description: 'Reviews and explains code with detailed feedback. Supports Python, JavaScript, TypeScript, Rust, and Go.', capabilities: ['code_review', 'explain_code'], tier: 'free', rating: 4.7, usageCount: 3200, requiredProvider: 'OpenAI', category: 'Study', official: true },
+  { id: 'a2', name: 'Research Pro', description: 'Deep research with academic paper access and citation generation.', capabilities: ['deep_research', 'paper_analysis'], tier: 'pro', rating: 4.9, usageCount: 1800, requiredProvider: 'OpenAI', category: 'Research', official: true },
+  { id: 'a3', name: 'Math Solver', description: 'Step-by-step math problem solving with visual proof checking.', capabilities: ['math_solve', 'proof_check'], tier: 'free', rating: 4.5, usageCount: 2500, requiredProvider: 'OpenAI', category: 'Study', official: true },
+  { id: 'a4', name: 'Language Coach', description: 'Personalized language learning with real-time conversation practice.', capabilities: ['translation', 'grammar_check', 'conversation'], tier: 'pro', rating: 4.6, usageCount: 1200, requiredProvider: 'Anthropic', category: 'Study', official: false },
+  { id: 'a5', name: 'Quiz Master', description: 'Generates adaptive quizzes from any learning material with spaced repetition scheduling.', capabilities: ['quiz_generation', 'spaced_repetition'], tier: 'free', rating: 4.4, usageCount: 980, requiredProvider: 'OpenAI', category: 'Assessment', official: true },
+  { id: 'a6', name: 'Creative Writer', description: 'Helps with essays, stories, and creative writing with style feedback.', capabilities: ['creative_writing', 'style_analysis'], tier: 'free', rating: 4.3, usageCount: 760, requiredProvider: 'Anthropic', category: 'Creative', official: false },
+  { id: 'a7', name: 'Study Planner', description: 'Creates personalized study schedules based on goals, deadlines, and learning pace.', capabilities: ['scheduling', 'goal_tracking'], tier: 'free', rating: 4.2, usageCount: 1450, requiredProvider: 'OpenAI', category: 'Productivity', official: true },
+  { id: 'a8', name: 'Data Analyst', description: 'Analyzes datasets, creates visualizations, and explains statistical concepts.', capabilities: ['data_analysis', 'visualization'], tier: 'pro', rating: 4.8, usageCount: 620, requiredProvider: 'OpenAI', category: 'Research', official: false },
 ];
 
-/** Spec §5.2.6, §7.2 — Agent Marketplace with activation flow */
+/** Spec §5.2.6, §7.2 — Agent Marketplace with activation flow, categories, search, sort */
 export function AgentMarketplace() {
   const nav = useNavigate();
   const [activatedIds, setActivatedIds] = useState<Set<string>>(new Set());
   const [activating, setActivating] = useState<string | null>(null);
   const [loading, setLoading] = useState(!AGENTS.length);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState<Category>('All');
+  const [sortBy, setSortBy] = useState<SortOption>('popularity');
 
   useEffect(() => {
     if (!loading) return;
@@ -34,7 +47,12 @@ export function AgentMarketplace() {
     return () => clearTimeout(t);
   }, [loading]);
 
-  const handleActivate = async (agent: Agent) => {
+  const handleToggleActivate = async (agent: Agent) => {
+    const isActive = activatedIds.has(agent.id);
+    if (isActive) {
+      setActivatedIds(prev => { const next = new Set(prev); next.delete(agent.id); return next; });
+      return;
+    }
     setActivating(agent.id);
     try {
       const token = localStorage.getItem('learnflow-token');
@@ -52,6 +70,23 @@ export function AgentMarketplace() {
     }
   };
 
+  const filteredAgents = useMemo(() => {
+    const filtered = AGENTS.filter(a => {
+      if (category !== 'All' && a.category !== category) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        return a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q);
+      }
+      return true;
+    });
+    const sorted = [...filtered];
+    if (sortBy === 'popularity') sorted.sort((a, b) => b.usageCount - a.usageCount);
+    else if (sortBy === 'rating') sorted.sort((a, b) => b.rating - a.rating);
+    // newest: reverse order by id
+    else sorted.sort((a, b) => b.id.localeCompare(a.id));
+    return sorted;
+  }, [search, category, sortBy]);
+
   return (
     <section
       aria-label="Agent Marketplace"
@@ -66,6 +101,7 @@ export function AgentMarketplace() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* My Activated Agents */}
         {activatedIds.size > 0 && (
           <div className="mb-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">✅ My Agents</h2>
@@ -79,55 +115,140 @@ export function AgentMarketplace() {
           </div>
         )}
 
-        {loading ? <SkeletonMarketplace /> : <div
-          data-component="agent-catalog"
-          aria-label="Agent catalog"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {AGENTS.map((a) => {
-            const isActivated = activatedIds.has(a.id);
-            return (
-              <div
-                key={a.id}
-                role="article"
-                aria-label={a.name}
-                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 hover:border-accent hover:shadow-card transition-all"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-white">{a.name}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.tier === 'free' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'}`}>
-                    {a.tier}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">{a.description}</p>
-                <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-300 mb-3">
-                  <span>⭐ {a.rating}</span>
-                  <span>·</span>
-                  <span>{a.usageCount.toLocaleString()} uses</span>
-                  <span>·</span>
-                  <span className="capitalize">Requires {a.requiredProvider}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mb-4">
-                  {a.capabilities.map((c) => (
-                    <span key={c} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded">
-                      {c}
-                    </span>
-                  ))}
-                </div>
-                <Button
-                  variant={isActivated ? 'secondary' : 'primary'}
-                  fullWidth
-                  onClick={() => !isActivated && handleActivate(a)}
-                  disabled={isActivated || activating === a.id}
-                  aria-label={`Activate ${a.name}`}
-                  className={isActivated ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 cursor-default border-0' : ''}
-                >
-                  {isActivated ? '✅ Activated' : activating === a.id ? 'Activating...' : 'Activate'}
-                </Button>
+        {/* Search + Sort */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search agents..."
+              aria-label="Search agents"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          </div>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value as SortOption)}
+            aria-label="Sort agents"
+            className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
+          >
+            <option value="popularity">Sort: Popularity</option>
+            <option value="rating">Sort: Rating</option>
+            <option value="newest">Sort: Newest</option>
+          </select>
+        </div>
+
+        {/* Category Filter Tabs */}
+        <nav className="flex gap-1 mb-6 overflow-x-auto pb-1" aria-label="Agent categories">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                category === cat
+                  ? 'bg-accent text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:border-accent'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </nav>
+
+        {/* Agent Grid */}
+        {loading ? <SkeletonMarketplace /> : (
+          <>
+            {filteredAgents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
+                <span className="text-4xl">🔍</span>
+                <p className="text-gray-600 dark:text-gray-300">No results found. Try a different search or category.</p>
               </div>
-            );
-          })}
-        </div>}
+            ) : (
+              <div
+                data-component="agent-catalog"
+                aria-label="Agent catalog"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              >
+                {filteredAgents.map((a) => {
+                  const isActivated = activatedIds.has(a.id);
+                  return (
+                    <div
+                      key={a.id}
+                      role="article"
+                      aria-label={a.name}
+                      className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 hover:border-accent hover:shadow-card transition-all flex flex-col"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-white">{a.name}</h3>
+                          {a.official ? (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 font-medium">Official</span>
+                          ) : (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 font-medium">Community</span>
+                          )}
+                        </div>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.tier === 'free' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'}`}>
+                          {a.tier}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">{a.description}</p>
+                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-300 mb-2">
+                        <span>⭐ {a.rating}</span>
+                        <span>·</span>
+                        <span>{a.usageCount.toLocaleString()} uses</span>
+                      </div>
+                      <div className="mb-3">
+                        <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-full font-medium">
+                          🔑 Requires {a.requiredProvider}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        {a.capabilities.map((c) => (
+                          <span key={c} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded">
+                            {c}
+                          </span>
+                        ))}
+                      </div>
+                      {/* Activation Toggle */}
+                      <div className="mt-auto flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{isActivated ? 'Active' : 'Inactive'}</span>
+                        <button
+                          onClick={() => handleToggleActivate(a)}
+                          disabled={activating === a.id}
+                          aria-label={`Toggle ${a.name} activation`}
+                          className={`relative w-11 h-6 rounded-full transition-colors ${
+                            isActivated ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                          } ${activating === a.id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                          role="switch"
+                          aria-checked={isActivated}
+                        >
+                          <span
+                            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                              isActivated ? 'translate-x-5' : ''
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+        {/* Agent count summary */}
+        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+          <p>
+            Showing {filteredAgents.length} of {AGENTS.length} agents
+            {category !== 'All' && ` in ${category}`}
+            {search && ` matching "${search}"`}
+          </p>
+          <p className="mt-1">
+            {activatedIds.size} agent{activatedIds.size !== 1 ? 's' : ''} activated
+          </p>
+        </div>
       </div>
     </section>
   );

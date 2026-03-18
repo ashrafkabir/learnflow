@@ -53,6 +53,7 @@ export function ProfileSettings() {
     <section
       aria-label="Profile Settings"
       data-screen="settings"
+      aria-live="polite"
       className="min-h-screen bg-bg dark:bg-bg-dark"
     >
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
@@ -84,12 +85,54 @@ export function ProfileSettings() {
                 Upgrade to Pro
               </Button>
             ) : (
-              <span className="bg-white/20 text-white font-semibold text-sm px-5 py-2.5 rounded-xl">
-                ✓ Active
-              </span>
+              <div className="flex flex-col items-end gap-2">
+                <span className="bg-white/20 text-white font-semibold text-sm px-5 py-2.5 rounded-xl">
+                  ✓ Active
+                </span>
+                <p className="text-xs opacity-75">Next billing: Aug 21, 2025</p>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Subscription Management */}
+        {state.subscription === 'pro' && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Subscription Management</h2>
+            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+              <span>📊 API calls this month: <strong className="text-gray-900 dark:text-white">1,234 / 10,000</strong></span>
+            </div>
+            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-full bg-accent rounded-full" style={{ width: '12.34%' }} />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (confirm('Downgrade to Free? You will lose access to Pro features at the end of your billing period.')) {
+                    dispatch({ type: 'SET_SUBSCRIPTION', tier: 'free' });
+                    toast('Downgraded to Free plan', 'success');
+                  }
+                }}
+              >
+                Downgrade to Free
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  if (confirm('Cancel your subscription? You will lose access to Pro features at the end of your billing period.')) {
+                    dispatch({ type: 'SET_SUBSCRIPTION', tier: 'free' });
+                    toast('Subscription cancelled', 'success');
+                  }
+                }}
+              >
+                Cancel Subscription
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Pro Features Preview */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-3">

@@ -44,6 +44,7 @@ function ToastItem({ item, onRemove }: { item: ToastItem; onRemove: () => void }
     <div
       className={`flex items-center gap-3 px-4 py-3 rounded-xl border shadow-elevated backdrop-blur-md ${COLORS[item.type]} animate-[slideIn_0.3s_ease-out]`}
       role="alert"
+      aria-live="assertive"
     >
       <span>{ICONS[item.type]}</span>
       <p className="text-sm font-medium flex-1">{item.message}</p>
@@ -68,7 +69,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       {typeof document !== 'undefined' && createPortal(
-        <div className="fixed top-4 right-4 z-[9999] space-y-2 max-w-sm w-full pointer-events-none">
+        <div className="fixed top-4 right-4 z-[9999] space-y-2 max-w-sm w-full pointer-events-none" aria-live="assertive" role="alert">
           {toasts.map(t => (
             <div key={t.id} className="pointer-events-auto">
               <ToastItem item={t} onRemove={() => remove(t.id)} />

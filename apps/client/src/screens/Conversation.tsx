@@ -382,6 +382,7 @@ export function Conversation() {
       <main
         data-component="message-list"
         role="log"
+        aria-live="polite"
         aria-label="Messages"
         className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4"
       >
@@ -553,6 +554,7 @@ export function Conversation() {
         {state.loading.chat && !streamingContent && (
           <div
             data-component="agent-activity"
+            aria-live="polite"
             aria-label="Agent processing"
             data-loading="true"
             className="flex justify-start"

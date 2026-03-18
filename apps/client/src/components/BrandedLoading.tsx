@@ -6,7 +6,7 @@ interface BrandedLoadingProps {
 
 export function BrandedLoading({ message = 'Loading your learning journey...' }: BrandedLoadingProps) {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-bg dark:bg-bg-dark" role="status" aria-label="Loading">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-bg dark:bg-bg-dark" role="status" aria-live="polite" aria-label="Loading">
       <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
         <span className="text-3xl animate-pulse">🧠</span>
       </div>
