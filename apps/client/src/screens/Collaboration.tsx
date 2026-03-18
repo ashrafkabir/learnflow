@@ -22,6 +22,18 @@ const MOCK_PARTNERS = [
   { name: 'Jordan T.', avatar: '🧑‍🎓', topics: ['Web Development', 'DevOps'], level: 'Beginner', online: false },
 ];
 
+const SHARED_NOTES = [
+  { id: '1', title: 'Rust Ownership Explained', author: 'Alex K.', shared: '2h ago', collaborators: 3 },
+  { id: '2', title: 'ML Pipeline Architecture', author: 'Maria S.', shared: '5h ago', collaborators: 5 },
+  { id: '3', title: 'React Server Components Guide', author: 'You', shared: '1d ago', collaborators: 2 },
+];
+
+const ACTIVE_COLLABORATORS = [
+  { name: 'Alex K.', avatar: '👨‍💻', status: 'Studying Rust' },
+  { name: 'Maria S.', avatar: '👩‍🔬', status: 'Reading ML papers' },
+  { name: 'Jordan T.', avatar: '🧑‍🎓', status: 'Offline' },
+];
+
 export function Collaboration() {
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>('Find Study Partners');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -168,15 +180,65 @@ export function Collaboration() {
           </div>
         )}
 
-        {/* Shared Mindmaps */}
+        {/* Shared Mindmaps & Collaboration Hub */}
         {activeTab === 'Shared Mindmaps' && (
-          <div className="text-center py-16 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-            <span className="text-5xl block mb-4">🗺️</span>
-            <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Shared Mindmaps</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-6">
-              Collaborate on knowledge graphs in real-time. See what your peers know, identify complementary strengths, and fill gaps together.
-            </p>
-            <span className="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">Coming Soon</span>
+          <div className="space-y-6">
+            {/* Active Collaborators */}
+            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">🟢 Active Collaborators</h2>
+              <div className="flex flex-wrap gap-3">
+                {ACTIVE_COLLABORATORS.map((c) => (
+                  <div key={c.name} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800">
+                    <span className="text-xl">{c.avatar}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{c.name}</p>
+                      <p className="text-xs text-gray-500">{c.status}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Shared Notes */}
+            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">📄 Shared Notes</h2>
+                <Button variant="primary" size="sm" onClick={() => alert('Share a note... (Mock)')}>
+                  + Share Note
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {SHARED_NOTES.map((note) => (
+                  <div key={note.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">{note.title}</p>
+                      <p className="text-xs text-gray-500">by {note.author} · {note.shared} · {note.collaborators} collaborators</p>
+                    </div>
+                    <Button variant="ghost" size="sm">View</Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Invite Peer */}
+            <div className="rounded-2xl border border-accent/30 bg-accent/5 p-6 text-center">
+              <span className="text-3xl block mb-2">✉️</span>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Invite a Peer</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Share your learning journey — invite friends to collaborate on mindmaps and notes.</p>
+              <Button variant="primary" size="sm" onClick={() => alert('Invite link copied! (Mock)')}>
+                Copy Invite Link
+              </Button>
+            </div>
+
+            {/* Shared Mindmaps preview */}
+            <div className="text-center py-10 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+              <span className="text-4xl block mb-3">🗺️</span>
+              <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Shared Mindmaps</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-4">
+                Collaborate on knowledge graphs in real-time. See what your peers know, identify complementary strengths, and fill gaps together.
+              </p>
+              <span className="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">Coming Soon</span>
+            </div>
           </div>
         )}
       </div>

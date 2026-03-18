@@ -3,6 +3,21 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
 import { SkeletonCourseView } from '../components/Skeleton.js';
+import { CitationTooltip, type Source } from '../components/CitationTooltip.js';
+
+/* Mock sources for inline citation hover previews — Spec §5.2.4 */
+const MOCK_SOURCES: Source[] = [
+  { id: 1, author: 'Smith et al.', title: 'Foundations of Modern Learning', url: 'https://example.com/foundations', year: 2024 },
+  { id: 2, author: 'OpenAI Research', title: 'Scaling Laws for Neural Language Models', url: 'https://arxiv.org/abs/2001.08361', year: 2023 },
+  { id: 3, author: 'García & Chen', title: 'Adaptive Learning Pathways', url: 'https://example.com/adaptive', year: 2024 },
+];
+
+/* Estimate read time from lesson description length and estimatedTime */
+function estimateReadTime(lesson: { estimatedTime?: number; description?: string }): number {
+  if (lesson.estimatedTime) return lesson.estimatedTime;
+  const words = (lesson.description || '').split(/\s+/).length;
+  return Math.max(2, Math.round(words / 200));
+}
 
 export function CourseView() {
   const { courseId } = useParams();
@@ -200,10 +215,22 @@ export function CourseView() {
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {lesson.title}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-300 truncate">{lesson.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-300 truncate">
+                            {lesson.description}
+                            {/* Inline citation hover previews — Spec §5.2.4 */}
+                            {li < MOCK_SOURCES.length && (
+                              <span className="inline-flex ml-1 align-middle">
+                                <CitationTooltip num={MOCK_SOURCES[li].id} source={MOCK_SOURCES[li]} />
+                              </span>
+                            )}
+                          </p>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-300 whitespace-nowrap mr-2">
-                          {lesson.estimatedTime} min
+                        {/* Read time estimate badge */}
+                        <span
+                          className="text-xs text-gray-500 dark:text-gray-300 whitespace-nowrap mr-2 flex items-center gap-1"
+                          title={`Estimated read time: ~${estimateReadTime(lesson)} min`}
+                        >
+                          📖 ~{estimateReadTime(lesson)} min
                         </span>
                         <Button
                           variant={isComplete ? 'ghost' : 'primary'}
@@ -223,6 +250,78 @@ export function CourseView() {
               )}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Course Stats & Sources — Spec §5.2.4 */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
+            <span className="text-2xl block mb-1">📚</span>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{course.modules.length}</p>
+            <p className="text-xs text-gray-500">Modules</p>
+          </div>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
+            <span className="text-2xl block mb-1">📝</span>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalLessons}</p>
+            <p className="text-xs text-gray-500">Total Lessons</p>
+          </div>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
+            <span className="text-2xl block mb-1">⏱️</span>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {course.modules.reduce((s, m) => s + m.lessons.reduce((ls, l) => ls + estimateReadTime(l), 0), 0)}
+            </p>
+            <p className="text-xs text-gray-500">Total Minutes</p>
+          </div>
+        </div>
+
+        {/* Module Progress Overview */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 mb-6">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Module Progress</h3>
+          <div className="space-y-3">
+            {course.modules.map((mod, mi) => {
+              const modCompleted = mod.lessons.filter(l => state.completedLessons.has(l.id)).length;
+              const modPct = mod.lessons.length > 0 ? Math.round((modCompleted / mod.lessons.length) * 100) : 0;
+              return (
+                <div key={mod.id} className="flex items-center gap-3">
+                  <span className="w-6 h-6 rounded-lg bg-accent/10 text-accent text-xs font-bold flex items-center justify-center flex-shrink-0">
+                    {mi + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-700 dark:text-gray-300 truncate">{mod.title}</span>
+                      <span className="text-gray-500 ml-2">{modCompleted}/{mod.lessons.length}</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${modPct === 100 ? 'bg-success' : 'bg-accent'}`}
+                        style={{ width: `${modPct}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Source References */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">📎 Sources & References</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+            This course draws from the following research and materials. Hover over inline citations for previews.
+          </p>
+          <div className="space-y-2">
+            {MOCK_SOURCES.map((src) => (
+              <div key={src.id} className="flex items-start gap-2 text-sm">
+                <span className="text-accent font-semibold">[{src.id}]</span>
+                <div>
+                  <span className="text-gray-900 dark:text-white font-medium">{src.title}</span>
+                  <span className="text-gray-500 dark:text-gray-400"> — {src.author} ({src.year})</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 

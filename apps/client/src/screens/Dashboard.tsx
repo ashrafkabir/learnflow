@@ -387,9 +387,16 @@ export function Dashboard() {
           </div>
         </div>
 
-        {/* Active Pipeline */}
+        {/* Active Pipeline with Live indicator */}
         {activePipelineState && activePipelineState.stage !== 'reviewing' && activePipelineState.stage !== 'published' && (
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-sky-200 dark:border-sky-800 shadow-card p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+              </span>
+              <span className="text-xs font-medium text-green-600 dark:text-green-400">Live — real-time updates</span>
+            </div>
             <PipelineView
               state={activePipelineState}
               onViewCourse={(courseId) => {
@@ -633,6 +640,36 @@ export function Dashboard() {
               <p className="text-sm text-gray-400">Start a course to build your knowledge map</p>
             </div>
           )}
+        </div>
+
+        {/* Mindmap Overview Preview — Spec §5.2.2 */}
+        <div
+          onClick={() => nav('/mindmap')}
+          className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5 cursor-pointer hover:border-accent/50 transition-colors"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">🗺️ Knowledge Mindmap</h2>
+            <span className="text-xs text-accent font-medium">View Full Map →</span>
+          </div>
+          <div className="flex items-center justify-center gap-6 py-4">
+            {/* Mini mindmap teaser nodes */}
+            {[
+              { label: state.courses[0]?.title || 'Machine Learning', color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' },
+              { label: state.courses[1]?.title || 'Data Structures', color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' },
+              { label: state.courses[2]?.title || 'Web Development', color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300' },
+            ].map((node, i) => (
+              <div key={i} className="flex flex-col items-center gap-1">
+                <div className={`w-14 h-14 rounded-full ${node.color} flex items-center justify-center text-lg font-bold`}>
+                  {node.label.charAt(0)}
+                </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[80px] truncate text-center">{node.label}</span>
+                {i < 2 && <div className="hidden sm:block absolute" />}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            Explore your interactive knowledge graph — see mastery levels and connections across all topics.
+          </p>
         </div>
 
         {/* Quick Actions */}

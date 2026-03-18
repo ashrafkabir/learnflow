@@ -1,7 +1,7 @@
 # LearnFlow Improvement Queue — Iteration 25
 
 ## Current Iteration: 25
-## Status: READY FOR BUILDER
+## Status: DONE
 ## Date: 2025-07-22
 ## Focus: TSC fix (THIRD TIME), PipelineDetail type alignment, real test expansion, service worker, dashboard notifications feed
 
