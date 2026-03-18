@@ -95,7 +95,7 @@ export function FirstCourse() {
         ) : (
           <>
             {/* Completion */}
-            <Confetti />
+            <Confetti trigger={true} />
             <div className="text-7xl mb-6">🎉</div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
               You're All Set!

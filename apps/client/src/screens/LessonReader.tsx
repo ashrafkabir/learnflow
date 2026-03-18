@@ -6,6 +6,7 @@ import { SkeletonLessonContent } from '../components/Skeleton.js';
 import { Confetti } from '../components/Confetti.js';
 import { Button } from '../components/Button.js';
 import { useSwipe } from '../hooks/useSwipe.js';
+import { analytics } from '../lib/analytics.js';
 
 // ── Types ──────────────────────────────────────────────────
 interface Illustration {
@@ -325,6 +326,7 @@ export function LessonReader() {
   const handleMarkComplete = async () => {
     if (courseId && lessonId) {
       await completeLesson(courseId, lessonId);
+      analytics.track('lesson_completed', { courseId, lessonId });
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3500);
     }

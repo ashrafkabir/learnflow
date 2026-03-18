@@ -1,8 +1,9 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useApp } from './context/AppContext.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { PageTransition } from './components/PageTransition.js';
+import { analytics } from './lib/analytics.js';
 import { MobileNav } from './components/MobileNav.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 import { ShortcutsModal } from './components/ShortcutsModal.js';
@@ -74,14 +75,21 @@ function AppMobileNav() {
   return <MobileNav />;
 }
 
+function AnalyticsPageTracker() {
+  const location = useLocation();
+  useEffect(() => { analytics.page(location.pathname); }, [location.pathname]);
+  return null;
+}
+
 export function App() {
   const { showHelp, setShowHelp } = useKeyboardShortcuts();
   return (
     <main role="main" aria-label="LearnFlow Application">
       <ShortcutsModal open={showHelp} onClose={() => setShowHelp(false)} />
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">Skip to content</a>
-      <div id="main-content" />
+      <AnalyticsPageTracker />
       <AppMobileNav />
+      <div id="main-content" tabIndex={-1}>
       <ErrorBoundary>
       <OnboardingGuard>
       <Suspense fallback={<LoadingSpinner />}>
@@ -143,6 +151,7 @@ export function App() {
       </Suspense>
       </OnboardingGuard>
       </ErrorBoundary>
+      </div>
     </main>
   );
 }

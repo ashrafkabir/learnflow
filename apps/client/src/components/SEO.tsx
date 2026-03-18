@@ -5,11 +5,12 @@ interface SEOProps {
   description: string;
   ogImage?: string;
   path?: string;
+  jsonLd?: Record<string, unknown>;
 }
 
 const BASE_URL = 'https://learnflow.ai';
 
-export function SEO({ title, description, ogImage = '/og-image.png', path = '' }: SEOProps) {
+export function SEO({ title, description, ogImage = '/og-image.png', path = '', jsonLd }: SEOProps) {
   useEffect(() => {
     const fullTitle = `${title} | LearnFlow`;
     const fullUrl = `${BASE_URL}${path}`;
@@ -34,7 +35,24 @@ export function SEO({ title, description, ogImage = '/og-image.png', path = '' }
     setMeta('name', 'twitter:title', fullTitle);
     setMeta('name', 'twitter:description', description);
     setMeta('name', 'twitter:image', `${BASE_URL}${ogImage}`);
-  }, [title, description, ogImage, path]);
+
+    // JSON-LD structured data
+    const existingLd = document.querySelector('script[data-seo-jsonld]');
+    if (existingLd) existingLd.remove();
+
+    if (jsonLd) {
+      const script = document.createElement('script');
+      script.type = 'application/ld+json';
+      script.setAttribute('data-seo-jsonld', 'true');
+      script.textContent = JSON.stringify({ '@context': 'https://schema.org', ...jsonLd });
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      const el = document.querySelector('script[data-seo-jsonld]');
+      if (el) el.remove();
+    };
+  }, [title, description, ogImage, path, jsonLd]);
 
   return null;
 }

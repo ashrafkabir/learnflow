@@ -43,7 +43,7 @@ export function HomePage() {
 
   return (
     <MarketingLayout>
-      <SEO title="Learn anything. Master everything." description="AI-powered personalized learning platform. Set your goals, and intelligent agents build your learning path from the best web content." path="/" />
+      <SEO title="Learn anything. Master everything." description="AI-powered personalized learning platform. Set your goals, and intelligent agents build your learning path from the best web content." path="/" jsonLd={{ '@type': 'Organization', name: 'LearnFlow', url: 'https://learnflow.ai', logo: 'https://learnflow.ai/logo.png', description: 'AI-powered personalized learning platform', sameAs: [] }} />
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-accent/5 via-purple-50 to-pink-50 dark:from-accent/10 dark:via-gray-950 dark:to-gray-900" />
