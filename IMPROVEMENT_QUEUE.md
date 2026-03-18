@@ -1,271 +1,275 @@
-# LearnFlow Improvement Queue — Iteration 15
+# LearnFlow Improvement Queue — Iteration 16
 
-## Current Iteration: 15
-## Status: DONE
+## Current Iteration: 16
+## Status: READY FOR BUILDER
 ## Date: 2025-07-19
-## Focus: Button component adoption, radius/shadow token enforcement, skeleton loading, conversation polish
+## Focus: Sub-screen Button adoption, marketplace detail page, skeleton gaps, token cleanup, onboarding polish
 
 ---
 
 ## Brutal Assessment
 
-After 14 iterations, the app has good feature coverage — dashboard hero, design tokens, LLM synthesis, marketplace, mindmap, chat with KaTeX/code highlighting, data export. Color token migration to `bg-accent` classes is **done** (zero `bg-blue` or `bg-[#` in screens). CSS custom properties exist in `index.css`. The `Button` component exists.
+After 15 iterations, the **main 9 screen files** are in solid shape: Button component adopted everywhere, shadow tokens applied, skeleton loading for Dashboard/CourseView, agent activity indicators, background colors per spec. TypeScript compiles clean, 262 tests pass.
 
-**But three systemic problems remain that make this a prototype:**
+**But the builder only migrated the top-level screens.** There are **49 raw `<button>` elements** across marketplace (7), onboarding (17), and marketing (25) subdirectories — completely untouched by iter 15. There are also **16 stale `shadow-sm`/`shadow-lg`/`shadow-md`** uses in those same subdirectories. The Button component and shadow token work is literally half-done.
 
-1. **The Button component is NEVER used.** `apps/client/src/components/Button.tsx` exists with proper variants (`primary`/`secondary`/`ghost`/`danger`), but **zero screen files import it**. There are **87+ raw `<button>` elements** across 9 screen files (LessonReader: 28, Dashboard: 20, ProfileSettings: 11, Conversation: 9, MindmapExplorer: 8, CourseView: 5, etc.). Each uses ad-hoc Tailwind classes. Build log iter 14 claimed Task 8 was ✅ DONE — it was not. The component was created but never integrated.
+**Key gaps vs spec:**
 
-2. **CSS custom properties (`var(--radius-*)`, `var(--shadow-*)`) are defined but NEVER referenced.** Zero occurrences of `var(--radius` or `var(--shadow` in any `.tsx` file. Border radii are a chaos of `rounded-xl`, `rounded-2xl`, `rounded-lg`, `rounded-md`, `rounded-full` (250+ instances). Shadows use Tailwind defaults. The tokens exist only on paper.
+1. **No Marketplace Course Detail Page** (spec §5.2.7) — clicking a course card has no detail view with syllabus preview, reviews, creator profile. This was deferred from iter 15. It's a core user journey.
 
-3. **No skeleton/loading states** except LessonReader. Dashboard, CourseView, Marketplace, Settings all show nothing or a plain "Loading..." while data fetches. This is the fastest way to make an app feel cheap.
+2. **SkeletonMarketplace exists but is NEVER imported** — component was created in Skeleton.tsx but no screen uses it. CourseMarketplace has no loading state.
+
+3. **6 remaining `shadow-sm`** instances in main screens (Dashboard: 2, MindmapExplorer: 3, ProfileSettings: 1) that should be `shadow-card`.
+
+4. **Onboarding Topics has no adjacent-topic suggestions** — spec §5.2.1 says "system suggests adjacent topics." Current implementation is a static grid of chips with no suggestion logic.
+
+5. **No mobile hamburger nav** for authenticated app screens — marketing layout has one, but Dashboard/CourseView/etc. have no responsive nav. On mobile, sidebar is inaccessible.
 
 ---
 
 ## Prioritized Tasks (12 items)
 
-### 1. 🔴 CRITICAL: Adopt Button Component Across ALL Screens
+### 1. 🔴 CRITICAL: Adopt Button Component in Marketplace + Onboarding + Marketing Screens
 
-**Problem:** `Button.tsx` exists but is imported by exactly 0 screens. 87+ raw `<button>` elements use inconsistent ad-hoc Tailwind classes. Some are `rounded-xl`, others `rounded-lg`, `rounded-2xl`, `rounded-full`. Heights vary. This was falsely marked done in iter 14.
+**Problem:** Iter 15 migrated only the 9 top-level `screens/*.tsx` files. There are **49 raw `<button>` elements** in subdirectories:
+- `marketplace/AgentMarketplace.tsx` — 2
+- `marketplace/CourseMarketplace.tsx` — 5
+- `onboarding/ApiKeys.tsx` — 2
+- `onboarding/FirstCourse.tsx` — 1
+- `onboarding/Goals.tsx` — 5
+- `onboarding/SubscriptionChoice.tsx` — 4
+- `onboarding/Topics.tsx` — 4
+- `onboarding/Welcome.tsx` — 1
+- `marketing/BlogPost.tsx` — 3
+- `marketing/Download.tsx` — 1
+- `marketing/Home.tsx` — 3
+- `marketing/MarketingLayout.tsx` — 15
+- `marketing/Pricing.tsx` — 3
 
 **Fix:**
-- Replace EVERY `<button>` in these files with `<Button>` from `../components/Button`:
-  - `screens/Dashboard.tsx` (20 buttons)
-  - `screens/LessonReader.tsx` (28 buttons)
-  - `screens/ProfileSettings.tsx` (11 buttons)
-  - `screens/Conversation.tsx` (9 buttons)
-  - `screens/MindmapExplorer.tsx` (8 buttons)
-  - `screens/CourseView.tsx` (5 buttons)
-  - `screens/LoginScreen.tsx` (2 buttons)
-  - `screens/RegisterScreen.tsx` (2 buttons)
-  - `screens/PipelineDetail.tsx` (2 buttons)
-- Map existing styles to appropriate variant: primary CTAs → `variant="primary"`, cancel/dismiss → `variant="ghost"`, delete → `variant="danger"`, secondary actions → `variant="secondary"`
-- Add `icon` variant or `size="sm"` to Button if needed for icon-only buttons (44px square)
+- Replace all 49 `<button>` elements with `<Button>` component imports
+- Use relative import path `../../components/Button` for subdirectory files
+- Map variants appropriately: CTAs → `primary`, nav → `ghost`, secondary → `secondary`
 
 **Acceptance Criteria:**
-- `grep -rn "<button" apps/client/src/screens/ --include="*.tsx" | wc -l` returns 0
-- `grep -rn "import.*Button.*from.*components/Button" apps/client/src/screens/ --include="*.tsx" | wc -l` returns ≥9
-- All buttons visually consistent per variant across all screens
+- `grep -rn "<button" apps/client/src/screens/ --include="*.tsx" | wc -l` returns 0 (recursive, all subdirs)
+- All files import from `components/Button`
 
 ---
 
-### 2. 🔴 CRITICAL: Enforce Radius Tokens via Tailwind Theme
+### 2. 🔴 CRITICAL: Marketplace Course Detail Page
 
-**Problem:** 250+ instances of mixed `rounded-xl`, `rounded-2xl`, `rounded-lg`, `rounded-md`, `rounded-full` across screens. CSS custom properties `--radius-button: 12px`, `--radius-card: 16px` etc. are defined in `:root` but never consumed. Tailwind's default radius classes ignore these tokens.
-
-**Fix:**
-- Map CSS custom properties to Tailwind's `@theme` block in `index.css`:
-  ```
-  --radius-sm: 8px;    /* inputs, pills */
-  --radius-md: 12px;   /* buttons */
-  --radius-lg: 16px;   /* cards */
-  --radius-xl: 20px;   /* modals */
-  --radius-full: 9999px; /* chips, avatars */
-  ```
-- Create utility classes or simply standardize: cards → `rounded-2xl`, buttons → `rounded-xl`, inputs → `rounded-xl`, pills/chips → `rounded-full`, modals → `rounded-2xl`
-- Do a single pass through ALL screen files to normalize. The Button component handles its own radius; focus on cards, inputs, containers.
-
-**Acceptance Criteria:**
-- Cards consistently use ONE radius value (pick `rounded-2xl`)
-- Inputs consistently use ONE radius value (pick `rounded-xl`)
-- No `rounded-md` or `rounded-lg` on cards (those are too small per the design)
-- Modals/dialogs use `rounded-2xl`
-
----
-
-### 3. 🔴 CRITICAL: Enforce Shadow Tokens
-
-**Problem:** `--shadow-card`, `--shadow-card-hover`, `--shadow-modal` defined in `:root` but never used. Screens use a mix of Tailwind `shadow-sm`, `shadow-lg`, `shadow-accent/20`, and no shadow at all on cards.
+**Problem:** Spec §5.2.7 requires "Course detail page: syllabus preview, creator profile, reviews, price." No such page exists. Clicking a course card in CourseMarketplace either enrolls immediately or does nothing — no preview.
 
 **Fix:**
-- Add to Tailwind `@theme` in `index.css`:
-  ```
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
-  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08);
-  --shadow-modal: 0 8px 30px rgba(0,0,0,0.12);
-  ```
-- These should map to `shadow-card`, `shadow-card-hover`, `shadow-modal` Tailwind utilities
-- Replace all card `shadow-*` classes with `shadow-card hover:shadow-card-hover`
-- Replace modal overlays with `shadow-modal`
-- Dark mode variants already defined in `.dark`
-
-**Acceptance Criteria:**
-- All card elements use `shadow-card` (or the Tailwind class mapped to the token)
-- Hover states on interactive cards use `shadow-card-hover`
-- Modals/drawers use `shadow-modal`
-- `grep -rn "shadow-sm\|shadow-lg\|shadow-md" apps/client/src/screens/ --include="*.tsx"` returns minimal results (only non-card elements)
-
----
-
-### 4. 🔴 CRITICAL: Skeleton Loading for Dashboard, CourseView, Marketplace
-
-**Problem:** `Skeleton.tsx` component exists but is only used in `LessonReader.tsx`. Dashboard shows raw empty states while fetching analytics/courses. CourseView shows "Loading course..." text. Marketplace has no loading state.
-
-**Fix:**
-- Create skeleton variants in `components/Skeleton.tsx`:
-  - `SkeletonDashboard`: hero placeholder + 4 stat cards + course list placeholders
-  - `SkeletonCourseView`: syllabus sidebar + lesson area placeholder
-  - `SkeletonMarketplace`: filter bar + 6 card grid placeholders
-- Use pulsing `animate-pulse bg-gray-200 dark:bg-gray-800 rounded-xl` blocks
-- Show skeletons while data is loading, swap to real content when ready
-- In Dashboard: show skeleton until both courses and analytics have loaded
-
-**Acceptance Criteria:**
-- Dashboard shows skeleton on first load, not blank space
-- CourseView shows skeleton, not "Loading course..." text
-- CourseMarketplace shows skeleton grid, not empty page
-- Skeletons match the shape/layout of actual content
-
----
-
-### 5. 🟡 HIGH: Conversation Agent Activity Indicator
-
-**Problem:** Spec §5.2.3 says "Agent activity indicator: subtle animation showing which agent is currently processing." Current implementation has a generic "is working..." / "Thinking..." text (lines 472-477 of Conversation.tsx). No agent name shown, no subtle animation.
-
-**Fix:**
-- When receiving agent activity via WebSocket, display: "🔍 Research Agent is finding sources..." or "📝 Course Builder is synthesizing..." with the actual agent name
-- Add a subtle dot-pulse animation (3 dots bouncing) next to the agent name
-- Show agent icon/emoji based on type (research=🔍, builder=📝, quiz=🧠, tutor=👨‍🏫)
-
-**Acceptance Criteria:**
-- Agent name visible during processing (not just "Thinking...")
-- Animated indicator (pulse or bouncing dots)
-- Different agents show different labels
-
----
-
-### 6. 🟡 HIGH: Course View — Mark Complete, Quiz Me, Take Notes Action Bar
-
-**Problem:** Spec §5.2.4 requires "Bottom action bar: Mark Complete, Take Notes, Quiz Me, Ask Question" on lesson view. LessonReader has some of these but CourseView (the syllabus screen) has no lesson-level quick actions.
-
-**Fix:**
-- In `CourseView.tsx`, when a lesson is expanded/selected, show a bottom action bar with:
-  - "Mark Complete" (toggle) — accent button
-  - "Quiz Me" — ghost button, navigates to conversation with quiz prompt
-  - "Take Notes" — ghost button, navigates to conversation with notes prompt
-- Bar should be sticky at bottom, visible only when a lesson is selected
-
-**Acceptance Criteria:**
-- Selecting a lesson in CourseView shows bottom action bar
-- Mark Complete toggles lesson completion status
-- Quiz Me / Take Notes navigate to Conversation with appropriate prompt
-
----
-
-### 7. 🟡 HIGH: Background Color Per Spec — `#F8FAFC` not pure white
-
-**Problem:** Spec §5.3 says Background light mode = `#F8FAFC`. Body currently uses `bg-white` (line in index.css: `@apply bg-white`). The spec's background is a warm off-white that reduces eye strain.
-
-**Fix:**
-- Change body background from `bg-white` to `bg-[#F8FAFC]` or use the existing `bg-surface` token
-- Update the `@theme` `--color-bg` if needed (it's already `#ffffff` — should be `#F8FAFC`)
-- Dark mode body should be `#020617` per spec (check current value `#111827` vs spec)
-
-**Acceptance Criteria:**
-- Light mode page background is `#F8FAFC`, not `#FFFFFF`
-- Dark mode page background is `#020617` per spec
-- Cards on `#F8FAFC` background use `#FFFFFF` surface (subtle lift effect)
-
----
-
-### 8. 🟡 HIGH: Mindmap Color-Coding by Mastery Level
-
-**Problem:** Spec §5.2.5 says nodes should be "Color-coded by mastery level (not started, in progress, mastered)." Need to verify if MindmapExplorer actually uses mastery-based colors.
-
-**Fix:**
-- In `MindmapExplorer.tsx`, ensure node colors reflect:
-  - Not started: `gray-300` / neutral
-  - In progress: `accent` / blue
-  - Mastered: `success` / green
-- Add a visible legend with text labels (not just color dots — accessibility)
-- Ensure color tokens from design system are used, not hardcoded hex
-
-**Acceptance Criteria:**
-- Nodes visually distinguish 3 mastery states
-- Legend with text labels present
-- Colors use design system tokens
-
----
-
-### 9. 🟠 MEDIUM: Marketplace Course Detail Page
-
-**Problem:** Spec §5.2.7 says "Course detail page: syllabus preview, creator profile, reviews, price." Current CourseMarketplace shows cards in a grid but clicking likely just enrolls — no detail page with reviews/preview.
-
-**Fix:**
-- Create `screens/marketplace/CourseDetail.tsx` with:
-  - Course title, description, creator info
-  - Syllabus preview (module/lesson list)
-  - Rating display with review count
-  - "Enroll" CTA button
+- Create `apps/client/src/screens/marketplace/CourseDetail.tsx`:
+  - Course title, description, creator name + avatar
+  - Syllabus preview (collapsible module/lesson list)
+  - Star rating + review count
   - Price badge (Free / $X)
-- Add route `/marketplace/course/:id`
-- Course cards in CourseMarketplace link to this detail page
+  - "Enroll" CTA Button (primary variant)
+  - Back navigation link
+- Add route in `App.tsx`: `<Route path="/marketplace/courses/:courseId" element={<CourseDetail />} />`
+- Update CourseMarketplace cards to link to `/marketplace/courses/:id` instead of direct enroll
 
 **Acceptance Criteria:**
-- Clicking a course card opens detail page (not immediate enroll)
-- Detail page shows syllabus, creator, rating
-- Enroll button on detail page triggers enrollment
+- Route `/marketplace/courses/:courseId` renders CourseDetail
+- Page shows syllabus, creator info, rating, enroll button
 - Back navigation works
+- Uses Button component and shadow tokens
 
 ---
 
-### 10. 🟠 MEDIUM: Notification Feed on Dashboard
+### 3. 🔴 CRITICAL: Wire SkeletonMarketplace into CourseMarketplace
 
-**Problem:** Spec §5.2.2 includes "Notifications feed: agent updates, peer messages, marketplace recommendations." Dashboard has no notifications section.
+**Problem:** `SkeletonMarketplace` component exists in `Skeleton.tsx` (line 103) but is **never imported or used** by any screen. `CourseMarketplace.tsx` has no loading state — shows nothing while courses fetch.
 
 **Fix:**
-- Add a "Notifications" card/section to Dashboard below the course list
-- Show recent items: "Course generation complete", "New course available in marketplace", "Quiz ready"
-- Store notifications in app state (mock data for now)
-- Show unread count badge on the bell icon in header
+- In `apps/client/src/screens/marketplace/CourseMarketplace.tsx`:
+  - Import `SkeletonMarketplace` from `../../components/Skeleton`
+  - Show `<SkeletonMarketplace />` while `loading` state is true
+  - Swap to real content when data arrives
 
 **Acceptance Criteria:**
-- Dashboard shows a notifications section
-- Bell icon in header shows unread count
-- At least 3 mock notification types displayed
+- `grep -rn "SkeletonMarketplace" apps/client/src/screens/marketplace/CourseMarketplace.tsx` returns import + usage
+- Marketplace shows pulsing skeleton grid during load, not blank page
 
 ---
 
-### 11. 🟠 MEDIUM: Onboarding Interest Mapping Screen
+### 4. 🟡 HIGH: Clean Up Remaining shadow-sm/shadow-lg in Main Screens
 
-**Problem:** Spec §5.2.1 step 3 says "Interest Mapping: tags/chips for related domains; system suggests adjacent topics." Check if this exists in onboarding flow. `Topics.tsx` exists but need to verify it matches spec.
+**Problem:** 6 instances of old shadow classes remain in main screen files:
+- `Dashboard.tsx:178` — `shadow-sm` on a button
+- `Dashboard.tsx:208` — `shadow-sm` on a button
+- `MindmapExplorer.tsx:302` — `shadow-sm`
+- `MindmapExplorer.tsx:316` — `shadow-sm`
+- `MindmapExplorer.tsx:329` — `shadow-sm`
+- `ProfileSettings.tsx:73` — `shadow-sm`
+
+Plus **16 instances** in marketplace/onboarding/marketing subdirectories.
 
 **Fix:**
-- Verify `Topics.tsx` has:
-  - Pre-populated topic chips user can select
-  - System-suggested adjacent topics based on selections
-  - Visual feedback on selected vs unselected chips
-- If missing suggestion logic, add: when user selects "Machine Learning", suggest "Statistics", "Python", "Neural Networks"
+- Replace `shadow-sm` on card-like elements with `shadow-card`
+- Replace `shadow-sm` on floating buttons/toolbars with `shadow-card` or remove if inside a card
+- Do the same cleanup in subdirectory files
 
 **Acceptance Criteria:**
-- Topics screen shows selectable chips
-- Selecting chips triggers adjacent topic suggestions
-- Selected state is visually clear (accent fill vs outline)
+- `grep -rn "shadow-sm\|shadow-lg\|shadow-md" apps/client/src/screens/ --include="*.tsx" | wc -l` returns 0 or near-0 (exceptions only for intentional non-card shadows)
 
 ---
 
-### 12. 🟠 MEDIUM: Profile Settings — API Key Usage Stats
+### 5. 🟡 HIGH: Onboarding Topics — Adjacent Topic Suggestions
 
-**Problem:** Spec §5.2.8 says "API key vault with provider management and usage stats." Settings has API key entry but likely no usage stats display.
+**Problem:** Spec §5.2.1 step 3 says "system suggests adjacent topics" based on selections. Current `Topics.tsx` (110 lines) shows a static grid of chips with no suggestion logic.
 
 **Fix:**
-- Below each API key input, show usage summary:
-  - "Used X times this month"
-  - "Last used: [date]"
-  - Small bar chart or text indicator
-- Mock data for now; wire to real analytics when backend supports it
+- In `apps/client/src/screens/onboarding/Topics.tsx`:
+  - Add an `ADJACENT_MAP` constant: `{ "Machine Learning": ["Statistics", "Python", "Neural Networks"], "Web Development": ["JavaScript", "React", "CSS"], ... }`
+  - When user selects a topic, dynamically show "Suggested for you" section below with adjacent topics not yet selected
+  - Animate suggestions appearing with a subtle fade-in
+  - Style suggestion chips differently (outline/dashed border) to distinguish from main topics
 
 **Acceptance Criteria:**
-- Each API key section shows usage count
-- Last used date displayed
-- Visual indicator of usage level
+- Selecting "Machine Learning" shows suggested adjacent topics
+- Suggestions update dynamically as selections change
+- Visual distinction between main topics and suggestions
 
 ---
 
-## Remaining for Future Iterations (Post-15)
+### 6. 🟡 HIGH: Mobile Responsive Nav for App Screens
+
+**Problem:** Marketing layout has a hamburger menu (`MarketingLayout.tsx:58`), but authenticated app screens (Dashboard, CourseView, Conversation, etc.) have no mobile-responsive navigation. On mobile viewports, the sidebar nav is likely hidden or overflows.
+
+**Fix:**
+- Create a `components/AppShell.tsx` or `components/MobileNav.tsx`:
+  - Hamburger icon in top-left on screens < 768px
+  - Slide-out drawer with nav links: Dashboard, Courses, Mindmap, Marketplace, Settings
+  - Overlay backdrop when open
+  - Close on link click or backdrop tap
+- Wrap all authenticated screens in this shell (or add to existing layout)
+
+**Acceptance Criteria:**
+- At 375px viewport width, hamburger menu visible
+- Tapping hamburger opens nav drawer with all app links
+- Nav works on Dashboard, CourseView, Conversation, Marketplace, Settings, MindmapExplorer
+
+---
+
+### 7. 🟡 HIGH: Conversation Quick-Action Chips
+
+**Problem:** Spec §5.2.3 says "Quick-action chips: contextual suggested actions (Take Notes, Quiz Me, Go Deeper, See Sources)." Need to verify these exist and are contextual (not static).
+
+**Fix:**
+- Check `Conversation.tsx` for quick-action chips after assistant messages
+- If missing or static, add contextual chip row below the latest assistant message:
+  - After a lesson response: "Quiz Me", "Take Notes", "Go Deeper"
+  - After a quiz: "Review Mistakes", "Next Topic"
+  - After sources shown: "See Sources", "Summarize"
+- Chips should use `<Button variant="ghost" size="sm">` with appropriate icons
+
+**Acceptance Criteria:**
+- Quick-action chips appear below assistant messages
+- Chips are contextual (different options based on message type)
+- Clicking a chip sends the corresponding prompt
+
+---
+
+### 8. 🟠 MEDIUM: Course View — Inline Source Citations with Hover Preview
+
+**Problem:** Spec §5.2.4 says "Inline source citations with hover-preview." LessonReader has citation tooltip rendering (line 826), but need to verify it actually shows hover previews with source title + URL, not just a number.
+
+**Fix:**
+- Verify `LessonReader.tsx` citation rendering includes:
+  - Superscript number in text
+  - Hover tooltip showing: source title, author, URL (truncated)
+  - Click opens source in new tab
+- If only partial, enhance the tooltip component
+
+**Acceptance Criteria:**
+- Hovering a citation number shows a preview tooltip
+- Tooltip includes source title and link
+- Click opens the source URL
+
+---
+
+### 9. 🟠 MEDIUM: Onboarding SubscriptionChoice — Stripe/Upgrade Flow
+
+**Problem:** Spec §5.2.1 step 5 says "one-tap upgrade with Stripe/App Store billing." `SubscriptionChoice.tsx` exists (4 buttons) but likely has no Stripe integration — just a static comparison.
+
+**Fix:**
+- Add a mock Stripe checkout flow:
+  - "Upgrade to Pro" button triggers a modal showing "Payment integration coming soon" with email capture
+  - "Continue with Free" proceeds to next step
+  - Visual: clear Free vs Pro feature comparison table
+- Wire real Stripe when backend supports it
+
+**Acceptance Criteria:**
+- Free vs Pro comparison clearly displayed
+- Pro button shows "coming soon" modal (not a dead click)
+- Free button advances onboarding
+
+---
+
+### 10. 🟠 MEDIUM: Dashboard — Mindmap Overview Widget
+
+**Problem:** Spec §5.2.2 says "Mindmap Overview: interactive knowledge graph showing all learning domains and connections." Dashboard likely doesn't have an inline mindmap preview.
+
+**Fix:**
+- Add a "Knowledge Map" card to Dashboard below Today's Lessons
+- Show a small, non-interactive preview of the user's mindmap (static SVG or simplified canvas)
+- "Explore Full Map" link navigates to `/mindmap`
+- If no courses yet, show empty state: "Start a course to build your knowledge map"
+
+**Acceptance Criteria:**
+- Dashboard shows a mindmap preview card
+- Card links to full MindmapExplorer
+- Empty state when no data
+
+---
+
+### 11. 🟠 MEDIUM: Profile Settings — Notification Preferences
+
+**Problem:** Spec §5.2.8 says "Notification preferences." Settings likely has API keys, export, and subscription but no notification preference toggles.
+
+**Fix:**
+- Add "Notifications" section to ProfileSettings:
+  - Toggle: "Course completion alerts" (on/off)
+  - Toggle: "Daily learning reminders" (on/off)
+  - Toggle: "Marketplace recommendations" (on/off)
+  - Toggle: "Agent activity updates" (on/off)
+- Store in local state / mock API for now
+
+**Acceptance Criteria:**
+- Notification preferences section visible in Settings
+- Toggles are functional (persist in local state)
+- Uses consistent styling (shadow-card, rounded-2xl, Button component)
+
+---
+
+### 12. 🟠 MEDIUM: First Course Generation — Real-Time Progress Animation
+
+**Problem:** Spec §5.2.1 step 6 says "orchestrator builds initial course in real-time with progress animation." `FirstCourse.tsx` exists but likely shows basic loading, not a multi-step animated progress.
+
+**Fix:**
+- In `FirstCourse.tsx`, show a staged progress animation:
+  - Step 1: "🔍 Researching sources..." (0-25%)
+  - Step 2: "📝 Building syllabus..." (25-50%)
+  - Step 3: "🧠 Creating lessons..." (50-75%)
+  - Step 4: "✨ Polishing content..." (75-100%)
+- Animated progress bar with step labels
+- Each step transitions after a delay (or real WebSocket events)
+- Completion shows confetti or success animation + "View Your Course" button
+
+**Acceptance Criteria:**
+- Progress animation shows 4 distinct stages
+- Progress bar animates smoothly
+- Completion state has clear CTA to view course
+
+---
+
+## Remaining for Future Iterations (Post-16)
 
 - PWA offline support & service worker
-- Mobile hamburger nav for app screens
-- Horizontal scroll for filter chips on mobile marketplace
 - Collaboration Agent peer matching UI
 - Export Agent (PDF, SCORM, Notion, Obsidian)
 - Playwright E2E tests for all user journeys
@@ -282,5 +286,7 @@ After 14 iterations, the app has good feature coverage — dashboard hero, desig
 - High-contrast mode (WCAG AAA)
 - Screen reader audit with VoiceOver/NVDA
 - Agent marketplace detail page (similar to course detail)
-- Stripe/payment integration for Pro tier
+- Stripe/payment real integration for Pro tier
 - Keyboard shortcut sheet (? key)
+- Privacy controls and data deletion UI
+- Subscription management (upgrade/downgrade/cancel)
