@@ -1,139 +1,158 @@
 # IMPROVEMENT_QUEUE
 
-Iteration: 31
-Status: DONE
+Iteration: 32
+Status: READY FOR BUILDER
 
-## Brutal Assessment (with evidence)
+## Brutal Assessment (vs full spec)
 
-This codebase is currently a **high-quality UI demo + lightweight API**, not the full platform described by the product spec.
+LearnFlow is **not** the platform described in `LearnFlow_Product_Spec.md`. It is a polished, test-covered **UI-first demo** with a lightweight API and mocked/simulated “agentic” behaviors.
 
-**Iteration 30 changes actually landed (verified):**
+### What’s genuinely solid
 
-- WS hub added: `apps/api/src/wsHub.ts` (`registerSocket`, `emitToUser`).
-- WS server registers sockets: `apps/api/src/websocket.ts` calls `registerSocket(user.sub, ws)`.
-- Lesson completion emits real progress: `apps/api/src/routes/courses.ts` emits `progress.update` with `{ course_id, lesson_id, completion_percent }`.
-- WS streaming uses real app context (not canned chunks): `apps/api/src/wsOrchestrator.ts` streams excerpt from the selected lesson and extracts URLs from “References/Sources”.
-- Marketing site missing routes added in `apps/web`: `/about`, `/docs`, `/marketplace`, and nav links; web dev port moved to 3003.
+- **Client UX coverage**: onboarding, dashboard, conversation, course view, mindmap, marketplaces, settings exist and are screenshot-testable.
+- **Dev ergonomics**: monorepo, tests, Playwright harnesses, deterministic screenshot scripts.
+- **WebSocket infra**: working server, shared contract types, dev auth shortcut (`token=dev`), and Vite WS proxy in client.
 
-**Biggest spec-vs-implementation gaps (evidence):**
+### What is materially missing vs spec (highest-level)
 
-- Spec architecture (gRPC, agent mesh, vector DB, Redis/S3, containerized agents) is not implemented. Current persistence is **SQLite** (`apps/api/src/db.ts`) and most “agents” are simulated via routes/UI.
-- WebSocket contract is **not dev-functional end-to-end**: client WS connects to `ws://{window.location.host}/ws` (`apps/client/src/hooks/useWebSocket.ts`) but API runs on port 3000 while client runs on 3001/3002 → WS fails without proxy.
-- Marketing website pages exist but are **minimal**, missing wireframe-required sections (demo, testimonials, stats, security badges) and tech stack items (Tailwind/Framer/MDX).
-- Docs page references `openapi.yaml` but file is not present (likely incorrect documentation).
+- **Real multi-agent orchestration** (DAG planner + registry exists in `packages/core` but is not wired into the running API/WS chat path).
+- **Real web discovery + attribution** for course/lesson generation (pipeline code exists in `packages/agents`, but the API’s course generation and WS orchestrator do not use it).
+- **Persistent, first-class citations** in lessons (client course view uses `MOCK_SOURCES`; WS sources are heuristic URL extraction from lesson markdown).
+- **Mindmap as knowledge graph** (current WS mindmap.subscribe returns static nodes/edges).
+- **Marketplace reality** (creator flows + purchases are mostly UI simulation; moderation, revenue share, and real distribution are not implemented).
+- **Pro tier behavior** is only partially real (endpoints exist; real feature gating + managed key pool behavior is not end-to-end).
 
-## Verification Artifacts
+## Iteration 31 Fix Verification (explicit checks)
+
+Verified **landed**:
+
+- **WS proxy in dev**: `apps/client/vite.config.ts` proxies `/ws -> ws://localhost:3000` with `ws: true`.
+- **Shared WS types**:
+  - Canonical types: `packages/shared/src/types/ws.ts`
+  - API re-export: `apps/api/src/wsContract.ts` (`export type { … } from '@learnflow/shared'`)
+  - Client usage: `apps/client/src/hooks/useWebSocket.ts` parses JSON as `WsServerEvent`.
+
+Notes:
+
+- Vite `strictPort: true` makes screenshot runs deterministic, but **dev will fail if 3001 already used** (which happened during this run). This is good (fail-fast), but ensure dev scripts clean up prior vite instances.
+
+## Boot + Playwright Screenshots (Iteration 32)
 
 ### Boot
 
 - `npm run dev` started:
   - API: http://localhost:3000
-  - Client: port 3001 was in use → Vite started at http://localhost:3002
+  - Client: http://localhost:3001
   - Web: http://localhost:3003
 
-### Screenshots
+### Screenshots generated (every screen harness currently covers)
 
-- Client/app + marketing (existing harness): `evals/screenshots/iter30-2026-03-18/` (27 PNGs)
-  - landing-home, features/pricing/download/blog/about/docs
-  - login/register, onboarding 1–6
-  - dashboard, conversation, mindmap, marketplace courses/agents, collaborate, settings, pipelines, course view, lesson reader, pipeline detail
-- Website-only (added harness): `evals/screenshots/iter31-web-2026-03-18/` (8 PNGs)
-  - web-home, web-about, web-marketplace, web-docs, web-features, web-pricing, web-download, web-blog
+Location: `learnflow/screenshots/`
 
-## Prioritized Tasks (Problem → Fix → Acceptance Criteria)
+- Marketing: `home.png`, `features.png`, `pricing.png`, `download.png`, `blog.png`, `about.png` (if present in harness), `settings.png` etc.
+- Auth: `login.png`, `register.png`
+- Onboarding (collapsed into `onboarding.png` in this harness)
+- App: `dashboard.png`, `conversation.png`, `mindmap.png`
+- Marketplace: `marketplace-courses.png`, `marketplace-agents.png`, `marketplace-creator.png`
+- Course: `courses-c-1.png`, `courses-c-1-lessons-l1.png`
+- Pipelines: `dashboard-pipeline-*.png`, `pipeline-detail.png`
 
-### 1) Fix WebSocket connectivity in dev (client → API) — DONE
+(Execution: `node screenshot-all.mjs` completed successfully.)
 
-- **Fix implemented:** Added Vite WS proxy `'/ws' -> ws://localhost:3000` (upgrade supported) and set `strictPort: true`.
-  - `apps/client/vite.config.ts`
-- **Result:** Client can continue to use same-origin `ws(s)://{window.location.host}/ws?...` and in dev it will be proxied correctly to API.
+## 10–15 Highest-Impact Tasks (Problem → Fix → Acceptance)
 
-### 2) Update screenshot harness to be port-robust — DONE (via strictPort)
+### 1) Wire the real Orchestrator (packages/core) into the running API chat path
 
-- **Fix implemented:** Pinned client dev port deterministically with `strictPort: true` so screenshots and WS proxy are stable at `http://localhost:3001`.
-  - `apps/client/vite.config.ts`
-- **Also:** updated `screenshot-all.mjs` default screenshot dir prefix to `iter31-YYYY-MM-DD`.
+**Problem:** The WS chat path (`apps/api/src/wsOrchestrator.ts`) is hand-authored streaming text; it does not call `packages/core/src/orchestrator/orchestrator.ts`.
+**Fix:** Instantiate `AgentRegistry` in API, register real agents from `@learnflow/agents`, and route WS `message` events through `Orchestrator.processMessage()`.
+**Acceptance:** WS conversation uses registry-selected agents; `agent.spawned/complete` reflects real agent names and tasks; unit + e2e tests cover at least one routed capability.
 
-- **Acceptance:** Clean run no longer silently shifts to 3002; if 3001 is occupied it fails fast (clear signal), avoiding partial/incorrect screenshot runs.
+### 2) Make Course Builder actually use the content pipeline
 
-### 3) Unify WS contract types across server + client — DONE
+**Problem:** `CourseBuilderAgent` currently only decomposes topics and generates a template syllabus (no discovery/extraction/scoring).
+**Fix:** In `CourseBuilderAgent.process`, call `crawlSourcesForTopic` (Firecrawl/web-search fallback), then run scoring + formatting to produce lesson bodies + sources.
+**Acceptance:** Creating a course produces lessons with real citations; sources are diverse and include publication metadata when available.
 
-- **Problem:** `apps/api/src/wsContract.ts` existed but client used ad-hoc event parsing; contract drift risk.
-- **Fix implemented:** Moved contract types to `packages/shared` and imported in both API + client.
-  - Added: `packages/shared/src/types/ws.ts` (canonical `WsClientMessage`, `WsServerEvent`)
-  - Updated: `packages/shared/src/types/index.ts` to export `ws` types
-  - Updated: `apps/api/src/wsContract.ts` to re-export from `@learnflow/shared`
-  - Updated: `apps/client/src/hooks/useWebSocket.ts` to type messages as `WsServerEvent`
-- **Acceptance:** One canonical type definition; compile-time break if contract changes.
+### 3) Persist lesson sources as first-class data (remove MOCK_SOURCES)
 
-### 4) Make `progress.update` update course-level progress everywhere
+**Problem:** CourseView uses `MOCK_SOURCES`; WS `sources` are heuristic and not stored.
+**Fix:** Extend lesson model to include `sources[]` in DB; render from stored sources in LessonReader/CourseView and source drawer.
+**Acceptance:** No `MOCK_SOURCES` in production UI; lesson sources are consistent across REST + WS.
 
-- **Problem:** Client handles `progress.update` by completing lesson + notification only; dashboard rings/percent may not update.
-- **Fix:** Store per-course completion percent in app state; update on WS event.
-- **Acceptance:** Completing a lesson updates dashboard progress immediately with correct %.
+### 4) Implement mindmap generation from real course/progress data
 
-### 5) Implement real mindmap subscribe/update using real course data
+**Problem:** `mindmap.subscribe` returns a static 2-node graph.
+**Fix:** Generate nodes/edges from enrolled courses/modules/lessons + mastery status; emit diffs on lesson completion.
+**Acceptance:** Mindmap shows courses + lessons; completing a lesson changes mastery coloring/state.
 
-- **Problem:** `mindmap.subscribe` returns static 2-node graph.
-- **Fix:** Generate nodes/edges from enrolled courses/lessons and completed lessons; emit diffs.
-- **Acceptance:** Mindmap displays course and lesson nodes; lesson completion modifies graph.
+### 5) WebSocket protocol compliance + event completeness
 
-### 6) Add Settings → API Keys management using existing `/api/v1/keys`
+**Problem:** Spec §11.2 does not define `connected` and client/server event sets drift.
+**Fix:** Either (a) update spec mapping in docs and keep `connected`, or (b) remove/replace with spec event. Add `context_overrides` handling.
+**Acceptance:** One authoritative contract doc + types match runtime; client handles all server events.
 
-- **Problem:** API key endpoints exist (`apps/api/src/keys.ts`) but UX parity to spec is unclear.
-- **Fix:** In Settings, add list/add/validate flows; show masked key + provider.
-- **Acceptance:** Add key persists; list shows masked keys; no plaintext key returned.
+### 6) Pro feature gating end-to-end
 
-### 7) Token usage tracking per agent + UI surface
+**Problem:** Pro/free differences exist in spec, but UI + API enforcement is inconsistent.
+**Fix:** Centralize feature flags (server authoritative), reflect locked UI states, enforce on endpoints.
+**Acceptance:** Free users cannot access Pro-only exports/managed keys; upgrading unlocks instantly; tests cover.
 
-- **Problem:** Spec expects per-agent usage. DB has `token_usage` table, but not clearly wired.
-- **Fix:** Add API routes to read usage; increment usage where LLM calls occur (chat/courses generation/notes).
-- **Acceptance:** Analytics or Settings shows token totals per agent.
+### 7) BYOAI key vault UX parity
 
-### 8) Fix docs correctness: remove false `openapi.yaml` reference or add it
+**Problem:** Endpoints exist, but Settings experience and usage dashboard is incomplete.
+**Fix:** Add Settings → API key vault management UI: provider selection, validation, masked display, rotation.
+**Acceptance:** Add/list/delete keys works; plaintext keys never returned; validation errors are actionable.
 
-- **Problem:** `apps/web/src/app/docs/page.tsx` points to `openapi.yaml` that doesn’t exist.
-- **Fix:** Add real OpenAPI file + link, or update docs to point to actual routes/tests.
-- **Acceptance:** Docs links resolve; repo contains the referenced artifact.
+### 8) Token usage tracking per agent surfaced to user
 
-### 9) Marketing homepage: implement wireframe-required sections
+**Problem:** Spec requires per-agent token usage; current incrementing is incomplete.
+**Fix:** Track tokens per agent per session where LLM calls occur; add `/analytics` UI panel.
+**Acceptance:** Dashboard/Settings shows per-agent usage totals and last 7 days trend.
 
-- **Problem:** Homepage is decent but missing spec-required blocks: demo section, testimonials, stats, security badges.
-- **Fix:** Add sections per §12.2; include basic stats + social proof + privacy badges.
-- **Acceptance:** Homepage includes all listed wireframe sections.
+### 9) Course marketplace: real discovery/search/filter against API
 
-### 10) Marketing marketplace preview: add search + filters + real data
+**Problem:** UI exists but much content is static/simulated.
+**Fix:** Implement search/filter/sort backed by real endpoints and persisted data.
+**Acceptance:** Filters change results; pagination works; e2e covers browse → detail → enroll.
 
-- **Problem:** `/marketplace` page is static cards.
-- **Fix:** Add search/filter UI consuming `/api/v1/marketplace/courses` and `/api/v1/marketplace/agents`.
-- **Acceptance:** Users can search/filter and see results update.
+### 10) Creator pipeline: publish flow with quality checks + moderation queue
 
-### 11) Implement MDX for Docs/Blog (per website tech stack)
+**Problem:** Spec outlines quality checks and moderation; current creator dashboard is mostly UI.
+**Fix:** Implement course publish state machine: draft → submitted → approved → published; run automated checks (min lessons, attribution completeness, readability).
+**Acceptance:** Creator can submit; admins can approve; published appears in marketplace.
 
-- **Problem:** Spec calls for MDX; current docs/blog are static TSX.
-- **Fix:** Add MDX support in Next.js app router and convert at least 1 doc + 1 blog post.
-- **Acceptance:** MDX routes render and are linked from nav.
+### 11) Exports: Markdown (free) vs PDF/SCORM (Pro)
 
-### 12) Persist lesson citations/sources (content pipeline attribution)
+**Problem:** Export spec is broad; implementation unclear and likely stubbed.
+**Fix:** Implement at least Markdown export fully; gate PDF/SCORM behind Pro.
+**Acceptance:** Exported artifacts download and are reproducible; citations included.
 
-- **Problem:** Sources are heuristically extracted in WS orchestrator and not persisted on lessons.
-- **Fix:** Extend lesson model to include `sources[]` saved in DB and rendered in LessonReader + SourceDrawer.
-- **Acceptance:** Lesson reader consistently displays stored sources, not ephemeral heuristics.
+### 12) Collaboration backend MVP (rooms/messages)
 
-### 13) Make course builder use real web discovery minimally
+**Problem:** Collaboration screen exists but real peer matching + messaging is not end-to-end.
+**Fix:** Add room model, join/leave, message events over WS; basic peer matching based on interests.
+**Acceptance:** Two browser sessions can chat; messages persist; basic matching returns candidates.
 
-- **Problem:** Course generation relies heavily on templates; spec expects web discovery and scoring.
-- **Fix:** Use existing `crawlSourcesForTopic` to attach real sources and basic quality scoring.
-- **Acceptance:** New courses contain real URLs and show them in UI.
+### 13) Replace placeholder architecture docs with “truthful MVP architecture”
 
-### 14) Collaboration MVP backend (rooms/messages)
+**Problem:** Spec claims gRPC/K8s/vector DB; current system is SQLite + ws + mocked agents.
+**Fix:** Update docs to clearly state MVP reality and roadmap deltas.
+**Acceptance:** Docs do not mislead; engineering onboarding matches what runs locally.
 
-- **Problem:** Collaboration feature likely UI-only; spec expects study groups/peer messaging.
-- **Fix:** Add simple “room” model and WS events for join/message.
-- **Acceptance:** Two sessions can chat in a room.
+### 14) Hardening: production auth + WS security
 
-### 15) Enforce Pro gating using feature flags
+**Problem:** Dev token path exists; ensure it cannot leak to prod.
+**Fix:** Add explicit NODE_ENV guard tests; ensure CORS, rate limiting, WS auth are strict in prod builds.
+**Acceptance:** In production mode, `token=dev` fails; security tests pass.
 
-- **Problem:** Subscription endpoints exist but feature gating is unclear.
-- **Fix:** Fetch `/api/v1/subscription` and gate managed keys/advanced analytics/priority agents.
-- **Acceptance:** Free users see locked controls; upgrading unlocks features.
+### 15) Increase test coverage to meet spec threshold (>85%)
+
+**Problem:** PROGRESS reports ~82% coverage.
+**Fix:** Add tests for orchestrator wiring, content pipeline integration paths, and WS events.
+**Acceptance:** Coverage >= 85% statements and critical path e2e.
+
+---
+
+## Builder Notes (what to do first)
+
+If we want the **biggest leap toward the spec** with minimal churn, do tasks **#1–#4** in order. Everything else becomes easier once lessons have real sources and the orchestrator is actually driving behavior.
