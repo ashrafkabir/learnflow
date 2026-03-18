@@ -38,7 +38,7 @@ export function Button({
   return (
     <button
       className={[
-        'inline-flex items-center justify-center font-medium rounded-xl transition-colors disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center font-medium rounded-xl transition-colors disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:outline-none',
         variantClasses[variant],
         sizeClasses[size],
         fullWidth ? 'w-full' : '',

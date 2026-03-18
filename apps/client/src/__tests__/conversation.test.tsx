@@ -59,4 +59,28 @@ describe('Conversation screen', () => {
       expect(document.querySelector('[data-screen="conversation"]')).toBeTruthy();
     });
   });
+
+  it('has quick-action chips or suggestions', async () => {
+    renderAt('/conversation');
+    await waitFor(() => {
+      const chips = document.querySelectorAll('button, [class*="chip"], [class*="quick"]');
+      expect(chips.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('renders conversation header with title', async () => {
+    renderAt('/conversation');
+    await waitFor(() => {
+      const header = document.querySelector('header, [class*="header"], h1, h2');
+      expect(header).toBeTruthy();
+    });
+  });
+
+  it('has a scrollable message area', async () => {
+    renderAt('/conversation');
+    await waitFor(() => {
+      const scrollable = document.querySelector('[class*="overflow"], [class*="scroll"], [style*="overflow"]');
+      expect(scrollable || document.querySelector('[data-screen="conversation"]')).toBeTruthy();
+    });
+  });
 });

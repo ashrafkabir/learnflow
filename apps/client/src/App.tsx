@@ -26,6 +26,7 @@ const CourseDetail = React.lazy(() => import('./screens/marketplace/CourseDetail
 const CreatorDashboard = React.lazy(() => import('./screens/marketplace/CreatorDashboard.js').then(m => ({ default: m.CreatorDashboard })));
 const ProfileSettings = React.lazy(() => import('./screens/ProfileSettings.js').then(m => ({ default: m.ProfileSettings })));
 const PipelineDetail = React.lazy(() => import('./screens/PipelineDetail.js').then(m => ({ default: m.PipelineDetail })));
+const PipelineViewScreen = React.lazy(() => import('./screens/PipelineView.js').then(m => ({ default: m.PipelineViewScreen })));
 const LoginScreen = React.lazy(() => import('./screens/LoginScreen.js').then(m => ({ default: m.LoginScreen })));
 const RegisterScreen = React.lazy(() => import('./screens/RegisterScreen.js').then(m => ({ default: m.RegisterScreen })));
 const HomePage = React.lazy(() => import('./screens/marketing/Home.js').then(m => ({ default: m.HomePage })));
@@ -118,6 +119,7 @@ export function App() {
         <Route path="/courses/:courseId" element={<ErrorBoundary><CourseView /></ErrorBoundary>} />
         <Route path="/courses/:courseId/lessons/:lessonId" element={<ErrorBoundary><LessonReader /></ErrorBoundary>} />
         <Route path="/mindmap" element={<ErrorBoundary><MindmapExplorer /></ErrorBoundary>} />
+        <Route path="/pipelines" element={<ErrorBoundary><PipelineViewScreen /></ErrorBoundary>} />
         <Route path="/pipeline/:pipelineId" element={<ErrorBoundary><PipelineDetail /></ErrorBoundary>} />
 
         {/* Marketplace */}

@@ -62,6 +62,8 @@ export function MobileNav() {
               variant="ghost"
               fullWidth
               onClick={() => { nav(item.path); setOpen(false); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); nav(item.path); setOpen(false); } }}
+              tabIndex={0}
               aria-current={location.pathname.startsWith(item.path) ? 'page' : undefined}
               className={`justify-start gap-3 text-sm font-medium py-3 ${
                 location.pathname.startsWith(item.path)

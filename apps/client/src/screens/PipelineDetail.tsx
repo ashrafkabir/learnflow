@@ -34,25 +34,23 @@ export function PipelineDetail() {
     );
   }
 
-  // Derive stats from pipeline state
-  const stages = state.stages || [];
-  const totalStages = stages.length;
-  const completedStages = stages.filter((s: any) => s.status === 'complete' || s.status === 'done').length;
-  const activeStages = stages.filter((s: any) => s.status === 'running' || s.status === 'active').length;
-  const failedStages = stages.filter((s: any) => s.status === 'error' || s.status === 'failed').length;
-  const totalThreads = stages.reduce((acc: number, s: any) => acc + (s.threads?.length || 0), 0);
-  const activeThreads = stages.reduce((acc: number, s: any) => acc + (s.threads?.filter((t: any) => t.status === 'running').length || 0), 0);
-  const progressPct = totalStages > 0 ? Math.round((completedStages / totalStages) * 100) : 0;
+  // Derive stats from pipeline state using actual PipelineState properties
+  const crawlThreads = state.crawlThreads || [];
+  const totalThreads = crawlThreads.length;
+  const activeThreads = crawlThreads.filter((t: any) => t.status === 'running' || t.status === 'active').length;
+  const _completedThreads = crawlThreads.filter((t: any) => t.status === 'complete' || t.status === 'done').length;
+  const _failedThreads = crawlThreads.filter((t: any) => t.status === 'error' || t.status === 'failed').length;
+  const progressPct = Math.round((state.progress ?? 0) * 100);
 
-  const statusBadge = state.status === 'complete'
+  const statusBadge = state.stage === 'published'
     ? { label: 'Complete', cls: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' }
-    : state.status === 'error'
+    : state.error
     ? { label: 'Error', cls: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }
-    : state.status === 'paused'
+    : state.stage === 'reviewing'
     ? { label: 'Paused', cls: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' }
     : { label: 'Running', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' };
 
-  const createdAt = state.createdAt ? new Date(state.createdAt).toLocaleString() : 'N/A';
+  const createdAt = state.startedAt ? new Date(state.startedAt).toLocaleString() : 'N/A';
   const updatedAt = state.updatedAt ? new Date(state.updatedAt).toLocaleString() : 'N/A';
 
   return (
@@ -96,7 +94,7 @@ export function PipelineDetail() {
                 variant="secondary"
                 size="sm"
                 onClick={() => toast('Pipeline paused', 'success')}
-                disabled={state.status === 'complete' || state.status === 'paused'}
+                disabled={state.stage === 'published' || state.stage === 'reviewing'}
               >
                 ⏸ Pause
               </Button>
@@ -116,10 +114,10 @@ export function PipelineDetail() {
         {/* Summary Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Total Stages', value: totalStages, icon: '📦' },
-            { label: 'Completed', value: completedStages, icon: '✅' },
+            { label: 'Stage', value: state.stage || 'idle', icon: '📦' },
+            { label: 'Sources', value: state.organizedSources ?? 0, icon: '✅' },
             { label: 'Active Threads', value: `${activeThreads}/${totalThreads}`, icon: '🧵' },
-            { label: 'Failed', value: failedStages, icon: '❌' },
+            { label: 'Modules / Lessons', value: `${state.moduleCount ?? 0} / ${state.lessonCount ?? 0}`, icon: '📚' },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -160,15 +158,15 @@ export function PipelineDetail() {
           <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-card p-6">
             <h2 className="text-lg font-semibold text-green-400 mb-3 font-mono">📋 Pipeline Logs</h2>
             <div className="font-mono text-xs text-green-300 space-y-1 max-h-64 overflow-y-auto">
-              {stages.map((s: any, i: number) => (
+              {crawlThreads.map((t: any, i: number) => (
                 <div key={i} className="flex gap-2">
                   <span className="text-gray-500">[{new Date().toISOString().slice(11, 19)}]</span>
-                  <span className={s.status === 'error' ? 'text-red-400' : s.status === 'complete' ? 'text-green-400' : 'text-yellow-300'}>
-                    Stage {i + 1}: {s.name || s.label || `Stage ${i + 1}`} — {s.status || 'pending'}
+                  <span className={t.status === 'error' ? 'text-red-400' : t.status === 'complete' ? 'text-green-400' : 'text-yellow-300'}>
+                    Thread {i + 1}: {t.url || t.name || `Thread ${i + 1}`} — {t.status || 'pending'}
                   </span>
                 </div>
               ))}
-              {stages.length === 0 && <div className="text-gray-500">No log entries yet.</div>}
+              {crawlThreads.length === 0 && <div className="text-gray-500">No log entries yet.</div>}
             </div>
           </div>
         )}

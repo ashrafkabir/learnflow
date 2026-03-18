@@ -61,6 +61,35 @@ export function AboutPage() {
           </div>
         </motion.div>
 
+        {/* Our Story */}
+        <motion.div className="mb-20" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <h2 className="text-3xl font-bold text-center mb-6">Our Story</h2>
+          <div className="max-w-3xl mx-auto space-y-4 text-gray-600 dark:text-gray-300 leading-relaxed">
+            <p>LearnFlow started in 2024 when our founders realized that despite billions spent on edtech, most learning still felt passive — watching videos, reading slides, hoping something sticks.</p>
+            <p>We asked: <em>What if everyone could have a personal tutor that actually adapts to how they learn?</em> Not a chatbot with canned answers, but an intelligent system that researches topics from real sources, builds structured courses, and guides you through mastery.</p>
+            <p>Our team brought together expertise in machine learning, education science, and product design. We built LearnFlow as a privacy-first, open-source platform because we believe the tools that shape how people learn should be transparent and owned by the community.</p>
+            <p>Today, LearnFlow's AI agents crawl the web, organize knowledge, synthesize lessons, and adapt to each learner's pace — all while citing every source so you can verify and explore further.</p>
+          </div>
+        </motion.div>
+
+        {/* By the Numbers */}
+        <motion.div className="mb-20" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <h2 className="text-3xl font-bold text-center mb-10">By the Numbers</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
+            {[
+              { value: '50K+', label: 'Active Learners' },
+              { value: '12K+', label: 'Courses Generated' },
+              { value: '4.8', label: 'Avg Rating' },
+              { value: '99.9%', label: 'Uptime' },
+            ].map((stat) => (
+              <div key={stat.label} className="p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <p className="text-3xl font-extrabold text-accent">{stat.value}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
         {/* Privacy Commitment */}
         <motion.div className="rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-8 text-center" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
           <span className="text-4xl block mb-4">🔒</span>
@@ -69,6 +98,21 @@ export function AboutPage() {
             <p>Your learning data is yours. Period. We use AES-256 encryption at rest and in transit. API keys are stored encrypted and never leave your device in our BYOAI model.</p>
             <p>We are SOC 2 compliant and GDPR ready. You can export or delete all your data at any time from Settings. We never sell your data or use it to train models.</p>
             <p>Our open-source codebase means you can verify our privacy practices yourself.</p>
+          </div>
+        </motion.div>
+        {/* Contact CTA */}
+        <motion.div className="mt-20 text-center" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <h2 className="text-3xl font-bold mb-4">Get in Touch</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-xl mx-auto">
+            Whether you're an educator, institution, or learner — we'd love to hear from you. Reach out for partnerships, feedback, or just to say hello.
+          </p>
+          <div className="flex justify-center gap-4">
+            <a href="mailto:hello@learnflow.ai" className="inline-flex items-center gap-2 bg-accent text-white font-medium px-6 py-3 rounded-xl hover:bg-accent-dark transition-colors">
+              ✉️ Contact Us
+            </a>
+            <a href="https://github.com/learnflow" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium px-6 py-3 rounded-xl hover:border-accent hover:text-accent transition-colors">
+              🐙 GitHub
+            </a>
           </div>
         </motion.div>
       </section>

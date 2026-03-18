@@ -7,9 +7,9 @@ import { CitationTooltip, type Source } from '../components/CitationTooltip.js';
 
 /* Mock sources for inline citation hover previews — Spec §5.2.4 */
 const MOCK_SOURCES: Source[] = [
-  { id: 1, author: 'Smith et al.', title: 'Foundations of Modern Learning', url: 'https://example.com/foundations', year: 2024 },
-  { id: 2, author: 'OpenAI Research', title: 'Scaling Laws for Neural Language Models', url: 'https://arxiv.org/abs/2001.08361', year: 2023 },
-  { id: 3, author: 'García & Chen', title: 'Adaptive Learning Pathways', url: 'https://example.com/adaptive', year: 2024 },
+  { id: 1, author: 'Smith et al.', title: 'Foundations of Modern Learning', publication: 'Journal of Educational Technology', url: 'https://example.com/foundations', year: 2024 },
+  { id: 2, author: 'OpenAI Research', title: 'Scaling Laws for Neural Language Models', publication: 'arXiv Preprint', url: 'https://arxiv.org/abs/2001.08361', year: 2023 },
+  { id: 3, author: 'García & Chen', title: 'Adaptive Learning Pathways', publication: 'IEEE Learning Sciences', url: 'https://example.com/adaptive', year: 2024 },
 ];
 
 /* Estimate read time from lesson description length and estimatedTime */

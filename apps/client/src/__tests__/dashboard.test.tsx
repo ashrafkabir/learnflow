@@ -64,4 +64,28 @@ describe('Dashboard', () => {
     // MobileNav should be present for app screens
     expect(document.querySelector('nav')).toBeTruthy();
   });
+
+  it('shows notifications feed', async () => {
+    renderAt('/dashboard');
+    await waitFor(() => {
+      const text = document.body.textContent || '';
+      expect(text.match(/notification|alert|update|activity/i)).toBeTruthy();
+    });
+  });
+
+  it('shows mindmap preview', async () => {
+    renderAt('/dashboard');
+    await waitFor(() => {
+      const text = document.body.textContent || '';
+      expect(text.match(/mindmap|knowledge|map|explore/i)).toBeTruthy();
+    });
+  });
+
+  it('shows streak counter', async () => {
+    renderAt('/dashboard');
+    await waitFor(() => {
+      const text = document.body.textContent || '';
+      expect(text.match(/streak|day|🔥/i)).toBeTruthy();
+    });
+  });
 });

@@ -11,24 +11,24 @@ afterEach(() => cleanup());
 
 describe('ProgressRing component', () => {
   it('renders an SVG element', () => {
-    render(<ProgressRing progress={50} />);
+    render(<ProgressRing percent={50} />);
     const svg = document.querySelector('svg');
     expect(svg).toBeTruthy();
   });
 
   it('reflects progress value in stroke-dasharray', () => {
-    render(<ProgressRing progress={75} />);
+    render(<ProgressRing percent={75} />);
     const circles = document.querySelectorAll('circle');
     expect(circles.length).toBeGreaterThanOrEqual(1);
   });
 
   it('renders at 0% without error', () => {
-    render(<ProgressRing progress={0} />);
+    render(<ProgressRing percent={0} />);
     expect(document.querySelector('svg')).toBeTruthy();
   });
 
   it('renders at 100% without error', () => {
-    render(<ProgressRing progress={100} />);
+    render(<ProgressRing percent={100} />);
     expect(document.querySelector('svg')).toBeTruthy();
   });
 });

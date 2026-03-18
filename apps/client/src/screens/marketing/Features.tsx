@@ -97,6 +97,89 @@ export function FeaturesPage() {
             </motion.div>
           ))}
         </motion.div>
+        {/* How It Works */}
+        <motion.div className="mt-24 mb-24" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              { step: '1', icon: '💬', title: 'Tell Us What to Learn', desc: 'Enter any topic or paste a URL. Our AI agents begin researching from real web sources — academic papers, docs, tutorials, and more.' },
+              { step: '2', icon: '⚙️', title: 'AI Builds Your Course', desc: 'Our multi-agent pipeline organizes sources, deduplicates content, checks quality, and synthesizes structured lessons with citations.' },
+              { step: '3', icon: '🚀', title: 'Learn & Master', desc: 'Study at your pace with interactive lessons, adaptive quizzes, smart notes, and a knowledge mindmap that tracks your mastery.' },
+            ].map((s) => (
+              <div key={s.step} className="text-center p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors relative">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-accent text-white text-sm font-bold flex items-center justify-center shadow-card">{s.step}</div>
+                <span className="text-4xl block mb-4 mt-2">{s.icon}</span>
+                <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Comparison Table */}
+        <motion.div className="mb-24" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <h2 className="text-3xl font-bold text-center mb-10">How LearnFlow Compares</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="text-left py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Feature</th>
+                  <th className="py-3 px-4 font-bold text-accent">LearnFlow</th>
+                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">ChatGPT</th>
+                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Coursera</th>
+                  <th className="py-3 px-4 font-medium text-gray-500 dark:text-gray-400">Duolingo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {[
+                  { feature: 'AI Course Generation', lf: true, gpt: false, coursera: false, duo: false },
+                  { feature: 'Real Source Citations', lf: true, gpt: false, coursera: true, duo: false },
+                  { feature: 'Adaptive Quizzes', lf: true, gpt: false, coursera: false, duo: true },
+                  { feature: 'Knowledge Mindmap', lf: true, gpt: false, coursera: false, duo: false },
+                  { feature: 'Multi-Agent System', lf: true, gpt: false, coursera: false, duo: false },
+                  { feature: 'BYOAI / Own Keys', lf: true, gpt: false, coursera: false, duo: false },
+                  { feature: 'Offline Support (PWA)', lf: true, gpt: false, coursera: true, duo: true },
+                  { feature: 'Open Source', lf: true, gpt: false, coursera: false, duo: false },
+                ].map((row) => (
+                  <tr key={row.feature}>
+                    <td className="py-2.5 px-4 text-gray-700 dark:text-gray-300">{row.feature}</td>
+                    <td className="py-2.5 px-4 text-center">{row.lf ? '✅' : '—'}</td>
+                    <td className="py-2.5 px-4 text-center">{row.gpt ? '✅' : '—'}</td>
+                    <td className="py-2.5 px-4 text-center">{row.coursera ? '✅' : '—'}</td>
+                    <td className="py-2.5 px-4 text-center">{row.duo ? '✅' : '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+
+        {/* Testimonials */}
+        <motion.div className="mb-24" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <h2 className="text-3xl font-bold text-center mb-10">What Learners Say</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { quote: 'LearnFlow built me a better ML course than I found anywhere online — with real citations I could verify.', name: 'Sarah K.', role: 'Data Scientist' },
+              { quote: 'The mindmap feature changed how I study. I can see exactly where my knowledge gaps are.', name: 'James M.', role: 'CS Student' },
+              { quote: 'Finally a learning tool that respects my privacy. BYOAI is brilliant.', name: 'Priya L.', role: 'Software Engineer' },
+            ].map((t) => (
+              <div key={t.name} className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800">
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4 italic">"{t.quote}"</p>
+                <p className="text-sm font-semibold">{t.name}</p>
+                <p className="text-xs text-gray-500">{t.role}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* CTA */}
+        <motion.div className="text-center py-16 rounded-2xl bg-gradient-to-r from-accent/10 to-purple-500/10 border border-accent/20" initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}>
+          <h2 className="text-3xl font-bold mb-4">Ready to Transform How You Learn?</h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-lg mx-auto">Start with a free account. No credit card required. Build your first AI-generated course in minutes.</p>
+          <a href="/register" className="inline-flex items-center gap-2 bg-accent text-white font-semibold px-8 py-3 rounded-xl hover:bg-accent-dark transition-colors shadow-card">
+            ✨ Get Started Free
+          </a>
+        </motion.div>
       </section>
     </MarketingLayout>
   );
