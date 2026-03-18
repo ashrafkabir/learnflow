@@ -1,286 +1,160 @@
-# LearnFlow Improvement Queue — Iteration 27
+# LearnFlow Improvement Queue
 
-## Current Iteration: 27
+## Iteration: 28
 
-## Status: DONE
-
-## Date: 2026-03-18
-
-## Theme: Stop lying to ourselves — make dev boot + tests + screenshots _actually_ trustworthy
-
----
+**Status:** READY FOR BUILDER  
+**Date:** 2026-03-18
 
 ## Brutal Assessment (evidence-based)
 
-Iteration 26 **claimed**: “TSC zero errors” + “377 tests across 35 files” + “Playwright screenshots”.
+### 1) Automated tests are effectively broken (not just flaky)
 
-### What I verified (and what failed)
+- Running `npm test` produces **mass failure** (log shows **128 failed tests**).
+- Root cause is not app logic; it’s the “no silent crashes” console gate + noisy React/Router test warnings:
+  - `Warning: The current testing environment is not configured to support act(...)` (thrown as `console.error`)
+  - React Router warning treated as fatal:
+    - `⚠️ React Router Future Flag Warning: ... v7_startTransition ...`
+  - Evidence: `apps/client/.turbo/turbo-test.log` lines ~700–820 show failures cascading from console gate.
 
-1. **`npm test` does pass**, but the output contains **real runtime crashes** that are currently _not_ failing the test run:
-   - `ReferenceError: IntersectionObserver is not defined` (Framer Motion viewport observer) — observed during Pricing/Marketing route render in tests.
-   - Multiple pipeline component crashes: `TypeError: Cannot read properties of undefined (reading 'length')` in:
-     - `apps/client/src/components/pipeline/CrawlThreadList.tsx:5`
-     - `apps/client/src/components/pipeline/OrganizingView.tsx:20`
-     - `apps/client/src/components/pipeline/SynthesisList.tsx:7`
-     - `apps/client/src/components/pipeline/QualityCheckList.tsx:5`
-   - Course/Lesson crashes triggered during “all screens render” style tests:
-     - `CourseView.tsx:80` → `Cannot read properties of undefined (reading 'reduce')`
-     - `LessonReader.tsx:54` → `Cannot read properties of undefined (reading 'match')`
+### 2) Screenshot coverage was incomplete / inconsistent due to auth + onboarding overlay
 
-   These show the app is **not robust to missing/undefined data** and that our test suite is **not configured to fail on console errors / ErrorBoundary logs**.
+- There is a **blocking overlay** (`<OnboardingTooltips />`) that can intercept clicks and mislead automation.
+  - Evidence: `apps/client/src/components/OnboardingTooltips.tsx` uses `fixed inset-0 ... pointer-events-auto` overlay and only stores completion in `localStorage['onboarding-tour-complete']`.
+- The required “every screen” screenshot run was non-deterministic until we forced:
+  - `localStorage['learnflow-token']='dev'`
+  - `localStorage['onboarding-tour-complete']='true'`
 
-2. **`npm run dev` is unreliable** out of the box:
-   - `@learnflow/web` (Next) and `@learnflow/client` (Vite) both try to use port **3001**.
-   - API defaults to **3000**, which was already in use on this host.
-   - Result: dev boots are inconsistent, with the client jumping to random ports (e.g. 3005) and turbo reporting fatal port collisions.
+### 3) Product flow gaps vs spec intent (high-level)
 
-3. **Playwright screenshots were incomplete vs. the required screen list**.
-   - Existing `screenshot.mjs` captured: home, onboarding steps, dashboard, conversation, mindmap, settings, marketplace.
-   - It **did not capture** (required per planner instructions): login, register, course view, lesson reader, pipeline view/detail, marketing (about/blog/pricing), chat is only partially represented (conversation), etc.
-   - I generated screenshots under `evals/screenshots/rebuild/` for the subset the script covers.
+- App has routes/screens for many areas (marketing, onboarding, dashboard, pipelines, settings, marketplace), but the **end-to-end learning loop** (create course → pipeline → course view → lesson reader) is hard to validate automatically because:
+  - dashboard interactions get blocked by overlays and state gates
+  - pipeline/course creation requires API + keys/subscription logic that isn’t reliably satisfied in dev/test
 
-Bottom line: **Iteration 26 added a lot of UI, but we still have correctness gaps masked by weak test harness + messy dev ergonomics.**
+### 4) Tooling quality gap: repo lacks ripgrep (`rg`) used by previous iteration scripts
+
+- `rg` is not installed (`/bin/bash: rg: command not found`). This slows iteration and encourages sloppy grep patterns.
 
 ---
 
-## Prioritized Tasks (15)
+## Iteration 28 — Prioritized Tasks (10–15)
 
-### 1) 🔴 Make tests fail on runtime errors (console.error / ErrorBoundary)
+> Format: **Problem** → **Fix** → **Acceptance Criteria** (with file paths)
 
-**Problem:** Tests “pass” while ErrorBoundary catches real crashes (IntersectionObserver, undefined array access, reduce/match on undefined).
+### P0 — Make tests actionable again
 
-**Fix:** In client test setup (Vitest), intercept:
+1. **Tests fail due to React Router future warnings being treated as fatal**
 
-- `console.error` and `console.warn` (at least for React error boundary + uncaught errors)
-- optionally `window.onerror` / `unhandledrejection`
-  And **fail the test** unless explicitly allowed.
+- **Problem:** The console gate throws on `console.warn`, and Router future warnings are emitted during route mounts.
+- **Fix:**
+  - Preferably: opt-in to Router future flags in test routers (MemoryRouter/createMemoryRouter) where used.
+  - Alternatively: allowlist only the specific Router warning string in _one_ place to avoid hiding real issues.
+- **Acceptance:** `npm test` no longer fails solely because of React Router future flag warnings.
+- **Files:** `vitest.setup.ts`, `apps/client/src/test-setup.ts`, test helpers creating routers.
 
-**Acceptance Criteria:**
+2. **Tests fail due to `act(...)` environment warning**
 
-- Running `npm test` fails before fixes in Tasks 2–5.
-- After Tasks 2–5, `npm test` passes with **zero ErrorBoundary logs** and no “Uncaught” runtime stack traces.
+- **Problem:** React emits `Warning: The current testing environment is not configured to support act(...)`, which becomes a thrown error via console gate.
+- **Fix:**
+  - Ensure `@testing-library/react` + React 18 config is correct; set `globalThis.IS_REACT_ACT_ENVIRONMENT = true` in setup.
+  - Remove double console-gate stacking (global + app-level) if both run.
+- **Acceptance:** No `act(...)` warnings in test output; `npm test` progresses to real assertions.
+- **Files:** `vitest.setup.ts`, `apps/client/src/test-setup.ts`, `apps/client/vitest.config.ts`.
 
----
+3. **Two separate “console gate” implementations conflict**
 
-### 2) 🔴 Polyfill `IntersectionObserver` for JSDOM tests (Framer Motion)
+- **Problem:** `vitest.setup.ts` and `apps/client/src/test-setup.ts` both override console methods; noise becomes fatal twice and makes debugging harder.
+- **Fix:** Consolidate console gate into one setup (prefer root `vitest.setup.ts`) and keep app-level setup for DOM/polyfills only.
+- **Acceptance:** Single source of truth for console gate; consistent allowlist; tests output is readable.
+- **Files:** `vitest.setup.ts`, `apps/client/src/test-setup.ts`, `apps/client/vitest.config.ts`.
 
-**Problem:** `IntersectionObserver is not defined` in JSDOM, triggered by Framer Motion viewport/in-view features.
+4. **Root Vitest config path resolution bug (already fixed but must be kept)**
 
-**Fix Options (pick one):**
+- **Problem:** Root `vitest.config.ts` used `setupFiles: ['./vitest.setup.ts']` which breaks in workspace runs (it looks for `apps/web/vitest.setup.ts`).
+- **Fix:** Keep absolute resolution via `path.resolve(__dirname,'vitest.setup.ts')`.
+- **Acceptance:** `npm test` can run from repo root without missing setup file errors.
+- **Files:** `vitest.config.ts`.
 
-- Add a lightweight global polyfill/mocked implementation in the Vitest setup file, OR
-- Configure/migrate components to not require IO in test env.
+### P1 — Make “Create Course” and pipeline flow reliably verifiable
 
-**Acceptance Criteria:**
+5. **Onboarding tooltip overlay blocks clicks & automation (and can confuse real users)**
 
-- No occurrences of `IntersectionObserver is not defined` in `npm test` output.
+- **Problem:** The overlay is full-screen pointer-events and appears on first Dashboard visit.
+- **Fix:**
+  - Add an explicit close button with clear hit target.
+  - Ensure the overlay does not block the “Create Course” input/button area by positioning.
+  - Add deterministic disable via query param (`?tour=off`) for eval runs.
+- **Acceptance:** Creating a course is possible without dismissing the overlay; Playwright can click dashboard CTA without `force: true`.
+- **Files:** `apps/client/src/components/OnboardingTooltips.tsx`, `apps/client/src/screens/Dashboard.tsx`.
 
----
+6. **Dev-mode auth gating for evaluation is inconsistent**
 
-### 3) 🔴 Harden pipeline UI components against undefined arrays
+- **Problem:** Some routes appear to redirect/behave differently without a real token; automation had to hack localStorage.
+- **Fix:** Provide an explicit `DEV_AUTH_BYPASS` flag (env var) + banner, not an implicit token string.
+- **Acceptance:** When `DEV_AUTH_BYPASS=1`, all app routes load without login and without server dependency.
+- **Files:** `apps/client/src/App.tsx` (auth guard), auth context.
 
-**Problem:** Pipeline subcomponents read `.length` on undefined props.
+7. **Course creation blocked by subscription/courses gate in non-obvious ways**
 
-**Fix:** Update these components to accept safe defaults:
+- **Problem:** Dashboard uses `canCreateCourse = subscription==='pro' || courses.length < 3` and redirects to `/settings` on failure.
+- **Fix:**
+  - Make the gating UI explicit (inline message + upgrade CTA), don’t surprise-navigate.
+  - In dev/evals, ensure default subscription and initial courses state don’t block creating first course.
+- **Acceptance:** On a fresh profile, “✨ Create Course” stays on dashboard and starts a pipeline.
+- **Files:** `apps/client/src/screens/Dashboard.tsx`, subscription persistence in app state.
 
-- `CrawlThreadList` (`threads ?? []`)
-- `OrganizingView` (any arrays used for counts/lists)
-- `SynthesisList`
-- `QualityCheckList`
+8. **Pipeline detail screenshot coverage exists but must be standardized**
 
-Also ensure `PipelineView` passes correct props and/or default values.
+- **Problem:** Pipeline cards are clickable listitems (not anchors), so naive screenshot scripts miss pipeline detail.
+- **Fix:** Maintain `screenshot-all.mjs` (or replace existing script) to explicitly click `[role=listitem]` and screenshot `/pipeline/:id`.
+- **Acceptance:** A single script produces screenshots for: landing, login, register, onboarding (all steps), dashboard, course view, lesson reader, conversation, mindmap, marketplace (courses+agents), settings, pipelines list, pipeline detail.
+- **Files:** `screenshot-all.mjs` (new), existing `screenshot.mjs` (review/merge).
 
-**Acceptance Criteria:**
+### P2 — Spec alignment & UX quality
 
-- Rendering `/pipeline/:id` with minimal/mock `PipelineState` does not throw.
-- `npm test` shows no `reading 'length'` crashes.
+9. **Dashboard `initialLoading` is never set true**
 
----
+- **Problem:** `initialLoading` defaults false; skeleton never shows even while `/courses` fetch happens.
+- **Fix:** Set `setInitialLoading(true)` before the fetch; ensure it flips false finally.
+- **Acceptance:** On slow network, skeleton renders; on fast network, no flicker.
+- **Files:** `apps/client/src/screens/Dashboard.tsx`.
 
-### 4) 🔴 Fix `CourseView` reduce crash for missing modules/lessons
+10. **Review Queue uses `window.location.href` instead of SPA navigation**
 
-**Problem:** `CourseView.tsx` uses `.reduce` on possibly undefined.
+- **Problem:** Forces full page load and breaks app-state continuity.
+- **Fix:** Replace with `nav(...)`.
+- **Acceptance:** Clicking review item transitions client-side.
+- **Files:** `apps/client/src/screens/Dashboard.tsx`.
 
-**Fix:** Normalize course shape at the boundary (API response parsing / mock data / component props) and guard within UI.
+11. **Marketing pages need a quality pass for spec compliance**
 
-**Acceptance Criteria:**
+- **Problem:** Marketing routes exist but may be placeholder-heavy; need explicit checklist vs spec (hero, features, pricing, docs, etc.).
+- **Fix:** Compare each marketing screen to spec; remove lorem/placeholder; ensure consistent CTA to register/download.
+- **Acceptance:** Each marketing route has complete copy, CTA, and consistent nav.
+- **Files:** `apps/client/src/screens/marketing/*`.
 
-- Visiting a course route with missing/empty modules shows an empty-state UI, not a crash.
-- No `reading 'reduce'` runtime errors in tests.
+12. **Install ripgrep for faster iteration**
 
----
-
-### 5) 🔴 Fix `LessonReader` source parsing crash
-
-**Problem:** `LessonReader.tsx:54` does `.match` on undefined during `parseSources`.
-
-**Fix:** Make `parseSources` accept `string | undefined` and return `[]` for falsy input; add unit tests.
-
-**Acceptance Criteria:**
-
-- LessonReader renders even when `lesson.sources` (or equivalent field) is undefined.
-- No `reading 'match'` runtime errors in tests.
-
----
-
-### 6) 🟠 Stabilize dev ports (no collisions) across workspaces
-
-**Problem:** Turbo dev launches multiple apps that conflict (Next + Vite on 3001; API on 3000 already used).
-
-**Fix:** Establish a consistent port scheme and enforce it in scripts:
-
-- API: 3000 (or 3100)
-- Client (Vite): 3001
-- Web (Next): 3002
-  Document in README and/or `.env.example`.
-
-**Acceptance Criteria:**
-
-- `npm run dev` succeeds without “EADDRINUSE” on a clean machine.
-- `@learnflow/client` consistently runs at the documented port.
-
----
-
-### 7) 🟠 Replace/upgrade screenshot script to cover ALL required screens
-
-**Problem:** Planner-required screenshots weren’t produced for login/register/course/lesson/pipeline/marketing pages.
-
-**Fix:** Update `screenshot.mjs` (or create `scripts/screenshot-all.mjs`) to capture:
-
-- Landing/home
-- Login
-- Register
-- Onboarding screens
-- Dashboard
-- Course marketplace
-- Agent marketplace
-- Pipeline list (`/pipelines`) + pipeline detail
-- Course view
-- Lesson reader
-- Mindmap
-- Settings
-- Conversation/chat
-- Marketing: Pricing, About, Blog
-
-**Acceptance Criteria:**
-
-- A single command produces screenshots into a dated folder (e.g. `evals/screenshots/iter27/`).
-- Folder contains at least 15 images matching the list above.
+- **Problem:** `rg` missing; slows targeted verification.
+- **Fix:** Add dev dependency or document install step in repo bootstrap.
+- **Acceptance:** `rg -n "Create Course" apps/client/src` works locally.
+- **Files:** `BOOTSTRAP.md` / dev docs (if present).
 
 ---
 
-### 8) 🟠 Add pipeline view/detail routes to screenshot/test coverage
+## Remaining for Future Iterations (not in 28)
 
-**Problem:** We have pipeline UI, but it’s brittle and not systematically covered.
-
-**Fix:** Add at least 3 targeted tests ensuring:
-
-- PipelineView list renders
-- PipelineDetail renders “stage” + progress
-- Empty/failed pipeline states render a non-crashing empty state
-
-**Acceptance Criteria:**
-
-- Tests fail before fixes, pass after.
+- Proper auth (real JWT, refresh, roles), not localStorage dev token.
+- Data model hardening: persistence layer, multi-user separation.
+- True “course marketplace” publishing & rating flows.
+- Mindmap correctness: semantic linking to lessons; export.
+- Chat/conversation: tool use, citations, memory.
 
 ---
 
-### 9) 🟡 Remove noisy test warnings (`act(...)`) where feasible
+## Artifacts / Evidence
 
-**Problem:** Multiple tests emit React “not wrapped in act(...)” warnings.
-
-**Fix:** Update tests to use `await` + `findBy...`/`waitFor`, or wrap state updates.
-
-**Acceptance Criteria:**
-
-- `npm test` output has no React act warnings.
-
----
-
-### 10) 🟡 Establish a “no silent crashes” quality gate in CI
-
-**Problem:** Current suite allows ErrorBoundary recoveries to slip.
-
-**Fix:** Add a CI gate script (or vitest config) that:
-
-- fails on console.error
-- fails on unhandled promise rejections
-
-**Acceptance Criteria:**
-
-- Running `npm test` in CI mode behaves identically locally.
-
----
-
-### 11) 🟡 Audit mock data consistency for routes used by tests
-
-**Problem:** Several crashes are caused by mocks missing required shape.
-
-**Fix:** Centralize route mock data fixtures (courses, lessons, pipeline states) to avoid drift.
-
-**Acceptance Criteria:**
-
-- There is a single source of truth for fixtures used in tests and demo routes.
-
----
-
-### 12) 🟢 Update Iteration 26 claims in logs (optional integrity fix)
-
-**Problem:** Iteration 26 log claims 377 tests; I observed 144 client + 115 api (total 259) on this host run.
-
-**Fix:** If the numbers are environment-dependent, document _how_ the 377 is computed; otherwise correct the build log.
-
-**Acceptance Criteria:**
-
-- BUILD_LOG reflects a reproducible command and real output.
-
----
-
-### 13) 🟢 Add “Login/Register” minimal UX assertions
-
-**Problem:** Login/Register exist but are not part of the screenshot run and may be visually regressing.
-
-**Fix:** Add basic tests: email/password fields present, submit buttons, validation message placeholder.
-
-**Acceptance Criteria:**
-
-- Tests and screenshots cover login/register.
-
----
-
-### 14) 🟢 Improve “empty-state” UX copy for missing data
-
-**Problem:** We keep crashing instead of presenting empty states.
-
-**Fix:** Add consistent EmptyState component usage in CourseView, LessonReader, PipelineDetail.
-
-**Acceptance Criteria:**
-
-- No crashes for missing data; user sees actionable copy.
-
----
-
-### 15) 🟢 Document local dev workflow (ports, commands, screenshots)
-
-**Problem:** New contributors can’t reliably boot the stack.
-
-**Fix:** Update `README.md` with:
-
-- Ports
-- start/stop
-- screenshot command
-- test expectations
-
-**Acceptance Criteria:**
-
-- README contains a “Getting Started” section that matches reality.
-
----
-
-## Remaining for Future Iterations (not this sprint)
-
-- E2E flows with Playwright (real navigation + assertions)
-- Real backend integration for marketplace and collaboration (currently mock-heavy)
-- Accessibility audit (WCAG 2.1 AA) beyond focus ring tweaks
-- Performance/Lighthouse targets
-- Offline/PWA: background sync + push notifications
+- Failing tests log: `apps/client/.turbo/turbo-test.log` (shows Router warnings + act warnings → thrown)
+- Screenshots directory used this iteration:
+  - `evals/screenshots/iter28-2026-03-18/` (public + authed routes)
+- Overlay source:
+  - `apps/client/src/components/OnboardingTooltips.tsx`
