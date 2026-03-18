@@ -8,7 +8,7 @@ import { authMiddleware } from '../middleware.js';
 import {
   UpdateAgent,
   MockWebSearchProvider,
-} from '../../../../packages/agents/src/update-agent/update-agent.js';
+} from '@learnflow/agents';
 
 function createTestApp() {
   const app = express();

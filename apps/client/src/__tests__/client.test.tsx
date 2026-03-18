@@ -7,9 +7,30 @@ import React from 'react';
 import { App } from '../App.js';
 import { ThemeProvider } from '../design-system/ThemeProvider.js';
 import { AppProvider } from '../context/AppContext.js';
+import { ToastProvider } from '../components/Toast.js';
 import { colors, typography, breakpoints } from '../design-system/tokens.js';
 
 import { afterEach } from 'vitest';
+
+import { beforeEach } from 'vitest';
+
+beforeEach(() => {
+  // Mark onboarding complete and set token so routes don't redirect
+  localStorage.setItem('learnflow-onboarding-complete', 'true');
+  localStorage.setItem('learnflow-token', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXIiLCJlbWFpbCI6InRlc3RAZXhhbXBsZS5jb20iLCJyb2xlIjoic3R1ZGVudCIsInRpZXIiOiJmcmVlIiwiZXhwIjo5OTk5OTk5OTk5fQ.test');
+  // Mock fetch to prevent TypeError: Invalid URL on relative paths in Node test environment
+  globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+    // Return empty success responses for all API calls
+    if (url.includes('/api/') || url.startsWith('/')) {
+      return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }) as typeof fetch;
+});
 
 afterEach(() => {
   cleanup();
@@ -21,25 +42,26 @@ function renderAt(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <ThemeProvider>
         <AppProvider>
-          <App />
+          <ToastProvider>
+            <App />
+          </ToastProvider>
         </AppProvider>
       </ThemeProvider>
     </MemoryRouter>,
   );
 }
 
-// S08-A01: Design system — all color tokens defined
+// S08-A01: Design system — all color tokens defined (updated for Spec §5.3)
 describe('S08-A01: Design system color tokens', () => {
-  it('has primary color scale', () => {
-    expect(colors.primary[500]).toBe('#6366F1');
-    expect(colors.primary[50]).toBeDefined();
-    expect(colors.primary[900]).toBeDefined();
+  it('has primary colors (light/dark)', () => {
+    expect(colors.primary.light).toBe('#1A1A2E');
+    expect(colors.primary.dark).toBe('#F8FAFC');
   });
   it('has semantic colors', () => {
     expect(colors.success).toBeDefined();
     expect(colors.warning).toBeDefined();
     expect(colors.error).toBeDefined();
-    expect(colors.info).toBeDefined();
+    expect(colors.accent).toBeDefined();
   });
   it('has neutral scale', () => {
     expect(Object.keys(colors.neutral).length).toBeGreaterThanOrEqual(10);
@@ -69,17 +91,13 @@ describe('S08-A03: Onboarding screens', () => {
     expect(screen.getByText('Welcome to LearnFlow')).toBeInTheDocument();
     expect(screen.getByText('Get Started')).toBeInTheDocument();
   });
-  it('renders Goals screen', () => {
+  it('renders Goals screen (conversational)', () => {
     renderAt('/onboarding/goals');
-    expect(screen.getByText('What are your learning goals?')).toBeInTheDocument();
+    expect(screen.getByText('What do you want to learn?')).toBeInTheDocument();
   });
   it('renders Topics screen', () => {
     renderAt('/onboarding/topics');
-    expect(screen.getByText(/topics/i)).toBeInTheDocument();
-  });
-  it('renders Experience screen', () => {
-    renderAt('/onboarding/experience');
-    expect(screen.getByText("What's your experience level?")).toBeInTheDocument();
+    expect(screen.getByText('What interests you?')).toBeInTheDocument();
   });
   it('renders API Keys screen', () => {
     renderAt('/onboarding/api-keys');
@@ -87,8 +105,8 @@ describe('S08-A03: Onboarding screens', () => {
   });
   it('renders Ready screen', () => {
     renderAt('/onboarding/ready');
-    // FirstCourse screen shows generation animation or completion
-    expect(screen.getByLabelText('First Course Generation')).toBeInTheDocument();
+    // Onboarding completion screen (no longer creates a course)
+    expect(screen.getByLabelText('Onboarding Complete')).toBeInTheDocument();
   });
 });
 

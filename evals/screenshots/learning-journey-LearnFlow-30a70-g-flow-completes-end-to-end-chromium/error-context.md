@@ -1,0 +1,45 @@
+# Page snapshot
+
+```yaml
+- main "LearnFlow Application" [ref=e4]:
+  - link "Skip to content" [ref=e5] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e7]:
+    - generic [ref=e12]: 1/6
+    - generic [ref=e13]:
+      - navigation "Onboarding progress" [ref=e14]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: ✓
+          - generic [ref=e18]: Welcome
+        - generic [ref=e21]:
+          - generic [ref=e22]: "2"
+          - generic [ref=e23]: Goals
+        - generic [ref=e26]:
+          - generic [ref=e27]: "3"
+          - generic [ref=e28]: Topics
+        - generic [ref=e31]:
+          - generic [ref=e32]: "4"
+          - generic [ref=e33]: API Keys
+        - generic [ref=e36]:
+          - generic [ref=e37]: "5"
+          - generic [ref=e38]: Plan
+        - generic [ref=e41]:
+          - generic [ref=e42]: "6"
+          - generic [ref=e43]: Start
+      - heading "What do you want to learn?" [level=1] [ref=e44]
+      - paragraph [ref=e45]: Tell us about your learning goals in your own words, or pick from suggestions below.
+      - generic [ref=e47]:
+        - textbox "e.g., I want to learn machine learning for my career..." [ref=e48]
+        - button "Add" [disabled] [ref=e49]
+      - paragraph [ref=e50]: "Or pick from common goals:"
+      - generic [ref=e51]:
+        - button "+ Career advancement" [ref=e52]
+        - button "+ Intellectual curiosity" [ref=e53]
+        - button "+ Academic study" [ref=e54]
+        - button "+ Build a project" [ref=e55]
+        - button "+ Get certified" [ref=e56]
+        - button "+ Teach others" [ref=e57]
+      - generic [ref=e58]:
+        - button "Back" [ref=e59]
+        - button "Continue" [disabled] [ref=e60]
+```

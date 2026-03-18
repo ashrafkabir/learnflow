@@ -1,165 +1,289 @@
-# LearnFlow Improvement Queue
+# LearnFlow Improvement Queue — Iteration 14
 
-## Current Iteration: 1
+## Current Iteration: 14
+## Status: DONE
+## Date: 2025-07-18
+## Focus: Lesson content quality, design system tokens, primary action clarity, mobile fixes
 
-## Status: READY FOR BUILDER
+---
 
-## Planned By: Planner Agent
+## Brutal Assessment
 
-## Date: 2025-07-17
+After 13 iterations, LearnFlow has solid scaffolding — nice card layouts, working navigation, marketplace, mindmap, AI chat. But three **fundamental problems** remain that make this feel like a prototype, not a product:
 
-## Assessment of Current State
+1. **Lesson content is garbage.** The `synthesizeFromSources()` function is a keyword-extraction template — not AI synthesis. It produces robotic text like "Recurring themes include: quantum, computing, measurement..." followed by "This source is useful for understanding X." There's no Feynman-style explanation, no analogies, no ASCII diagrams, no "Frontiers & Open Questions" section. The spec promises bite-sized mastery content; the app delivers a bibliography with filler sentences. **This is the #1 problem.**
 
-**What's good:**
+2. **No design system tokens.** After 13 iterations of cosmetic fixes, colors/radii/shadows are STILL inconsistent across screens. Every iteration patches individual screens instead of fixing the root cause: there are no shared CSS custom properties. Blues vary, radii vary, shadows vary. This will never be fixed by screen-by-screen patches.
 
-- Solid monorepo structure with Turborepo, proper packages
-- Design system tokens defined (colors, typography, spacing) matching spec §5.3
-- Tailwind CSS integration with custom theme tokens in `index.css`
-- Dashboard, Conversation, CourseView, LessonReader screens exist with clean Tailwind UI
-- Course creation flow works end-to-end (Dashboard → API → CourseView → LessonReader)
-- 257/257 tests passing
-- Agent files exist for all core agents (course-builder, notes, exam, research, summarizer, mindmap, collaboration)
-- Firecrawl provider file exists with credibility scoring logic
+3. **Dashboard has no clear primary action.** First-time users see 6+ competing cards with no hierarchy. There's no "Resume your next lesson" hero CTA. The empty states still say "No activity yet" with no actionable guidance.
 
-**What's bad / missing:**
+---
 
-- **Firecrawl is NOT actually called** — the firecrawl-provider.ts exists but is never imported or invoked in the course builder or API routes. Content is 100% deterministic/hardcoded.
-- **Onboarding has 6 screens but missing Subscription Choice** — spec §5.2.1 requires 6 screens: Welcome, Goals, Topics, API Keys, Subscription Choice, First Course Generation. Current: Welcome, Goals, Topics, Experience, API Keys, Ready. "Experience" and "Ready" replace "Subscription Choice" and "First Course Generation".
-- **Mindmap is a tree list, NOT a D3.js/vis.js graph** — spec §5.2.5 requires interactive graph with color-coded mastery nodes. Current is a collapsible tree of `<div>`s.
-- **Conversation has NO markdown rendering** — uses naive regex for bold/code, no syntax highlighting, no LaTeX, no proper markdown parser.
-- **No agent activity indicator showing WHICH agent is processing** — just generic bouncing dots.
-- **No quick-action chips in conversation** after messages (spec §5.2.3).
-- **No mindmap panel / source drawer** in conversation (spec §5.2.3).
-- **No inline source citations with hover-preview** in CourseView/LessonReader (spec §5.2.4).
-- **Notes generation is stub** — hardcoded Cornell template with generic questions, not actually using an LLM or notes agent.
-- **Quiz generation is stub** — chat.ts generates canned quiz questions, not using exam agent.
-- **Course content is deterministic** — syllabus-generator produces identical structure regardless of topic. No real differentiation.
-- **No dark mode toggle** — dark mode CSS exists but no user-facing toggle.
-- **No notifications feed** on dashboard (spec §5.2.2).
-- **No "Today's Lessons" daily recommended path** on dashboard (spec §5.2.2).
-- **No progress rings** on course carousel (spec §5.2.2).
-- **Free vs Pro feature gating** is not implemented anywhere in the UI (spec §8).
-- **Lesson content doesn't have all 7 required elements** (spec §6.2) — missing learning objectives, key takeaways, next steps as structured sections.
-- **OnboardingReady uses inline styles** instead of Tailwind (inconsistent with redesign).
+## Prioritized Tasks (13 items)
 
-## Priority Tasks (Builder must do ALL of these)
+### 1. ✅ DONE: Rewrite Lesson Synthesis to Use LLM
 
-### Task 1: Integrate Firecrawl into Course Builder Pipeline
+**Problem:** `packages/agents/src/content-pipeline/firecrawl-provider.ts` `synthesizeFromSources()` uses keyword extraction + template strings. Output is a mechanical list of "What to learn from [source]" with zero educational value. No analogies, no simplified explanations, no diagrams, no engagement. This violates the core product promise.
 
-- **Spec Section**: §6.1, §6.3, ITERATE.md Override #3
-- **Problem**: `firecrawl-provider.ts` exists but is never called. Course content is 100% hardcoded deterministic text. No real web sources are fetched.
-- **Fix**: Import FirecrawlProvider in `course-builder-agent.ts` and `apps/api/src/routes/courses.ts`. Before generating each lesson, call Firecrawl search for the topic, score sources, pass crawled content as context to LLM synthesis. Store attribution metadata. If FIRECRAWL_API_KEY is missing, fall back to mock but log a warning.
-- **Acceptance Criteria**: When creating a course, Firecrawl API is called (or mock if no key). Lessons include real source URLs. References section appears at bottom of each lesson with ≥3 sources.
-- **Files to modify**: `packages/agents/src/course-builder/course-builder-agent.ts`, `packages/agents/src/course-builder/syllabus-generator.ts`, `apps/api/src/routes/courses.ts`, `apps/api/src/routes/chat.ts`
+**Fix:**
+- Replace the template-based synthesis with an actual LLM call (OpenAI/Anthropic via user's API key)
+- System prompt should enforce Feynman/Kurzgesagt style: explain like you're teaching a curious friend, use analogies, include ASCII diagrams where helpful, add a "🔭 Frontiers & Open Questions" section
+- Target 900-1400 words per lesson
+- Keep inline citations from sources but synthesize actual educational prose, not source summaries
+- Fallback to current template if no API key is configured
 
-### Task 2: Replace Mindmap Tree with D3.js/vis.js Interactive Graph
+**Acceptance Criteria:**
+- Generated lesson reads like a blog post, not a bibliography
+- Contains at least one analogy or metaphor per lesson
+- Contains "🔭 Frontiers & Open Questions" section
+- 900-1400 word range
+- Inline citations preserved from sources
+- Works with both OpenAI and Anthropic keys
 
-- **Spec Section**: §5.2.5
-- **Problem**: MindmapExplorer renders a collapsible `<div>` tree. Spec requires full-screen interactive graph with D3.js or vis.js, color-coded mastery nodes, clickable navigation.
-- **Fix**: Install `vis-network` (lighter than D3 for this use case). Replace tree rendering with a `vis.Network` graph. Nodes colored by mastery (gray=not started, yellow=in progress, green=mastered). Clicking a node navigates to the lesson.
-- **Acceptance Criteria**: Mindmap renders as a force-directed graph. Nodes are colored by mastery. Clicking navigates to lesson. Screenshot shows graph, not tree.
-- **Files to modify**: `apps/client/src/screens/MindmapExplorer.tsx`, `apps/client/package.json`
+---
 
-### Task 3: Add Proper Markdown Rendering to Conversation
+### 2. 🔴 CRITICAL: Design System Tokens (CSS Custom Properties)
 
-- **Spec Section**: §5.2.3
-- **Problem**: Conversation uses `dangerouslySetInnerHTML` with naive regex for bold/code. No syntax highlighting, no LaTeX, no proper markdown.
-- **Fix**: Install `react-markdown`, `remark-math`, `rehype-katex`, `rehype-highlight`. Replace regex rendering with `<ReactMarkdown>` component with these plugins.
-- **Acceptance Criteria**: Code blocks render with syntax highlighting. Math expressions render. Markdown tables/lists render properly.
-- **Files to modify**: `apps/client/src/screens/Conversation.tsx`, `apps/client/src/screens/LessonReader.tsx`, `apps/client/package.json`
+**Problem:** 13 iterations of fixing "inconsistent blues" and "different radii" have not solved the problem because there's no single source of truth. Each screen defines its own colors inline or via Tailwind classes.
 
-### Task 4: Add Agent Activity Indicator Showing Which Agent
+**Fix:**
+- Create `apps/client/src/styles/tokens.css` with CSS custom properties:
+  ```
+  --color-primary: #2563EB
+  --color-primary-hover: #1D4ED8
+  --color-secondary: #7C3AED
+  --color-success: #16A34A
+  --color-error: #DC2626
+  --color-warning: #F59E0B
+  --radius-button: 8px
+  --radius-card: 12px
+  --radius-input: 8px
+  --radius-modal: 16px
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04)
+  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08)
+  --shadow-modal: 0 8px 30px rgba(0,0,0,0.12)
+  ```
+- Extend Tailwind config to use these tokens
+- Replace ALL ad-hoc color/radius/shadow values across every screen with token references
+- Dark mode variants for all tokens
 
-- **Spec Section**: §5.2.3
-- **Problem**: Loading state shows generic bouncing dots. Doesn't show which agent is working (e.g., "Course Builder is researching...", "Notes Agent is generating...").
-- **Fix**: Update chat API to return `agentName` in streaming/response. Display agent name in the typing indicator: "🔍 Research Agent is working..." with agent-specific icons.
-- **Acceptance Criteria**: When an agent-specific request is made (notes, quiz, research), the loading indicator shows the agent name.
-- **Files to modify**: `apps/client/src/screens/Conversation.tsx`, `apps/api/src/routes/chat.ts`, `apps/client/src/context/AppContext.tsx`
+**Acceptance Criteria:**
+- `grep -r "bg-blue\|bg-\[#\|border-\[#\|shadow-\[" apps/client/src/ --include="*.tsx" | grep -v tokens` returns zero results (all values come from tokens)
+- Every button, card, input, and modal uses token-based styling
+- Changing `--color-primary` in one place changes it everywhere
+- Dark mode works correctly with token overrides
 
-### Task 5: Add Quick-Action Chips After Assistant Messages
+---
 
-- **Spec Section**: §5.2.3
-- **Problem**: Quick-action chips only appear in empty state. After an assistant message about a course/lesson, contextual chips should appear (Take Notes, Quiz Me, Go Deeper, See Sources).
-- **Fix**: After each assistant message, render contextual action chips based on the conversation context. If discussing a lesson: show "Take Notes", "Quiz Me". If discussing a topic: show "Create Course", "Go Deeper".
-- **Acceptance Criteria**: After assistant replies, 2-4 contextual action chips appear below the message.
-- **Files to modify**: `apps/client/src/screens/Conversation.tsx`
+### 3. 🔴 CRITICAL: Dashboard Primary Action Hero
 
-### Task 6: Fix Onboarding Flow to Match Spec (6 Screens)
+**Problem:** Dashboard shows 6+ equal-weight cards. New users have no idea what to do first. There's no "Resume your next lesson" or "Start here" CTA.
 
-- **Spec Section**: §5.2.1
-- **Problem**: Onboarding has Welcome, Goals, Topics, Experience, API Keys, Ready. Spec requires Welcome, Goals, Topics, API Keys, Subscription Choice, First Course Generation. Missing subscription choice and first course generation with progress animation.
-- **Fix**: Replace "Experience" with a Subscription Choice screen (Free vs Pro comparison). Replace "Ready" with a First Course Generation screen that shows real-time progress animation while creating the first course. Ensure state persists across steps.
-- **Acceptance Criteria**: Onboarding has all 6 spec screens. Subscription choice shows Free vs Pro. Last screen generates a course with animation.
-- **Files to modify**: `apps/client/src/screens/onboarding/Experience.tsx` → rename/rewrite to `SubscriptionChoice.tsx`, `apps/client/src/screens/onboarding/Ready.tsx` → rewrite to `FirstCourse.tsx`, router config
+**Fix:**
+- Add a hero section at the top of dashboard:
+  - If user has courses in progress: "Continue Learning" card with the next incomplete lesson, title, estimated time, and a prominent "Resume →" button
+  - If user has no courses: "Start Your Learning Journey" with a prominent "Create Your First Course" button and 3 topic suggestion chips
+- Reduce visual weight of secondary cards (stats, notifications, weekly activity)
+- Empty "This Week" chart: replace "No activity yet" with a faded chart skeleton + "Complete your first lesson to see progress here"
 
-### Task 7: Add Inline Source Citations with Hover-Preview in LessonReader
+**Acceptance Criteria:**
+- First thing visible on dashboard is ONE clear primary action
+- Hero CTA is visually dominant (larger, primary color, more padding than any other element)
+- Empty states have actionable CTAs that link to relevant screens
+- Returning users see their next lesson prominently
 
-- **Spec Section**: §5.2.4, §6.3
-- **Problem**: LessonReader renders lesson content but has no inline citation markers [1][2] or hover-preview of sources. No expandable references section.
-- **Fix**: Parse citation markers in lesson content. Render them as clickable superscript numbers. On hover, show a tooltip with source title, author, and URL. At bottom, render a full References section.
-- **Acceptance Criteria**: Lesson content shows inline [1] markers. Hovering shows source preview. References section at bottom with clickable links.
-- **Files to modify**: `apps/client/src/screens/LessonReader.tsx`, add `components/CitationTooltip.tsx`
+---
 
-### Task 8: Make Lesson Content Include All 7 Required Elements
+### 4. 🔴 CRITICAL: Mobile Overflow & Safe Area Fixes
 
-- **Spec Section**: §6.2
-- **Problem**: Generated lessons have title and content, but no structured Learning Objectives, Estimated Time badge, Key Takeaways, Sources section, or Next Steps as distinct UI sections.
-- **Fix**: Update course generation to produce all 7 elements per lesson. Update LessonReader to render each as a distinct, styled section: objectives at top, time badge, content body, takeaways card, sources, next steps with links.
-- **Acceptance Criteria**: Every lesson displays: title, time badge, 2-3 learning objectives, content, 3-5 takeaways, sources with links, 3 next step suggestions.
-- **Files to modify**: `apps/api/src/routes/courses.ts`, `apps/client/src/screens/LessonReader.tsx`, `packages/shared/src/types/`
+**Problem:** On 375px viewport: course creation row overflows, header icons too small/close, chat input not sticky, no safe-area handling.
 
-### Task 9: Add Today's Lessons and Progress Rings to Dashboard
+**Fix:**
+- Dashboard header: `flex-wrap: wrap` on course input row, stack vertically on mobile
+- All icon buttons: `min-height: 44px; min-width: 44px`
+- Chat input: `position: sticky; bottom: 0; padding-bottom: env(safe-area-inset-bottom)`
+- Add `overflow-x: hidden` on main containers
+- Test at 320px, 375px, 414px
 
-- **Spec Section**: §5.2.2
-- **Problem**: Dashboard has stats grid and course cards, but no "Today's Lessons" daily queue and no progress rings on course cards. No notifications feed.
-- **Fix**: Add a "Today's Lessons" section showing 3 prioritized next lessons across courses. Add SVG progress rings on course cards showing completion %. Add a simple notifications feed section.
-- **Acceptance Criteria**: Dashboard shows daily lesson queue, progress rings on course cards, and a notifications area.
-- **Files to modify**: `apps/client/src/screens/Dashboard.tsx`, add `components/ProgressRing.tsx`
+**Acceptance Criteria:**
+- Zero horizontal overflow at any width ≥ 320px
+- All interactive elements ≥ 44px tap target
+- Chat input always visible at bottom on mobile
+- No content hidden behind sticky headers
 
-### Task 10: Upgrade Notes and Quiz from Stubs to Real Agent Calls
+---
 
-- **Spec Section**: §4.2 (Notes Agent, Exam Agent)
-- **Problem**: "Take Notes" and "Quiz Me" in chat.ts return hardcoded templates. The actual NotesAgent and ExamAgent classes exist in `packages/agents/` but are never invoked.
-- **Fix**: Wire up `chat.ts` to instantiate and call `NotesAgent.process()` and `ExamAgent.process()` with the lesson content as context. If no LLM key is available, use the agent's mock mode but ensure output is richer than current stubs.
-- **Acceptance Criteria**: Notes agent produces context-specific Cornell notes with ≥5 cue questions derived from actual lesson content. Exam agent produces ≥8 questions with plausible distractors. Not generic templates.
-- **Files to modify**: `apps/api/src/routes/chat.ts`, `packages/agents/src/exam-agent/exam-agent.ts`, `packages/agents/src/notes-agent/` (if exists, or notes logic in agents)
+### 5. 🟡 HIGH: Text Contrast & Focus States (Accessibility)
 
-### Task 11: Add Dark Mode Toggle
+**Problem:** Secondary text uses `text-gray-400`/`text-gray-500` which fails WCAG AA on white. No visible keyboard focus states. Mindmap legend uses color-only indicators.
 
-- **Spec Section**: §5.3
-- **Problem**: Dark mode CSS classes exist throughout, but there's no user-facing toggle to switch between light/dark mode.
-- **Fix**: Add a dark mode toggle in ProfileSettings and in the Dashboard header. Use `localStorage` to persist preference. Apply `dark` class to `<html>` element.
-- **Acceptance Criteria**: User can toggle dark mode. Preference persists across sessions. All screens render correctly in dark mode.
-- **Files to modify**: `apps/client/src/screens/ProfileSettings.tsx`, `apps/client/src/screens/Dashboard.tsx`, `apps/client/src/context/AppContext.tsx`
+**Fix:**
+- Replace all `text-gray-400`/`text-gray-500` body text with `text-gray-600` minimum
+- Add global `:focus-visible` style: `outline: 2px solid var(--color-primary); outline-offset: 2px`
+- Add text labels to mindmap legend dots
+- Run axe-core audit, fix all critical/serious violations
 
-### Task 12: Fix OnboardingReady Inline Styles → Tailwind
+**Acceptance Criteria:**
+- All text meets 4.5:1 contrast ratio on light backgrounds
+- Tab through entire app shows visible focus ring on every interactive element
+- Zero critical/serious axe-core violations
 
-- **Spec Section**: §5.3 (Design consistency)
-- **Problem**: `OnboardingReady` uses inline styles while all other screens use Tailwind CSS. Inconsistent with the redesign.
-- **Fix**: Rewrite to use Tailwind classes matching the design system. Add gradient background, proper spacing, and animations consistent with Welcome screen.
-- **Acceptance Criteria**: Ready/FirstCourse screen uses only Tailwind classes. Visual consistency with other onboarding screens.
-- **Files to modify**: `apps/client/src/screens/onboarding/Ready.tsx`
+---
 
-### Task 13: Add Source Drawer to Conversation
+### 6. 🟡 HIGH: Mindmap Readability
 
-- **Spec Section**: §5.2.3
-- **Problem**: No source drawer in conversation. When the assistant cites sources, there's no expandable panel to see them.
-- **Fix**: Add a slide-out drawer component that shows when sources are present in an assistant response. Display source title, URL, credibility score, and snippet.
-- **Acceptance Criteria**: When assistant response contains sources, a "View Sources" button appears. Clicking it opens a drawer with source details.
-- **Files to modify**: `apps/client/src/screens/Conversation.tsx`, add `components/SourceDrawer.tsx`
+**Problem:** Node labels tiny and truncated, connectors hairline-thin, canvas wasted inside padded card, no zoom-to-fit.
 
-### Task 14: Implement Free vs Pro Feature Gating in UI
+**Fix:**
+- Node labels: 14px minimum, allow 2-line wrapping with `line-clamp-2`
+- Tooltips on hover showing full title
+- Connector stroke: 2px, color `#94A3B8`
+- Remove outer card padding — canvas uses full width
+- Add zoom-to-fit button on initial load
 
-- **Spec Section**: §8 (Subscription tiers)
-- **Problem**: No feature gating exists. All features are accessible regardless of subscription status. No Pro badges, no upgrade prompts.
-- **Fix**: Add subscription state to AppContext (default: free). Gate Pro features (Update Agent, priority agent access, managed keys) with upgrade prompts. Show "Pro" badges on gated features. Add upgrade CTA in settings.
-- **Acceptance Criteria**: Certain features show a "Pro" badge and prompt to upgrade when clicked by free users. Settings shows current tier.
-- **Files to modify**: `apps/client/src/context/AppContext.tsx`, `apps/client/src/screens/ProfileSettings.tsx`, `apps/client/src/screens/Dashboard.tsx`
+**Acceptance Criteria:**
+- All labels readable without zooming
+- Connectors clearly visible
+- Canvas uses ≥90% available width
+- Zoom-to-fit works on load
 
-### Task 15: Set Up Playwright E2E Test Infrastructure
+---
 
-- **Spec Section**: ITERATE.md Override #2
-- **Problem**: No Playwright tests exist. The iteration mandates real browser testing of all screens.
-- **Fix**: Install `@playwright/test`. Create `playwright.config.ts` at monorepo root pointing to Chromium at `/home/aifactory/.cache/ms-playwright/chromium-1208/chrome-linux64/chrome`. Create `e2e/learning-journey.spec.ts` with at least Tests 1-3 from ITERATE.md (onboarding, course generation, lesson content).
-- **Acceptance Criteria**: `npx playwright test` runs and produces screenshots in `evals/screenshots/`. At least 3 test files covering onboarding, course generation, and lesson viewing.
-- **Files to modify**: Create `playwright.config.ts`, `e2e/learning-journey.spec.ts`, `package.json` (add devDep)
+### 7. 🟡 HIGH: Settings Page 2-Column Layout
+
+**Problem:** Single-column scroll-fest on desktop. Inconsistent button styles. PRO badges vary. API key placeholder reveals pattern.
+
+**Fix:**
+- Desktop (≥768px): 2-column CSS grid
+- Unify all Save buttons to primary token style
+- Standardize PRO badges: same size, same purple color
+- API key mask: `••••••••••••`
+- Consistent form spacing: 16px label-to-input, 24px between groups
+
+**Acceptance Criteria:**
+- 2-column on desktop, single column on mobile
+- All Save buttons identical
+- All PRO badges identical
+- Page scroll reduced ~30% on desktop
+
+---
+
+### 8. 🟡 HIGH: Unified Button Component
+
+**Problem:** Buttons across the app use different sizes, radii, shadows, gradients. Login has gradient blue, settings has flat blue, onboarding has another gradient. Some CTAs are purple.
+
+**Fix:**
+- Create a `<Button>` component with variants: `primary`, `secondary`, `ghost`, `danger`
+- All variants use design tokens from task #2
+- Replace every `<button>` and styled CTA across all screens with this component
+- Consistent height: 40px default, 48px large
+
+**Acceptance Criteria:**
+- Single `Button` component used everywhere
+- No ad-hoc button styling in any screen file
+- Visual audit: all primary buttons look identical across all screens
+
+---
+
+### 9. 🟠 MEDIUM: Marketplace Filter Alignment & Grid
+
+**Problem:** Search bar, dropdown, and filter pills have different heights/radii. Large empty space on right. "All" pill indistinguishable from inactive pills.
+
+**Fix:**
+- Align all filter controls to same height (40px)
+- Unify border-radius across search, dropdown, and pills
+- Active pill: solid primary color fill (not just outline)
+- Responsive grid: 3 columns on desktop, 2 on tablet, 1 on mobile with no wasted space
+
+**Acceptance Criteria:**
+- All filter controls same height
+- Active filter clearly distinguishable
+- Grid fills available width with no large empty gutters
+
+---
+
+### 10. 🟠 MEDIUM: Onboarding Visual Consistency
+
+**Problem:** Progress dots small/low-contrast. Brain icon inconsistent size across screens. Feature list spacing excessive. "Get Started" uses different blue than rest of app.
+
+**Fix:**
+- Progress dots: 32px, darken inactive to `text-gray-400`
+- Brain icon: same 48px size everywhere
+- Feature list gap: 12px
+- Apply primary button token to "Get Started"
+
+**Acceptance Criteria:**
+- Progress dots visible and tappable
+- Brain icon identical across all screens
+- CTA matches primary button style from design tokens
+
+---
+
+### 11. 🟠 MEDIUM: Course Title 2-Line Clamp + Tooltips
+
+**Problem:** Titles truncate to 1 line losing meaning. Progress bar alignment inconsistent.
+
+**Fix:**
+- `-webkit-line-clamp: 2` on all course titles
+- `title` attribute for native hover tooltip
+- Progress bar: consistent 6px height, left title + right percentage
+
+**Acceptance Criteria:**
+- Titles show 2 lines before truncating
+- Full title on hover
+- Progress bars aligned consistently
+
+---
+
+### 12. 🟠 MEDIUM: Landing Page Metrics Single Source of Truth
+
+**Problem:** "50K+" in hero vs "50k+" in footer. "4.9★" vs "4.8" in different sections.
+
+**Fix:**
+- Create `METRICS` constant: `{ learners: '50,000+', rating: '4.9', satisfaction: '98%' }`
+- Use everywhere — hero, trust section, footer
+- Remove duplicate stat displays
+
+**Acceptance Criteria:**
+- Single source of truth for all metrics
+- No conflicting numbers anywhere
+
+---
+
+### 13. 🟠 MEDIUM: Login/Register Polish
+
+**Problem:** Excessive whitespace above login card. No password show/hide toggle. Input borders too subtle. "Sign up" link too far from card.
+
+**Fix:**
+- Reduce top margin ~30% for better vertical centering
+- Add show/hide password toggle
+- Input borders: `border-gray-300` instead of `border-gray-200`
+- Sign-up link: 12px gap from card instead of 24px
+
+**Acceptance Criteria:**
+- Login form well-centered vertically
+- Password toggle visible and functional
+- Inputs look like editable fields
+- Sign-up link visually connected to card
+
+---
+
+## Remaining for Future Iterations (Post-14)
+
+- PWA offline support & service worker
+- Skeleton loading screens for marketplace and conversation
+- Mobile hamburger nav for app screens
+- Horizontal scroll for filter chips on mobile marketplace
+- Collaboration Agent peer matching UI
+- Export Agent (PDF, SCORM, Notion, Obsidian)
+- Playwright E2E tests for all user journeys
+- Creator dashboard with analytics
+- CRDT shared mindmap (Yjs)
+- Flashcard deck UI
+- Course progress email digests
+- Social sharing
+- Gamification: badges, levels, leaderboard
+- Performance audit (Lighthouse ≥90)
+- Dark mode comprehensive audit
+- PostHog analytics initialization
+- Documentation site

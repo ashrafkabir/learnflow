@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../../context/AppContext.js';
+import { useApp, apiBase } from '../../context/AppContext.js';
+import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 
 const TOPICS = [
   { id: 'ai', icon: '🤖', label: 'Artificial Intelligence' },
@@ -26,31 +27,39 @@ export function OnboardingTopics() {
     setSelected((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
   };
 
-  const next = () => {
+  const next = async () => {
     dispatch({ type: 'SET_ONBOARDING_TOPICS', topics: selected });
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 2 });
-    nav('/onboarding/experience');
+    // Save topics to API
+    try {
+      const token = localStorage.getItem('learnflow-token');
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      await fetch(`${apiBase()}/api/v1/profile/goals`, { method: 'POST', headers, body: JSON.stringify({ topics: selected }) });
+    } catch { /* best effort */ }
+    nav('/onboarding/api-keys');
   };
 
   return (
     <div
       data-screen="onboarding-topics"
-      className="min-h-screen bg-gray-50 dark:bg-bg-dark flex flex-col"
+      className="slide-in-right min-h-screen bg-gray-50 dark:bg-bg-dark flex flex-col"
     >
       <div className="p-6 pb-0">
         <div className="flex items-center gap-2 mb-2">
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
             <div className="h-full w-2/5 bg-accent rounded-full transition-all" />
           </div>
-          <span className="text-xs text-gray-400">2/5</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">2/6</span>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col justify-center p-6 max-w-lg mx-auto w-full">
+        <OnboardingProgress current="topics" />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           What interests you?
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">
+        <p className="text-gray-600 dark:text-gray-400 mb-8">
           Pick topics you want to explore. You can always change these later.
         </p>
 
@@ -71,13 +80,30 @@ export function OnboardingTopics() {
           ))}
         </div>
 
-        <button
-          onClick={next}
-          disabled={selected.length === 0}
-          className="w-full py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          Continue
-        </button>
+        {selected.length === 0 && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Select at least one topic to continue, or skip this step.</p>
+        )}
+        <div className="flex gap-3 items-center">
+          <button
+            onClick={() => nav('/onboarding/goals')}
+            className="px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            Back
+          </button>
+          <button
+            onClick={next}
+            disabled={selected.length === 0}
+            className="flex-1 py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Continue
+          </button>
+          <button
+            onClick={() => { dispatch({ type: 'SET_ONBOARDING_STEP', step: 2 }); nav('/onboarding/api-keys'); }}
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-accent transition-colors"
+          >
+            Skip
+          </button>
+        </div>
       </div>
     </div>
   );

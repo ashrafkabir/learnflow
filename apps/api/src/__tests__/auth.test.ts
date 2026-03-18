@@ -131,7 +131,7 @@ describe('S02-A06: Store API key encrypted', () => {
     expect(res.body.maskedKey).toMatch(/^sk-\.\.\..*$/);
 
     // Verify it's actually encrypted in the DB
-    const dbKey = db.apiKeys.get(res.body.id);
+    const dbKey = db.findApiKeyById(res.body.id);
     expect(dbKey).toBeDefined();
     expect(dbKey!.encryptedKey).not.toBe('sk-testkey1234567890abcdefghijk');
     expect(dbKey!.iv).toBeDefined();
@@ -314,6 +314,8 @@ describe('S02-A14: RBAC blocks free users from Pro endpoints', () => {
 
     const user = db.findUserByEmail('pro@example.com');
     user!.tier = 'pro';
+    user!.updatedAt = new Date();
+    db.updateUser(user!);
 
     // Need new token with pro tier
     const login = await request(app)

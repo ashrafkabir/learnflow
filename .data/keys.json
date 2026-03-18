@@ -1,0 +1,14 @@
+[
+  {
+    "id": "c1a26c54-ba86-4d6b-8441-3870b91a487f",
+    "userId": "11562f26-63cc-4975-8ff8-e4b6136234aa",
+    "provider": "openai",
+    "encryptedKey": "094a0933aaec3ade00f6ad82e17fa0c9e3ca0986a8be6b056a5640d41ca2bcc42bbb201005289d3c1daf8e3bfff8504f",
+    "iv": "64e150290454de2419b4ee99b5fadc19",
+    "label": "openai key",
+    "lastFour": "jklm",
+    "active": true,
+    "createdAt": "2026-03-17T18:17:24.302Z",
+    "updatedAt": "2026-03-17T18:17:24.302Z"
+  }
+]

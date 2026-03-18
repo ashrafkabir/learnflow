@@ -1,14 +1,12 @@
 import { Router, Request, Response } from 'express';
+import { dbMindmaps } from '../db.js';
 
 const router = Router();
-
-// In-memory mindmaps
-const mindmaps: Map<string, { userId: string; nodes: unknown[]; edges: unknown[] }> = new Map();
 
 // GET /api/v1/mindmap - Get user's knowledge graph
 router.get('/', (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const mindmap = mindmaps.get(userId) || { userId, nodes: [], edges: [] };
+  const mindmap = dbMindmaps.get(userId);
   res.status(200).json(mindmap);
 });
 

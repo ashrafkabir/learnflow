@@ -1,6 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import OpenAI from 'openai';
 import { courses } from './courses.js';
+
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 const router = Router();
 
@@ -31,274 +36,231 @@ function findLesson(lessonId?: string) {
   return null;
 }
 
-function generateNotesResponse(text: string, lessonId?: string, format?: string) {
+async function generateNotesResponse(text: string, lessonId?: string, format?: string) {
   const found = findLesson(lessonId);
   const lessonTitle = found?.lesson.title || 'the topic';
   const lessonContent = found?.lesson.content || '';
 
-  // Extract key points from lesson content
+  if (openai && lessonContent.length > 100) {
+    try {
+      if (format === 'flashcard') {
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          temperature: 0.5,
+          max_tokens: 1500,
+          messages: [
+            { role: 'system', content: 'Generate flashcards from the lesson content. Return JSON: { "flashcards": [{"front": "question", "back": "answer"}] }. Create 8-12 flashcards covering key concepts, definitions, and applications from the actual lesson content. Be specific — reference actual concepts from the lesson.' },
+            { role: 'user', content: `Lesson: "${lessonTitle}"\n\n${lessonContent.slice(0, 3000)}` }
+          ],
+          response_format: { type: 'json_object' }
+        });
+        const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+        const flashcards = parsed.flashcards || [];
+        if (flashcards.length > 0) {
+          return {
+            notes: { format: 'flashcard', content: '', flashcards },
+            reply: `Generated ${flashcards.length} flashcards from "${lessonTitle}"`,
+          };
+        }
+      } else {
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          temperature: 0.5,
+          max_tokens: 2000,
+          messages: [
+            { role: 'system', content: `Generate Cornell Notes from the lesson. Include:
+- 7+ specific cue questions derived from the actual content
+- Detailed main notes organized by topic with specific facts
+- Connections to broader themes
+- A thorough summary paragraph
+Use markdown formatting. Be specific — reference actual concepts, examples, and details from the lesson.` },
+            { role: 'user', content: `Lesson: "${lessonTitle}"\n\n${lessonContent.slice(0, 3000)}` }
+          ]
+        });
+        const content = completion.choices[0]?.message?.content || '';
+        if (content.length > 100) {
+          const cueQuestions = content.match(/- .+\?/g)?.map(q => q.slice(2)) || [];
+          return {
+            notes: { format: 'cornell', content, cueQuestions, summary: `Key concepts from ${lessonTitle}` },
+            reply: `Generated Cornell Notes for "${lessonTitle}"`,
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('[LearnFlow] OpenAI notes generation failed, using fallback:', err);
+    }
+  }
+
+  // Fallback: template-based
   const lines = lessonContent.split('\n').filter((l) => l.trim());
   const headings = lines.filter((l) => l.startsWith('##')).map((l) => l.replace(/^#+\s*/, ''));
-  const keyPoints = lines
-    .filter((l) => l.startsWith('- '))
-    .slice(0, 5)
-    .map((l) => l.slice(2));
+  const keyPoints = lines.filter((l) => l.startsWith('- ')).slice(0, 5).map((l) => l.slice(2));
 
   if (format === 'flashcard') {
     const flashcards = headings.slice(0, 5).map((h, i) => ({
       front: `What is ${h.toLowerCase()}?`,
-      back:
-        keyPoints[i] ||
-        `A key concept in ${lessonTitle} that covers ${h.toLowerCase()} and its applications.`,
+      back: keyPoints[i] || `A key concept in ${lessonTitle} covering ${h.toLowerCase()}.`,
     }));
     if (flashcards.length === 0) {
       flashcards.push(
-        {
-          front: `What is the main purpose of ${lessonTitle}?`,
-          back: `To understand the fundamental principles and practical applications of the topic.`,
-        },
-        {
-          front: `What are the key principles covered?`,
-          back: `Theoretical foundations, practical implementation patterns, and evaluation metrics.`,
-        },
-        {
-          front: `Why is this topic important?`,
-          back: `It forms the foundation for understanding more advanced concepts and enables practical application in real-world scenarios.`,
-        },
+        { front: `What is the main purpose of ${lessonTitle}?`, back: `To understand the fundamental principles and practical applications of the topic.` },
+        { front: `What are the key principles covered?`, back: `Theoretical foundations, practical implementation patterns, and evaluation metrics.` },
       );
     }
-    return {
-      notes: { format: 'flashcard', content: '', flashcards },
-      reply: `Generated ${flashcards.length} flashcards from "${lessonTitle}"`,
-    };
+    return { notes: { format: 'flashcard', content: '', flashcards }, reply: `Generated ${flashcards.length} flashcards from "${lessonTitle}"` };
   }
 
-  // Cornell notes — generate context-specific cue questions from lesson content (Task 10)
   const cueQuestions = [
     `What are the core concepts in ${lessonTitle}?`,
     `How do the key principles relate to each other?`,
-    `What are the practical applications of these ideas?`,
-    `What are common pitfalls to avoid?`,
-    ...headings
-      .slice(0, 3)
-      .map((h) => `How does ${h.toLowerCase()} relate to ${lessonTitle.toLowerCase()}?`),
-    `What evidence supports the main claims in this lesson?`,
+    `What are the practical applications?`,
+    ...headings.slice(0, 3).map((h) => `How does ${h.toLowerCase()} relate to ${lessonTitle.toLowerCase()}?`),
+    `What evidence supports the main claims?`,
   ].slice(0, 7);
 
-  const content = `# Cornell Notes: ${lessonTitle}
+  const content = `# Cornell Notes: ${lessonTitle}\n\n## Cue Questions\n${cueQuestions.map((q) => `- ${q}`).join('\n')}\n\n## Main Notes\n\n### Key Concepts\n${headings.map((h) => `- **${h}**`).join('\n') || `- Fundamental principles of ${lessonTitle}`}\n\n### Important Details\n${keyPoints.map((p) => `- ${p}`).join('\n') || '- Core implementation patterns'}\n\n## Summary\nKey concepts needed to understand ${lessonTitle}.`;
 
-## Cue Questions
-${cueQuestions.map((q) => `- ${q}`).join('\n')}
-
-## Main Notes
-
-### Key Concepts
-${headings.length > 0 ? headings.map((h) => `- **${h}**: Core concept within this lesson`).join('\n') : `- The lesson covers fundamental principles of ${lessonTitle}\n- Theory and practice are integrated throughout`}
-
-### Important Details
-${keyPoints.length > 0 ? keyPoints.map((p) => `- ${p}`).join('\n') : `- Foundational principles that enable deeper understanding\n- Practical implementation patterns used in production\n- Evaluation approaches for measuring progress`}
-
-### Connections
-These concepts connect to broader themes in the course and build on prerequisite knowledge from earlier modules.
-
-## Summary
-This lesson establishes key concepts needed to understand ${lessonTitle}. The main takeaway is that theory and practice must be integrated for effective learning and application.`;
-
-  return {
-    notes: {
-      format: 'cornell',
-      content,
-      cueQuestions,
-      summary: `Key concepts from ${lessonTitle}`,
-    },
-    reply: `Generated Cornell Notes for "${lessonTitle}"`,
-  };
+  return { notes: { format: 'cornell', content, cueQuestions, summary: `Key concepts from ${lessonTitle}` }, reply: `Generated Cornell Notes for "${lessonTitle}"` };
 }
 
-function generateQuizResponse(courseId?: string, _moduleId?: string) {
-  // Find course and get relevant content
+async function generateQuizResponse(courseId?: string, _moduleId?: string) {
   const course = courseId ? courses.get(courseId) : null;
-  const mod = course?.modules?.[0]; // Use first module as default
-
+  const mod = course?.modules?.[0];
   const topic = course?.topic || 'the subject';
   const modTitle = mod?.title || 'core concepts';
 
+  // Gather lesson content for context
+  const lessonContent = mod?.lessons?.map(l => `## ${l.title}\n${l.content?.slice(0, 800) || l.description}`).join('\n\n') || '';
+
+  if (openai && lessonContent.length > 100) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.6,
+        max_tokens: 2500,
+        messages: [
+          { role: 'system', content: `Generate a quiz with exactly 8 questions based on the lesson content. Return JSON:
+{
+  "questions": [
+    {
+      "id": "q1",
+      "question": "specific question about lesson content",
+      "type": "multiple_choice",
+      "options": ["option1", "option2", "option3", "option4"],
+      "correctAnswer": "the correct option text",
+      "explanation": "why this is correct, referencing lesson content"
+    }
+  ]
+}
+Include 6 multiple_choice and 2 short_answer questions. For short_answer, omit options. Make questions specific to the actual content — reference specific concepts, examples, and details from the lessons. Distractors should be plausible but clearly wrong.` },
+          { role: 'user', content: `Topic: ${topic}\nModule: ${modTitle}\n\n${lessonContent.slice(0, 4000)}` }
+        ],
+        response_format: { type: 'json_object' }
+      });
+      const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+      if (parsed.questions?.length >= 4) {
+        return {
+          questions: parsed.questions,
+          reply: `Generated a ${parsed.questions.length}-question quiz on "${modTitle}" from your ${topic} course.`,
+        };
+      }
+    } catch (err) {
+      console.warn('[LearnFlow] OpenAI quiz generation failed, using fallback:', err);
+    }
+  }
+
+  // Fallback: generic questions
   const questions = [
-    {
-      id: 'q1',
-      question: `Which of the following best describes the primary goal of ${modTitle}?`,
-      type: 'multiple_choice' as const,
-      options: [
-        'To provide a theoretical overview without practical applications',
-        `To build a comprehensive understanding of ${topic} through theory and practice`,
-        'To memorize definitions without understanding',
-        'To skip fundamentals and focus only on advanced topics',
-      ],
-      correctAnswer: `To build a comprehensive understanding of ${topic} through theory and practice`,
-      explanation: `The module aims to combine theoretical foundations with practical implementation for a well-rounded understanding of ${topic}.`,
-    },
-    {
-      id: 'q2',
-      question: `What is a key principle emphasized when studying ${topic}?`,
-      type: 'multiple_choice' as const,
-      options: [
-        'Focus only on theory',
-        'Ignore evaluation metrics',
-        'Integrate theory with practical implementation',
-        'Avoid real-world applications',
-      ],
-      correctAnswer: 'Integrate theory with practical implementation',
-      explanation:
-        'Effective learning requires combining theoretical understanding with hands-on practice.',
-    },
-    {
-      id: 'q3',
-      question: `Explain why evaluation and measurement are important when studying ${topic}. Give at least two reasons.`,
-      type: 'short_answer' as const,
-      correctAnswer:
-        'Evaluation helps track progress and identify knowledge gaps; measurement provides objective benchmarks for improvement.',
-      explanation:
-        'Systematic evaluation ensures learners can identify weaknesses and track their growth over time.',
-    },
-    {
-      id: 'q4',
-      question: `Which approach is recommended for beginners learning ${topic}?`,
-      type: 'multiple_choice' as const,
-      options: [
-        'Start with the most complex topics',
-        'Skip prerequisites entirely',
-        'Build from fundamentals and iterate with increasing complexity',
-        'Only read without practicing',
-      ],
-      correctAnswer: 'Build from fundamentals and iterate with increasing complexity',
-      explanation:
-        'A progressive approach starting from basics ensures a solid foundation for advanced concepts.',
-    },
-    {
-      id: 'q5',
-      question: `Describe one real-world application of concepts from ${modTitle} and explain its significance.`,
-      type: 'short_answer' as const,
-      correctAnswer:
-        'Concepts from this module can be applied in automated systems, research, and enterprise applications to improve efficiency and decision-making.',
-      explanation:
-        'Understanding real-world applications helps connect abstract concepts to practical value.',
-    },
-    {
-      id: 'q6',
-      question: `What is the relationship between theory and practice in ${topic}?`,
-      type: 'multiple_choice' as const,
-      options: [
-        'Theory is more important than practice',
-        'Practice alone is sufficient',
-        'Theory informs practice, and practice validates theory',
-        'They are completely separate disciplines',
-      ],
-      correctAnswer: 'Theory informs practice, and practice validates theory',
-      explanation:
-        'Effective learning in any field requires understanding the interplay between theoretical foundations and practical application.',
-    },
-    {
-      id: 'q7',
-      question: `Which metric is most useful for measuring progress when learning ${topic}?`,
-      type: 'multiple_choice' as const,
-      options: [
-        'Time spent reading',
-        'Number of pages read',
-        'Ability to apply concepts to new problems',
-        'Number of notes taken',
-      ],
-      correctAnswer: 'Ability to apply concepts to new problems',
-      explanation:
-        'Transfer of knowledge to new contexts is the strongest indicator of deep understanding.',
-    },
-    {
-      id: 'q8',
-      question: `Explain two strategies for overcoming common challenges when studying ${modTitle}.`,
-      type: 'short_answer' as const,
-      correctAnswer:
-        'Breaking complex topics into smaller components and using spaced repetition are effective strategies. Additionally, seeking diverse sources and practicing active recall helps reinforce learning.',
-      explanation:
-        'Multiple study strategies combined yield better retention and understanding than any single approach.',
-    },
+    { id: 'q1', question: `Which best describes the primary goal of ${modTitle}?`, type: 'multiple_choice' as const, options: ['Theoretical overview only', `Comprehensive understanding of ${topic}`, 'Memorize definitions', 'Skip fundamentals'], correctAnswer: `Comprehensive understanding of ${topic}`, explanation: `The module combines theory with practice for ${topic}.` },
+    { id: 'q2', question: `What is a key principle in ${topic}?`, type: 'multiple_choice' as const, options: ['Focus only on theory', 'Ignore metrics', 'Integrate theory with practice', 'Avoid applications'], correctAnswer: 'Integrate theory with practice', explanation: 'Effective learning combines theory and practice.' },
+    { id: 'q3', question: `Explain why evaluation matters in ${topic}.`, type: 'short_answer' as const, correctAnswer: 'Evaluation tracks progress and identifies gaps.', explanation: 'Systematic evaluation helps identify weaknesses.' },
+    { id: 'q4', question: `Which approach is best for beginners in ${topic}?`, type: 'multiple_choice' as const, options: ['Start complex', 'Skip prerequisites', 'Build from fundamentals', 'Only read'], correctAnswer: 'Build from fundamentals', explanation: 'Progressive learning from basics builds strong foundations.' },
+    { id: 'q5', question: `Describe a real-world application of ${modTitle}.`, type: 'short_answer' as const, correctAnswer: 'Applied in automation, research, and enterprise systems.', explanation: 'Real-world applications connect abstract concepts to value.' },
+    { id: 'q6', question: `What is the theory-practice relationship in ${topic}?`, type: 'multiple_choice' as const, options: ['Theory > practice', 'Practice alone', 'Theory informs practice, practice validates theory', 'Separate disciplines'], correctAnswer: 'Theory informs practice, practice validates theory', explanation: 'They are interrelated.' },
+    { id: 'q7', question: `Best metric for learning progress in ${topic}?`, type: 'multiple_choice' as const, options: ['Time reading', 'Pages read', 'Apply to new problems', 'Notes taken'], correctAnswer: 'Apply to new problems', explanation: 'Transfer to new contexts shows deep understanding.' },
+    { id: 'q8', question: `Name two strategies for challenges in ${modTitle}.`, type: 'short_answer' as const, correctAnswer: 'Break into components and use spaced repetition.', explanation: 'Multiple strategies improve retention.' },
   ];
 
-  return {
-    questions,
-    reply: `Generated a ${questions.length}-question quiz on "${modTitle}" from your ${topic} course.`,
-  };
+  return { questions, reply: `Generated a ${questions.length}-question quiz on "${modTitle}" from your ${topic} course.` };
 }
 
-function generateChatResponse(text: string): {
+async function generateChatResponse(
+  text: string,
+  lessonId?: string,
+  courseId?: string,
+  history?: Array<{ role: string; content: string }>,
+): Promise<{
   content: string;
   response: string;
   actions: string[];
-} {
-  const lower = text.toLowerCase();
+}> {
+  // Build lesson context
+  const found = findLesson(lessonId);
+  const courseData = courseId ? courses.get(courseId) : found?.course || null;
+  const courseTitle = courseData?.title || found?.course?.title || 'your course';
+  const lessonTitle = found?.lesson?.title || 'the current topic';
+  const lessonContent = found?.lesson?.content || '';
 
-  if (lower.includes('cornell') || lower.includes('notes')) {
-    const notesData = generateNotesResponse(text);
-    return {
-      content: notesData.notes.content || notesData.reply,
-      response: notesData.reply,
-      actions: ['Review Questions', 'Flashcard Mode', 'Export Notes'],
-    };
+  // Use OpenAI for all chat if available
+  if (openai) {
+    try {
+      const systemPrompt = lessonContent
+        ? `You are an expert AI tutor and content editor for LearnFlow. The student is studying "${courseTitle}", lesson "${lessonTitle}".
+
+LESSON CONTENT:
+${lessonContent.slice(0, 4000)}
+
+CAPABILITIES — you can:
+1. **Answer questions** about the lesson material with depth and examples
+2. **Improve tone & style** — if asked to "improve the tone", "make it more engaging", "simplify", "make it more professional", etc., rewrite the relevant section(s) with the requested tone. Return the improved text in a markdown code block labeled \`\`\`improved so the UI can offer to apply it.
+3. **Expand sections** — add more detail, examples, analogies, or real-world applications to any part
+4. **Simplify** — rewrite complex passages at a lower reading level
+5. **Add examples** — generate practical code examples, case studies, or scenarios
+6. **Fix errors** — correct any factual or technical inaccuracies
+7. **Restructure** — reorganize content for better flow and comprehension
+
+When rewriting content, always return the improved version in a \`\`\`improved\n...\n\`\`\` block so the student can compare and apply changes. Be specific about what you changed and why.
+
+Use markdown formatting. Be encouraging, educational, and engaging.`
+        : `You are an expert AI tutor for LearnFlow. Help students learn effectively — answer questions, explain concepts, create study plans, suggest improvements, and provide examples. When asked to improve or rewrite text, return the improved version in a \`\`\`improved\n...\n\`\`\` block. Use markdown formatting. Be encouraging and educational.`;
+
+      const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+        { role: 'system', content: systemPrompt },
+      ];
+
+      // Add conversation history (last 10 messages)
+      if (history && history.length > 0) {
+        for (const h of history.slice(-10)) {
+          messages.push({
+            role: h.role === 'assistant' ? 'assistant' : 'user',
+            content: h.content,
+          });
+        }
+      }
+
+      messages.push({ role: 'user', content: text });
+
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        max_tokens: 2000,
+        messages,
+      });
+
+      const reply = completion.choices[0]?.message?.content || '';
+      if (reply.length > 10) {
+        return {
+          content: reply,
+          response: reply,
+          actions: ['Improve Tone', 'Simplify', 'Add Examples', 'Quiz Me'],
+        };
+      }
+    } catch (err) {
+      console.warn('[LearnFlow] OpenAI chat failed, using fallback:', err);
+    }
   }
 
-  if (lower.includes('research') || lower.includes('paper') || lower.includes('find')) {
-    return {
-      content: `# Research Results\n\nI searched for relevant sources on "${text}". Here are the top findings:\n\n1. **"Advances in the Field: A Comprehensive Survey"** — Wang et al., 2024\n   - Published in: ACM Computing Surveys\n   - DOI: https://doi.org/10.1145/3580305\n\n2. **"Practical Applications and Benchmarks"** — Smith & Johnson, 2024\n   - Published in: Nature Machine Intelligence\n   - DOI: https://doi.org/10.1038/s42256-024-00001\n\n3. **"Error Correction and Robustness"** — Chen et al., 2023\n   - Published in: NeurIPS Proceedings\n   - arxiv: https://arxiv.org/abs/2312.09876`,
-      response: `Found 3 relevant research papers.`,
-      actions: ['Deep Dive', 'Save to Library', 'Find More'],
-    };
-  }
-
-  if (lower.includes('quiz') || /\btest me\b|\bquiz me\b/.test(lower)) {
-    const quizData = generateQuizResponse();
-    return {
-      content: `Generated a quiz with ${quizData.questions.length} questions. Check your course view to take it!`,
-      response: quizData.reply,
-      actions: ['Start Quiz', 'Adjust Difficulty'],
-    };
-  }
-
-  if (lower.includes('summarize') || lower.includes('summary')) {
-    return {
-      content: `# Learning Summary\n\n## Key Concepts Covered\n\n- The foundational concepts provide the basis for understanding more advanced topics\n- Practical implementation requires balancing theoretical correctness with real-world constraints\n- Evaluation and measurement help track progress and identify areas for improvement`,
-      response: `Here's a concise summary of your learning progress.`,
-      actions: ['Continue Learning', 'Review Weak Areas', 'Take Quiz'],
-    };
-  }
-
-  if (lower.includes('completed') || lower.includes('finished') || lower.includes('first module')) {
-    return {
-      content: `🎉 Congratulations! That's an amazing milestone. Keep up the excellent work!`,
-      response: `Awesome work! Completing a module is a fantastic milestone.`,
-      actions: ['Next Module', 'Take Quiz', 'Review Notes'],
-    };
-  }
-
-  if (
-    lower.includes('course') ||
-    lower.includes('learn') ||
-    lower.includes('teach') ||
-    lower.includes('create') ||
-    lower.includes('build')
-  ) {
-    return {
-      content: `I'd be happy to help you learn! I can create a personalized course on any topic. Just tell me what you're interested in and I'll build a comprehensive course with real-world sources and structured lessons.\n\nYou can also create a course directly from the Dashboard using the "Create Course" button.`,
-      response: `Ready to create a course for you!`,
-      actions: ['Create Course', 'Browse Topics', 'Set Goals'],
-    };
-  }
-
-  if (lower.includes('export') || lower.includes('download')) {
-    return {
-      content: `I can export your course progress in markdown, PDF, or SCORM format. Which would you prefer?`,
-      response: `Your export is being prepared.`,
-      actions: ['Download Markdown', 'Export as PDF', 'Export SCORM'],
-    };
-  }
-
+  // Fallback when OpenAI is unavailable
   return {
     content: `I can help you with learning! Here are some things I can do:\n\n- **Create a course** on any topic\n- **Generate quizzes** to test your knowledge\n- **Take notes** in Cornell or flashcard format\n- **Research** academic papers and sources\n- **Summarize** lesson content\n\nWhat would you like to do?`,
     response: `How can I help you learn today?`,
@@ -306,7 +268,7 @@ function generateChatResponse(text: string): {
   };
 }
 
-router.post('/', (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   const parse = chatSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
@@ -318,7 +280,7 @@ router.post('/', (req: Request, res: Response) => {
 
   // Handle specific agent requests
   if (agent === 'notes') {
-    const notesData = generateNotesResponse(input, lessonId, format);
+    const notesData = await generateNotesResponse(input, lessonId, format);
     res.status(200).json({
       message_id: `msg-${Date.now()}`,
       agentName: 'Notes Agent',
@@ -328,7 +290,7 @@ router.post('/', (req: Request, res: Response) => {
   }
 
   if (agent === 'exam') {
-    const quizData = generateQuizResponse(courseId, moduleId);
+    const quizData = await generateQuizResponse(courseId, moduleId);
     res.status(200).json({
       message_id: `msg-${Date.now()}`,
       agentName: 'Exam Agent',
@@ -360,8 +322,9 @@ router.post('/', (req: Request, res: Response) => {
     return;
   }
 
-  // General chat
-  const generated = generateChatResponse(input);
+  // General chat — route through AI with lesson context
+  const historyMsgs = (parse.data.history || []) as Array<{ role: string; content: string }>;
+  const generated = await generateChatResponse(input, lessonId, courseId, historyMsgs);
   res.status(200).json({
     message_id: `msg-${Date.now()}`,
     content: generated.content,

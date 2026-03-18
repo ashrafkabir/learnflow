@@ -39,7 +39,7 @@ router.post('/', (req: Request, res: Response) => {
     updatedAt: new Date(),
   };
 
-  db.apiKeys.set(keyRecord.id, keyRecord);
+  db.addApiKey(keyRecord);
 
   res.status(201).json({
     id: keyRecord.id,

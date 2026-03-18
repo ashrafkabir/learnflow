@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
+import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 
 export function OnboardingApiKeys() {
   const nav = useNavigate();
@@ -16,18 +17,19 @@ export function OnboardingApiKeys() {
     <div
       data-screen="onboarding-apikeys"
       aria-label="API Key Setup"
-      className="min-h-screen bg-gray-50 dark:bg-bg-dark flex flex-col"
+      className="slide-in-right min-h-screen bg-gray-50 dark:bg-bg-dark flex flex-col"
     >
       <div className="p-6 pb-0">
         <div className="flex items-center gap-2 mb-2">
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
             <div className="h-full w-2/3 bg-accent rounded-full transition-all" />
           </div>
-          <span className="text-xs text-gray-400">4/6</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">4/6</span>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col justify-center p-6 max-w-lg mx-auto w-full">
+        <OnboardingProgress current="api-keys" />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
           Connect Your AI Provider
         </h1>
@@ -51,12 +53,20 @@ export function OnboardingApiKeys() {
           className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent mb-8"
         />
 
-        <button
-          onClick={next}
-          className="w-full py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors"
-        >
-          {key ? 'Save & Continue' : 'Skip for now'}
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => nav('/onboarding/experience')}
+            className="px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            Back
+          </button>
+          <button
+            onClick={next}
+            className="flex-1 py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors"
+          >
+            {key ? 'Save & Continue' : 'Skip for now'}
+          </button>
+        </div>
       </div>
     </div>
   );

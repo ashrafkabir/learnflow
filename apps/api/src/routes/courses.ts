@@ -1,11 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import OpenAI from 'openai';
 import {
   crawlSourcesForTopic,
   type FirecrawlSource,
-} from '../../../../packages/agents/src/content-pipeline/firecrawl-provider.js';
+} from '@learnflow/agents';
+import { dbCourses, dbProgress, dbNotes, dbIllustrations, dbAnnotations } from '../db.js';
 
 const router = Router();
+
+// OpenAI client for LLM-synthesized content (lazy to respect env changes in tests)
+function getOpenAI(): OpenAI | null {
+  if (!process.env.OPENAI_API_KEY) return null;
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 // Course generation data — topic-specific content templates
 const TOPIC_CONTENT: Record<
@@ -744,51 +752,87 @@ function matchTopic(input: string): string {
   return 'quantum';
 }
 
-function generateLessonContent(
+async function generateLessonContentWithLLM(
   topic: string,
   moduleTitle: string,
   lessonTitle: string,
   lessonDesc: string,
   crawledSources?: FirecrawlSource[],
-): string {
-  // Use real crawled sources if available, otherwise fall back to static references
-  const sources =
-    crawledSources && crawledSources.length > 0
-      ? crawledSources.slice(0, 4).map((s) => ({
-          url: s.url,
-          author: s.author || 'Unknown',
-          publication: s.source || s.domain,
-          year: s.publishDate ? new Date(s.publishDate).getFullYear() : 2024,
-        }))
-      : [
-          {
-            url: 'https://arxiv.org/abs/2305.10601',
-            author: 'Wang et al.',
-            publication: 'arXiv',
-            year: 2023,
-          },
-          {
-            url: 'https://www.nature.com/articles/s41586-023-06096-3',
-            author: 'Smith & Johnson',
-            publication: 'Nature',
-            year: 2023,
-          },
-          {
-            url: 'https://dl.acm.org/doi/10.1145/3580305',
-            author: 'Chen et al.',
-            publication: 'ACM Computing Surveys',
-            year: 2024,
-          },
-          {
-            url: 'https://ieeexplore.ieee.org/document/10234567',
-            author: 'Patel & Kumar',
-            publication: 'IEEE Transactions',
-            year: 2024,
-          },
-        ];
+): Promise<string> {
+  // Build source context from crawled content
+  const sourceContext = crawledSources && crawledSources.length > 0
+    ? crawledSources.slice(0, 4).map((s, i) => 
+        `[Source ${i+1}] "${s.title}" by ${s.author || 'Unknown'} (${s.domain})\nURL: ${s.url}\nContent excerpt: ${(s.content || '').slice(0, 1500)}`
+      ).join('\n\n')
+    : '';
 
-  // Pick 4 diverse sources
-  const selectedSources = sources.sort(() => Math.random() - 0.5).slice(0, 4);
+  const sourceRefs = crawledSources && crawledSources.length > 0
+    ? crawledSources.slice(0, 4)
+    : [];
+
+  const openai = getOpenAI();
+  if (openai) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        max_tokens: 3000,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert educational content writer. Write a comprehensive, engaging lesson for an online learning platform. 
+
+Requirements:
+- Write 800-1200 words of rich educational content
+- Use specific examples, analogies, and code blocks where appropriate
+- Include inline citations like [1], [2] referencing the provided sources
+- Be specific and technical — avoid generic platitudes
+- Use markdown formatting with headers, bold, lists, and code blocks
+- Structure: Learning Objectives → Estimated Time → Core Content (3-4 subsections) → Key Takeaways → Sources → Next Steps`
+          },
+          {
+            role: 'user',
+            content: `Write a lesson titled "${lessonTitle}" for the module "${moduleTitle}" in a course on "${topic}".
+
+Lesson description: ${lessonDesc}
+
+${sourceContext ? `Use these real sources as the basis for your content:\n\n${sourceContext}` : 'Write based on your knowledge of the topic.'}
+
+Format the output as markdown starting with # ${lessonTitle}
+
+End with a ## Sources section listing:
+${sourceRefs.map((s, i) => `[${i+1}] ${s.author || 'Unknown'}. "${s.title}". ${s.source || s.domain}, ${s.publishDate ? new Date(s.publishDate).getFullYear() : 2024}. ${s.url}`).join('\n') || '[1] Use your knowledge to cite relevant works.'}
+
+Then a ## Next Steps section.`
+          }
+        ]
+      });
+      const content = completion.choices[0]?.message?.content;
+      if (content && content.length > 200) {
+        return content;
+      }
+    } catch (err) {
+      console.warn('[LearnFlow] OpenAI lesson generation failed, using fallback:', err);
+    }
+  }
+
+  // Fallback: structured template (better than before but still template-based)
+  const sources = sourceRefs.length > 0
+    ? sourceRefs.map((s) => ({
+        url: s.url,
+        author: s.author || 'Unknown',
+        publication: s.source || s.domain,
+        year: s.publishDate ? new Date(s.publishDate).getFullYear() : 2024,
+      }))
+    : [
+        { url: 'https://arxiv.org/abs/2305.10601', author: 'Wang et al.', publication: 'arXiv', year: 2023 },
+        { url: 'https://www.nature.com/articles/s41586-023-06096-3', author: 'Smith & Johnson', publication: 'Nature', year: 2023 },
+        { url: 'https://dl.acm.org/doi/10.1145/3580305', author: 'Chen et al.', publication: 'ACM Computing Surveys', year: 2024 },
+        { url: 'https://ieeexplore.ieee.org/document/10234567', author: 'Patel & Kumar', publication: 'IEEE Transactions', year: 2024 },
+      ];
+
+  const sel = sources.sort(() => Math.random() - 0.5).slice(0, 4);
+  while (sel.length < 4) sel.push(sel[0]);
 
   return `# ${lessonTitle}
 
@@ -810,33 +854,21 @@ By the end of this lesson, you will be able to:
 
 ${lessonDesc}. This is a critical area within the broader field of ${topic} that has seen significant advances in recent years [1].
 
-According to research by ${selectedSources[0].author} (${selectedSources[0].year}), published in ${selectedSources[0].publication}, the foundations of this topic rest on several key principles that practitioners must understand [2].
+According to research by ${sel[0].author} (${sel[0].year}), published in ${sel[0].publication}, the foundations of this topic rest on several key principles that practitioners must understand [2].
 
 ### Key Principles and Concepts
 
-The fundamental concepts in this area can be organized into three main categories:
+**Theoretical Foundations**: The theoretical basis draws from decades of research. ${sel[1].author} demonstrated in their ${sel[1].year} paper that these principles have broad applicability [3].
 
-**Theoretical Foundations**: The theoretical basis draws from decades of research in computer science and related fields. ${selectedSources[1].author} demonstrated in their seminal ${selectedSources[1].year} paper that these principles have broad applicability across domains [3].
+**Practical Implementation**: Moving from theory to practice requires understanding tools, frameworks, and best practices that the community has developed.
 
-**Practical Implementation**: Moving from theory to practice requires understanding the tools, frameworks, and best practices that the community has developed. Industry practitioners have found that starting with simple implementations and iterating provides the best learning outcomes.
-
-**Evaluation and Metrics**: Measuring success in this domain requires both quantitative metrics and qualitative assessment. ${selectedSources[2].author} proposed a comprehensive evaluation framework in their ${selectedSources[2].publication} paper that has become widely adopted [4].
+**Evaluation and Metrics**: Measuring success requires both quantitative metrics and qualitative assessment. ${sel[2].author} proposed a comprehensive evaluation framework in ${sel[2].publication} [4].
 
 ### Real-World Applications
-
-The practical applications of ${lessonTitle.toLowerCase()} span multiple industries:
 
 1. **Technology**: Automated systems leverage these concepts for improved efficiency
 2. **Research**: Academic institutions use these approaches for breakthrough discoveries
 3. **Industry**: Enterprises apply these techniques for competitive advantage
-
-### Common Challenges and Solutions
-
-Practitioners frequently encounter several challenges:
-
-- **Complexity management**: Breaking down complex problems into manageable components
-- **Scalability concerns**: Ensuring solutions work at production scale
-- **Quality assurance**: Maintaining high standards across implementations
 
 ## Key Takeaways
 
@@ -844,25 +876,21 @@ Practitioners frequently encounter several challenges:
 2. The field combines theoretical principles with practical implementation patterns
 3. Evaluation and measurement are critical for assessing progress
 4. Real-world applications demonstrate the value across multiple domains
-5. Staying current with research advances (such as work by ${selectedSources[3].author}) is essential
+5. Staying current with research advances is essential
 
 ## Sources
 
-[1] ${selectedSources[0].author}. "${lessonTitle} — A Comprehensive Study." ${selectedSources[0].publication}, ${selectedSources[0].year}. ${selectedSources[0].url}
+[1] ${sel[0].author}. "${lessonTitle} — A Comprehensive Study." ${sel[0].publication}, ${sel[0].year}. ${sel[0].url}
 
-[2] ${selectedSources[1].author}. "Advances in ${moduleTitle}." ${selectedSources[1].publication}, ${selectedSources[1].year}. ${selectedSources[1].url}
+[2] ${sel[1].author}. "Advances in ${moduleTitle}." ${sel[1].publication}, ${sel[1].year}. ${sel[1].url}
 
-[3] ${selectedSources[2].author}. "Evaluation Frameworks for ${topic}." ${selectedSources[2].publication}, ${selectedSources[2].year}. ${selectedSources[2].url}
+[3] ${sel[2].author}. "Evaluation Frameworks for ${topic}." ${sel[2].publication}, ${sel[2].year}. ${sel[2].url}
 
-[4] ${selectedSources[3].author}. "Practical Applications and Future Directions." ${selectedSources[3].publication}, ${selectedSources[3].year}. ${selectedSources[3].url}
+[4] ${sel[3].author}. "Practical Applications and Future Directions." ${sel[3].publication}, ${sel[3].year}. ${sel[3].url}
 
 ## Next Steps
 
-Continue with the next lesson in this module to deepen your understanding. You can also explore the recommended reading materials and try the practical exercises in the companion notebook.
-
-## What's Next
-
-In the following lesson, we'll build on these foundations and explore more advanced concepts within ${moduleTitle.toLowerCase()}.`;
+Continue with the next lesson in this module to deepen your understanding.`;
 }
 
 interface Lesson {
@@ -894,7 +922,10 @@ interface Course {
   createdAt: string;
 }
 
+// Courses are now stored in SQLite via dbCourses
+// This Map is a runtime cache, synced from SQLite on startup
 const courses: Map<string, Course> = new Map();
+for (const c of dbCourses.getAll()) courses.set(c.id, c as Course);
 
 const createCourseSchema = z.object({
   topic: z.string().min(1),
@@ -934,8 +965,10 @@ router.post('/', async (req: Request, res: Response) => {
 
   // Task 1: Firecrawl integration — crawl real sources for this topic
   let crawledSources: FirecrawlSource[] = [];
+  const _crawlStart = Date.now();
   try {
     crawledSources = await crawlSourcesForTopic(topic);
+    console.log(`[LearnFlow] crawlSourcesForTopic took ${Date.now() - _crawlStart}ms, got ${crawledSources.length} sources`);
     if (!process.env.FIRECRAWL_API_KEY) {
       console.warn(
         '[LearnFlow] FIRECRAWL_API_KEY not set — using mock sources for course generation',
@@ -945,9 +978,13 @@ router.post('/', async (req: Request, res: Response) => {
     console.warn('[LearnFlow] Firecrawl crawl failed, falling back to static sources:', err);
   }
 
-  const modules: Module[] = topicData.modules.map((mod, mi) => {
-    const lessons: Lesson[] = mod.lessons.map((les, li) => {
-      const content = generateLessonContent(
+  // Generate all lessons with LLM (parallel per module, sequential per lesson for rate limits)
+  const _lessonStart = Date.now();
+  const modules: Module[] = [];
+  for (let mi = 0; mi < topicData.modules.length; mi++) {
+    const mod = topicData.modules[mi];
+    const lessonPromises = mod.lessons.map(async (les, li) => {
+      const content = await generateLessonContentWithLLM(
         topic,
         mod.title,
         les.title,
@@ -964,14 +1001,15 @@ router.post('/', async (req: Request, res: Response) => {
         wordCount,
       };
     });
-    return {
+    const lessons: Lesson[] = await Promise.all(lessonPromises);
+    modules.push({
       id: `${courseId}-m${mi}`,
       title: mod.title,
       objective: mod.objective,
       description: mod.objective,
       lessons,
-    };
-  });
+    });
+  }
 
   const course: Course = {
     id: courseId,
@@ -986,6 +1024,8 @@ router.post('/', async (req: Request, res: Response) => {
   };
 
   courses.set(course.id, course);
+  dbCourses.save(course);
+  console.log(`[LearnFlow] Lesson generation took ${Date.now() - _lessonStart}ms for ${topicData.modules.length} modules`);
   res.status(201).json(course);
 });
 
@@ -996,7 +1036,9 @@ router.get('/:id', (req: Request, res: Response) => {
     res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
     return;
   }
-  res.status(200).json(course);
+  const userId = req.user?.sub || 'anonymous';
+  const completedLessons = dbProgress.getCompletedLessons(userId, course.id);
+  res.status(200).json({ ...course, completedLessons });
 });
 
 // GET /api/v1/courses/:id/lessons/:lessonId - Get lesson
@@ -1020,28 +1062,296 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
 
 // POST /api/v1/courses/:id/lessons/:lessonId/complete - Mark lesson complete
 router.post('/:id/lessons/:lessonId/complete', (req: Request, res: Response) => {
-  const course = courses.get(String(req.params.id));
-  if (!course) {
-    // For test compatibility, return a success with next actions even for unknown courses
-    res.status(200).json({
-      message: 'Lesson marked complete. Great job!',
-      progress: 1,
-      nextActions: ['Continue to next lesson', 'Take a quiz', 'Review notes'],
-      next: 'Continue learning',
-      actions: ['next_lesson', 'quiz', 'notes'],
-    });
-    return;
-  }
   const userId = req.user?.sub || 'anonymous';
-  const completedCount = (course.progress[userId] || 0) + 1;
-  course.progress[userId] = completedCount;
+  const courseId = String(req.params.id);
+  const lessonId = String(req.params.lessonId);
+  const course = courses.get(courseId);
+
+  // Track per-user per-lesson completion
+  dbProgress.markComplete(userId, courseId, lessonId);
+  const completedLessons = dbProgress.getCompletedLessons(userId, courseId);
+
+  if (course) {
+    course.progress[userId] = completedLessons.length;
+    dbCourses.save(course);
+  }
+
   res.status(200).json({
     message: 'Lesson marked complete. Great job!',
-    progress: completedCount,
+    progress: completedLessons.length,
+    completedLessons,
     nextActions: ['Continue to next lesson', 'Take a quiz', 'Review notes'],
     next: 'Continue learning',
     actions: ['next_lesson', 'quiz', 'notes'],
   });
+});
+
+// ── Notes CRUD endpoints ────────────────────────────────────────────────────
+
+// GET /api/v1/courses/:id/lessons/:lessonId/notes
+router.get('/:id/lessons/:lessonId/notes', (req: Request, res: Response) => {
+  const userId = req.user?.sub || 'anonymous';
+  const note = dbNotes.get(String(req.params.lessonId), userId);
+  if (!note) {
+    res.status(200).json({ note: null });
+    return;
+  }
+  res.status(200).json({ note });
+});
+
+// POST /api/v1/courses/:id/lessons/:lessonId/notes
+router.post('/:id/lessons/:lessonId/notes', async (req: Request, res: Response) => {
+  const userId = req.user?.sub || 'anonymous';
+  const lessonId = String(req.params.lessonId);
+  const courseId = String(req.params.id);
+  const { format, content, customContent } = req.body;
+
+  const course = courses.get(courseId);
+  let lesson: Lesson | undefined;
+  if (course) {
+    for (const mod of course.modules) {
+      lesson = mod.lessons.find(l => l.id === lessonId);
+      if (lesson) break;
+    }
+  }
+
+  const openai = getOpenAI();
+  let noteContent: any = { format: format || 'custom', text: customContent || '' };
+
+  if (format && format !== 'custom' && openai && lesson) {
+    try {
+      const lessonText = lesson.content.slice(0, 3000);
+      let prompt = '';
+
+      if (format === 'summary') {
+        prompt = `Create a concise, well-structured summary of this lesson. Use bullet points and bold key terms. Keep it under 500 words.\n\nLesson: "${lesson.title}"\n\n${lessonText}`;
+      } else if (format === 'cornell') {
+        prompt = `Create Cornell-style notes for this lesson with three clear sections:\n1. **Cue Questions** (left column) — 5-7 key questions\n2. **Notes** (right column) — detailed notes organized by topic\n3. **Summary** — a concise paragraph summarizing the main ideas\n\nUse markdown formatting.\n\nLesson: "${lesson.title}"\n\n${lessonText}`;
+      } else if (format === 'mindmap') {
+        prompt = `Create a hierarchical mind map outline for this lesson. Use indented bullet points to show relationships:\n- Main topic\n  - Subtopic 1\n    - Detail\n    - Detail\n  - Subtopic 2\n    - Detail\n\nLesson: "${lesson.title}"\n\n${lessonText}`;
+      }
+
+      if (prompt) {
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          temperature: 0.5,
+          max_tokens: 2000,
+          messages: [
+            { role: 'system', content: 'You are an expert note-taker and study skills instructor. Generate clear, well-organized notes that help students review and retain information.' },
+            { role: 'user', content: prompt },
+          ],
+        });
+        const text = completion.choices[0]?.message?.content || '';
+        if (text.length > 50) {
+          noteContent = { format, text };
+        }
+      }
+    } catch (err) {
+      console.warn('[LearnFlow] AI note generation failed:', err);
+      noteContent = { format, text: `# Notes: ${lesson?.title || 'Lesson'}\n\n_AI generation failed. Write your own notes here._` };
+    }
+  } else if (content) {
+    noteContent = content;
+  }
+
+  const note = dbNotes.save(lessonId, userId, noteContent);
+  res.status(201).json({ note });
+});
+
+// PUT /api/v1/courses/:id/lessons/:lessonId/notes
+router.put('/:id/lessons/:lessonId/notes', (req: Request, res: Response) => {
+  const userId = req.user?.sub || 'anonymous';
+  const lessonId = String(req.params.lessonId);
+  const { content, illustrations } = req.body;
+  const existing = dbNotes.get(lessonId, userId);
+  const note = dbNotes.save(
+    lessonId,
+    userId,
+    content || existing?.content || {},
+    illustrations || existing?.illustrations || [],
+  );
+  res.status(200).json({ note });
+});
+
+// POST /api/v1/courses/:id/lessons/:lessonId/notes/illustrate
+router.post('/:id/lessons/:lessonId/notes/illustrate', async (req: Request, res: Response) => {
+  const userId = req.user?.sub || 'anonymous';
+  const lessonId = String(req.params.lessonId);
+  const { description } = req.body;
+
+  const openai = getOpenAI();
+  if (!openai) {
+    res.status(400).json({ error: 'openai_unavailable', message: 'OpenAI API key not configured' });
+    return;
+  }
+
+  try {
+    const imageResponse = await openai.images.generate({
+      model: 'dall-e-3',
+      prompt: `Educational illustration: ${description}. Clean, professional, suitable for a learning platform. No text in image.`,
+      size: '1024x1024',
+      quality: 'standard',
+      n: 1,
+    });
+
+    const imageUrl = imageResponse.data?.[0]?.url;
+    if (!imageUrl) {
+      res.status(500).json({ error: 'generation_failed', message: 'No image generated' });
+      return;
+    }
+
+    // Save illustration to notes
+    const existing = dbNotes.get(lessonId, userId);
+    const illustrations = existing?.illustrations || [];
+    illustrations.push({
+      id: `ill-${Date.now()}`,
+      description,
+      url: imageUrl,
+      createdAt: new Date().toISOString(),
+    });
+    dbNotes.save(lessonId, userId, existing?.content || {}, illustrations);
+
+    res.status(200).json({ illustration: { url: imageUrl, description } });
+  } catch (err: any) {
+    console.error('[LearnFlow] DALL-E generation failed:', err);
+    res.status(500).json({ error: 'generation_failed', message: err.message || 'Image generation failed' });
+  }
+});
+
+// ── Illustrations (per-section, persistent) ─────────────────────────────────
+
+// GET /api/v1/courses/:id/lessons/:lessonId/illustrations
+router.get('/:id/lessons/:lessonId/illustrations', (req: Request, res: Response) => {
+  const lessonId = String(req.params.lessonId);
+  const illustrations = dbIllustrations.getByLesson(lessonId);
+  res.json({ illustrations });
+});
+
+// POST /api/v1/courses/:id/lessons/:lessonId/illustrations
+router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Response) => {
+  const lessonId = String(req.params.lessonId);
+  const { sectionIndex, prompt } = req.body;
+
+  const openai = getOpenAI();
+  if (!openai) {
+    res.status(400).json({ error: 'openai_unavailable' });
+    return;
+  }
+
+  try {
+    const imageResponse = await openai.images.generate({
+      model: 'dall-e-3',
+      prompt: `Educational illustration: ${prompt}. Clean, professional diagram suitable for a learning platform. No text in image.`,
+      size: '1024x1024',
+      quality: 'standard',
+      n: 1,
+    });
+    const imageUrl = imageResponse.data?.[0]?.url;
+    if (!imageUrl) { res.status(500).json({ error: 'generation_failed' }); return; }
+    const illustration = dbIllustrations.create(lessonId, sectionIndex ?? 0, prompt, imageUrl);
+    res.status(201).json({ illustration });
+  } catch (err: any) {
+    console.error('[LearnFlow] Illustration generation failed:', err);
+    res.status(500).json({ error: 'generation_failed', message: err.message });
+  }
+});
+
+// DELETE /api/v1/courses/:id/lessons/:lessonId/illustrations/:illId
+router.delete('/:id/lessons/:lessonId/illustrations/:illId', (req: Request, res: Response) => {
+  dbIllustrations.delete(String(req.params.illId));
+  res.status(204).end();
+});
+
+// ── Comparison Mode ─────────────────────────────────────────────────────────
+
+// POST /api/v1/courses/:id/lessons/:lessonId/compare
+router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response) => {
+  const courseId = String(req.params.id);
+  const lessonId = String(req.params.lessonId);
+
+  const openai = getOpenAI();
+  if (!openai) { res.status(400).json({ error: 'openai_unavailable' }); return; }
+
+  // Get lesson content
+  const course = dbCourses.getById(courseId);
+  let lessonContent = '';
+  if (course?.modules) {
+    for (const mod of course.modules) {
+      for (const l of mod.lessons || []) {
+        if (l.id === lessonId) lessonContent = l.content || l.description || '';
+      }
+    }
+  }
+  // Also try the lessons table
+  const { sqlite } = await import('../db.js');
+  const lessonRow = (sqlite.prepare('SELECT content FROM lessons WHERE id = ?').get(lessonId) as any);
+  if (lessonRow?.content) lessonContent = lessonRow.content;
+
+  if (!lessonContent) { res.status(404).json({ error: 'lesson_not_found' }); return; }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'You analyze educational content and create structured comparisons. Always return valid JSON.' },
+        { role: 'user', content: `Analyze this lesson and create a structured comparison of the key concepts discussed. If the lesson compares technologies, frameworks, approaches, or ideas, extract them. Return JSON: { "concepts": string[], "dimensions": string[], "cells": string[][] (rows=dimensions, cols=concepts), "summary": string }. If there are no comparable concepts, return { "concepts": [], "dimensions": [], "cells": [], "summary": "No comparable concepts found in this lesson." }\n\nLesson content:\n${lessonContent.slice(0, 8000)}` },
+      ],
+    });
+    const text = completion.choices[0]?.message?.content || '{}';
+    const comparison = JSON.parse(text);
+    res.json({ comparison });
+  } catch (err: any) {
+    console.error('[LearnFlow] Comparison failed:', err);
+    res.status(500).json({ error: 'comparison_failed', message: err.message });
+  }
+});
+
+// ── Annotations (text-anchored notes) ───────────────────────────────────────
+
+// GET /api/v1/courses/:id/lessons/:lessonId/annotations
+router.get('/:id/lessons/:lessonId/annotations', (req: Request, res: Response) => {
+  const lessonId = String(req.params.lessonId);
+  const annotations = dbAnnotations.getByLesson(lessonId);
+  res.json({ annotations });
+});
+
+// POST /api/v1/courses/:id/lessons/:lessonId/annotations
+router.post('/:id/lessons/:lessonId/annotations', async (req: Request, res: Response) => {
+  const lessonId = String(req.params.lessonId);
+  const { selectedText, startOffset, endOffset, note, type } = req.body;
+
+  let finalNote = note || '';
+
+  if ((type === 'explain' || type === 'example') && selectedText) {
+    const openai = getOpenAI();
+    if (openai) {
+      try {
+        const prompt = type === 'explain'
+          ? `Explain this concept clearly and concisely for a student:\n\n"${selectedText}"`
+          : `Give a practical, real-world example of this concept:\n\n"${selectedText}"`;
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are a helpful tutor. Be concise but thorough.' },
+            { role: 'user', content: prompt },
+          ],
+        });
+        finalNote = completion.choices[0]?.message?.content || finalNote;
+      } catch (err) {
+        console.warn('[LearnFlow] Annotation AI failed:', err);
+      }
+    }
+  }
+
+  const annotation = dbAnnotations.create(lessonId, selectedText, startOffset ?? 0, endOffset ?? 0, finalNote, type || 'note');
+  res.status(201).json({ annotation });
+});
+
+// DELETE /api/v1/courses/:id/lessons/:lessonId/annotations/:annId
+router.delete('/:id/lessons/:lessonId/annotations/:annId', (req: Request, res: Response) => {
+  dbAnnotations.delete(String(req.params.annId));
+  res.status(204).end();
 });
 
 export const coursesRouter = router;

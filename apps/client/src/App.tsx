@@ -1,9 +1,9 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useApp } from './context/AppContext.js';
 import { OnboardingWelcome } from './screens/onboarding/Welcome.js';
 import { OnboardingGoals } from './screens/onboarding/Goals.js';
 import { OnboardingTopics } from './screens/onboarding/Topics.js';
-import { OnboardingExperience } from './screens/onboarding/Experience.js';
 import { OnboardingApiKeys } from './screens/onboarding/ApiKeys.js';
 import { SubscriptionChoice } from './screens/onboarding/SubscriptionChoice.js';
 import { FirstCourse } from './screens/onboarding/FirstCourse.js';
@@ -15,52 +15,95 @@ import { MindmapExplorer } from './screens/MindmapExplorer.js';
 import { CourseMarketplace } from './screens/marketplace/CourseMarketplace.js';
 import { AgentMarketplace } from './screens/marketplace/AgentMarketplace.js';
 import { ProfileSettings } from './screens/ProfileSettings.js';
+import { PipelineDetail } from './screens/PipelineDetail.js';
+import { LoginScreen } from './screens/LoginScreen.js';
+import { RegisterScreen } from './screens/RegisterScreen.js';
 import { HomePage } from './screens/marketing/Home.js';
 import { FeaturesPage } from './screens/marketing/Features.js';
 import { PricingPage } from './screens/marketing/Pricing.js';
 import { DownloadPage } from './screens/marketing/Download.js';
 import { BlogPage } from './screens/marketing/Blog.js';
+import { BlogPostPage } from './screens/marketing/BlogPost.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
+import { PageTransition } from './components/PageTransition.js';
+
+function OnboardingGuard({ children }: { children: React.ReactNode }) {
+  const { state } = useApp();
+  const location = useLocation();
+  const isOnboarding = location.pathname.startsWith('/onboarding');
+  const isPublic = ['/', '/login', '/register', '/features', '/pricing', '/download', '/blog'].includes(location.pathname) || location.pathname.startsWith('/blog/');
+  const isAuth = ['/login', '/register'].includes(location.pathname);
+
+  // Check authentication
+  const token = localStorage.getItem('learnflow-token');
+  const completed = state.onboarding.completed || localStorage.getItem('learnflow-onboarding-complete') === 'true';
+
+  // Unauthenticated users → login (unless on public/auth page)
+  if (!token && !isPublic && !isOnboarding && !isAuth) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Authenticated but not onboarded → onboarding
+  if (token && !completed && !isOnboarding && !isPublic) {
+    return <Navigate to="/onboarding/welcome" replace />;
+  }
+  return <>{children}</>;
+}
 
 export function App() {
   return (
     <main role="main" aria-label="LearnFlow Application">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">Skip to content</a>
+      <div id="main-content" />
+      <ErrorBoundary>
+      <OnboardingGuard>
+      <PageTransition>
       <Routes>
         {/* Onboarding — 6 screens per spec 5.2.1 */}
         <Route path="/onboarding/welcome" element={<OnboardingWelcome />} />
         <Route path="/onboarding/goals" element={<OnboardingGoals />} />
         <Route path="/onboarding/topics" element={<OnboardingTopics />} />
         <Route path="/onboarding/interests" element={<OnboardingTopics />} />
-        <Route path="/onboarding/experience" element={<OnboardingExperience />} />
         <Route path="/onboarding/api-keys" element={<OnboardingApiKeys />} />
         <Route path="/onboarding/api-key" element={<OnboardingApiKeys />} />
         <Route path="/onboarding/subscription" element={<SubscriptionChoice />} />
         <Route path="/onboarding/first-course" element={<FirstCourse />} />
         <Route path="/onboarding/ready" element={<FirstCourse />} />
+        <Route path="/onboarding" element={<Navigate to="/onboarding/welcome" replace />} />
 
         {/* Core screens */}
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/conversation" element={<Conversation />} />
-        <Route path="/courses/:courseId" element={<CourseView />} />
-        <Route path="/courses/:courseId/lessons/:lessonId" element={<LessonReader />} />
-        <Route path="/mindmap" element={<MindmapExplorer />} />
+        <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+        <Route path="/conversation" element={<ErrorBoundary><Conversation /></ErrorBoundary>} />
+        <Route path="/courses/:courseId" element={<ErrorBoundary><CourseView /></ErrorBoundary>} />
+        <Route path="/courses/:courseId/lessons/:lessonId" element={<ErrorBoundary><LessonReader /></ErrorBoundary>} />
+        <Route path="/mindmap" element={<ErrorBoundary><MindmapExplorer /></ErrorBoundary>} />
+        <Route path="/pipeline/:pipelineId" element={<ErrorBoundary><PipelineDetail /></ErrorBoundary>} />
 
         {/* Marketplace */}
-        <Route path="/marketplace" element={<CourseMarketplace />} />
-        <Route path="/marketplace/courses" element={<CourseMarketplace />} />
-        <Route path="/marketplace/agents" element={<AgentMarketplace />} />
+        <Route path="/marketplace" element={<ErrorBoundary><CourseMarketplace /></ErrorBoundary>} />
+        <Route path="/marketplace/courses" element={<ErrorBoundary><CourseMarketplace /></ErrorBoundary>} />
+        <Route path="/marketplace/agents" element={<ErrorBoundary><AgentMarketplace /></ErrorBoundary>} />
 
         {/* Profile & Settings */}
-        <Route path="/settings" element={<ProfileSettings />} />
+        <Route path="/settings" element={<ErrorBoundary><ProfileSettings /></ErrorBoundary>} />
 
         {/* Marketing pages */}
         <Route path="/features" element={<FeaturesPage />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/download" element={<DownloadPage />} />
         <Route path="/blog" element={<BlogPage />} />
+        <Route path="/blog/:slug" element={<BlogPostPage />} />
+
+        {/* Auth */}
+        <Route path="/login" element={<LoginScreen />} />
+        <Route path="/register" element={<RegisterScreen />} />
 
         {/* Homepage */}
         <Route path="/" element={<HomePage />} />
       </Routes>
+      </PageTransition>
+      </OnboardingGuard>
+      </ErrorBoundary>
     </main>
   );
 }

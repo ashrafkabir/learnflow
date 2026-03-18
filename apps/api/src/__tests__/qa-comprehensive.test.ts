@@ -5,10 +5,7 @@ import { authRouter } from '../auth.js';
 import { authMiddleware } from '../middleware.js';
 import { db } from '../db.js';
 import { subscriptionRouter } from '../routes/subscription.js';
-import { NotesAgent } from '../../../../packages/agents/src/notes-agent/notes-agent.js';
-import { ExamAgent } from '../../../../packages/agents/src/exam-agent/exam-agent.js';
-import { SummarizerAgent } from '../../../../packages/agents/src/summarizer-agent/summarizer-agent.js';
-import { ResearchAgent } from '../../../../packages/agents/src/research-agent/research-agent.js';
+import { NotesAgent, ExamAgent, SummarizerAgent, ResearchAgent } from '@learnflow/agents';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const mockContext: any = {

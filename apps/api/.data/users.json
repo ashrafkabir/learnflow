@@ -1,0 +1,31 @@
+[
+  {
+    "id": "bc5e7fc9-db59-4bda-9993-0ca63a0eb36d",
+    "email": "flow@example.com",
+    "displayName": "Flow User",
+    "passwordHash": "$2a$12$KZMKj3PwsO9eiub4Im.gSegxkf8oavPGzqiBXOoDZYg4VXdCtmXRu",
+    "role": "student",
+    "tier": "free",
+    "goals": [],
+    "preferredLanguage": "en",
+    "createdAt": "2026-03-17T20:26:04.442Z",
+    "updatedAt": "2026-03-17T20:26:04.442Z"
+  },
+  {
+    "id": "603106d4-d20c-43d8-a84b-f49198e9148e",
+    "email": "demo@learnflow.ai",
+    "displayName": "Demo",
+    "passwordHash": "$2a$12$7jGMie2KpLt6e2RaItZCVOZ3Qj8xRefjdrtuQfTmTgTBTwsGs92X2",
+    "role": "student",
+    "tier": "free",
+    "goals": [
+      "Intellectual curiosity"
+    ],
+    "preferredLanguage": "en",
+    "createdAt": "2026-03-17T21:19:33.416Z",
+    "updatedAt": "2026-03-17T21:22:42.836Z",
+    "topics": [
+      "data"
+    ]
+  }
+]

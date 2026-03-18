@@ -1,8 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import rehypeHighlight from 'rehype-highlight';
+import 'katex/dist/katex.min.css';
+import 'highlight.js/styles/github-dark.css';
 import { useApp } from '../context/AppContext.js';
 import { SourceDrawer } from '../components/SourceDrawer.js';
 import type { Source } from '../components/CitationTooltip.js';
+import { useWebSocket } from '../hooks/useWebSocket.js';
 
 // Agent display names
 const AGENT_LABELS: Record<string, { icon: string; label: string }> = {
@@ -13,150 +21,201 @@ const AGENT_LABELS: Record<string, { icon: string; label: string }> = {
   course: { icon: '📚', label: 'Course Builder' },
 };
 
-// Lightweight markdown renderer — handles bold, code, inline code, lists, headers, line breaks
+// Rich markdown renderer using react-markdown with syntax highlighting, math, and GFM tables
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex, rehypeHighlight]}
+      components={{
+        h1: ({ children }) => <h1 className="text-lg font-bold mt-3 mb-1">{children}</h1>,
+        h2: ({ children }) => <h2 className="text-base font-semibold mt-2 mb-1">{children}</h2>,
+        h3: ({ children }) => <h3 className="text-sm font-medium mt-2 mb-1">{children}</h3>,
+        p: ({ children }) => <p className="text-sm leading-relaxed mb-1">{children}</p>,
+        ul: ({ children }) => <ul className="ml-4 list-disc text-sm space-y-0.5">{children}</ul>,
+        ol: ({ children }) => <ol className="ml-4 list-decimal text-sm space-y-0.5">{children}</ol>,
+        li: ({ children }) => <li className="mb-0.5">{children}</li>,
+        code: ({ className, children, ...props }) => {
+          const isBlock = className?.startsWith('language-') || className?.startsWith('hljs');
+          if (isBlock) {
+            return <code className={className} {...props}>{children}</code>;
+          }
+          return (
+            <code className="bg-black/10 dark:bg-white/10 px-1 rounded text-xs font-mono" {...props}>
+              {children}
+            </code>
+          );
+        },
+        pre: ({ children }) => (
+          <pre className="bg-gray-900 dark:bg-black text-green-400 rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono">
+            {children}
+          </pre>
+        ),
+        table: ({ children }) => (
+          <div className="overflow-x-auto my-2">
+            <table className="min-w-full text-sm border-collapse border border-gray-300 dark:border-gray-600">{children}</table>
+          </div>
+        ),
+        th: ({ children }) => <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 bg-gray-100 dark:bg-gray-800 font-semibold text-left">{children}</th>,
+        td: ({ children }) => <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{children}</td>,
+        sup: ({ children }) => <sup className="text-accent font-medium">{children}</sup>,
+        a: ({ href, children }) => <a href={href} className="text-accent underline hover:opacity-80" target="_blank" rel="noopener noreferrer">{children}</a>,
+        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+        blockquote: ({ children }) => <blockquote className="border-l-2 border-accent pl-3 my-2 italic text-sm opacity-80">{children}</blockquote>,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
 function renderMarkdown(content: string): React.ReactNode {
-  const blocks = content.split('\n');
-  const elements: React.ReactNode[] = [];
-
-  let inCodeBlock = false;
-  let codeLines: string[] = [];
-
-  for (let i = 0; i < blocks.length; i++) {
-    const line = blocks[i];
-
-    if (line.startsWith('```')) {
-      if (!inCodeBlock) {
-        inCodeBlock = true;
-        codeLines = [];
-      } else {
-        elements.push(
-          <pre
-            key={i}
-            className="bg-gray-900 dark:bg-black text-green-400 rounded-lg p-3 my-2 overflow-x-auto text-xs font-mono"
-          >
-            <code>{codeLines.join('\n')}</code>
-          </pre>,
-        );
-        inCodeBlock = false;
-      }
-      continue;
-    }
-
-    if (inCodeBlock) {
-      codeLines.push(line);
-      continue;
-    }
-
-    if (line.startsWith('# ')) {
-      elements.push(
-        <h1 key={i} className="text-lg font-bold mt-3 mb-1">
-          {line.slice(2)}
-        </h1>,
-      );
-      continue;
-    }
-    if (line.startsWith('## ')) {
-      elements.push(
-        <h2 key={i} className="text-base font-semibold mt-2 mb-1">
-          {line.slice(3)}
-        </h2>,
-      );
-      continue;
-    }
-    if (line.startsWith('### ')) {
-      elements.push(
-        <h3 key={i} className="text-sm font-medium mt-2 mb-1">
-          {line.slice(4)}
-        </h3>,
-      );
-      continue;
-    }
-    if (line.startsWith('- ')) {
-      elements.push(
-        <li key={i} className="ml-4 list-disc text-sm mb-0.5">
-          {renderInline(line.slice(2))}
-        </li>,
-      );
-      continue;
-    }
-    if (line.match(/^\d+\.\s/)) {
-      elements.push(
-        <li key={i} className="ml-4 list-decimal text-sm mb-0.5">
-          {renderInline(line.replace(/^\d+\.\s/, ''))}
-        </li>,
-      );
-      continue;
-    }
-    if (line.trim() === '') {
-      elements.push(<div key={i} className="h-2" />);
-      continue;
-    }
-
-    elements.push(
-      <p key={i} className="text-sm leading-relaxed mb-1">
-        {renderInline(line)}
-      </p>,
-    );
-  }
-
-  return <>{elements}</>;
+  return <MarkdownContent content={content} />;
 }
 
-function renderInline(text: string): React.ReactNode {
-  // Handle bold, inline code, and citations
-  const parts: React.ReactNode[] = [];
-  const regex = /(\*\*(.*?)\*\*|`(.*?)`|\[(\d+)\])/g;
-  let lastIndex = 0;
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
-    if (match[2]) parts.push(<strong key={match.index}>{match[2]}</strong>);
-    else if (match[3])
-      parts.push(
-        <code
-          key={match.index}
-          className="bg-black/10 dark:bg-white/10 px-1 rounded text-xs font-mono"
-        >
-          {match[3]}
-        </code>,
-      );
-    else if (match[4])
-      parts.push(
-        <sup key={match.index} className="text-accent font-medium">
-          [{match[4]}]
-        </sup>,
-      );
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < text.length) parts.push(text.slice(lastIndex));
-  return parts.length ? <>{parts}</> : text;
+// Spec §5.2.3: Contextual quick-action chips that trigger specific agents
+interface QuickChip {
+  label: string;
+  message: string; // actual message sent to trigger the right agent
 }
 
-// Determine contextual quick-action chips based on last assistant message
-function getContextChips(content: string): string[] {
+function getContextChips(content: string): QuickChip[] {
   const lower = content.toLowerCase();
   if (lower.includes('course') && (lower.includes('created') || lower.includes('ready')))
-    return ['View Course', 'Quiz Me', 'Take Notes'];
+    return [
+      { label: 'Take Notes', message: 'Take detailed notes on this lesson' },
+      { label: 'Quiz Me', message: 'Generate a quiz to test my understanding' },
+      { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
+    ];
   if (lower.includes('lesson') || lower.includes('module'))
-    return ['Take Notes', 'Quiz Me', 'Go Deeper', 'View Sources'];
+    return [
+      { label: 'Take Notes', message: 'Take detailed notes on this lesson' },
+      { label: 'Quiz Me', message: 'Generate a quiz to test my understanding' },
+      { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
+      { label: 'See Sources', message: '__open_sources__' },
+    ];
   if (lower.includes('quiz') || lower.includes('question'))
-    return ['Review Answers', 'Try Again', 'Move On'];
+    return [
+      { label: 'Review Answers', message: 'Review my quiz answers and explain mistakes' },
+      { label: 'Try Again', message: 'Generate a new quiz on the same topic' },
+      { label: 'Take Notes', message: 'Take detailed notes on what I got wrong' },
+    ];
   if (lower.includes('notes') || lower.includes('cornell') || lower.includes('flashcard'))
-    return ['Quiz Me', 'Go Deeper', 'Export Notes'];
-  if (lower.includes('research') || lower.includes('paper') || lower.includes('source'))
-    return ['Deep Dive', 'Save to Library', 'Create Course'];
-  return ['Create Course', 'Quiz Me', 'Take Notes', 'Research'];
+    return [
+      { label: 'Quiz Me', message: 'Generate a quiz to test my understanding' },
+      { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
+    ];
+  return [
+    { label: 'Take Notes', message: 'Take detailed notes on this lesson' },
+    { label: 'Quiz Me', message: 'Generate a quiz to test my understanding' },
+    { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
+    { label: 'See Sources', message: '__open_sources__' },
+  ];
 }
 
 export function Conversation() {
   const nav = useNavigate();
-  const { state, sendChat } = useApp();
+  const [searchParams] = useSearchParams();
+  const { state, sendChat, dispatch } = useApp();
   const [input, setInput] = useState('');
+  const [contextBadge, setContextBadge] = useState<string | null>(null);
+
+  // Handle query params from lesson action bar
+  useEffect(() => {
+    const action = searchParams.get('action');
+    const courseId = searchParams.get('courseId');
+    const lessonId = searchParams.get('lessonId');
+    if (action && (courseId || lessonId)) {
+      const courseTitle = state.activeCourse?.title || `Course ${courseId}`;
+      const lessonTitle = state.activeLesson?.title || `Lesson ${lessonId}`;
+      setContextBadge(`${courseTitle} › ${lessonTitle}`);
+      const prompts: Record<string, string> = {
+        notes: `Take detailed notes on the current lesson "${lessonTitle}"`,
+        quiz: `Quiz me on the lesson "${lessonTitle}"`,
+        question: `I have a question about the lesson "${lessonTitle}": `,
+      };
+      if (prompts[action]) setInput(prompts[action]);
+    }
+  }, [searchParams]);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSources, setDrawerSources] = useState<Source[]>([]);
+  const [streamingContent, setStreamingContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // WebSocket streaming
+  const { connected: wsConnected, send: wsSend } = useWebSocket((evt) => {
+    switch (evt.event) {
+      case 'agent.spawned':
+        // Spec §11.2: { agent_name, task_summary }
+        setActiveAgent(evt.data?.agent_name?.toLowerCase()?.split(' ')[0] || 'orchestrator');
+        break;
+      case 'response.chunk':
+        // Spec §11.2: { message_id, content_delta, type }
+        setStreamingContent((prev) => prev + (evt.data?.content_delta || evt.data?.content || ''));
+        break;
+      case 'response.end': {
+        // Spec §11.2: { message_id, actions[], sources[] }
+        // Build full response from streaming content
+        if (streamingContent) {
+          dispatch({
+            type: 'ADD_CHAT_MESSAGE',
+            message: {
+              id: evt.data?.message_id || `msg-${Date.now()}-ws`,
+              role: 'assistant',
+              content: streamingContent,
+              timestamp: new Date().toISOString(),
+            },
+          });
+        }
+        // Store sources if available
+        if (evt.data?.sources?.length) {
+          setDrawerSources(evt.data.sources.map((s: any, i: number) => ({
+            id: i + 1,
+            title: s.title || `Source ${i + 1}`,
+            author: s.author || 'Source',
+            publication: s.publication || '',
+            year: s.year || 2024,
+            url: s.url || '#',
+          })));
+        }
+        setStreamingContent('');
+        setActiveAgent(null);
+        dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
+        break;
+      }
+      case 'agent.complete':
+        // Spec §11.2: { agent_name, result_summary }
+        setActiveAgent(null);
+        dispatch({
+          type: 'ADD_NOTIFICATION',
+          notification: {
+            id: `notif-${Date.now()}`,
+            type: 'agent',
+            message: `${evt.data?.agent_name || 'Agent'} completed: ${evt.data?.result_summary || 'Task finished'}`,
+            timestamp: new Date().toISOString(),
+            read: false,
+          },
+        });
+        break;
+      case 'progress.update':
+        // Spec §11.2: { user_id, metric, value }
+        dispatch({
+          type: 'ADD_NOTIFICATION',
+          notification: {
+            id: `notif-${Date.now()}`,
+            type: 'progress',
+            message: evt.data?.metric === 'lesson_completed' ? 'Lesson completed! 🎉' : `Progress updated: ${evt.data?.metric || 'learning'}`,
+            timestamp: new Date().toISOString(),
+            read: false,
+          },
+        });
+        break;
+      case 'mindmap.update':
+        // Spec §11.2: { nodes_added[], nodes_updated[], edges_added[] }
+        break;
+    }
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
@@ -175,8 +234,21 @@ export function Conversation() {
     else if (lower.includes('course') || lower.includes('create')) setActiveAgent('course');
     else setActiveAgent(null);
 
-    await sendChat(msg);
-    setActiveAgent(null);
+    // Try WebSocket first, fall back to REST
+    if (wsConnected) {
+      // Add user message manually for WS path
+      dispatch({
+        type: 'ADD_CHAT_MESSAGE',
+        message: { id: `msg-${Date.now()}`, role: 'user', content: msg, timestamp: new Date().toISOString() },
+      });
+      dispatch({ type: 'SET_LOADING', key: 'chat', value: true });
+      setStreamingContent('');
+      wsSend('message', { text: msg });
+    } else {
+      // REST path — sendChat adds user message internally
+      await sendChat(msg);
+      setActiveAgent(null);
+    }
   };
 
   const agentInfo = activeAgent
@@ -194,18 +266,28 @@ export function Conversation() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => nav('/dashboard')}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            className="text-gray-600 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
           >
             ←
           </button>
           <div>
             <h1 className="text-base font-semibold text-gray-900 dark:text-white">LearnFlow AI</h1>
-            <p className="text-xs text-gray-400">Your personal learning assistant</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">Your personal learning assistant</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-          <span className="text-xs text-gray-400">Online</span>
+        <div className="flex items-center gap-3">
+          {state.chat.length > 0 && (
+            <button
+              onClick={() => dispatch({ type: 'SET_CHAT', messages: [] })}
+              className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:text-accent hover:border-accent transition-all"
+            >
+              + New Chat
+            </button>
+          )}
+          <div className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
+            <span className="text-xs text-gray-600 dark:text-gray-400" title="AI assistant is ready to help">Online</span>
+          </div>
         </div>
       </header>
 
@@ -217,28 +299,47 @@ export function Conversation() {
         className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4"
       >
         {state.chat.length === 0 && (
-          <div className="text-center py-16 space-y-4">
-            <span className="text-5xl block">🧠</span>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Start a conversation
-            </h2>
-            <p className="text-gray-500 max-w-md mx-auto text-sm">
-              Ask me to create a course, quiz you on a topic, take notes, or research anything.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
+          <div className="flex flex-col items-center justify-center py-12 space-y-6">
+            <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
+              <span className="text-3xl">🧠</span>
+            </div>
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Ask me anything about your learning
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto text-sm leading-relaxed">
+                I can create courses, quiz you, generate study notes, and research topics with real sources.
+              </p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl">
               {[
-                'Teach me about Agentic AI',
-                'Create a Rust course',
-                'Quiz me on quantum computing',
+                { icon: '📚', title: 'Create a course', desc: 'On any topic from the web', text: 'Create a course on Rust programming' },
+                { icon: '🧠', title: 'Quiz me', desc: 'Test your knowledge', text: 'Quiz me on React hooks' },
+                { icon: '📝', title: 'Summarize notes', desc: 'From your lessons', text: 'Summarize my machine learning notes' },
               ].map((s) => (
                 <button
-                  key={s}
-                  onClick={() => {
-                    setInput(s);
-                  }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-accent hover:text-accent transition-all"
+                  key={s.title}
+                  onClick={() => send(s.text)}
+                  className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-accent hover:shadow-md transition-all text-center group"
                 >
-                  {s}
+                  <span className="text-2xl">{s.icon}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-accent">{s.title}</span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">{s.desc}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {[
+                { label: '💡 Explain transformers', text: 'Explain transformer architecture simply' },
+                { label: '🔍 Research agentic AI', text: 'Teach me about Agentic AI' },
+                { label: '🗺️ DevOps roadmap', text: 'Create a learning roadmap for DevOps' },
+              ].map((s) => (
+                <button
+                  key={s.label}
+                  onClick={() => setInput(s.text)}
+                  className="text-xs px-3 py-2 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-accent hover:text-accent transition-all"
+                >
+                  {s.label}
                 </button>
               ))}
             </div>
@@ -260,6 +361,21 @@ export function Conversation() {
                 <div data-component="markdown-content" className="leading-relaxed">
                   {renderMarkdown(msg.content)}
                 </div>
+                {/* Render "Apply to Lesson" for improved blocks */}
+                {msg.role === 'assistant' && msg.content.includes('```improved') && (
+                  <button
+                    onClick={() => {
+                      const match = msg.content.match(/```improved\n([\s\S]*?)```/);
+                      if (match) {
+                        navigator.clipboard.writeText(match[1].trim());
+                        alert('Improved content copied to clipboard! You can paste it into the lesson editor.');
+                      }
+                    }}
+                    className="mt-2 text-xs px-3 py-1.5 rounded-full bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition-all flex items-center gap-1"
+                  >
+                    ✨ Copy Improved Content
+                  </button>
+                )}
                 <p className="text-[10px] mt-1 opacity-50">
                   {new Date(msg.timestamp).toLocaleTimeString([], {
                     hour: '2-digit',
@@ -273,11 +389,17 @@ export function Conversation() {
               <div className="flex flex-wrap gap-2 mt-2 ml-1">
                 {getContextChips(msg.content).map((chip) => (
                   <button
-                    key={chip}
-                    onClick={() => send(chip)}
+                    key={chip.label}
+                    onClick={() => {
+                      if (chip.message === '__open_sources__') {
+                        setDrawerOpen(true);
+                      } else {
+                        send(chip.message);
+                      }
+                    }}
                     className="text-xs px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-accent hover:text-accent transition-all"
                   >
-                    {chip}
+                    {chip.label}
                   </button>
                 ))}
                 {msg.content.includes('[1]') && (
@@ -322,8 +444,19 @@ export function Conversation() {
             )}
           </div>
         ))}
+        {/* Streaming response */}
+        {streamingContent && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md">
+              <div data-component="markdown-content" className="leading-relaxed">
+                {renderMarkdown(streamingContent)}
+              </div>
+              <span className="inline-block w-1.5 h-4 bg-accent animate-pulse ml-0.5" />
+            </div>
+          </div>
+        )}
         {/* Agent activity indicator (Task 4) */}
-        {state.loading.chat && (
+        {state.loading.chat && !streamingContent && (
           <div
             data-component="agent-activity"
             aria-label="Agent processing"
@@ -336,12 +469,12 @@ export function Conversation() {
                   <>
                     <span>{agentInfo.icon}</span>
                     <span className="font-medium">{agentInfo.label}</span>
-                    <span className="text-gray-400">is working...</span>
+                    <span className="text-gray-600 dark:text-gray-400">is working...</span>
                   </>
                 ) : (
                   <>
                     <span>🤖</span>
-                    <span className="text-gray-400">Thinking...</span>
+                    <span className="text-gray-600 dark:text-gray-400">Thinking...</span>
                   </>
                 )}
                 <span className="flex gap-0.5 ml-1">
@@ -360,8 +493,23 @@ export function Conversation() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3">
+      {/* Input - Task 4: sticky bottom with safe-area */}
+      <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 safe-area-bottom">
+        {/* Course/lesson context badge */}
+        {(contextBadge || state.activeCourse || state.activeLesson) && (
+          <div className="max-w-4xl mx-auto mb-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+            <span>📚</span>
+            {contextBadge ? (
+              <span className="font-medium text-gray-600 dark:text-gray-300">{contextBadge}</span>
+            ) : (
+              <>
+                {state.activeCourse && <span className="font-medium text-gray-600 dark:text-gray-300">{state.activeCourse.title}</span>}
+                {state.activeLesson && <><span>›</span><span className="text-accent">{state.activeLesson.title}</span></>}
+              </>
+            )}
+            <button onClick={() => setContextBadge(null)} className="ml-auto text-gray-300 hover:text-gray-500">✕</button>
+          </div>
+        )}
         <div className="max-w-4xl mx-auto flex gap-2">
           <input
             value={input}

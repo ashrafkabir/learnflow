@@ -63,7 +63,7 @@ router.post('/register', async (req: Request, res: Response) => {
     updatedAt: new Date(),
   };
 
-  db.users.set(user.id, user);
+  db.addUser(user);
   const tokens = generateTokens(user);
 
   res.status(201).json({
@@ -176,7 +176,7 @@ router.get('/google/callback', (req: Request, res: Response) => {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
-    db.users.set(user.id, user);
+    db.addUser(user);
   }
 
   const tokens = generateTokens(user);

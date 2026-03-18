@@ -1,0 +1,93 @@
+{
+  "timestamp": "2026-03-17T06:14:14.779Z",
+  "tests": [
+    {
+      "name": "Course creation returns valid course",
+      "passed": true,
+      "duration": 21
+    },
+    {
+      "name": "Course modules have lessons",
+      "passed": true,
+      "duration": 0
+    },
+    {
+      "name": "Lesson content has sufficient depth (≥800 words)",
+      "passed": true,
+      "duration": 0
+    },
+    {
+      "name": "Lesson content has learning objectives",
+      "passed": true,
+      "duration": 0
+    },
+    {
+      "name": "Lesson content has key takeaways",
+      "passed": true,
+      "duration": 0
+    },
+    {
+      "name": "Lesson content has sources/references",
+      "passed": true,
+      "duration": 0
+    },
+    {
+      "name": "Notes agent generates Cornell notes",
+      "passed": true,
+      "duration": 4
+    },
+    {
+      "name": "Notes agent generates flashcards",
+      "passed": true,
+      "duration": 1
+    },
+    {
+      "name": "Exam agent generates quiz with questions",
+      "passed": true,
+      "duration": 2
+    },
+    {
+      "name": "Quiz has multiple choice with options",
+      "passed": true,
+      "duration": 1
+    },
+    {
+      "name": "Research agent returns papers",
+      "passed": true,
+      "duration": 1
+    },
+    {
+      "name": "General chat responds to learning requests",
+      "passed": true,
+      "duration": 1
+    },
+    {
+      "name": "Chat responds to summarize request",
+      "passed": true,
+      "duration": 1
+    },
+    {
+      "name": "Course listing includes created course",
+      "passed": true,
+      "duration": 1
+    },
+    {
+      "name": "Lesson completion returns success",
+      "passed": true,
+      "duration": 1
+    },
+    {
+      "name": "Individual course fetch returns full data",
+      "passed": true,
+      "duration": 1
+    },
+    {
+      "name": "Two courses on same topic have different content",
+      "passed": true,
+      "duration": 3
+    }
+  ],
+  "passed": 17,
+  "total": 17,
+  "assertions": 88
+}

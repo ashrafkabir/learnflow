@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 
-import { db } from '../db.js';
+import { db, dbInvoices } from '../db.js';
 
 const router = Router();
 
@@ -36,14 +36,14 @@ function getFeatureFlags(tier: string): FeatureFlags {
 
 // ─── In-memory subscription store ───
 
-interface Invoice {
+interface _Invoice {
   id: string;
   amount: number;
   status: string;
   date: string;
 }
 
-const invoiceStore: Map<string, Invoice[]> = new Map();
+// Invoices stored in SQLite via dbInvoices
 
 const subscriptionSchema = z.object({
   action: z.enum(['subscribe', 'upgrade', 'downgrade', 'cancel']),
@@ -69,8 +69,7 @@ router.post('/', (req: Request, res: Response) => {
   if (action === 'subscribe' || action === 'upgrade') {
     user.tier = 'pro';
     // Record invoice
-    if (!invoiceStore.has(userId)) invoiceStore.set(userId, []);
-    invoiceStore.get(userId)!.push({
+    dbInvoices.add(userId, {
       id: `inv-${Date.now()}`,
       amount: 20.0,
       status: 'paid',
@@ -79,6 +78,9 @@ router.post('/', (req: Request, res: Response) => {
   } else if (action === 'cancel' || action === 'downgrade') {
     user.tier = 'free';
   }
+
+  user.updatedAt = new Date();
+  db.updateUser(user);
 
   res.status(200).json({
     message: `Subscription ${action} processed`,
@@ -95,7 +97,7 @@ router.get('/', (req: Request, res: Response) => {
   const user = db.findUserById(userId);
   const tier = user?.tier || 'free';
   const features = getFeatureFlags(tier);
-  const invoices = invoiceStore.get(userId) || [];
+  const invoices = dbInvoices.getByUser(userId);
 
   res.status(200).json({
     tier,
@@ -103,6 +105,22 @@ router.get('/', (req: Request, res: Response) => {
     managedKeyAccess: tier === 'pro',
     features,
     invoices,
+  });
+});
+
+// GET /api/v1/subscription/status — alias for subscription status
+router.get('/status', (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const user = db.findUserById(userId);
+  const tier = user?.tier || 'free';
+  const features = getFeatureFlags(tier);
+
+  res.status(200).json({
+    tier,
+    plan: tier,
+    status: tier === 'pro' ? 'active' : 'inactive',
+    managedKeyAccess: tier === 'pro',
+    features,
   });
 });
 
@@ -158,6 +176,8 @@ router.post('/iap', (req: Request, res: Response) => {
   const user = db.findUserById(userId);
   if (user) {
     user.tier = 'pro';
+    user.updatedAt = new Date();
+    db.updateUser(user);
   }
 
   res.status(200).json({

@@ -8,13 +8,17 @@ export function CourseView() {
   const { state, fetchCourse } = useApp();
   const [expandedModule, setExpandedModule] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const course = state.activeCourse;
 
   useEffect(() => {
     if (courseId && (!course || course.id !== courseId)) {
       setLoading(true);
-      fetchCourse(courseId).finally(() => setLoading(false));
+      setError('');
+      fetchCourse(courseId)
+        .catch(e => setError(e?.message || 'Failed to load course'))
+        .finally(() => setLoading(false));
     }
   }, [courseId]);
 
@@ -25,6 +29,22 @@ export function CourseView() {
     }
   }, [course]);
 
+  if (error) {
+    return (
+      <section data-screen="course-view" className="min-h-screen bg-gray-50 dark:bg-bg-dark flex items-center justify-center">
+        <div className="text-center space-y-3 max-w-sm">
+          <span className="text-4xl">❌</span>
+          <p className="text-gray-700 dark:text-gray-300 font-medium">Failed to load course</p>
+          <p className="text-sm text-gray-500">{error}</p>
+          <div className="flex gap-3 justify-center">
+            <button onClick={() => { setError(''); setLoading(true); fetchCourse(courseId!).catch(e => setError(e?.message)).finally(() => setLoading(false)); }} className="px-4 py-2 bg-accent text-white rounded-xl text-sm">Retry</button>
+            <button onClick={() => nav('/dashboard')} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-sm">Back</button>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (loading || !course) {
     return (
       <section
@@ -33,7 +53,7 @@ export function CourseView() {
         className="min-h-screen bg-gray-50 dark:bg-bg-dark flex items-center justify-center"
       >
         <div className="text-center space-y-3">
-          <div className="animate-spin text-4xl">⏳</div>
+          <div className="inline-block w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin" />
           <p className="text-gray-500">Loading course...</p>
         </div>
       </section>
@@ -66,18 +86,43 @@ export function CourseView() {
           <p className="text-primary-200 text-sm mb-4">{course.description}</p>
 
           {/* Progress */}
-          <div data-component="progress-tracker" aria-label={`Course progress: ${pct}%`}>
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-primary-200">
-                {completed}/{totalLessons} lessons completed
-              </span>
-              <span className="font-semibold">{pct}%</span>
+          <div data-component="progress-tracker" aria-label={`Course progress: ${pct}%`} className="flex items-center gap-4">
+            <div className="flex-1">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-primary-200">
+                  {completed}/{totalLessons} lessons completed
+                </span>
+                <span className="font-semibold">{pct}%</span>
+              </div>
+              <div className="h-2.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-accent rounded-full transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              {pct > 0 && pct < 100 && (
+                <p className="text-xs text-primary-300 mt-1.5">
+                  {totalLessons - completed} lesson{totalLessons - completed !== 1 ? 's' : ''} remaining
+                </p>
+              )}
+              {pct === 100 && (
+                <p className="text-xs text-green-300 mt-1.5 font-medium">🎉 Course complete!</p>
+              )}
             </div>
-            <div className="h-2 bg-white/20 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-accent rounded-full transition-all duration-500"
-                style={{ width: `${pct}%` }}
-              />
+            {/* Circular progress indicator */}
+            <div className="relative w-16 h-16 flex-shrink-0">
+              <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="3" />
+                <circle
+                  cx="18" cy="18" r="15.9" fill="none" stroke="currentColor"
+                  strokeWidth="3" strokeLinecap="round"
+                  strokeDasharray={`${pct}, 100`}
+                  className="text-accent transition-all duration-500"
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-white">
+                {pct}%
+              </span>
             </div>
           </div>
         </div>
@@ -99,21 +144,27 @@ export function CourseView() {
                 aria-expanded={expandedModule === mod.id}
                 className="w-full px-5 py-4 text-left flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-lg bg-accent/10 text-accent text-sm font-bold flex items-center justify-center">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className="w-8 h-8 rounded-lg bg-accent/10 text-accent text-sm font-bold flex items-center justify-center flex-shrink-0">
                     {mi + 1}
                   </span>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-base font-semibold text-gray-900 dark:text-white">
                       {mod.title}
                     </h3>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {mod.objective} · {mod.lessons.length} lessons
+                      {mod.objective} · {mod.lessons.filter(l => state.completedLessons.has(l.id)).length}/{mod.lessons.length} lessons
                     </p>
+                    <div className="mt-1.5 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-accent rounded-full transition-all duration-500"
+                        style={{ width: `${mod.lessons.length > 0 ? Math.round((mod.lessons.filter(l => state.completedLessons.has(l.id)).length / mod.lessons.length) * 100) : 0}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
                 <span
-                  className="text-gray-400 text-lg transition-transform"
+                  className="text-gray-500 dark:text-gray-400 text-lg transition-transform"
                   style={{ transform: expandedModule === mod.id ? 'rotate(180deg)' : '' }}
                 >
                   ▼
@@ -140,11 +191,24 @@ export function CourseView() {
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {lesson.title}
                           </p>
-                          <p className="text-xs text-gray-400 truncate">{lesson.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{lesson.description}</p>
                         </div>
-                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap mr-2">
                           {lesson.estimatedTime} min
                         </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            nav(`/courses/${courseId}/lessons/${lesson.id}`);
+                          }}
+                          className={`text-xs font-medium px-3 py-1 rounded-lg transition-colors ${
+                            isComplete
+                              ? 'bg-success/10 text-success hover:bg-success/20'
+                              : 'bg-accent text-white hover:bg-accent-dark'
+                          }`}
+                        >
+                          {isComplete ? 'Review' : 'Start'}
+                        </button>
                       </div>
                     );
                   })}

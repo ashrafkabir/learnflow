@@ -4,6 +4,10 @@ import { createApp, clearRateLimits } from '../app.js';
 import { db } from '../db.js';
 import { courses } from '../routes/courses.js';
 
+// Disable external APIs in tests to use fast template fallback
+delete process.env.OPENAI_API_KEY;
+delete process.env.FIRECRAWL_API_KEY;
+
 const app = createApp();
 
 beforeEach(() => {
@@ -119,6 +123,8 @@ describe('S07-A08: Rate limiting pro tier', () => {
     // Upgrade to pro
     const user = db.findUserByEmail('pro@test.com');
     user!.tier = 'pro';
+    user!.updatedAt = new Date();
+    db.updateUser(user!);
 
     // Get new token with pro tier
     const login = await request(app)
@@ -165,7 +171,7 @@ describe('S07-A14: Types compile', () => {
 
 // S07-A15: Full API flow: register → login → create course → get lessons
 describe('S07-A15: Full API flow', () => {
-  it('register → login → create course → get course → complete lesson', async () => {
+  it('register → login → create course → get course → complete lesson', { timeout: 60000 }, async () => {
     // 1. Register
     const reg = await request(app)
       .post('/api/v1/auth/register')

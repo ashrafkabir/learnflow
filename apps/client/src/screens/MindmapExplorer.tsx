@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../context/AppContext.js';
+import { useApp, apiGet } from '../context/AppContext.js';
 
 // Dynamically import vis-network to avoid SSR issues
 let Network: unknown = null;
@@ -14,14 +14,50 @@ type VisNetworkCtor = new (
 ) => {
   on: (event: string, cb: (params: unknown) => void) => void;
   destroy: () => void;
+  fit: (...args: unknown[]) => void;
+  moveTo: (opts: Record<string, unknown>) => void;
+  getScale: () => number;
 };
 
 export function MindmapExplorer() {
   const nav = useNavigate();
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const containerRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
-  const networkRef = useRef<null | { destroy: () => void }>(null);
+  const networkRef = useRef<null | { destroy: () => void; fit: (...args: unknown[]) => void; moveTo: (opts: Record<string, unknown>) => void; getScale: () => number }>(null);
+  const [showAddNode, setShowAddNode] = useState(false);
+  const [newNodeLabel, setNewNodeLabel] = useState('');
+  const [customNodes, setCustomNodes] = useState<Array<{ id: string; label: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem('learnflow-custom-nodes') || '[]'); } catch { return []; }
+  });
+
+  const addCustomNode = () => {
+    if (!newNodeLabel.trim()) return;
+    const node = { id: `custom-${Date.now()}`, label: newNodeLabel.trim() };
+    const updated = [...customNodes, node];
+    setCustomNodes(updated);
+    localStorage.setItem('learnflow-custom-nodes', JSON.stringify(updated));
+    setNewNodeLabel('');
+    setShowAddNode(false);
+  };
+
+  // Fetch courses independently on mount — uses shared apiGet helper
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await apiGet('/courses');
+        if (data.courses && data.courses.length > 0) {
+          const fullCourses = await Promise.all(
+            data.courses.map(async (c: { id: string }) => {
+              try { return await apiGet(`/courses/${c.id}`); } catch { return null; }
+            })
+          );
+          const valid = fullCourses.filter(Boolean);
+          if (valid.length > 0) dispatch({ type: 'SET_COURSES', courses: valid });
+        }
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   // Load vis-network dynamically
   useEffect(() => {
@@ -55,8 +91,8 @@ export function MindmapExplorer() {
       label: 'My Knowledge',
       shape: 'ellipse',
       color: { background: '#6366F1', border: '#4F46E5' },
-      font: { color: '#fff', size: 16, bold: { color: '#fff' } },
-      size: 35,
+      font: { color: '#fff', size: 18, bold: { color: '#fff' } },
+      size: 40,
     });
 
     for (const course of state.courses) {
@@ -72,15 +108,15 @@ export function MindmapExplorer() {
       const courseColor = coursePct >= 1 ? '#16A34A' : coursePct > 0 ? '#F59E0B' : '#9CA3AF';
       nodes.push({
         id: courseNodeId,
-        label: course.title.length > 25 ? course.title.slice(0, 25) + '…' : course.title,
+        label: course.title.length > 50 ? course.title.slice(0, 50) + '…' : course.title,
         title: `${course.title}\n${Math.round(coursePct * 100)}% complete`,
         shape: 'box',
         color: { background: courseColor, border: courseColor },
-        font: { color: '#fff', size: 13 },
+        font: { color: '#fff', size: 16, multi: 'html' },
         borderWidth: 2,
         _courseId: course.id,
       });
-      edges.push({ from: rootId, to: courseNodeId, color: { color: '#E5E7EB' }, width: 2 });
+      edges.push({ from: rootId, to: courseNodeId, color: { color: '#94A3B8' }, width: 2.5 });
 
       for (const mod of course.modules) {
         const modNodeId = nodeId++;
@@ -90,21 +126,21 @@ export function MindmapExplorer() {
 
         nodes.push({
           id: modNodeId,
-          label: mod.title.length > 20 ? mod.title.slice(0, 20) + '…' : mod.title,
+          label: mod.title.length > 40 ? mod.title.slice(0, 40) + '…' : mod.title,
           title: `${mod.title}\n${modCompleted}/${mod.lessons.length} lessons`,
           shape: 'box',
           color: { background: modColor, border: modColor },
-          font: { color: modPct > 0 ? '#fff' : '#374151', size: 11 },
+          font: { color: modPct > 0 ? '#fff' : '#374151', size: 14 },
           size: 20,
         });
-        edges.push({ from: courseNodeId, to: modNodeId, color: { color: '#E5E7EB' } });
+        edges.push({ from: courseNodeId, to: modNodeId, color: { color: '#94A3B8' }, width: 2 });
 
         for (const lesson of mod.lessons) {
           const lessonNodeId = nodeId++;
           const isComplete = state.completedLessons.has(lesson.id);
           nodes.push({
             id: lessonNodeId,
-            label: lesson.title.length > 18 ? lesson.title.slice(0, 18) + '…' : lesson.title,
+            label: lesson.title.length > 35 ? lesson.title.slice(0, 35) + '…' : lesson.title,
             title: `${lesson.title}${isComplete ? ' ✓' : ''}`,
             shape: 'dot',
             color: {
@@ -115,7 +151,7 @@ export function MindmapExplorer() {
             _courseId: course.id,
             _lessonId: lesson.id,
           });
-          edges.push({ from: modNodeId, to: lessonNodeId, color: { color: '#F3F4F6' } });
+          edges.push({ from: modNodeId, to: lessonNodeId, color: { color: '#94A3B8' }, width: 2 });
         }
       }
     }
@@ -137,13 +173,24 @@ export function MindmapExplorer() {
         solver: 'forceAtlas2Based',
         stabilization: { iterations: 100 },
       },
+      autoResize: true,
       interaction: { hover: true, tooltipDelay: 200 },
-      nodes: { borderWidth: 2, shadow: true },
+      nodes: { borderWidth: 2, shadow: { enabled: true, size: 4, x: 0, y: 2, color: 'rgba(0,0,0,0.1)' }, font: { size: 14, face: 'system-ui, sans-serif' } },
       edges: { smooth: { type: 'continuous' } },
     };
 
     const network = new NetworkCtor(containerRef.current, data, options);
-    networkRef.current = network;
+    networkRef.current = network as any;
+
+    // Auto-fit after stabilization
+    network.on('stabilizationIterationsDone', () => {
+      network.fit({ animation: { duration: 500, easingFunction: 'easeOutQuart' }, maxZoomLevel: 1.5 });
+    });
+
+    // Also fit once on stabilized (belt-and-suspenders)
+    network.on('stabilized' as string, () => {
+      network.fit({ animation: false, maxZoomLevel: 1.5 });
+    });
 
     // Click handler — navigate to lesson
     network.on('click', (params: unknown) => {
@@ -164,7 +211,22 @@ export function MindmapExplorer() {
     return () => {
       network.destroy();
     };
-  }, [loaded, state.courses, state.completedLessons]);
+    // Add custom nodes
+    for (const cn of customNodes) {
+      const cnId = nodeId++;
+      nodes.push({
+        id: cnId,
+        label: cn.label,
+        title: cn.label,
+        shape: 'diamond',
+        color: { background: '#8B5CF6', border: '#7C3AED' },
+        font: { color: '#fff', size: 12 },
+        size: 18,
+      });
+      edges.push({ from: rootId, to: cnId, color: { color: '#DDD6FE' }, dashes: true });
+    }
+
+  }, [loaded, state.courses, state.completedLessons, customNodes]);
 
   return (
     <section
@@ -177,31 +239,37 @@ export function MindmapExplorer() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => nav('/dashboard')}
-              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
             >
               ←
             </button>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">🗺️ Knowledge Map</h1>
           </div>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-gray-300 inline-block" /> Not started
+          <div className="hidden sm:flex items-center gap-4 text-xs">
+            <button
+              onClick={() => setShowAddNode(true)}
+              className="px-3 py-1.5 bg-accent text-white text-xs font-medium rounded-lg hover:bg-accent-dark transition-colors focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            >
+              + Add Node
+            </button>
+            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+              <span className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600 inline-block border border-gray-400" aria-hidden="true" /> ○ Not started
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-warning inline-block" /> In progress
+            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+              <span className="w-3 h-3 rounded-full bg-warning inline-block border border-amber-500" aria-hidden="true" /> ◐ In progress
             </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded-full bg-success inline-block" /> Mastered
+            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+              <span className="w-3 h-3 rounded-full bg-success inline-block border border-green-600" aria-hidden="true" /> ● Mastered
             </span>
           </div>
         </div>
       </header>
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+      <div className="px-0 sm:px-1 py-0">
         <div
           data-component="mindmap-preview"
           aria-label="Knowledge mindmap"
-          className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden"
-          style={{ height: '70vh' }}
+          className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
+          style={{ height: 'calc(100vh - 80px)', position: 'relative' }}
         >
           {state.courses.length === 0 ? (
             <div className="flex items-center justify-center h-full text-center">
@@ -219,14 +287,76 @@ export function MindmapExplorer() {
               </div>
             </div>
           ) : !loaded ? (
-            <div className="flex items-center justify-center h-full text-gray-400">
+            <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
               Loading graph...
             </div>
           ) : (
-            <div ref={containerRef} className="w-full h-full" />
+            <>
+              <div ref={containerRef} className="w-full h-full" />
+              {/* Zoom controls */}
+              <div className="absolute bottom-4 right-4 flex flex-col gap-2 z-10">
+                <button
+                  onClick={() => {
+                    if (networkRef.current) {
+                      const scale = networkRef.current.getScale();
+                      networkRef.current.moveTo({ scale: scale * 1.3, animation: { duration: 300 } });
+                    }
+                  }}
+                  className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-center text-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  title="Zoom in"
+                >
+                  +
+                </button>
+                <button
+                  onClick={() => {
+                    if (networkRef.current) {
+                      const scale = networkRef.current.getScale();
+                      networkRef.current.moveTo({ scale: scale * 0.7, animation: { duration: 300 } });
+                    }
+                  }}
+                  className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-center text-lg font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  title="Zoom out"
+                >
+                  −
+                </button>
+                <button
+                  onClick={() => {
+                    if (networkRef.current) {
+                      networkRef.current.fit({ animation: { duration: 500 } });
+                    }
+                  }}
+                  className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  title="Fit to screen"
+                >
+                  ⊞
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
+
+      {/* Add Node Modal */}
+      {showAddNode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowAddNode(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 w-full max-w-sm mx-4 shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Add Custom Node</h3>
+            <input
+              type="text"
+              value={newNodeLabel}
+              onChange={e => setNewNodeLabel(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addCustomNode()}
+              placeholder="Node label (e.g., Machine Learning)"
+              className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent mb-4"
+              autoFocus
+            />
+            <div className="flex gap-3">
+              <button onClick={() => setShowAddNode(false)} className="flex-1 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">Cancel</button>
+              <button onClick={addCustomNode} disabled={!newNodeLabel.trim()} className="flex-1 py-2 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent-dark disabled:opacity-40">Add</button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

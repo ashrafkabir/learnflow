@@ -32,13 +32,17 @@ export interface FirecrawlConfig {
   cacheTtlMs: number;
 }
 
-const DEFAULT_CONFIG: FirecrawlConfig = {
-  apiKey: process.env.FIRECRAWL_API_KEY || '',
-  baseUrl: 'https://api.firecrawl.dev/v1',
-  maxSourcesPerLesson: 8,
-  minCredibility: 0.5,
-  cacheTtlMs: 7 * 24 * 60 * 60 * 1000, // 7 days
-};
+function getDefaultConfig(): FirecrawlConfig {
+  return {
+    apiKey: process.env.FIRECRAWL_API_KEY || '',
+    baseUrl: 'https://api.firecrawl.dev/v1',
+    maxSourcesPerLesson: 8,
+    minCredibility: 0.5,
+    cacheTtlMs: 7 * 24 * 60 * 60 * 1000, // 7 days
+  };
+}
+
+const _DEFAULT_CONFIG = getDefaultConfig();
 
 // In-memory cache for crawled content
 const sourceCache: Map<string, { source: FirecrawlSource; cachedAt: number }> = new Map();
@@ -68,6 +72,11 @@ const CREDIBILITY_MAP: Record<string, number> = {
   'stackoverflow.com': 0.7,
   'wikipedia.org': 0.72,
   'github.com': 0.75,
+  'reddit.com': 0.55,
+  'substack.com': 0.68,
+  'quora.com': 0.50,
+  'thenewstack.io': 0.78,
+  'news.ycombinator.com': 0.60,
 };
 
 /**
@@ -148,13 +157,14 @@ export async function searchSources(
   topic: string,
   config: Partial<FirecrawlConfig> = {},
 ): Promise<FirecrawlSearchResult[]> {
-  const cfg = { ...DEFAULT_CONFIG, ...config };
+  const cfg = { ...getDefaultConfig(), ...config };
 
   if (!cfg.apiKey) {
     // Mock mode: return realistic search results
     return getMockSearchResults(topic);
   }
 
+  console.log('[Firecrawl] Searching for:', topic, 'with API key:', cfg.apiKey ? 'SET' : 'MISSING');
   const response = await fetch(`${cfg.baseUrl}/search`, {
     method: 'POST',
     headers: {
@@ -185,7 +195,7 @@ export async function scrapeUrl(
   url: string,
   config: Partial<FirecrawlConfig> = {},
 ): Promise<{ markdown: string; title: string; author: string; publishDate: string | null }> {
-  const cfg = { ...DEFAULT_CONFIG, ...config };
+  const cfg = { ...getDefaultConfig(), ...config };
 
   if (!cfg.apiKey) {
     return getMockScrapedContent(url);
@@ -231,7 +241,7 @@ export async function crawlSourcesForTopic(
   topic: string,
   config: Partial<FirecrawlConfig> = {},
 ): Promise<FirecrawlSource[]> {
-  const cfg = { ...DEFAULT_CONFIG, ...config };
+  const cfg = { ...getDefaultConfig(), ...config };
 
   // Step 1: Search for sources
   const searchResults = await searchSources(topic, cfg);
@@ -332,61 +342,226 @@ export function formatCitations(sources: FirecrawlSource[]): {
 
 /**
  * Synthesize lesson content from crawled sources.
- * Returns content with inline citations and references.
+ * Returns content with inline citations and a references section.
+ *
+ * Iteration 14 rewrite: use an actual LLM synthesis when an API key is present.
+ * - Prefers OPENAI_API_KEY, falls back to ANTHROPIC_API_KEY.
+ * - Falls back to a deterministic template if no key is configured or the LLM fails.
  */
-export function synthesizeFromSources(
+export async function synthesizeFromSources(
   topic: string,
   lessonTitle: string,
   sources: FirecrawlSource[],
-): { content: string; references: string; sourceCount: number } {
+): Promise<{ content: string; references: string; sourceCount: number }> {
   if (sources.length === 0) {
     return { content: `# ${lessonTitle}\n\nContent for ${topic}.`, references: '', sourceCount: 0 };
   }
 
-  const { inlineCitations, referencesSection } = formatCitations(sources);
+  const { referencesSection } = formatCitations(sources);
 
-  // Build synthesized content from sources
+  const openaiKey = process.env.OPENAI_API_KEY;
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+
+  // Provide the model a compact, indexed source pack so it can cite like [1], [2], ...
+  const topSources = sources.slice(0, 10);
+  const sourcePack = topSources
+    .map((s, i) => {
+      const n = i + 1;
+      const excerpt = (s.content || '').slice(0, 2200);
+      return `[${n}] ${s.title || s.domain}\nURL: ${s.url}\nDomain: ${s.domain}\nExcerpt:\n${excerpt}`;
+    })
+    .join('\n\n---\n\n');
+
+  const systemPrompt = `You are a world-class educator and science communicator (Feynman + Kurzgesagt).
+
+Goal: Write a single lesson that feels like a great blog post: concrete, visual, engaging, and frontier-focused.
+
+Hard requirements:
+- Length: 900–1400 words.
+- Include at least one strong analogy or metaphor.
+- Include at least one small ASCII diagram when helpful.
+- Include a mandatory section titled exactly: "🔭 Frontiers & Open Questions".
+- Use ONLY the provided sources for factual claims.
+- Add inline citations using bracket markers that match the provided source indices: [1], [2], ...
+- Use at least 3 different sources.
+- Do NOT write a bibliography-style "this source is useful" list; synthesize.
+
+Output format (markdown):
+# ${lessonTitle}
+
+## Learning Objectives
+- 3–4 bullets starting with "By the end, you’ll be able to…"
+
+## Main Content
+(4–6 subsections with ### headings)
+
+## 🔭 Frontiers & Open Questions
+(3–5 specific frontier directions + why they matter)
+
+## Key Takeaways
+(5–7 numbered takeaways)
+
+Do NOT include a Sources/References list in the model output; it will be appended separately.`;
+
+  const userPrompt = `Topic: ${topic}
+Lesson title: ${lessonTitle}
+
+Sources (indexed; cite as [n]):
+\n${sourcePack}`;
+
+  // 1) Try OpenAI
+  if (openaiKey) {
+    try {
+      const { default: OpenAI } = await import('openai');
+      const client = new OpenAI({ apiKey: openaiKey });
+
+      const resp = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        max_tokens: 5000,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+      });
+
+      const content = resp.choices[0]?.message?.content?.trim();
+      if (content && content.length > 400) {
+        return {
+          content: `${content}\n\n${referencesSection}`,
+          references: referencesSection,
+          sourceCount: sources.length,
+        };
+      }
+    } catch (err) {
+      console.warn('[synthesizeFromSources] OpenAI synthesis failed:', err);
+    }
+  }
+
+  // 2) Try Anthropic
+  if (anthropicKey) {
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-3-5-sonnet-latest',
+          max_tokens: 5000,
+          temperature: 0.7,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userPrompt }],
+        }),
+      });
+
+      if (resp.ok) {
+        const data = (await resp.json()) as unknown;
+        const contentArr = (data as { content?: Array<{ text?: string }> })?.content;
+        const contentObj = (data as { content?: { text?: string } })?.content;
+        const text = Array.isArray(contentArr)
+          ? contentArr.map((c) => c?.text).filter(Boolean).join('\n')
+          : contentObj?.text;
+        const content = (text || '').trim();
+        if (content && content.length > 400) {
+          return {
+            content: `${content}\n\n${referencesSection}`,
+            references: referencesSection,
+            sourceCount: sources.length,
+          };
+        }
+      } else {
+        console.warn('[synthesizeFromSources] Anthropic HTTP error:', resp.status, await resp.text());
+      }
+    } catch (err) {
+      console.warn('[synthesizeFromSources] Anthropic synthesis failed:', err);
+    }
+  }
+
+  // 3) Fallback (deterministic template) — preserves prior behavior for tests/offline.
   const sections: string[] = [];
   sections.push(`# ${lessonTitle}\n`);
   sections.push(`## Learning Objectives\n`);
   sections.push(
-    `By the end of this lesson, you will understand the key concepts of ${topic} as covered in current literature and documentation.\n`,
+    `- By the end, you’ll be able to explain the core ideas behind ${topic} in plain English\n` +
+      `- By the end, you’ll be able to recognize key terms and how they relate\n` +
+      `- By the end, you’ll be able to apply ${lessonTitle.toLowerCase()} concepts to a small, realistic scenario\n`,
   );
+  sections.push(`## Main Content\n`);
 
-  // Synthesize from each source, paraphrasing and citing
-  sections.push(`## Overview\n`);
-  const overviewParts: string[] = [];
-  for (let i = 0; i < Math.min(sources.length, 3); i++) {
-    const s = sources[i];
-    const citation = inlineCitations.get(i) || '';
-    const snippet = s.content.slice(0, 300).replace(/\n/g, ' ').trim();
-    overviewParts.push(
-      `According to recent research ${citation}, ${snippet.toLowerCase().startsWith('the') ? snippet : snippet.charAt(0).toLowerCase() + snippet.slice(1)}`,
-    );
+  // Keep the old keyword-based scaffolding (but in a more narrative form).
+  const stop = new Set([
+    'the', 'and', 'for', 'with', 'that', 'this', 'from', 'into', 'your', 'you', 'are', 'was', 'were', 'has', 'have', 'had',
+    'will', 'can', 'could', 'should', 'may', 'might', 'also', 'than', 'then', 'their', 'there', 'about', 'over', 'under',
+    'between', 'within', 'using', 'use', 'used', 'more', 'most', 'such', 'often', 'many', 'some', 'other', 'these', 'those',
+    'they', 'them', 'its', 'it', 'in', 'on', 'at', 'to', 'of', 'a', 'an', 'as', 'is', 'be', 'by', 'or',
+  ]);
+
+  const collectKeywords = (text: string): string[] => {
+    const words = text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length >= 5 && !stop.has(w));
+    const freq: Record<string, number> = {};
+    for (const w of words) freq[w] = (freq[w] || 0) + 1;
+    return Object.entries(freq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([w]) => w);
+  };
+
+  const topThemes = new Map<string, number>();
+  for (const s of sources.slice(0, 4)) {
+    for (const kw of collectKeywords(s.content)) topThemes.set(kw, (topThemes.get(kw) || 0) + 1);
   }
-  sections.push(overviewParts.join('. ') + '.\n');
+  const themes = [...topThemes.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([w]) => w);
 
-  sections.push(`## Key Concepts\n`);
-  for (let i = 0; i < sources.length; i++) {
-    const s = sources[i];
-    const citation = inlineCitations.get(i) || '';
-    const keyPoints = s.content.split(/\.\s+/).slice(0, 3).join('. ');
-    if (keyPoints.length > 50) {
-      sections.push(`- ${keyPoints.trim()} ${citation}\n`);
-    }
-  }
-
-  sections.push(`## Practical Applications\n`);
   sections.push(
-    `The concepts discussed in this lesson have been validated by multiple sources ${inlineCitations.get(0) || ''} and have practical applications across the field.\n`,
+    `### A simple mental model\n` +
+      `Think of **${lessonTitle}** as a set of ideas that help you reason about ${topic}. ` +
+      `Across the sources, the recurring themes are: ${themes.length ? themes.join(', ') : 'core concepts, trade-offs, and practical techniques'}. ` +
+      `We’ll connect those into one coherent picture. [1]\n`,
   );
 
-  sections.push(`## Summary\n`);
+  sections.push(`### What’s going on under the hood\n`);
   sections.push(
-    `This lesson covered the fundamental aspects of ${topic}, drawing from ${sources.length} authoritative sources to provide a comprehensive overview.\n`,
+    `A good way to learn this is to map **inputs → process → outputs**. For example:\n\n` +
+      '```\n' +
+      `Inputs → ${lessonTitle} system → Outcomes\n` +
+      '```\n\n' +
+      `Different sources emphasize different parts of this pipeline, which is why we use several perspectives. [2] [3]\n`,
   );
 
-  // Add references
+  sections.push(`### Concrete example\n`);
+  const s0 = sources[0];
+  const s1 = sources[1] || sources[0];
+  sections.push(
+    `Start with a tiny scenario and ask: what would change if we tweaked one assumption? ` +
+      `That “what if?” habit is the fastest path to mastery. [1]\n\n` +
+      `For deeper specifics, see: [${s0.title || s0.domain}](${s0.url}) [1] and [${s1.title || s1.domain}](${s1.url}) [2].\n`,
+  );
+
+  sections.push(`## 🔭 Frontiers & Open Questions\n`);
+  sections.push(
+    `Even in a "foundations" lesson, it helps to know what’s still moving. A few frontier questions to explore next:\n` +
+      `- What are the current limitations and failure modes people are actively trying to fix? [1]\n` +
+      `- Which new tools or methods are changing best practices right now? [2]\n` +
+      `- What problems are still unsolved, and why are they hard? [3]\n`,
+  );
+
+  sections.push(`## Key Takeaways\n`);
+  sections.push(`1. ${lessonTitle} is best learned as a mental model, not a glossary. [1]\n`);
+  sections.push(`2. Use multiple sources to triangulate what matters vs. what’s just implementation detail. [2]\n`);
+  sections.push(`3. The fastest learning loop is: explain → test with examples → refine. [3]\n`);
+  sections.push(`4. Frontier work is where the most interesting trade-offs live. [1]\n`);
+  sections.push(`5. Keep the references handy; they’re your “next rabbit holes.” [2]\n`);
+
   sections.push(referencesSection);
 
   return {
@@ -394,6 +569,196 @@ export function synthesizeFromSources(
     references: referencesSection,
     sourceCount: sources.length,
   };
+}
+
+/**
+ * Search and scrape sources specific to a single lesson.
+ * Generates lesson-specific queries, searches, scrapes top results, dedupes, scores by relevance to the lesson.
+ */
+export async function searchForLesson(
+  courseTopic: string,
+  moduleTitle: string,
+  lessonTitle: string,
+  lessonDescription: string,
+  config: Partial<FirecrawlConfig> = {},
+): Promise<FirecrawlSource[]> {
+  const cfg = { ...getDefaultConfig(), ...config };
+
+  // Generate 3-5 lesson-specific search queries
+  const queries = generateLessonQueries(courseTopic, moduleTitle, lessonTitle, lessonDescription);
+  console.log(`[Firecrawl] Lesson "${lessonTitle}" — ${queries.length} queries`);
+
+  const allResults: FirecrawlSearchResult[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const query of queries) {
+    try {
+      const results = await searchSources(query, { ...cfg, maxSourcesPerLesson: 5 });
+      for (const r of results) {
+        if (!seenUrls.has(r.url)) {
+          seenUrls.add(r.url);
+          allResults.push(r);
+        }
+      }
+    } catch (err) {
+      console.warn(`[Firecrawl] Search failed for query "${query}":`, err);
+    }
+    // Rate limit delay
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  // Scrape top results (up to 8 unique URLs)
+  const toScrape = allResults.slice(0, 8);
+  const sources: FirecrawlSource[] = [];
+
+  for (const result of toScrape) {
+    // Check cache
+    const cached = sourceCache.get(result.url);
+    if (cached && Date.now() - cached.cachedAt < cfg.cacheTtlMs) {
+      sources.push(cached.source);
+      continue;
+    }
+
+    try {
+      const scraped = await scrapeUrl(result.url, cfg);
+      const content = scraped.markdown || result.description || '';
+      const domain = extractDomain(result.url);
+
+      const source: FirecrawlSource = {
+        url: result.url,
+        title: scraped.title || result.title,
+        author: scraped.author,
+        publishDate: scraped.publishDate,
+        source: domain,
+        content,
+        credibilityScore: scoreCredibility(result.url),
+        relevanceScore: scoreRelevance(content, `${lessonTitle} ${lessonDescription}`),
+        recencyScore: scoreRecency(scraped.publishDate),
+        wordCount: content.split(/\s+/).length,
+        domain,
+      };
+
+      sourceCache.set(result.url, { source, cachedAt: Date.now() });
+      sources.push(source);
+    } catch {
+      continue;
+    }
+    // Rate limit delay
+    await new Promise(r => setTimeout(r, 250));
+  }
+
+  // Sort by relevance to THIS lesson (not just credibility)
+  sources.sort((a, b) => {
+    const scoreA = a.relevanceScore * 0.5 + a.credibilityScore * 0.3 + a.recencyScore * 0.2;
+    const scoreB = b.relevanceScore * 0.5 + b.credibilityScore * 0.3 + b.recencyScore * 0.2;
+    return scoreB - scoreA;
+  });
+
+  // Return top 6
+  return ensureDiversity(sources, 6);
+}
+
+/**
+ * Generate lesson-specific search queries.
+ */
+function generateLessonQueries(
+  courseTopic: string,
+  moduleTitle: string,
+  lessonTitle: string,
+  lessonDescription: string,
+): string[] {
+  const queries: string[] = [
+    `${lessonTitle} ${courseTopic} explained`,
+    `${lessonTitle} tutorial guide`,
+    `${lessonDescription} examples`,
+  ];
+
+  // Add a comparison/advanced query
+  const words = lessonTitle.split(/\s+/).filter(w => w.length > 3);
+  if (words.length >= 2) {
+    queries.push(`${words.join(' ')} best practices techniques`);
+  }
+
+  // Add module-context query
+  queries.push(`${moduleTitle} ${lessonTitle} concepts`);
+
+  return queries.slice(0, 5);
+}
+
+/**
+ * Bulk research for a topic — Stage 1 of the pipeline.
+ * Runs 5-8 search queries to find trending/authoritative content.
+ * Uses search results directly (no individual scraping) for speed and reliability.
+ * Individual lesson scraping happens in Stage 2.
+ */
+export async function searchTopicTrending(
+  topic: string,
+  config: Partial<FirecrawlConfig> = {},
+): Promise<FirecrawlSource[]> {
+  const cfg = { ...getDefaultConfig(), ...config };
+
+  const queries = [
+    `${topic} comprehensive guide 2025`,
+    `${topic} best practices`,
+    `${topic} tutorial advanced`,
+    `${topic} trends 2025`,
+    `${topic} research latest`,
+    `${topic} real world examples`,
+    `${topic} common mistakes pitfalls`,
+  ];
+
+  const allResults: FirecrawlSearchResult[] = [];
+  const seenUrls = new Set<string>();
+
+  for (const query of queries) {
+    try {
+      const results = await searchSources(query, { ...cfg, maxSourcesPerLesson: 5 });
+      for (const r of results) {
+        if (!seenUrls.has(r.url)) {
+          seenUrls.add(r.url);
+          allResults.push(r);
+        }
+      }
+    } catch (err) {
+      console.warn(`[Firecrawl] Trending search failed for "${query}":`, err);
+    }
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  console.log(`[Firecrawl] Trending research found ${allResults.length} unique results`);
+
+  // Convert search results to sources WITHOUT individual scraping (fast path for planning).
+  // The search API returns title + description which is enough for course planning.
+  // Per-lesson scraping in Stage 2 will get the full content.
+  const sources: FirecrawlSource[] = allResults.map(result => {
+    const content = result.markdown || result.description || '';
+    const domain = extractDomain(result.url);
+    const source: FirecrawlSource = {
+      url: result.url,
+      title: result.title,
+      author: 'Unknown',
+      publishDate: null,
+      source: domain,
+      content,
+      credibilityScore: scoreCredibility(result.url),
+      relevanceScore: scoreRelevance(content, topic),
+      recencyScore: 0.5, // Unknown without date
+      wordCount: content.split(/\s+/).length,
+      domain,
+    };
+    // Cache for potential reuse
+    sourceCache.set(result.url, { source, cachedAt: Date.now() });
+    return source;
+  });
+
+  // Sort by combined score
+  sources.sort((a, b) => {
+    const scoreA = (a.credibilityScore + a.relevanceScore + a.recencyScore) / 3;
+    const scoreB = (b.credibilityScore + b.relevanceScore + b.recencyScore) / 3;
+    return scoreB - scoreA;
+  });
+
+  return sources;
 }
 
 /** Clear the source cache (for testing). */

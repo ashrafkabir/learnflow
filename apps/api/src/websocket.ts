@@ -11,14 +11,15 @@ interface WsEvent {
 }
 
 /**
- * Create and attach a WebSocket server to the HTTP server.
- * Handles token auth via query param and streams agent lifecycle events.
+ * Spec §11.2 — WebSocket Events
+ * Events: response.start, response.chunk, response.end,
+ *         agent.spawned, agent.complete,
+ *         mindmap.update, progress.update, error
  */
 export function createWebSocketServer(server: HttpServer): WebSocketServer {
   const wss = new WebSocketServer({ server, path: '/ws' });
 
   wss.on('connection', (ws: WebSocket, req) => {
-    // Extract token from query string
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const token = url.searchParams.get('token');
 
@@ -35,7 +36,6 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
       return;
     }
 
-    // Handle incoming messages
     ws.on('message', (raw: Buffer) => {
       try {
         const msg = JSON.parse(raw.toString()) as WsEvent;
@@ -45,7 +45,6 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
       }
     });
 
-    // Send connected event
     sendEvent(ws, 'connected', { userId: user.sub });
   });
 
@@ -60,36 +59,65 @@ function sendEvent(ws: WebSocket, event: string, data: unknown): void {
 
 function handleMessage(ws: WebSocket, user: AuthUser, msg: WsEvent): void {
   if (msg.event === 'message') {
-    // Simulate orchestrator processing with agent lifecycle events
-    sendEvent(ws, 'response.start', { messageId: `msg-${Date.now()}` });
-
-    sendEvent(ws, 'agent.spawned', {
-      agentId: 'orchestrator',
-      agentName: 'Orchestrator Agent',
-      timestamp: new Date().toISOString(),
-    });
-
-    // Stream response chunks
+    const messageId = `msg-${Date.now()}`;
     const text =
       typeof msg.data === 'object' && msg.data !== null && 'text' in msg.data
         ? (msg.data as { text: string }).text
         : '';
 
-    const chunks = [`I received: "${text}". `, 'Let me help you ', 'learn today!'];
-    for (const chunk of chunks) {
-      sendEvent(ws, 'response.chunk', { content: chunk });
-    }
-
-    sendEvent(ws, 'agent.complete', {
-      agentId: 'orchestrator',
-      agentName: 'Orchestrator Agent',
-      status: 'success',
-      timestamp: new Date().toISOString(),
+    // §11.2: response.start — { message_id, agent_name }
+    sendEvent(ws, 'response.start', {
+      message_id: messageId,
+      agent_name: 'orchestrator',
     });
 
+    // §11.2: agent.spawned — { agent_name, task_summary }
+    sendEvent(ws, 'agent.spawned', {
+      agent_name: 'Orchestrator Agent',
+      task_summary: `Processing: "${text.slice(0, 100)}"`,
+    });
+
+    // §11.2: response.chunk — { message_id, content_delta, type }
+    const chunks = [`I received: "${text}". `, 'Let me help you ', 'learn today!'];
+    for (const chunk of chunks) {
+      sendEvent(ws, 'response.chunk', {
+        message_id: messageId,
+        content_delta: chunk,
+        type: 'text',
+      });
+    }
+
+    // §11.2: agent.complete — { agent_name, result_summary }
+    sendEvent(ws, 'agent.complete', {
+      agent_name: 'Orchestrator Agent',
+      result_summary: 'Response generated successfully',
+    });
+
+    // §11.2: progress.update — { user_id, metric, value }
+    sendEvent(ws, 'progress.update', {
+      user_id: user.sub,
+      metric: 'messages_sent',
+      value: 1,
+    });
+
+    // §11.2: response.end — { message_id, actions[], sources[] }
     sendEvent(ws, 'response.end', {
-      messageId: `msg-${Date.now()}`,
-      fullResponse: chunks.join(''),
+      message_id: messageId,
+      actions: [
+        { type: 'take_notes', label: 'Take Notes' },
+        { type: 'quiz_me', label: 'Quiz Me' },
+        { type: 'go_deeper', label: 'Go Deeper' },
+      ],
+      sources: [],
+    });
+  }
+
+  if (msg.event === 'mindmap.subscribe') {
+    // §11.2: mindmap.update — { nodes_added[], nodes_updated[], edges_added[] }
+    sendEvent(ws, 'mindmap.update', {
+      nodes_added: [],
+      nodes_updated: [],
+      edges_added: [],
     });
   }
 }

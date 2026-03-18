@@ -6,6 +6,11 @@ export default tseslint.config(
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
     languageOptions: {
       globals: { ...globals.node },
     },
@@ -19,6 +24,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/.turbo/**'],
+    ignores: ['**/dist/**', '**/node_modules/**', '**/.turbo/**', '**/*.js', '**/*.js.map', '**/*.d.ts', '**/*.d.ts.map'],
   },
 );

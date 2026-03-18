@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 
 export function OnboardingWelcome() {
   const nav = useNavigate();
@@ -7,9 +8,10 @@ export function OnboardingWelcome() {
   return (
     <div
       data-screen="onboarding-welcome"
-      className="min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center p-6"
+      className="slide-in-right min-h-screen bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 flex items-center justify-center p-6"
     >
       <div className="max-w-lg w-full text-center space-y-8">
+        <OnboardingProgress current="welcome" />
         {/* Logo */}
         <div className="flex justify-center">
           <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">

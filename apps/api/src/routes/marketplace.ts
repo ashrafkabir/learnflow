@@ -63,7 +63,7 @@ const marketplaceAgents: MarketplaceAgent[] = [
   },
 ];
 
-const activatedAgents: Map<string, Set<string>> = new Map();
+import { dbMarketplace } from '../db.js';
 
 const searchSchema = z.object({
   keyword: z.string().optional(),
@@ -126,10 +126,7 @@ router.post('/agents/:id/activate', (req: Request, res: Response) => {
   }
 
   const userId = req.user!.sub;
-  if (!activatedAgents.has(userId)) {
-    activatedAgents.set(userId, new Set());
-  }
-  activatedAgents.get(userId)!.add(agent.id);
+  dbMarketplace.activateAgent(userId, agent.id);
 
   res.status(200).json({ message: `Agent "${agent.name}" activated`, agentId: agent.id });
 });

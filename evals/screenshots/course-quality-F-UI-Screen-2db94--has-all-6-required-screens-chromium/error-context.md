@@ -1,0 +1,43 @@
+# Page snapshot
+
+```yaml
+- main "LearnFlow Application" [ref=e4]:
+  - link "Skip to content" [ref=e5] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e8]:
+    - navigation "Onboarding progress" [ref=e9]:
+      - generic [ref=e11]:
+        - generic [ref=e12]: "1"
+        - generic [ref=e13]: Welcome
+      - generic [ref=e16]:
+        - generic [ref=e17]: "2"
+        - generic [ref=e18]: Goals
+      - generic [ref=e21]:
+        - generic [ref=e22]: "3"
+        - generic [ref=e23]: Topics
+      - generic [ref=e26]:
+        - generic [ref=e27]: "4"
+        - generic [ref=e28]: API Keys
+      - generic [ref=e31]:
+        - generic [ref=e32]: "5"
+        - generic [ref=e33]: Plan
+      - generic [ref=e36]:
+        - generic [ref=e37]: "6"
+        - generic [ref=e38]: Start
+    - generic [ref=e41]: 🧠
+    - generic [ref=e42]:
+      - heading "Welcome to LearnFlow" [level=1] [ref=e43]
+      - paragraph [ref=e44]: AI-powered learning that adapts to you. Build courses from real sources, take smart notes, and master any topic.
+    - generic [ref=e45]:
+      - generic [ref=e46]:
+        - generic [ref=e47]: 📚
+        - generic [ref=e48]: AI-generated courses from real web sources
+      - generic [ref=e49]:
+        - generic [ref=e50]: 🎯
+        - generic [ref=e51]: Personalized learning paths & adaptive quizzes
+      - generic [ref=e52]:
+        - generic [ref=e53]: 📝
+        - generic [ref=e54]: Cornell notes, flashcards & mind maps
+    - button "Get Started" [ref=e55]
+    - paragraph [ref=e56]: Takes about 2 minutes to set up
+```

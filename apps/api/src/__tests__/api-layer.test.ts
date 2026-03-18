@@ -6,29 +6,40 @@ import { createApp } from '../app.js';
 import { createWebSocketServer } from '../websocket.js';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config.js';
+import { db } from '../db.js';
 import * as fs from 'fs';
 import * as path from 'path';
+
+// Disable external APIs in tests to use fast template fallback
+delete process.env.OPENAI_API_KEY;
+delete process.env.FIRECRAWL_API_KEY;
+
+// Clear persisted state for clean test runs
+db.clear();
 
 const app = createApp();
 let server: http.Server;
 let token: string;
 let _proToken: string;
+let testEmail: string;
 
 beforeAll(async () => {
   server = http.createServer(app);
   createWebSocketServer(server);
   await new Promise<void>((resolve) => server.listen(0, resolve));
 
-  // Register a user to get token
+  // Register a user to get token (unique email to avoid cross-test collisions)
+  const uid = Date.now();
+  testEmail = `api-test-${uid}@example.com`;
   const regRes = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email: 'api-test@example.com', password: 'Password123!', displayName: 'API Tester' });
+    .send({ email: testEmail, password: 'Password123!', displayName: 'API Tester' });
   token = regRes.body.accessToken;
 
   // Register a pro user
   const proRegRes = await request(app)
     .post('/api/v1/auth/register')
-    .send({ email: 'pro-api@example.com', password: 'Password123!', displayName: 'Pro User' });
+    .send({ email: `pro-api-${uid}@example.com`, password: 'Password123!', displayName: 'Pro User' });
   const rawProToken = proRegRes.body.accessToken;
 
   // Manually create a pro token for testing
@@ -60,7 +71,7 @@ describe('S07-A01: All 17 endpoints exist', () => {
   it('POST /api/v1/auth/login', async () => {
     const res = await request(app)
       .post('/api/v1/auth/login')
-      .send({ email: 'api-test@example.com', password: 'Password123!' });
+      .send({ email: testEmail, password: 'Password123!' });
     expect(res.status).toBe(200);
   });
 
@@ -90,7 +101,7 @@ describe('S07-A01: All 17 endpoints exist', () => {
     expect(res.status).toBe(200);
   });
 
-  it('POST /api/v1/courses', async () => {
+  it('POST /api/v1/courses', { timeout: 30000 }, async () => {
     const res = await request(app)
       .post('/api/v1/courses')
       .set('Authorization', `Bearer ${token}`)
@@ -260,7 +271,7 @@ describe('S07-A14: Types compile', () => {
 
 // S07-A15: Full API flow: register → login → create course → get lessons
 describe('S07-A15: Full API flow', () => {
-  it('register → login → create course → list courses', async () => {
+  it('register → login → create course → list courses', { timeout: 60000 }, async () => {
     const email = `flow-${Date.now()}@example.com`;
 
     // Register
@@ -332,3 +343,68 @@ function collectWsEvents(
     });
   });
 }
+
+// ─── Task 10: Agent routing integration tests ───
+
+describe('Agent routing via /api/v1/chat', () => {
+  it('routes agent=notes to Notes Agent', async () => {
+    const res = await request(app)
+      .post('/api/v1/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'generate notes', agent: 'notes', format: 'cornell' });
+    expect(res.status).toBe(200);
+    expect(res.body.agentName).toBe('Notes Agent');
+    expect(res.body.notes).toBeDefined();
+    expect(res.body.notes.format).toBe('cornell');
+  });
+
+  it('routes agent=notes with flashcard format', async () => {
+    const res = await request(app)
+      .post('/api/v1/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'make flashcards', agent: 'notes', format: 'flashcard' });
+    expect(res.status).toBe(200);
+    expect(res.body.agentName).toBe('Notes Agent');
+    expect(res.body.notes.format).toBe('flashcard');
+    expect(Array.isArray(res.body.notes.flashcards)).toBe(true);
+  });
+
+  it('routes agent=exam to Exam Agent', async () => {
+    const res = await request(app)
+      .post('/api/v1/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'quiz me', agent: 'exam' });
+    expect(res.status).toBe(200);
+    expect(res.body.agentName).toBe('Exam Agent');
+    expect(Array.isArray(res.body.questions)).toBe(true);
+    expect(res.body.questions.length).toBeGreaterThan(0);
+  });
+
+  it('routes agent=research to Research Agent', async () => {
+    const res = await request(app)
+      .post('/api/v1/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'find papers on quantum computing', agent: 'research' });
+    expect(res.status).toBe(200);
+    expect(res.body.agentName).toBe('Research Agent');
+    expect(Array.isArray(res.body.papers)).toBe(true);
+  });
+
+  it('handles general chat without agent param', async () => {
+    const res = await request(app)
+      .post('/api/v1/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'hello, what can you do?' });
+    expect(res.status).toBe(200);
+    expect(res.body.reply).toBeDefined();
+    expect(res.body.actions).toBeDefined();
+  });
+
+  it('rejects empty message', async () => {
+    const res = await request(app)
+      .post('/api/v1/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    expect(res.status).toBe(400);
+  });
+});

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
+import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 
 const PLANS = [
   {
@@ -43,18 +44,19 @@ export function SubscriptionChoice() {
   return (
     <div
       data-screen="onboarding-subscription"
-      className="min-h-screen bg-gray-50 dark:bg-bg-dark flex flex-col"
+      className="slide-in-right min-h-screen bg-gray-50 dark:bg-bg-dark flex flex-col"
     >
       <div className="p-6 pb-0">
         <div className="flex items-center gap-2 mb-2">
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
             <div className="h-full w-5/6 bg-accent rounded-full transition-all" />
           </div>
-          <span className="text-xs text-gray-400">5/6</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400">5/6</span>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col justify-center p-6 max-w-2xl mx-auto w-full">
+        <OnboardingProgress current="subscription" />
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">
           Choose Your Plan
         </h1>
@@ -83,7 +85,7 @@ export function SubscriptionChoice() {
               <p className="text-lg font-bold text-gray-900 dark:text-white">{plan.name}</p>
               <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
                 {plan.price}
-                <span className="text-sm font-normal text-gray-400">{plan.period}</span>
+                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">{plan.period}</span>
               </p>
               <ul className="mt-4 space-y-2">
                 {plan.features.map((f) => (
@@ -99,12 +101,26 @@ export function SubscriptionChoice() {
           ))}
         </div>
 
-        <button
-          onClick={next}
-          className="w-full py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors"
-        >
-          Continue with {selected === 'pro' ? 'Pro' : 'Free'}
-        </button>
+        <div className="flex gap-3 items-center">
+          <button
+            onClick={() => nav('/onboarding/api-keys')}
+            className="px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            Back
+          </button>
+          <button
+            onClick={next}
+            className="flex-1 py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors"
+          >
+            Continue with {selected === 'pro' ? 'Pro' : 'Free'}
+          </button>
+          <button
+            onClick={() => { dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 }); nav('/onboarding/first-course'); }}
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-accent transition-colors"
+          >
+            Skip
+          </button>
+        </div>
       </div>
     </div>
   );

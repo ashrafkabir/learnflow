@@ -66,6 +66,8 @@ export {
   formatCitations,
   checkDomainDiversity,
   extractDomain,
+  searchForLesson,
+  searchTopicTrending,
 } from './content-pipeline/firecrawl-provider.js';
 export type {
   FirecrawlSource,

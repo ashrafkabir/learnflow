@@ -29,6 +29,35 @@
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
+/* Task 2: Unified design tokens as CSS custom properties */
+:root {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-secondary: #7C3AED;
+  --radius-button: 12px;
+  --radius-card: 16px;
+  --radius-input: 12px;
+  --radius-modal: 20px;
+  --color-success: #16A34A;
+  --color-error: #DC2626;
+  --color-warning: #F59E0B;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.08);
+  --shadow-modal: 0 8px 30px rgba(0,0,0,0.12);
+}
+
+.dark {
+  --color-primary: #60A5FA;
+  --color-primary-hover: #3B82F6;
+  --color-secondary: #A78BFA;
+  --color-success: #4ADE80;
+  --color-error: #F87171;
+  --color-warning: #FCD34D;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.3);
+  --shadow-modal: 0 8px 30px rgba(0,0,0,0.4);
+}
+
 @layer base {
   html {
     font-family: var(--font-sans);
@@ -39,4 +68,198 @@
   body {
     @apply bg-white text-gray-900 dark:bg-bg-dark dark:text-gray-100;
   }
+
+  /* Mobile: prevent horizontal overflow */
+  html, body {
+    overflow-x: hidden;
+  }
+
+  /* Code blocks: always scrollable on mobile */
+  pre {
+    @apply overflow-x-auto max-w-full;
+  }
+
+  /* Task 7: Ensure touch targets are at least 44px on mobile */
+  @media (max-width: 640px) {
+    button, a, [role="button"], select {
+      min-height: 44px;
+    }
+    /* Icon-only buttons need min-width too */
+    button:not([class*="w-full"]):not([class*="flex-1"]) {
+      min-width: 44px;
+    }
+  }
+
+  /* Task 4: Safe area for bottom-fixed elements (iPhone home indicator) */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  /* Global keyboard focus states for accessibility */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-white dark:ring-offset-gray-900;
+  }
+}
+
+/* ============================================
+   TASK 1: Page Transitions
+   ============================================ */
+@layer utilities {
+  .page-enter {
+    animation: pageIn 200ms ease-out forwards;
+  }
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================
+   TASK 2: Micro-Interactions
+   ============================================ */
+@layer components {
+  /* Buttons */
+  button, [role="button"], a.btn {
+    transition: all 150ms ease;
+  }
+  button:hover:not(:disabled), [role="button"]:hover:not(:disabled) {
+    transform: scale(1.02);
+  }
+  button:active:not(:disabled), [role="button"]:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  /* Cards */
+  .card, [class*="rounded"][class*="shadow"], [class*="rounded"][class*="border"][class*="p-"] {
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+  .card:hover, .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  }
+
+  /* Inputs */
+  input, select, textarea {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+}
+
+/* ============================================
+   TASK 5: Celebration confetti
+   ============================================ */
+@keyframes confettiFall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+.confetti-piece {
+  position: fixed;
+  top: -10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  animation: confettiFall 2.5s ease-in forwards;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* ============================================
+   TASK 8: Stat number count-up animation
+   ============================================ */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-animate {
+  animation: countUp 400ms ease-out forwards;
+  opacity: 0;
+}
+.stat-animate-delay-1 { animation-delay: 100ms; }
+.stat-animate-delay-2 { animation-delay: 200ms; }
+.stat-animate-delay-3 { animation-delay: 300ms; }
+
+@keyframes flameFlicker {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.05) rotate(-2deg); }
+  75% { transform: scale(0.95) rotate(2deg); }
+}
+
+.flame-flicker {
+  animation: flameFlicker 1.5s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* ============================================
+   TASK 13: Skeleton shimmer
+   ============================================ */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+.dark .skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
+}
+
+/* ============================================
+   TASK 15: Onboarding step transitions
+   ============================================ */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.slide-in-right {
+  animation: slideInRight 250ms ease-out forwards;
+}
+
+.slide-in-left {
+  animation: slideInLeft 250ms ease-out forwards;
+}
+
+/* Pulse for CTA buttons */
+@keyframes subtlePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(37, 99, 235, 0); }
+}
+
+.pulse-cta {
+  animation: subtlePulse 2s ease-in-out infinite;
+}
+
+/* ============================================
+   TASK 12: Notes panel slide-in
+   ============================================ */
+@keyframes slideFromRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.notes-panel-enter {
+  animation: slideFromRight 250ms ease-out forwards;
 }

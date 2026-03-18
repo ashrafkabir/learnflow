@@ -1,52 +1,60 @@
 /**
  * LearnFlow Design System — Design Tokens
+ * Spec §5.3: Color Palette — exact hex values from spec
  * S08-A01: All color tokens defined and used consistently
  * S08-A02: Typography scale: 12/14/16/20/24/32px all defined
  */
 
 export const colors = {
-  // Primary
+  // Primary — Spec §5.3
   primary: {
-    50: '#EEF2FF',
-    100: '#E0E7FF',
-    200: '#C7D2FE',
-    300: '#A5B4FC',
-    400: '#818CF8',
-    500: '#6366F1',
-    600: '#4F46E5',
-    700: '#4338CA',
-    800: '#3730A3',
-    900: '#312E81',
+    light: '#1A1A2E',
+    dark: '#F8FAFC',
   },
-  // Secondary / Accent
+  // Accent — Spec §5.3
   accent: {
-    50: '#ECFDF5',
-    100: '#D1FAE5',
-    200: '#A7F3D0',
-    300: '#6EE7B7',
-    400: '#34D399',
-    500: '#10B981',
-    600: '#059669',
+    light: '#2563EB',
+    dark: '#60A5FA',
   },
-  // Neutral
+  // Success — Spec §5.3
+  success: {
+    light: '#16A34A',
+    dark: '#4ADE80',
+  },
+  // Warning — Spec §5.3
+  warning: {
+    light: '#F59E0B',
+    dark: '#FCD34D',
+  },
+  // Error — Spec §5.3
+  error: {
+    light: '#DC2626',
+    dark: '#F87171',
+  },
+  // Surface — Spec §5.3
+  surface: {
+    light: '#FFFFFF',
+    dark: '#0F172A',
+  },
+  // Background — Spec §5.3
+  background: {
+    light: '#F8FAFC',
+    dark: '#020617',
+  },
+  // Neutral (for borders, secondary text, etc.)
   neutral: {
     0: '#FFFFFF',
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
+    50: '#F8FAFC',
+    100: '#F1F5F9',
+    200: '#E2E8F0',
+    300: '#CBD5E1',
+    400: '#94A3B8',
+    500: '#64748B',
+    600: '#475569',
+    700: '#334155',
+    800: '#1E293B',
+    900: '#0F172A',
   },
-  // Semantic
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
 } as const;
 
 export const typography = {
@@ -112,22 +120,30 @@ export const shadows = {
   xl: '0 20px 25px rgba(0,0,0,0.15)',
 } as const;
 
-/** Dark mode overrides */
+/** Dark mode overrides — Spec §5.3 */
 export const darkColors = {
-  bg: colors.neutral[900],
-  surface: colors.neutral[800],
-  surfaceHover: colors.neutral[700],
-  text: colors.neutral[0],
-  textSecondary: colors.neutral[400],
-  border: colors.neutral[700],
+  bg: colors.background.dark,        // #020617
+  surface: colors.surface.dark,       // #0F172A
+  surfaceHover: colors.neutral[700],  // #334155
+  text: colors.primary.dark,          // #F8FAFC
+  textSecondary: colors.neutral[400], // #94A3B8
+  border: colors.neutral[700],        // #334155
+  accent: colors.accent.dark,         // #60A5FA
+  success: colors.success.dark,       // #4ADE80
+  warning: colors.warning.dark,       // #FCD34D
+  error: colors.error.dark,           // #F87171
 } as const;
 
-/** Light mode defaults */
+/** Light mode defaults — Spec §5.3 */
 export const lightColors = {
-  bg: colors.neutral[0],
-  surface: colors.neutral[50],
-  surfaceHover: colors.neutral[100],
-  text: colors.neutral[900],
-  textSecondary: colors.neutral[500],
-  border: colors.neutral[200],
+  bg: colors.background.light,        // #F8FAFC
+  surface: colors.surface.light,      // #FFFFFF
+  surfaceHover: colors.neutral[100],  // #F1F5F9
+  text: colors.primary.light,         // #1A1A2E
+  textSecondary: colors.neutral[500], // #64748B
+  border: colors.neutral[200],        // #E2E8F0
+  accent: colors.accent.light,        // #2563EB
+  success: colors.success.light,      // #16A34A
+  warning: colors.warning.light,      // #F59E0B
+  error: colors.error.light,          // #DC2626
 } as const;

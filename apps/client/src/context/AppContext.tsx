@@ -72,6 +72,17 @@ export interface UserProfile {
   notifications: boolean;
 }
 
+// Subscription
+export type SubscriptionTier = 'free' | 'pro';
+
+export interface Notification {
+  id: string;
+  type: 'agent' | 'progress' | 'system';
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
 // State
 interface AppState {
   onboarding: {
@@ -91,6 +102,8 @@ interface AppState {
   loading: Record<string, boolean>;
   streak: number;
   completedLessons: Set<string>;
+  subscription: SubscriptionTier;
+  notifications: Notification[];
 }
 
 type Action =
@@ -110,14 +123,18 @@ type Action =
   | { type: 'SUBMIT_QUIZ'; answers: Record<string, string> }
   | { type: 'SET_LOADING'; key: string; value: boolean }
   | { type: 'COMPLETE_LESSON'; lessonId: string }
-  | { type: 'UPDATE_PROFILE'; profile: Partial<UserProfile> };
+  | { type: 'UPDATE_PROFILE'; profile: Partial<UserProfile> }
+  | { type: 'SET_SUBSCRIPTION'; tier: SubscriptionTier }
+  | { type: 'ADD_NOTIFICATION'; notification: Notification }
+  | { type: 'DISMISS_NOTIFICATION'; id: string }
+  | { type: 'SET_ANALYTICS'; streak: number; totalStudyMinutes: number; totalLessonsCompleted: number };
 
 const initialState: AppState = {
-  onboarding: { completed: false, step: 0, goals: [], topics: [], experience: '' },
+  onboarding: { completed: localStorage.getItem('learnflow-onboarding-complete') === 'true', step: 0, goals: [], topics: [], experience: '' },
   courses: [],
   activeCourse: null,
   activeLesson: null,
-  chat: [],
+  chat: (() => { try { return JSON.parse(localStorage.getItem('learnflow-chat') || '[]'); } catch { return []; } })(),
   notes: null,
   quiz: null,
   profile: {
@@ -131,8 +148,10 @@ const initialState: AppState = {
     notifications: true,
   },
   loading: {},
-  streak: 7,
+  streak: 0,
   completedLessons: new Set(),
+  subscription: (localStorage.getItem('learnflow-subscription') as SubscriptionTier) || 'free',
+  notifications: JSON.parse(localStorage.getItem('learnflow-notifications') || '[]'),
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -146,18 +165,30 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_ONBOARDING_EXPERIENCE':
       return { ...state, onboarding: { ...state.onboarding, experience: action.experience } };
     case 'COMPLETE_ONBOARDING':
+      localStorage.setItem('learnflow-onboarding-complete', 'true');
       return { ...state, onboarding: { ...state.onboarding, completed: true } };
-    case 'SET_COURSES':
-      return { ...state, courses: action.courses };
-    case 'ADD_COURSE':
+    case 'SET_COURSES': {
+      // Deduplicate by ID
+      const map = new Map(action.courses.map(c => [c.id, c]));
+      return { ...state, courses: Array.from(map.values()) };
+    }
+    case 'ADD_COURSE': {
+      // Avoid duplicates
+      const exists = state.courses.find(c => c.id === action.course.id);
+      if (exists) return { ...state, courses: state.courses.map(c => c.id === action.course.id ? action.course : c) };
       return { ...state, courses: [...state.courses, action.course] };
+    }
     case 'SET_ACTIVE_COURSE':
       return { ...state, activeCourse: action.course };
     case 'SET_ACTIVE_LESSON':
       return { ...state, activeLesson: action.lesson };
-    case 'ADD_CHAT_MESSAGE':
-      return { ...state, chat: [...state.chat, action.message] };
+    case 'ADD_CHAT_MESSAGE': {
+      const newChat = [...state.chat, action.message];
+      try { localStorage.setItem('learnflow-chat', JSON.stringify(newChat.slice(-100))); } catch { /* quota */ }
+      return { ...state, chat: newChat };
+    }
     case 'SET_CHAT':
+      try { localStorage.setItem('learnflow-chat', JSON.stringify(action.messages.slice(-100))); } catch { /* quota */ }
       return { ...state, chat: action.messages };
     case 'SET_NOTES':
       return { ...state, notes: action.notes };
@@ -181,6 +212,21 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, completedLessons: new Set([...state.completedLessons, action.lessonId]) };
     case 'UPDATE_PROFILE':
       return { ...state, profile: { ...state.profile, ...action.profile } };
+    case 'SET_SUBSCRIPTION':
+      localStorage.setItem('learnflow-subscription', action.tier);
+      return { ...state, subscription: action.tier };
+    case 'ADD_NOTIFICATION': {
+      const notifs = [action.notification, ...state.notifications].slice(0, 50);
+      localStorage.setItem('learnflow-notifications', JSON.stringify(notifs));
+      return { ...state, notifications: notifs };
+    }
+    case 'DISMISS_NOTIFICATION': {
+      const notifs2 = state.notifications.filter(n => n.id !== action.id);
+      localStorage.setItem('learnflow-notifications', JSON.stringify(notifs2));
+      return { ...state, notifications: notifs2 };
+    }
+    case 'SET_ANALYTICS':
+      return { ...state, streak: action.streak };
     default:
       return state;
   }
@@ -189,33 +235,91 @@ function reducer(state: AppState, action: Action): AppState {
 // API helpers
 const API = '/api/v1';
 
-async function apiPost(path: string, body: unknown) {
+// Token refresh — Spec §11.1 WS-02
+async function refreshTokenIfNeeded(): Promise<void> {
+  const token = localStorage.getItem('learnflow-token');
+  if (!token) return;
   try {
-    const base =
-      typeof window !== 'undefined' && window.location?.origin !== 'null'
-        ? ''
-        : 'http://localhost:3002';
-    const res = await fetch(`${base}${API}${path}`, {
+    // Decode JWT to check expiry (simple base64 decode)
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const expiresAt = payload.exp * 1000;
+    const fiveMinutes = 5 * 60 * 1000;
+    if (Date.now() > expiresAt - fiveMinutes) {
+      const refreshToken = localStorage.getItem('learnflow-refresh');
+      if (!refreshToken) return;
+      const res = await fetch(`${apiBase()}/api/v1/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        localStorage.setItem('learnflow-token', data.accessToken);
+        localStorage.setItem('learnflow-refresh', data.refreshToken);
+      } else {
+        localStorage.removeItem('learnflow-token');
+        localStorage.removeItem('learnflow-refresh');
+        localStorage.removeItem('learnflow-user');
+      }
+    }
+  } catch { /* ignore decode errors */ }
+}
+
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('learnflow-token');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
+export function apiBase(): string {
+  if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
+    return '';
+  }
+  return 'http://localhost:3002';
+}
+
+async function apiPost(path: string, body: unknown) {
+  await refreshTokenIfNeeded();
+  try {
+    const res = await fetch(`${apiBase()}${API}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Request failed' }));
+      if (res.status === 401) {
+        console.warn('[LearnFlow] 401 — unauthorized');
+        localStorage.removeItem('learnflow-token');
+        localStorage.removeItem('learnflow-refresh');
+        localStorage.removeItem('learnflow-user');
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
+      }
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
     return res.json();
-  } catch {
-    return {};
+  } catch (err) {
+    console.error('[LearnFlow] apiPost error:', err);
+    throw err;
   }
 }
 
-async function apiGet(path: string) {
+export async function apiGet(path: string) {
+  await refreshTokenIfNeeded();
   try {
-    const base =
-      typeof window !== 'undefined' && window.location?.origin !== 'null'
-        ? ''
-        : 'http://localhost:3002';
-    const res = await fetch(`${base}${API}${path}`);
+    const headers = getAuthHeaders();
+    const res = await fetch(`${apiBase()}${API}${path}`, { headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Request failed' }));
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
     return res.json();
-  } catch {
-    return {};
+  } catch (err) {
+    console.error('[LearnFlow] apiGet error:', err);
+    throw err;
   }
 }
 
@@ -242,8 +346,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SET_LOADING', key: 'createCourse', value: true });
     try {
       const course = await apiPost('/courses', { topic });
-      dispatch({ type: 'ADD_COURSE', course });
-      dispatch({ type: 'SET_ACTIVE_COURSE', course });
+      if (course && course.id) {
+        dispatch({ type: 'ADD_COURSE', course });
+        dispatch({ type: 'SET_ACTIVE_COURSE', course });
+      }
       return course;
     } finally {
       dispatch({ type: 'SET_LOADING', key: 'createCourse', value: false });
@@ -282,7 +388,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'ADD_CHAT_MESSAGE', message: userMsg });
     dispatch({ type: 'SET_LOADING', key: 'chat', value: true });
     try {
-      const data = await apiPost('/chat', { message, history: [] });
+      // Pass current lesson/course context and conversation history
+      const recentHistory = state.chat.slice(-10).map(m => ({ role: m.role, content: m.content }));
+      const payload: Record<string, unknown> = { message, history: recentHistory };
+      if (state.activeCourse) payload.courseId = state.activeCourse.id;
+      if (state.activeLesson) payload.lessonId = state.activeLesson.id;
+      
+      const data = await apiPost('/chat', payload);
       const assistantMsg: ChatMessage = {
         id: `msg-${Date.now()}-reply`,
         role: 'assistant',
@@ -290,10 +402,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         timestamp: new Date().toISOString(),
       };
       dispatch({ type: 'ADD_CHAT_MESSAGE', message: assistantMsg });
+    } catch {
+      const errMsg: ChatMessage = {
+        id: `msg-${Date.now()}-err`,
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.',
+        timestamp: new Date().toISOString(),
+      };
+      dispatch({ type: 'ADD_CHAT_MESSAGE', message: errMsg });
     } finally {
       dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
     }
-  }, []);
+  }, [state.activeCourse, state.activeLesson]);
 
   const generateNotes = useCallback(async (lessonId: string, format: string): Promise<Notes> => {
     dispatch({ type: 'SET_LOADING', key: 'notes', value: true });
