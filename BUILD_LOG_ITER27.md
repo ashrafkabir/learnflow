@@ -102,3 +102,7 @@ Done.
 
 - `rg` isn’t available on this host; used `grep` instead.
 - Global console gate has a small allowlist; if new unavoidable framework warnings appear, prefer fixing root cause vs expanding allowlist.
+
+## Git / Husky note
+
+- First commit attempt failed due to **Prettier --check** warnings (husky pre-commit). Ran `npx prettier --write .`, re-verified checks, then committed.
