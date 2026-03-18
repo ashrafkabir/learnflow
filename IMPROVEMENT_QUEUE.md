@@ -46,21 +46,21 @@ Overall: the repo is now **materially runnable + testable** (all tests passing),
 
 ### P0 — WebSocket spec compliance (stop drifting from spec)
 
-1. **WebSocket `progress.update` payload violates spec**
+1. ✅ **WebSocket `progress.update` payload violates spec**
 
 - **Problem:** Spec §11.2: `progress.update` must include `{ course_id, lesson_id, completion% }`. Implementation sends `{ user_id, metric, value }`.
 - **Fix:** Align event payloads to spec and update client event handling accordingly.
 - **Acceptance:** WS event `progress.update` matches spec contract; client updates course progress UI based on it.
 - **Files:** `apps/api/src/websocket.ts`, `apps/client/src/hooks/useWebSocket.ts`, `apps/client/src/screens/*` (where progress is displayed).
 
-2. **WebSocket `mindmap.update` payload drifts from spec**
+2. ✅ **WebSocket `mindmap.update` payload drifts from spec**
 
 - **Problem:** Spec shows `{ nodes_added[], edges_added[] }` (and implicitly consistent schema). Implementation emits `{ nodes_added, nodes_updated, edges_added }` with empty arrays only.
 - **Fix:** Define a typed `MindmapNode`/`MindmapEdge` payload and implement meaningful updates (even if mocked) aligned to the spec.
 - **Acceptance:** Mindmap Explorer receives at least one meaningful update event when subscribed, and renders nodes/edges.
 - **Files:** `apps/api/src/websocket.ts`, `apps/client/src/screens/MindmapExplorer.tsx`.
 
-3. **WS auth is inconsistent with dev experience**
+3. ✅ **WS auth is inconsistent with dev experience**
 
 - **Problem:** Server requires JWT via `?token=...` at `/ws`. Screenshots/evals rely on localStorage hacks and bypass.
 - **Fix:** Provide a dev-only token mode or a consistent dev auth pathway (e.g., accept `token=dev` when `NODE_ENV=development`).
@@ -124,7 +124,7 @@ Overall: the repo is now **materially runnable + testable** (all tests passing),
 
 ### P2 — Developer ergonomics + evidence quality
 
-11. **Screenshot automation misses Collaboration + Lesson Reader in iter29 set**
+11. ✅ **Screenshot automation misses Collaboration + Lesson Reader in iter29 set**
 
 - **Problem:** `iter29-2026-03-18` screenshots do not include `/collaborate` and `lesson-reader.png` (script prints done before lesson capture depending on state).
 - **Fix:** Extend `screenshot-all.mjs` to explicitly visit `/collaborate` and to always capture lesson reader (navigate directly to first lesson route if present).

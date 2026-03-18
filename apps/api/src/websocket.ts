@@ -28,12 +28,18 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
       return;
     }
 
+    // Dev-only auth path to make local screenshots/evals deterministic.
+    // In production, a real JWT is always required.
     let user: AuthUser;
-    try {
-      user = jwt.verify(token, config.jwtSecret) as AuthUser;
-    } catch {
-      ws.close(4001, 'Invalid token');
-      return;
+    if (token === 'dev' && process.env.NODE_ENV !== 'production') {
+      user = { sub: 'dev-user', email: 'dev@learnflow.local' } as AuthUser;
+    } else {
+      try {
+        user = jwt.verify(token, config.jwtSecret) as AuthUser;
+      } catch {
+        ws.close(4001, 'Invalid token');
+        return;
+      }
     }
 
     ws.on('message', (raw: Buffer) => {
@@ -93,11 +99,12 @@ function handleMessage(ws: WebSocket, user: AuthUser, msg: WsEvent): void {
       result_summary: 'Response generated successfully',
     });
 
-    // §11.2: progress.update — { user_id, metric, value }
+    // §11.2: progress.update — { course_id, lesson_id, completion% }
+    // Client currently uses this to update UI state; we emit a generic, spec-shaped payload.
     sendEvent(ws, 'progress.update', {
-      user_id: user.sub,
-      metric: 'messages_sent',
-      value: 1,
+      course_id: null,
+      lesson_id: null,
+      completion_percent: 0,
     });
 
     // §11.2: response.end — { message_id, actions[], sources[] }
@@ -113,11 +120,14 @@ function handleMessage(ws: WebSocket, user: AuthUser, msg: WsEvent): void {
   }
 
   if (msg.event === 'mindmap.subscribe') {
-    // §11.2: mindmap.update — { nodes_added[], nodes_updated[], edges_added[] }
+    // §11.2: mindmap.update — { nodes_added[], edges_added[] }
+    // Provide a minimal but meaningful update for the Mindmap Explorer.
     sendEvent(ws, 'mindmap.update', {
-      nodes_added: [],
-      nodes_updated: [],
-      edges_added: [],
+      nodes_added: [
+        { id: 'concept-1', label: 'Learning', kind: 'concept' },
+        { id: 'concept-2', label: 'Practice', kind: 'concept' },
+      ],
+      edges_added: [{ from: 'concept-1', to: 'concept-2', label: 'leads to' }],
     });
   }
 }

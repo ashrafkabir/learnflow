@@ -29,8 +29,12 @@ const AUTHED_PAGES = [
   ['/mindmap', 'app-mindmap'],
   ['/marketplace/courses', 'marketplace-courses'],
   ['/marketplace/agents', 'marketplace-agents'],
+  ['/collaborate', 'app-collaboration'],
   ['/settings', 'app-settings'],
   ['/pipelines', 'app-pipelines'],
+  // Stable seeded routes for deterministic coverage
+  ['/courses/c-1', 'course-view'],
+  ['/courses/c-1/lessons/l1', 'lesson-reader'],
 ];
 
 async function safeGoto(page, path) {
@@ -124,10 +128,23 @@ const browser = await chromium.launch();
     await page.screenshot({ path: `${DIR}/course-view.png`, fullPage: true });
     console.log('✓ course-view');
 
-    const lessonLink = await page.$('a[href*="/lessons/"]');
-    if (lessonLink) {
-      await lessonLink.click({ force: true });
-      await page.waitForTimeout(1500);
+    // Prefer a stable selector to ensure lesson reader is always captured.
+    let lessonHref = await page.getAttribute('a[href*="/lessons/"]', 'href').catch(() => null);
+    if (!lessonHref) {
+      // Fallback: if no link found, attempt to guess the first lesson route from DOM.
+      const hrefs = await page
+        .$$eval('a[href]', (els) =>
+          els.map((el) =>
+            el && typeof el.getAttribute === 'function' ? el.getAttribute('href') : '',
+          ),
+        )
+        .catch(() => []);
+      lessonHref = hrefs.find((h) => h.includes('/lessons/')) || null;
+    }
+
+    if (lessonHref) {
+      await safeGoto(page, lessonHref);
+      await dismissOverlays(page);
       await page.screenshot({ path: `${DIR}/lesson-reader.png`, fullPage: true });
       console.log('✓ lesson-reader');
     }

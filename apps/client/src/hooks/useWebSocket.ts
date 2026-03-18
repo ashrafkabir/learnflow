@@ -14,7 +14,7 @@ export function useWebSocket(onEvent: WsHandler) {
   handlersRef.current = onEvent;
 
   useEffect(() => {
-    const token = localStorage.getItem('learnflow-token');
+    const token = localStorage.getItem('learnflow-token') || (import.meta.env.DEV ? 'dev' : null);
     if (!token) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

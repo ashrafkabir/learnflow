@@ -394,21 +394,30 @@ export function Conversation() {
           },
         });
         break;
-      case 'progress.update':
+      case 'progress.update': {
+        // Spec §11.2: { course_id, lesson_id, completion% }
+        // Our implementation uses completion_percent (valid identifier) instead of completion%.
+        const courseId = evt.data?.course_id;
+        const lessonId = evt.data?.lesson_id;
+        const pct = Number(evt.data?.completion_percent ?? evt.data?.completion ?? 0);
+
+        if (lessonId) dispatch({ type: 'COMPLETE_LESSON', lessonId });
+
         dispatch({
           type: 'ADD_NOTIFICATION',
           notification: {
             id: `notif-${Date.now()}`,
             type: 'progress',
             message:
-              evt.data?.metric === 'lesson_completed'
-                ? 'Lesson completed! 🎉'
-                : `Progress updated: ${evt.data?.metric || 'learning'}`,
+              lessonId && courseId
+                ? `Progress updated: ${Math.round(pct)}% — lesson completed`
+                : `Progress updated: ${Math.round(pct)}%`,
             timestamp: new Date().toISOString(),
             read: false,
           },
         });
         break;
+      }
       case 'mindmap.update':
         break;
     }
