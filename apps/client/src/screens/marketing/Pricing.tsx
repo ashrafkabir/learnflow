@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
+import { Button } from '../../components/Button.js';
 
 const PLANS = [
   {
@@ -63,20 +64,23 @@ export function PricingPage() {
           <h1 className="text-4xl font-extrabold tracking-tight mb-4">Simple, transparent pricing</h1>
           <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">Start free, upgrade when you're ready.</p>
           
-          {/* Annual/Monthly toggle */}
           <div className="inline-flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-full p-1">
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setAnnual(false)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${!annual ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500'}`}
+              className={`rounded-full ${!annual ? 'bg-white dark:bg-gray-700 shadow-card' : 'text-gray-500'}`}
             >
               Monthly
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setAnnual(true)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${annual ? 'bg-white dark:bg-gray-700 shadow-sm' : 'text-gray-500'}`}
+              className={`rounded-full ${annual ? 'bg-white dark:bg-gray-700 shadow-card' : 'text-gray-500'}`}
             >
               Annual <span className="text-accent text-xs ml-1">Save 20%</span>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -101,21 +105,18 @@ export function PricingPage() {
                 <span className="text-4xl font-bold">${annual ? plan.annual : plan.monthly}</span>
                 {plan.monthly > 0 && <span className="text-gray-500 dark:text-gray-400 text-sm">/month</span>}
               </div>
-              <button
+              <Button
+                variant={plan.highlight ? 'primary' : 'secondary'}
+                fullWidth
                 onClick={() => {
                   const token = localStorage.getItem('learnflow-token');
                   if (token) {
-                    // Logged in — go to dashboard or settings for upgrade
                     nav(plan.highlight ? '/settings' : '/dashboard');
                   } else {
                     nav('/register');
                   }
                 }}
-                className={`w-full py-3 rounded-xl font-semibold text-sm transition-colors mb-6 ${
-                  plan.highlight
-                    ? 'bg-accent text-white hover:bg-accent-dark'
-                    : 'border-2 border-gray-200 dark:border-gray-700 hover:border-accent hover:text-accent'
-                }`}
+                className="mb-6"
               >
                 {(() => {
                   const token = localStorage.getItem('learnflow-token');
@@ -123,7 +124,7 @@ export function PricingPage() {
                   if (token && plan.highlight) return 'Upgrade to Pro';
                   return plan.cta;
                 })()}
-              </button>
+              </Button>
               <ul className="space-y-3">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm">

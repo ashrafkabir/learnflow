@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiBase } from '../../context/AppContext.js';
+import { Button } from '../../components/Button.js';
+import { SkeletonMarketplace } from '../../components/Skeleton.js';
 
 interface MarketplaceCourse {
   id: string;
@@ -15,7 +17,6 @@ interface MarketplaceCourse {
   lessonCount?: number;
 }
 
-// Fallback sample data for when API returns empty
 const CATEGORIES = ['All', 'Programming', 'Data Science', 'DevOps', 'Design', 'Business'];
 
 const SAMPLE_COURSES: MarketplaceCourse[] = [
@@ -42,10 +43,8 @@ export function CourseMarketplace() {
   const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'newest' | 'price'>('popular');
   const [courses, setCourses] = useState<MarketplaceCourse[]>(SAMPLE_COURSES);
   const [loading, setLoading] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<MarketplaceCourse | null>(null);
   const [enrolling, setEnrolling] = useState<string | null>(null);
 
-  // Fetch from API
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true);
@@ -61,7 +60,6 @@ export function CourseMarketplace() {
           if (data.courses?.length > 0) {
             setCourses(data.courses);
           } else {
-            // Use filtered sample data as fallback
             setCourses(SAMPLE_COURSES);
           }
         }
@@ -99,7 +97,6 @@ export function CourseMarketplace() {
           body: JSON.stringify({ courseId: course.id }),
         });
       }
-      // Navigate to dashboard after enrollment
       nav('/dashboard');
     } catch {
       // silent fail
@@ -116,19 +113,19 @@ export function CourseMarketplace() {
     >
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <button onClick={() => nav('/dashboard')} className="text-gray-600 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">←</button>
+          <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>←</Button>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">🏪 Course Marketplace</h1>
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Featured Section */}
-        {featured.length > 0 && (
+        {!loading && featured.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">⭐ Featured Courses</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {featured.map(c => (
-                <div key={c.id} onClick={() => setSelectedCourse(c)} className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl p-5 text-white cursor-pointer hover:shadow-lg transition-all card">
+                <div key={c.id} onClick={() => nav(`/marketplace/courses/${c.id}`)} className="bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl p-5 text-white cursor-pointer hover:shadow-elevated transition-all card">
                   <h3 className="font-semibold mb-1">{c.title}</h3>
                   <p className="text-sm text-blue-100 line-clamp-2 mb-3">{c.description}</p>
                   <div className="flex items-center justify-between text-sm">
@@ -144,13 +141,15 @@ export function CourseMarketplace() {
         {/* Category Chips */}
         <div className="flex flex-wrap gap-3 mb-4">
           {CATEGORIES.map(cat => (
-            <button
+            <Button
               key={cat}
+              variant={category === cat ? 'primary' : 'ghost'}
+              size="sm"
               onClick={() => setCategory(cat)}
-              className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all whitespace-nowrap ${category === cat ? 'bg-accent text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+              className={category !== cat ? 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300' : ''}
             >
               {cat}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -200,72 +199,46 @@ export function CourseMarketplace() {
           </select>
         </div>
 
-        {loading && <div className="text-center py-8 text-gray-600 dark:text-gray-400">Loading courses...</div>}
-
-        {/* Course detail modal */}
-        {selectedCourse && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSelectedCourse(null)}>
-            <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{selectedCourse.title}</h2>
-              <div className="flex items-center gap-3 text-sm text-gray-500">
-                <span className="capitalize">{selectedCourse.difficulty}</span>
-                <span>·</span>
-                <span>⭐ {selectedCourse.rating}</span>
-                <span>·</span>
-                <span>{selectedCourse.enrollmentCount} enrolled</span>
-              </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{selectedCourse.description}</p>
-              {selectedCourse.lessonCount && (
-                <p className="text-sm text-gray-500">{selectedCourse.lessonCount} lessons</p>
-              )}
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setSelectedCourse(null)} className="px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm">Close</button>
-                <button
-                  onClick={() => handleEnroll(selectedCourse)}
-                  disabled={enrolling === selectedCourse.id}
-                  className="flex-1 py-2.5 bg-accent text-white font-medium rounded-xl hover:bg-accent-dark disabled:opacity-50 text-sm"
-                >
-                  {enrolling === selectedCourse.id ? 'Enrolling...' : selectedCourse.price === 0 ? 'Enroll Free' : `Enroll — $${selectedCourse.price}`}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Loading skeleton */}
+        {loading && <SkeletonMarketplace />}
 
         {/* Course grid */}
         <div
-          data-component="course-catalog"
-          aria-label="Course catalog"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {filtered.map((c) => (
-            <div
-              key={c.id}
-              role="article"
-              aria-label={c.title}
-              onClick={() => setSelectedCourse(c)}
-              className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 cursor-pointer hover:border-accent card transition-all"
-            >
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2" title={c.title}>{c.title}</h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 capitalize">{c.difficulty} · {c.topic.replace('-', ' ')}{c.lessonCount ? ` · ${c.lessonCount} lessons` : ''}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">{c.description}</p>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-gray-900 dark:text-white">
-                  {c.price === 0 ? 'Free' : `$${c.price}`}
-                </span>
-                <span className="text-xs text-gray-600 dark:text-gray-400">⭐ {c.rating} · {c.enrollmentCount} enrolled</span>
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); handleEnroll(c); }}
-                disabled={enrolling === c.id}
-                aria-label={`Enroll in ${c.title}`}
-                className="mt-3 w-full py-2.5 bg-accent text-white font-medium rounded-xl hover:bg-accent-dark disabled:opacity-50 text-sm transition-colors"
+            data-component="course-catalog"
+            aria-label="Course catalog"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            {filtered.map((c) => (
+              <div
+                key={c.id}
+                role="article"
+                aria-label={c.title}
+                onClick={() => nav(`/marketplace/courses/${c.id}`)}
+                className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 cursor-pointer hover:border-accent card transition-all shadow-card"
               >
-                {enrolling === c.id ? 'Enrolling...' : c.price === 0 ? 'Enroll Free' : `Enroll — $${c.price}`}
-              </button>
-            </div>
-          ))}
-        </div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1 line-clamp-2" title={c.title}>{c.title}</h3>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 capitalize">{c.difficulty} · {c.topic.replace('-', ' ')}{c.lessonCount ? ` · ${c.lessonCount} lessons` : ''}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-4">{c.description}</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-900 dark:text-white">
+                    {c.price === 0 ? 'Free' : `$${c.price}`}
+                  </span>
+                  <span className="text-xs text-gray-600 dark:text-gray-400">⭐ {c.rating} · {c.enrollmentCount} enrolled</span>
+                </div>
+                <Button
+                  variant="primary"
+                  fullWidth
+                  size="sm"
+                  onClick={(e) => { e.stopPropagation(); handleEnroll(c); }}
+                  disabled={enrolling === c.id}
+                  aria-label={`Enroll in ${c.title}`}
+                  className="mt-3"
+                >
+                  {enrolling === c.id ? 'Enrolling...' : c.price === 0 ? 'Enroll Free' : `Enroll — $${c.price}`}
+                </Button>
+              </div>
+            ))}
+          </div>
       </div>
     </section>
   );

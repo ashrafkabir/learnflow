@@ -267,3 +267,20 @@
 .notes-panel-enter {
   animation: slideFromRight 250ms ease-out forwards;
 }
+
+/* ============================================
+   Shadow utility classes — design tokens
+   ============================================ */
+@utility shadow-card {
+  box-shadow: var(--shadow-card);
+}
+@utility shadow-elevated {
+  box-shadow: var(--shadow-card-hover);
+}
+@utility animate-fade-in {
+  animation: fadeIn 300ms ease-out forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

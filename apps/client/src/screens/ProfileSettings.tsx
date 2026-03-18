@@ -70,7 +70,7 @@ export function ProfileSettings() {
               <Button
                 variant="secondary"
                 onClick={() => dispatch({ type: 'SET_SUBSCRIPTION', tier: 'pro' })}
-                className="bg-white text-purple-600 hover:bg-white/90 border-0 shadow-sm"
+                className="bg-white text-purple-600 hover:bg-white/90 border-0 shadow-card"
               >
                 Upgrade to Pro
               </Button>
@@ -320,6 +320,10 @@ export function ProfileSettings() {
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Notifications</span>
             {[
               { key: 'notifications', label: 'Push notifications' },
+              { key: 'notifCourseComplete', label: 'Course completion alerts' },
+              { key: 'notifDailyReminder', label: 'Daily learning reminders' },
+              { key: 'notifMarketplace', label: 'Marketplace recommendations' },
+              { key: 'notifAgentActivity', label: 'Agent activity updates' },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between pl-2">
                 <span className="text-sm text-gray-600 dark:text-gray-400">{label}</span>

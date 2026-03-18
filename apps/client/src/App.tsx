@@ -14,6 +14,7 @@ import { LessonReader } from './screens/LessonReader.js';
 import { MindmapExplorer } from './screens/MindmapExplorer.js';
 import { CourseMarketplace } from './screens/marketplace/CourseMarketplace.js';
 import { AgentMarketplace } from './screens/marketplace/AgentMarketplace.js';
+import { CourseDetail } from './screens/marketplace/CourseDetail.js';
 import { ProfileSettings } from './screens/ProfileSettings.js';
 import { PipelineDetail } from './screens/PipelineDetail.js';
 import { LoginScreen } from './screens/LoginScreen.js';
@@ -26,6 +27,7 @@ import { BlogPage } from './screens/marketing/Blog.js';
 import { BlogPostPage } from './screens/marketing/BlogPost.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { PageTransition } from './components/PageTransition.js';
+import { MobileNav } from './components/MobileNav.js';
 
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const { state } = useApp();
@@ -50,11 +52,20 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AppMobileNav() {
+  const location = useLocation();
+  const appPaths = ['/dashboard', '/conversation', '/courses', '/mindmap', '/marketplace', '/settings', '/pipeline'];
+  const isAppScreen = appPaths.some((p) => location.pathname.startsWith(p));
+  if (!isAppScreen) return null;
+  return <MobileNav />;
+}
+
 export function App() {
   return (
     <main role="main" aria-label="LearnFlow Application">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-accent focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">Skip to content</a>
       <div id="main-content" />
+      <AppMobileNav />
       <ErrorBoundary>
       <OnboardingGuard>
       <PageTransition>
@@ -82,6 +93,7 @@ export function App() {
         {/* Marketplace */}
         <Route path="/marketplace" element={<ErrorBoundary><CourseMarketplace /></ErrorBoundary>} />
         <Route path="/marketplace/courses" element={<ErrorBoundary><CourseMarketplace /></ErrorBoundary>} />
+        <Route path="/marketplace/courses/:courseId" element={<ErrorBoundary><CourseDetail /></ErrorBoundary>} />
         <Route path="/marketplace/agents" element={<ErrorBoundary><AgentMarketplace /></ErrorBoundary>} />
 
         {/* Profile & Settings */}

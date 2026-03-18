@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, apiBase } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
+import { Button } from '../../components/Button.js';
 
 const GOAL_SUGGESTIONS = [
   'Career advancement',
@@ -12,10 +13,7 @@ const GOAL_SUGGESTIONS = [
   'Teach others',
 ];
 
-/**
- * Spec §5.2.1 — Step 2: Goal Setting
- * "Conversational interface where user describes what they want to learn"
- */
+/** Spec §5.2.1 — Step 2: Goal Setting */
 export function OnboardingGoals() {
   const nav = useNavigate();
   const { dispatch } = useApp();
@@ -37,7 +35,6 @@ export function OnboardingGoals() {
   const next = async () => {
     dispatch({ type: 'SET_ONBOARDING_GOALS', goals });
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 1 });
-    // Save goals to API
     try {
       const token = localStorage.getItem('learnflow-token');
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -52,7 +49,6 @@ export function OnboardingGoals() {
       data-screen="onboarding-goals"
       className="slide-in-right min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col"
     >
-      {/* Progress */}
       <div className="p-6 pb-0">
         <div className="flex items-center gap-2 mb-2">
           <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
@@ -71,7 +67,6 @@ export function OnboardingGoals() {
           Tell us about your learning goals in your own words, or pick from suggestions below.
         </p>
 
-        {/* Conversational input */}
         <div className="mb-4">
           <div className="flex gap-2">
             <input
@@ -82,17 +77,16 @@ export function OnboardingGoals() {
               placeholder="e.g., I want to learn machine learning for my career..."
               className="flex-1 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent text-sm"
             />
-            <button
+            <Button
+              variant="primary"
               onClick={() => addGoal(goalText)}
               disabled={!goalText.trim()}
-              className="px-4 py-3 bg-accent text-white font-medium rounded-xl hover:bg-accent-dark disabled:opacity-40 transition-colors text-sm"
             >
               Add
-            </button>
+            </Button>
           </div>
         </div>
 
-        {/* Added goals */}
         {goals.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-4">
             {goals.map((g) => (
@@ -101,45 +95,42 @@ export function OnboardingGoals() {
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-accent/10 text-accent text-sm"
               >
                 {g}
-                <button
-                  onClick={() => removeGoal(g)}
-                  className="ml-1 text-accent/50 hover:text-accent"
-                >
+                <Button variant="ghost" size="sm" onClick={() => removeGoal(g)} className="ml-1 text-accent/50 hover:text-accent p-0 h-auto">
                   ✕
-                </button>
+                </Button>
               </span>
             ))}
           </div>
         )}
 
-        {/* Suggestions */}
         <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Or pick from common goals:</p>
         <div className="flex flex-wrap gap-2 mb-8">
           {GOAL_SUGGESTIONS.filter((s) => !goals.includes(s)).map((s) => (
-            <button
+            <Button
               key={s}
+              variant="ghost"
+              size="sm"
               onClick={() => addGoal(s)}
-              className="text-xs px-3 py-1.5 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-accent hover:text-accent transition-all"
+              className="text-xs border border-gray-200 dark:border-gray-700 hover:border-accent hover:text-accent"
             >
               + {s}
-            </button>
+            </Button>
           ))}
         </div>
 
         <div className="flex gap-3">
-          <button
-            onClick={() => nav('/onboarding/welcome')}
-            className="px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
+          <Button variant="secondary" onClick={() => nav('/onboarding/welcome')} className="px-6 py-4">
             Back
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
+            fullWidth
             onClick={next}
             disabled={goals.length === 0}
-            className="flex-1 py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="py-4"
           >
             Continue
-          </button>
+          </Button>
         </div>
       </div>
     </div>

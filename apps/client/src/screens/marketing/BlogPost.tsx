@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
+import { Button } from '../../components/Button.js';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -17,7 +18,7 @@ export function BlogPostPage() {
       <MarketingLayout>
         <div className="max-w-3xl mx-auto px-6 py-20 text-center">
           <h1 className="text-2xl font-bold mb-4">Post not found</h1>
-          <button onClick={() => nav('/blog')} className="text-accent hover:underline">← Back to Blog</button>
+          <Button variant="ghost" onClick={() => nav('/blog')}>← Back to Blog</Button>
         </div>
       </MarketingLayout>
     );
@@ -27,7 +28,7 @@ export function BlogPostPage() {
     <MarketingLayout>
       <SEO title={post.title} description={post.excerpt || post.title} path={`/blog/${post.id}`} />
       <article className="max-w-3xl mx-auto px-6 py-12">
-        <button onClick={() => nav('/blog')} className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-600 mb-6 inline-block">← Back to Blog</button>
+        <Button variant="ghost" size="sm" onClick={() => nav('/blog')} className="mb-6">← Back to Blog</Button>
         
         <header className="mb-8">
           <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${post.tagColor}`}>{post.tag}</span>
@@ -82,9 +83,9 @@ export function BlogPostPage() {
           <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-6 text-center">
             <h3 className="text-lg font-semibold mb-2">Ready to try LearnFlow?</h3>
             <p className="text-sm text-gray-500 mb-4">Start learning with AI agents for free.</p>
-            <button onClick={() => nav('/register')} className="px-6 py-2.5 bg-accent text-white font-medium rounded-xl hover:bg-accent-dark text-sm">
+            <Button variant="primary" onClick={() => nav('/register')}>
               Get Started Free
-            </button>
+            </Button>
           </div>
         </div>
       </article>

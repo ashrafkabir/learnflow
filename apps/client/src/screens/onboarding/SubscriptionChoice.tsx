@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
+import { Button } from '../../components/Button.js';
 
 const PLANS = [
   {
@@ -35,8 +36,20 @@ export function SubscriptionChoice() {
   const nav = useNavigate();
   const { dispatch } = useApp();
   const [selected, setSelected] = useState('free');
+  const [showModal, setShowModal] = useState(false);
+  const [email, setEmail] = useState('');
 
   const next = () => {
+    if (selected === 'pro') {
+      setShowModal(true);
+      return;
+    }
+    dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 });
+    nav('/onboarding/first-course');
+  };
+
+  const continueAfterModal = () => {
+    setShowModal(false);
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 });
     nav('/onboarding/first-course');
   };
@@ -66,13 +79,14 @@ export function SubscriptionChoice() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
           {PLANS.map((plan) => (
-            <button
+            <Button
               key={plan.id}
+              variant="ghost"
               onClick={() => setSelected(plan.id)}
-              className={`relative p-6 rounded-2xl border-2 text-left transition-all ${
+              className={`relative p-6 rounded-2xl border-2 text-left h-auto items-start transition-all ${
                 selected === plan.id
                   ? plan.highlight
-                    ? 'border-accent bg-accent/5 shadow-lg'
+                    ? 'border-accent bg-accent/5 shadow-card'
                     : 'border-accent bg-accent/5'
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
               }`}
@@ -82,46 +96,70 @@ export function SubscriptionChoice() {
                   POPULAR
                 </span>
               )}
-              <p className="text-lg font-bold text-gray-900 dark:text-white">{plan.name}</p>
-              <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
-                {plan.price}
-                <span className="text-sm font-normal text-gray-500 dark:text-gray-400">{plan.period}</span>
-              </p>
-              <ul className="mt-4 space-y-2">
-                {plan.features.map((f) => (
-                  <li
-                    key={f}
-                    className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2"
-                  >
-                    <span className="text-success">✓</span> {f}
-                  </li>
-                ))}
-              </ul>
-            </button>
+              <div>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{plan.name}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                  {plan.price}
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400">{plan.period}</span>
+                </p>
+                <ul className="mt-4 space-y-2">
+                  {plan.features.map((f) => (
+                    <li key={f} className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                      <span className="text-success">✓</span> {f}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </Button>
           ))}
         </div>
 
         <div className="flex gap-3 items-center">
-          <button
-            onClick={() => nav('/onboarding/api-keys')}
-            className="px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
+          <Button variant="secondary" onClick={() => nav('/onboarding/api-keys')} className="px-6 py-4">
             Back
-          </button>
-          <button
-            onClick={next}
-            className="flex-1 py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors"
-          >
+          </Button>
+          <Button variant="primary" fullWidth onClick={next} className="py-4">
             Continue with {selected === 'pro' ? 'Pro' : 'Free'}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => { dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 }); nav('/onboarding/first-course'); }}
-            className="text-sm text-gray-500 dark:text-gray-400 hover:text-accent transition-colors"
           >
             Skip
-          </button>
+          </Button>
         </div>
       </div>
+
+      {/* Pro upgrade modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowModal(false)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-elevated" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="text-4xl mb-3">🚀</div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Pro Coming Soon!</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Payment integration is being finalized. Leave your email and we'll notify you when Pro is ready.
+              </p>
+            </div>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+            />
+            <div className="flex gap-3">
+              <Button variant="secondary" fullWidth onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button variant="primary" fullWidth onClick={continueAfterModal}>
+                {email ? 'Notify Me & Continue' : 'Continue with Free'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

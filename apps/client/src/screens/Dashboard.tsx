@@ -175,7 +175,7 @@ export function Dashboard() {
             <Button
               onClick={() => nav(`/courses/${todaysLessons[0].courseId}/lessons/${todaysLessons[0].lessonId}`)}
               variant="secondary"
-              className="bg-white text-accent hover:bg-white/90 border-0 shadow-sm"
+              className="bg-white text-accent hover:bg-white/90 border-0 shadow-card"
             >
               Resume →
             </Button>
@@ -205,7 +205,7 @@ export function Dashboard() {
                 el?.focus();
               }}
               variant="secondary"
-              className="bg-white text-accent hover:bg-white/90 border-0 shadow-sm"
+              className="bg-white text-accent hover:bg-white/90 border-0 shadow-card"
             >
               Create Your First Course
             </Button>
@@ -598,6 +598,37 @@ export function Dashboard() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+
+        {/* Knowledge Map Preview — Spec §5.2.2 */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white">🗺️ Knowledge Map</h2>
+            <Button variant="ghost" size="sm" onClick={() => nav('/mindmap')}>Explore →</Button>
+          </div>
+          {state.courses.length > 0 ? (
+            <div className="relative h-32 bg-gradient-to-br from-accent/5 via-purple-50/50 to-blue-50/50 dark:from-accent/10 dark:via-gray-800/50 dark:to-gray-800/50 rounded-xl overflow-hidden flex items-center justify-center">
+              <svg viewBox="0 0 200 100" className="w-full h-full opacity-60" aria-hidden="true">
+                <circle cx="100" cy="50" r="12" fill="currentColor" className="text-accent" opacity="0.8" />
+                {state.courses.slice(0, 5).map((c: any, i: number) => {
+                  const angle = (i / Math.min(state.courses.length, 5)) * Math.PI * 2 - Math.PI / 2;
+                  const x = 100 + Math.cos(angle) * 45;
+                  const y = 50 + Math.sin(angle) * 30;
+                  return (
+                    <g key={c.id}>
+                      <line x1="100" y1="50" x2={x} y2={y} stroke="currentColor" className="text-gray-300 dark:text-gray-600" strokeWidth="1" />
+                      <circle cx={x} cy={y} r="6" fill="currentColor" className="text-accent" opacity="0.5" />
+                    </g>
+                  );
+                })}
+              </svg>
+              <p className="absolute bottom-2 text-xs text-gray-500 dark:text-gray-400">{state.courses.length} topics mapped</p>
+            </div>
+          ) : (
+            <div className="h-32 bg-gray-50 dark:bg-gray-800/50 rounded-xl flex items-center justify-center">
+              <p className="text-sm text-gray-400">Start a course to build your knowledge map</p>
             </div>
           )}
         </div>

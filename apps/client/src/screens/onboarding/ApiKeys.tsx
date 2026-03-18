@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
+import { Button } from '../../components/Button.js';
 
 export function OnboardingApiKeys() {
   const nav = useNavigate();
@@ -54,18 +55,21 @@ export function OnboardingApiKeys() {
         />
 
         <div className="flex gap-3">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => nav('/onboarding/experience')}
-            className="px-6 py-4 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-semibold rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="px-6 py-4"
           >
             Back
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="primary"
             onClick={next}
-            className="flex-1 py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors"
+            fullWidth
+            className="py-4"
           >
             {key ? 'Save & Continue' : 'Skip for now'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

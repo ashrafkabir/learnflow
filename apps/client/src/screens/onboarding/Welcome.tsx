@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
+import { Button } from '../../components/Button.js';
 
 export function OnboardingWelcome() {
   const nav = useNavigate();
@@ -12,14 +13,12 @@ export function OnboardingWelcome() {
     >
       <div className="max-w-lg w-full text-center space-y-8">
         <OnboardingProgress current="welcome" />
-        {/* Logo */}
         <div className="flex justify-center">
           <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
             <span className="text-4xl">🧠</span>
           </div>
         </div>
 
-        {/* Heading */}
         <div className="space-y-3">
           <h1 className="text-4xl font-bold text-white tracking-tight">Welcome to LearnFlow</h1>
           <p className="text-lg text-primary-200 leading-relaxed">
@@ -28,7 +27,6 @@ export function OnboardingWelcome() {
           </p>
         </div>
 
-        {/* Features */}
         <div className="grid grid-cols-1 gap-3 text-left">
           {[
             { icon: '📚', text: 'AI-generated courses from real web sources' },
@@ -45,13 +43,15 @@ export function OnboardingWelcome() {
           ))}
         </div>
 
-        {/* CTA */}
-        <button
+        <Button
+          variant="primary"
+          fullWidth
+          size="large"
           onClick={() => nav('/onboarding/goals')}
-          className="w-full py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors text-lg shadow-lg shadow-accent/25"
+          className="shadow-accent/25"
         >
           Get Started
-        </button>
+        </Button>
 
         <p className="text-xs text-primary-300">Takes about 2 minutes to set up</p>
       </div>

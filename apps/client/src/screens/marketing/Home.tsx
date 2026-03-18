@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
+import { Button } from '../../components/Button.js';
 
 const FEATURES = [
   { icon: '🤖', title: 'AI-Generated Courses', desc: 'Paste a topic and get a full, structured course in minutes — sourced from the real web.' },
@@ -12,7 +13,6 @@ const FEATURES = [
   { icon: '🏪', title: 'Course Marketplace', desc: 'Browse and share community-created courses. Publish your own.' },
 ];
 
-/** Single source of truth for all metrics — Task 11 */
 const METRICS = {
   courses: '50,000+',
   learners: '12,000+',
@@ -49,20 +49,18 @@ export function HomePage() {
             Set your goals, and intelligent agents build your personalized learning path from the best content on the web. Free with your own API key.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              onClick={() => nav('/download')}
-              className="px-8 py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors text-lg shadow-lg shadow-accent/25"
-            >
+            <Button variant="primary" size="large" onClick={() => nav('/download')}>
               Get Started Free
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              size="large"
               onClick={() => {
                 document.getElementById('demo-section')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="px-8 py-4 border-2 border-gray-200 dark:border-gray-700 font-semibold rounded-xl hover:border-accent hover:text-accent transition-colors text-lg"
             >
               See How It Works
-            </button>
+            </Button>
           </div>
         </div>
       </section>
@@ -87,7 +85,7 @@ export function HomePage() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {FEATURES.map((f) => (
-            <div key={f.title} className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 hover:shadow-lg transition-all group">
+            <div key={f.title} className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 hover:shadow-card transition-all group">
               <span className="text-3xl block mb-3">{f.icon}</span>
               <h3 className="font-semibold text-lg mb-2 group-hover:text-accent transition-colors">{f.title}</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{f.desc}</p>
@@ -119,21 +117,19 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Trust & Social Proof — Spec §12.2 */}
+      {/* Trust & Social Proof */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold mb-3">Trusted by learners worldwide</h2>
           <p className="text-gray-600 dark:text-gray-400">See what our community says</p>
         </div>
-
-        {/* Testimonials */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
           {[
-            { quote: 'LearnFlow completely changed how I study. The AI-generated courses are better than most online courses I\'ve paid for.', name: 'Sarah Chen', role: 'Software Engineer', avatar: '👩‍💻' },
-            { quote: 'The mindmap feature is incredible. I can finally see how all the concepts connect. My retention has improved dramatically.', name: 'Marcus Johnson', role: 'Data Scientist', avatar: '👨‍🔬' },
-            { quote: 'I used LearnFlow to prepare for my AWS certification and passed on the first try. The adaptive quizzes found my weak spots.', name: 'Priya Patel', role: 'Cloud Architect', avatar: '👩‍🏫' },
+            { quote: 'LearnFlow completely changed how I study. The AI-generated courses are better than most online courses I\'ve paid for.', name: 'Sarah Chen', role: 'Software Engineer', avatar: '👩💻' },
+            { quote: 'The mindmap feature is incredible. I can finally see how all the concepts connect. My retention has improved dramatically.', name: 'Marcus Johnson', role: 'Data Scientist', avatar: '👨🔬' },
+            { quote: 'I used LearnFlow to prepare for my AWS certification and passed on the first try. The adaptive quizzes found my weak spots.', name: 'Priya Patel', role: 'Cloud Architect', avatar: '👩🏫' },
           ].map((t) => (
-            <div key={t.name} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6">
+            <div key={t.name} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-card">
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed mb-4 italic">"{t.quote}"</p>
               <div className="flex items-center gap-3">
                 <span className="text-2xl">{t.avatar}</span>
@@ -145,8 +141,6 @@ export function HomePage() {
             </div>
           ))}
         </div>
-
-        {/* Security & Privacy Badges */}
         <div className="flex flex-wrap justify-center gap-6 mb-12">
           {[
             { icon: '🔒', label: 'AES-256 Encryption' },
@@ -160,8 +154,6 @@ export function HomePage() {
             </div>
           ))}
         </div>
-
-        {/* Social proof — real metrics instead of fake press logos */}
         <div className="text-center">
           <div className="flex flex-wrap justify-center gap-12">
             {[
@@ -182,12 +174,9 @@ export function HomePage() {
       <section className="max-w-6xl mx-auto px-6 py-20 text-center">
         <h2 className="text-3xl font-bold mb-4">Ready to learn smarter?</h2>
         <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-lg mx-auto">Join thousands of learners using AI to master new topics faster than ever.</p>
-        <button
-          onClick={() => nav('/register')}
-          className="px-8 py-4 bg-accent text-white font-semibold rounded-xl hover:bg-accent-dark transition-colors text-lg shadow-lg shadow-accent/25"
-        >
+        <Button variant="primary" size="large" onClick={() => nav('/register')}>
           Start Learning for Free
-        </button>
+        </Button>
       </section>
     </MarketingLayout>
   );

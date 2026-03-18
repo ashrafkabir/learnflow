@@ -1,20 +1,43 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
+import { Button } from '../../components/Button.js';
+import { Confetti } from '../../components/Confetti.js';
+
+const STAGES = [
+  { emoji: '🔍', label: 'Researching sources...', pct: 25 },
+  { emoji: '📝', label: 'Building syllabus...', pct: 50 },
+  { emoji: '🧠', label: 'Creating lessons...', pct: 75 },
+  { emoji: '✨', label: 'Polishing content...', pct: 100 },
+];
 
 /**
- * Onboarding completion screen.
- * Does NOT create a course — just saves preferences and redirects to dashboard.
+ * Onboarding completion screen with staged progress animation.
+ * Spec §5.2.1 step 6 — "orchestrator builds initial course in real-time with progress animation"
  */
 export function FirstCourse() {
   const nav = useNavigate();
   const { dispatch } = useApp();
+  const [stageIdx, setStageIdx] = useState(0);
+  const [complete, setComplete] = useState(false);
 
   useEffect(() => {
-    // Mark onboarding as complete (preferences already saved in prior steps)
     dispatch({ type: 'COMPLETE_ONBOARDING' });
   }, []);
+
+  // Animate through stages
+  useEffect(() => {
+    if (stageIdx < STAGES.length - 1) {
+      const timer = setTimeout(() => setStageIdx((i) => i + 1), 1800);
+      return () => clearTimeout(timer);
+    } else if (!complete) {
+      const timer = setTimeout(() => setComplete(true), 1200);
+      return () => clearTimeout(timer);
+    }
+  }, [stageIdx, complete]);
+
+  const stage = STAGES[stageIdx];
 
   return (
     <section
@@ -33,20 +56,64 @@ export function FirstCourse() {
 
       <div className="flex-1 flex flex-col items-center justify-center p-6 max-w-lg mx-auto w-full text-center">
         <OnboardingProgress current="first-course" />
-        <div className="text-7xl mb-6">🎉</div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
-          You're All Set!
-        </h1>
-        <p className="text-gray-500 dark:text-gray-400 mb-8">
-          Your preferences have been saved. Head to your dashboard to create your first course!
-        </p>
-        <button
-          onClick={() => nav('/dashboard')}
-          aria-label="Go to Dashboard"
-          className="px-8 py-4 bg-accent text-white font-semibold text-lg rounded-xl hover:bg-accent-dark transition-colors shadow-lg pulse-cta"
-        >
-          Go to Dashboard →
-        </button>
+
+        {!complete ? (
+          <>
+            {/* Progress animation */}
+            <div className="text-6xl mb-6 animate-bounce">{stage.emoji}</div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+              Setting up your experience
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 mb-6">{stage.label}</p>
+
+            {/* Progress bar */}
+            <div className="w-full max-w-xs h-3 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden mb-4">
+              <div
+                className="h-full bg-accent rounded-full transition-all duration-1000 ease-out"
+                style={{ width: `${stage.pct}%` }}
+              />
+            </div>
+
+            {/* Stage indicators */}
+            <div className="flex gap-2 mt-4">
+              {STAGES.map((s, i) => (
+                <div
+                  key={i}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all ${
+                    i === stageIdx
+                      ? 'bg-accent/10 text-accent font-medium'
+                      : i < stageIdx
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                      : 'text-gray-400'
+                  }`}
+                >
+                  {i < stageIdx ? '✓' : s.emoji} {s.label.replace('...', '')}
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Completion */}
+            <Confetti />
+            <div className="text-7xl mb-6">🎉</div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              You're All Set!
+            </h1>
+            <p className="text-gray-500 dark:text-gray-400 mb-8">
+              Your preferences have been saved. Head to your dashboard to create your first course!
+            </p>
+            <Button
+              variant="primary"
+              size="large"
+              onClick={() => nav('/dashboard')}
+              aria-label="Go to Dashboard"
+              className="pulse-cta"
+            >
+              Go to Dashboard →
+            </Button>
+          </>
+        )}
       </div>
     </section>
   );

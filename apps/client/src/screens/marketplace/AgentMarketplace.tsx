@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '../../components/Button.js';
 
 interface Agent {
   id: string;
@@ -51,13 +52,12 @@ export function AgentMarketplace() {
     >
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <button onClick={() => nav('/dashboard')} className="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">←</button>
+          <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>←</Button>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">🤖 Agent Marketplace</h1>
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {/* My Agents section */}
         {activatedIds.size > 0 && (
           <div className="mb-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">✅ My Agents</h2>
@@ -83,7 +83,7 @@ export function AgentMarketplace() {
                 key={a.id}
                 role="article"
                 aria-label={a.name}
-                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 hover:border-accent hover:shadow-md transition-all"
+                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 hover:border-accent hover:shadow-card transition-all"
               >
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-base font-semibold text-gray-900 dark:text-white">{a.name}</h3>
@@ -106,18 +106,16 @@ export function AgentMarketplace() {
                     </span>
                   ))}
                 </div>
-                <button
+                <Button
+                  variant={isActivated ? 'secondary' : 'primary'}
+                  fullWidth
                   onClick={() => !isActivated && handleActivate(a)}
                   disabled={isActivated || activating === a.id}
                   aria-label={`Activate ${a.name}`}
-                  className={`w-full py-2.5 font-medium rounded-xl text-sm transition-colors ${
-                    isActivated
-                      ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 cursor-default'
-                      : 'bg-accent text-white hover:bg-accent-dark disabled:opacity-50'
-                  }`}
+                  className={isActivated ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 cursor-default border-0' : ''}
                 >
                   {isActivated ? '✅ Activated' : activating === a.id ? 'Activating...' : 'Activate'}
-                </button>
+                </Button>
               </div>
             );
           })}

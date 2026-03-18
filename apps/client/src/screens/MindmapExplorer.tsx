@@ -299,7 +299,7 @@ export function MindmapExplorer() {
                     }
                   }}
                   title="Zoom in"
-                  className="shadow-sm"
+                  className="shadow-card"
                 >
                   +
                 </Button>
@@ -313,7 +313,7 @@ export function MindmapExplorer() {
                     }
                   }}
                   title="Zoom out"
-                  className="shadow-sm"
+                  className="shadow-card"
                 >
                   −
                 </Button>
@@ -326,7 +326,7 @@ export function MindmapExplorer() {
                     }
                   }}
                   title="Fit to screen"
-                  className="shadow-sm"
+                  className="shadow-card"
                 >
                   ⊞
                 </Button>
