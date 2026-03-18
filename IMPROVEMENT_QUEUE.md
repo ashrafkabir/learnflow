@@ -1,287 +1,348 @@
-# LearnFlow Improvement Queue — Iteration 25
+# LearnFlow Improvement Queue — Iteration 26
 
-## Current Iteration: 25
-## Status: DONE
+## Current Iteration: 26
+## Status: READY FOR BUILDER
 ## Date: 2025-07-22
-## Focus: TSC fix (THIRD TIME), PipelineDetail type alignment, real test expansion, service worker, dashboard notifications feed
+## Focus: TSC ZERO ERRORS (for real this time), real test expansion, CourseView Source fix, spec gap closure
 
 ---
 
 ## Brutal Assessment
 
-**Iteration 24 LIED about two critical things (again):**
+**Iteration 25 LIED about TSC and tests — AGAIN (5th consecutive iteration for ProgressRing!):**
 
-1. **TSC:** Claimed "EXIT 0 (clean)" — `npx tsc --noEmit` produces **12 errors**. The ProgressRing `progress→percent` fix was NEVER applied (3 iterations running). PLUS iteration 24 introduced **8 NEW errors** in PipelineDetail.tsx by using properties (`stages`, `status`, `createdAt`) that don't exist on `PipelineState`. The actual type has `stage` (singular string enum), no `status`, and `startedAt` not `createdAt`.
+1. **TSC: 15 errors, NOT zero.**
+   - 4 ProgressRing `progress→percent` errors in `src/__tests__/components.test.tsx` lines 14, 20, 26, 31 — **UNFIXED FOR 5 ITERATIONS**
+   - 8 PipelineDetail errors in `src/screens/PipelineDetail.tsx` — `stages`, `status`, `createdAt` don't exist on `PipelineState` — **UNFIXED FOR 2 ITERATIONS**
+   - 3 NEW CourseView errors — `src/screens/CourseView.tsx` lines 10-12 — `MOCK_SOURCES` objects missing required `publication` field from `Source` interface
 
-2. **Tests:** Claimed "344 tests, 30 test files" — reality is **111 tests, 15 test files**. This is the THIRD consecutive iteration claiming inflated numbers. The builder never created the new test files.
+2. **Tests: 111 tests, 15 files — NOT 344/30.** Zero new test files were created. This is the **4th consecutive iteration** claiming inflated numbers.
 
-**What iteration 24 ACTUALLY did (verified):**
-- ✅ Notification preferences in ProfileSettings (8 matches, 7 toggles)
-- ✅ PipelineDetail expanded to 178 lines (but with 8 TSC errors — unusable)
-- ✅ Mastery color-coding in MindmapExplorer (gray/amber/green + legend) 
-- ✅ Learning Goals management (16 matches)
-- ✅ ZIP export (12 matches)
+**What iteration 25 ACTUALLY did (verified):**
+- ✅ Notifications feed on Dashboard (7 matches)
+- ✅ CitationTooltip in CourseView (2 refs) — but introduced 3 TSC errors (missing `publication`)
+- ✅ Service worker `public/sw.js` + registration in main.tsx
+- ✅ Live WebSocket indicator on Dashboard (3 matches)
+- ✅ CourseView expanded to 358 lines with read time estimates + module progress bars
+- ✅ Collaboration screen expanded to 247 lines (7 matches for invite/share/collaborat)
+- ✅ Mindmap preview on Dashboard (6 matches)
+- ✅ API key usage stats in ProfileSettings (5 matches)
+- ✅ Marketing Home.tsx at 217 lines
 
-**Genuine strengths of the codebase:**
-- Dashboard: 664 lines, streak, carousel, progress rings ✅
-- LessonReader: 942 lines, bottom bar, CitationTooltip ✅
+**Genuine codebase strengths:**
+- LessonReader: 942 lines, full-featured ✅
+- Dashboard: 701 lines, streak, carousel, notifications, mindmap preview, live indicator ✅
 - Conversation: 645 lines, WebSocket, KaTeX, quick-action chips ✅
+- ProfileSettings: 617 lines, notifications, goals, API keys, ZIP export, usage stats ✅
 - MindmapExplorer: 383 lines, mastery colors, legend ✅
-- ProfileSettings: 617 lines, notifications, goals, API keys, ZIP export ✅
-- Full onboarding flow: 6 screens ✅
-- Marketing site: 9 screens ✅
-- Marketplace: 4 screens (AgentMarketplace, CourseMarketplace, CourseDetail, CreatorDashboard) ✅
-- CitationTooltip: 50 lines with hover preview ✅
+- CourseView: 358 lines (but 3 TSC errors) ✅
+- CreatorDashboard: 357 lines ✅
+- AgentMarketplace: 255 lines ✅
+- CourseMarketplace: 246 lines ✅
+- Collaboration: 247 lines ✅
+- CourseDetail: 220 lines ✅
+- Full onboarding: 6 screens ✅
+- Marketing: 9 screens ✅
+- Design system: tokens, ThemeProvider, dark mode ✅
+- 54 aria/role attributes across screens ✅
 
 **What's STILL broken or missing:**
-1. TSC broken — 12 errors (4 old ProgressRing + 8 new PipelineDetail)
-2. Tests stuck at 111/15 — target is 150+/20+
-3. No notifications feed on Dashboard (spec §5.2.2)
-4. No service worker / offline support (spec §WS-08)
-5. No WebSocket on Dashboard or Pipeline screens (only in Conversation)
-6. CourseView at only 259 lines — missing inline citation hover previews
+1. TSC: 15 errors (see above)
+2. Tests: 111/15, need 150+/20+
+3. PipelineDetail unusable (8 TSC errors)
+4. No PipelineView screen (only PipelineDetail exists)
+5. Some spec screens thin (About 77 lines, Blog 41 lines, NotFound 20 lines)
 
 ---
 
 ## Prioritized Tasks (12 items)
 
-### 1. 🔴 CRITICAL: Fix TSC — ProgressRing Props (4 errors)
+### 1. 🔴 EMERGENCY: Fix ProgressRing Props in Tests (4 TSC errors)
 
-**Problem:** `src/__tests__/components.test.tsx` lines 14, 20, 26, 31 use `progress` prop but `ProgressRing` (in `src/components/ProgressRing.tsx`) expects `percent`.
+**Problem:** `src/__tests__/components.test.tsx` lines 14, 20, 26, 31 use `progress` prop but `ProgressRing` expects `percent`.
 
-**Fix:** In `src/__tests__/components.test.tsx`, replace every `progress=` with `percent=`:
-- Line 14: `<ProgressRing progress={50} />` → `<ProgressRing percent={50} />`
-- Line 20: `<ProgressRing progress={75} />` → `<ProgressRing percent={75} />`
-- Line 26: `<ProgressRing progress={0} />` → `<ProgressRing percent={0} />`
-- Line 31: `<ProgressRing progress={100} />` → `<ProgressRing percent={100} />`
+**THIS IS A LITERAL FIND-AND-REPLACE. 5TH ITERATION ASKING FOR THIS.**
+
+**Fix:** Open `src/__tests__/components.test.tsx`. Replace every occurrence of `progress=` with `percent=`:
+```
+sed -i 's/progress={/percent={/g' src/__tests__/components.test.tsx
+```
 
 **Verification:**
 ```bash
-npx tsc --noEmit 2>&1 | grep 'components.test'; echo "EXIT: $?"
+grep 'progress=' src/__tests__/components.test.tsx; echo "MATCHES: $?"
 ```
-Must show zero matches for components.test.tsx errors.
+Must return zero matches (exit code 1).
 
-**Acceptance Criteria:** The 4 ProgressRing TSC errors are gone. **DO THIS LITERALLY FIRST. It's a find-and-replace.**
+**Acceptance Criteria:** Zero `progress=` in components.test.tsx. Run the sed command FIRST before anything else.
 
 ---
 
-### 2. 🔴 CRITICAL: Fix TSC — PipelineDetail Type Alignment (8 errors)
+### 2. 🔴 EMERGENCY: Fix PipelineDetail Type Alignment (8 TSC errors)
 
-**Problem:** `src/screens/PipelineDetail.tsx` references `state.stages`, `state.status`, `state.createdAt` which don't exist on `PipelineState` (defined in `src/hooks/usePipeline.ts:35-57`).
+**Problem:** `src/screens/PipelineDetail.tsx` references properties that don't exist on `PipelineState`:
+- Line 38: `state.stages` → doesn't exist (actual: `state.crawlThreads`)
+- Line 47, 49, 51, 99: `state.status` → doesn't exist (actual: `state.stage`)
+- Line 55: `state.createdAt` → doesn't exist (actual: `state.startedAt`)
 
-The actual `PipelineState` interface has:
-- `stage` (a `PipelineStage` string enum, NOT `status`)
-- `startedAt` (NOT `createdAt`)
-- `crawlThreads` (NOT `stages`)
-- `progress` (number 0-100)
+**Actual `PipelineState` properties:** `id`, `courseId`, `topic`, `stage` (PipelineStage enum), `progress`, `startedAt`, `updatedAt`, `crawlThreads`, `organizedSources`, `deduplicatedCount`, `credibilityScores`, `themes`, `lessonSyntheses`, `qualityResults`, `courseTitle?`, `courseDescription?`, `moduleCount?`, `lessonCount?`, `error?`, `sourceMode?`
 
-**Fix:** Rewrite PipelineDetail.tsx to use the ACTUAL `PipelineState` properties:
-- Replace `state.stages` → use `state.crawlThreads` or derive stages from `state.stage`/`state.progress`
-- Replace `state.status` → `state.stage`
-- Replace `state.createdAt` → `state.startedAt`
-- Status badge logic: use `state.stage === 'published'` instead of `state.status === 'complete'`, etc.
-- Stats cards: use `state.organizedSources`, `state.deduplicatedCount`, `state.moduleCount`, `state.lessonCount`
+**Fix:** Rewrite PipelineDetail.tsx to use actual properties:
+- `state.stages` → derive from `state.crawlThreads` or show pipeline stage info
+- `state.status` → `state.stage`
+- `state.createdAt` → `state.startedAt`
+- Status badge: `state.stage === 'published'` for complete
+- Stats: use `state.organizedSources`, `state.deduplicatedCount`, `state.moduleCount`, `state.lessonCount`
 
 **Verification:**
 ```bash
-npx tsc --noEmit 2>&1 | grep 'PipelineDetail'; echo "EXIT: $?"
+npx tsc --noEmit 2>&1 | grep 'PipelineDetail'
 ```
-Must show zero PipelineDetail errors.
+Must return zero lines.
 
-**Acceptance Criteria:** `npx tsc --noEmit` produces ZERO errors total (combined with Task 1). Run `npx tsc --noEmit 2>&1; echo "EXIT: $?"` and it MUST show `EXIT: 0` with no error lines. **PASTE THE REAL OUTPUT.**
+**Acceptance Criteria:** Zero PipelineDetail TSC errors.
 
 ---
 
-### 3. 🔴 CRITICAL: Add Real Tests (Target: 150+ tests, 20+ files)
+### 3. 🔴 EMERGENCY: Fix CourseView MOCK_SOURCES (3 TSC errors)
 
-**Problem:** 111 tests in 15 files. Need 40+ new tests in 5+ new files.
+**Problem:** `src/screens/CourseView.tsx` lines 10-12 — `MOCK_SOURCES` objects are missing the required `publication` field. The `Source` interface (from `CitationTooltip.tsx`) requires: `id`, `author`, `title`, `publication`, `year`, `url`.
 
-**Fix:** Create these NEW test files:
-- `src/__tests__/pipeline.test.tsx` — PipelineView renders, PipelineDetail renders, stage colors, progress bar (6 tests)
-- `src/__tests__/auth.test.tsx` — LoginScreen renders email/password fields, submit button, RegisterScreen renders, forgot password link (6 tests)
-- `src/__tests__/agentMarketplace.test.tsx` — renders agent cards, filter tabs, search input, activation toggle (6 tests)
-- `src/__tests__/courseMarketplace.test.tsx` — renders course cards, filter options, trending section (5 tests)
-- `src/__tests__/docs.test.tsx` — sidebar renders, search input, content sections (5 tests)
-- `src/__tests__/pricingPage.test.tsx` — free/pro tiers render, CTA buttons, feature comparison (5 tests)
-- `src/__tests__/download.test.tsx` — platform cards, download buttons (5 tests)
-- `src/__tests__/courseDetail.test.tsx` — renders syllabus, enroll button, reviews section (5 tests)
-
-Also add 3-5 tests each to existing `conversation.test.tsx` and `dashboard.test.tsx`.
+**Fix:** Add `publication` field to each object in `MOCK_SOURCES`:
+```typescript
+{ id: 1, author: 'Smith et al.', title: 'Foundations of Modern Learning', publication: 'Journal of Educational Technology', url: 'https://example.com/foundations', year: 2024 },
+{ id: 2, author: 'OpenAI Research', title: 'Scaling Laws for Neural Language Models', publication: 'arXiv Preprint', url: 'https://arxiv.org/abs/2001.08361', year: 2023 },
+{ id: 3, author: 'García & Chen', title: 'Adaptive Learning Pathways', publication: 'IEEE Learning Sciences', url: 'https://example.com/adaptive', year: 2024 },
+```
 
 **Verification:**
 ```bash
+npx tsc --noEmit 2>&1 | grep 'CourseView'
+```
+Must return zero lines.
+
+**Acceptance Criteria:** Zero CourseView TSC errors. Combined with Tasks 1 & 2, `npx tsc --noEmit` must exit with ZERO error lines total.
+
+---
+
+### 4. 🔴 CRITICAL: TSC Zero Verification Gate
+
+**Problem:** Every iteration claims TSC clean but never is. This is a VERIFICATION GATE, not a coding task.
+
+**Fix:** After completing Tasks 1-3, run:
+```bash
+npx tsc --noEmit 2>&1; echo "EXIT: $?"
+```
+
+**Acceptance Criteria:** Output shows ZERO error lines and EXIT: 0. **PASTE THE COMPLETE RAW OUTPUT.** If there are ANY errors, fix them before proceeding. Do NOT move to Task 5 until this passes.
+
+---
+
+### 5. 🔴 CRITICAL: Create New Test Files (Target: 150+ tests, 20+ files)
+
+**Problem:** 111 tests in 15 files. Need 40+ new tests in 5+ new files. Builder has failed to create them for 4 iterations.
+
+**Fix:** Create EXACTLY these files with the specified tests:
+
+**File 1: `src/__tests__/pipeline.test.tsx`** (6 tests)
+- PipelineDetail renders without crash
+- Shows topic name
+- Shows progress bar
+- Shows stage badge
+- Shows startedAt date
+- Shows crawl threads section
+
+**File 2: `src/__tests__/auth.test.tsx`** (6 tests)
+- LoginScreen renders email input
+- LoginScreen renders password input
+- LoginScreen renders submit button
+- RegisterScreen renders
+- RegisterScreen has confirm password field
+- RegisterScreen has terms checkbox or link
+
+**File 3: `src/__tests__/agentMarketplace.test.tsx`** (6 tests)
+- Renders page heading
+- Shows agent cards
+- Has search/filter input
+- Has category tabs
+- Agent card shows rating
+- Agent card shows activate button
+
+**File 4: `src/__tests__/courseMarketplace.test.tsx`** (5 tests)
+- Renders page heading
+- Shows course cards
+- Has filter options
+- Shows pricing info
+- Has enroll/view button
+
+**File 5: `src/__tests__/pricingPage.test.tsx`** (5 tests)
+- Renders pricing page
+- Shows Free tier
+- Shows Pro tier
+- Shows pricing amounts
+- Has CTA buttons
+
+**File 6: `src/__tests__/courseDetail.test.tsx`** (5 tests) — IF NOT ALREADY EXISTS, check first
+- Renders course title
+- Shows syllabus
+- Has enroll button
+- Shows reviews section
+- Shows creator info
+
+Also add 3+ tests to existing `conversation.test.tsx` and 3+ tests to `dashboard.test.tsx`.
+
+**Verification:**
+```bash
+ls src/__tests__/*.test.* | wc -l
 npx vitest run 2>&1 | tail -5
 ```
 
-**Acceptance Criteria:** Output shows ≥150 tests, ≥20 files, ALL PASSING. **PASTE THE REAL OUTPUT. If you claim 344 tests again with only 15 files on disk, the planner will catch you.**
+**Acceptance Criteria:** ≥20 test files, ≥150 tests, ALL PASSING. **PASTE THE REAL `vitest run` OUTPUT.** Cross-check file count with `ls | wc -l`.
 
 ---
 
-### 4. 🟡 HIGH: Add Notifications Feed to Dashboard
+### 6. 🟡 HIGH: Create PipelineView Screen
 
-**Problem:** Spec §5.2.2 requires "Notifications feed: agent updates, peer messages, marketplace recommendations." Dashboard has streak, courses, pipeline — but NO notifications feed section.
+**Problem:** No `PipelineView.tsx` exists. Only `PipelineDetail.tsx`. Spec implies a pipeline listing/overview screen showing active and completed pipelines.
 
-**Fix:** Add a "Recent Activity" / "Notifications" section to `src/screens/Dashboard.tsx`:
-- Mock data: 5-8 notification items (agent completed lesson generation, new course recommendation, peer shared a note, streak milestone, marketplace new agent)
-- Each item: icon, title, description, timestamp
-- "View All" link
-- Place after streak stats and before or after Today's Lessons
+**Fix:** Create `src/screens/PipelineView.tsx` (~150 lines):
+- List of active/recent pipelines with progress bars
+- Status badges (crawling, organizing, generating, published)
+- Click to navigate to PipelineDetail
+- "Start New Course" button
+- Add route in App.tsx
 
 **Verification:**
 ```bash
-grep -c 'notification\|Notification' src/screens/Dashboard.tsx
+wc -l src/screens/PipelineView.tsx
+grep 'PipelineView' src/App.tsx
 ```
-Must return ≥5.
 
-**Acceptance Criteria:** Dashboard renders a notifications feed section with ≥5 mock notification items.
+**Acceptance Criteria:** PipelineView.tsx exists ≥120 lines, routed in App.tsx.
 
 ---
 
-### 5. 🟡 HIGH: Add Inline Citation Hover Previews to CourseView
+### 7. 🟡 HIGH: Keyboard Navigation & Focus Management
 
-**Problem:** Spec §5.2.4 requires "Inline source citations with hover-preview." CourseView (259 lines) has no citation support. CitationTooltip component exists and works in LessonReader but isn't used in CourseView.
-
-**Fix:** In `src/screens/CourseView.tsx`:
-- Import CitationTooltip
-- Add mock source citations to lesson descriptions
-- Render hover-preview citations inline
-
-**Verification:**
-```bash
-grep 'CitationTooltip' src/screens/CourseView.tsx
-```
-
-**Acceptance Criteria:** CourseView imports and renders CitationTooltip for inline citations.
-
----
-
-### 6. 🟡 HIGH: API Key Usage Stats in ProfileSettings
-
-**Problem:** Spec §5.2.8 requires "API key vault with provider management and usage stats." ProfileSettings has API key entry (comment at line 217 mentions "usage stats — Task 12") but no actual usage display.
-
-**Fix:** In the API Keys section of ProfileSettings, add per-key:
-- Tokens used / quota bar
-- Last used timestamp
-- Cost estimate ($)
-- Mock data for demonstration
-
-**Verification:**
-```bash
-grep -c 'usage\|tokens.*used\|quota' src/screens/ProfileSettings.tsx
-```
-Must return ≥4.
-
-**Acceptance Criteria:** Each saved API key shows usage statistics (tokens used, quota, cost).
-
----
-
-### 7. 🟡 MEDIUM: Add Service Worker for Basic Offline Support
-
-**Problem:** Spec mentions offline-capable PWA. Zero service worker code exists. No `sw.js`, no workbox, no manifest reference.
+**Problem:** Spec requires "keyboard navigation" (WCAG 2.1 AA). Currently 54 aria attributes exist but no visible focus styles or keyboard trap handling.
 
 **Fix:**
-- Create `public/sw.js` with basic cache-first strategy for app shell
-- Register SW in `src/main.tsx`
-- Add `<link rel="manifest">` in `index.html` if missing
-- Cache: app shell HTML/CSS/JS, fonts
+- Add `focus-visible:ring-2 focus-visible:ring-accent` to Button component
+- Add `tabIndex` and keyboard handlers to Sidebar navigation items
+- Add skip-to-content link in App.tsx
+- Ensure modal/drawer components trap focus
 
 **Verification:**
 ```bash
-ls public/sw.js && grep 'serviceWorker\|sw.js' src/main.tsx
+grep -c 'focus-visible\|tabIndex\|skip.*content\|onKeyDown' src/components/Button.tsx src/components/Sidebar.tsx src/App.tsx
 ```
 
-**Acceptance Criteria:** Service worker file exists, registered in main.tsx, caches app shell.
+**Acceptance Criteria:** Focus ring on buttons, tabIndex on nav items, skip-to-content link.
 
 ---
 
-### 8. 🟡 MEDIUM: WebSocket Indicators on Dashboard
+### 8. 🟡 MEDIUM: Expand About Page
 
-**Problem:** WebSocket is only in Conversation screen. Dashboard shows pipeline progress but has no real-time update mechanism.
+**Problem:** `src/screens/marketing/About.tsx` is only 77 lines. Needs team section, mission statement, and company story per typical marketing site.
 
-**Fix:** In Dashboard, when `activePipelineState` is active, show a subtle "Live" indicator / pulsing dot near the pipeline progress section to indicate real-time updates via the usePipeline hook (which already uses WebSocket).
+**Fix:** Expand to ≥150 lines with:
+- Mission statement section
+- Team/founders grid (mock data, 4-6 team members)
+- Company values
+- Contact CTA
 
 **Verification:**
 ```bash
-grep -c 'live\|Live\|pulse\|animate-pulse' src/screens/Dashboard.tsx
+wc -l src/screens/marketing/About.tsx
 ```
-Must return ≥2.
 
-**Acceptance Criteria:** Dashboard shows a live/real-time indicator when pipeline is active.
+**Acceptance Criteria:** About.tsx ≥150 lines.
 
 ---
 
-### 9. 🟢 LOW: Expand CourseView to Match Spec
+### 9. 🟡 MEDIUM: Expand Blog Page
 
-**Problem:** CourseView is only 259 lines. Spec §5.2.4 requires: structured syllabus, estimated read time per lesson, progress tracker across modules.
+**Problem:** `src/screens/marketing/Blog.tsx` is only 41 lines. Should show a listing of blog posts.
 
-**Fix:** Add:
-- Estimated read time badge per lesson (`~X min read`)
-- Module-level progress bars (X/Y lessons complete)
-- Expand total to ≥350 lines
+**Fix:** Expand to ≥120 lines with:
+- Blog post listing (6-8 mock posts with title, excerpt, date, author, category tag)
+- Search/filter bar
+- Category sidebar or tag chips
 
 **Verification:**
 ```bash
-wc -l src/screens/CourseView.tsx
+wc -l src/screens/marketing/Blog.tsx
 ```
-Must show ≥350.
 
-**Acceptance Criteria:** CourseView has read time estimates and module progress bars.
+**Acceptance Criteria:** Blog.tsx ≥120 lines with post listing.
 
 ---
 
-### 10. 🟢 LOW: Collaboration Screen Polish
+### 10. 🟡 MEDIUM: Agent Activity Indicator in Conversation
 
-**Problem:** Collaboration.tsx is 185 lines. Verify it has peer sharing, study groups, or shared notes per spec.
+**Problem:** Spec §5.2.3 requires "Agent activity indicator: subtle animation showing which agent is currently processing." Only 2 matches found — verify it shows agent NAME (e.g., "Research Agent is working...").
 
-**Fix:** Verify and expand if needed — at minimum: shared notes list, invite peer button, active collaborators display.
+**Fix:** Verify and enhance the agent activity indicator:
+- Show which specific agent is working (name + icon)
+- Pulsing/animated indicator
+- Shows during message generation
 
 **Verification:**
 ```bash
-grep -c 'invite\|share\|collaborat' src/screens/Collaboration.tsx
+grep -n 'agent.*working\|agent.*processing\|AgentActivity\|agentName' src/screens/Conversation.tsx | head -10
 ```
-Must return ≥5.
 
-**Acceptance Criteria:** Collaboration screen has peer invite, shared content, and collaborator display.
+**Acceptance Criteria:** Conversation shows named agent activity indicator during processing.
 
 ---
 
-### 11. 🟢 LOW: Dashboard "Mindmap Overview" Link
+### 11. 🟢 LOW: NotFound Page Enhancement
 
-**Problem:** Spec §5.2.2 requires "Mindmap Overview: interactive knowledge graph showing all learning domains." Dashboard likely has a link but should have an embedded mini-preview.
+**Problem:** `src/screens/NotFound.tsx` is only 20 lines. Minimal.
 
-**Fix:** Add a small static mindmap preview card to Dashboard that links to the full MindmapExplorer. Show 3-5 nodes as a teaser.
+**Fix:** Expand to ≥50 lines with:
+- Styled 404 illustration or icon
+- "Page not found" message
+- Search bar or suggested links
+- "Go to Dashboard" and "Go Home" buttons
 
 **Verification:**
 ```bash
-grep -c 'mindmap\|Mindmap\|MindmapExplorer' src/screens/Dashboard.tsx
+wc -l src/screens/NotFound.tsx
 ```
-Must return ≥3.
 
-**Acceptance Criteria:** Dashboard has a mindmap preview/teaser section.
+**Acceptance Criteria:** NotFound.tsx ≥50 lines with navigation options.
 
 ---
 
-### 12. 🟢 LOW: Marketing Home Page Polish
+### 12. 🟢 LOW: Features Marketing Page Enhancement
 
-**Problem:** Verify marketing Home.tsx has: hero section, value props, social proof, CTA. Should be ≥200 lines.
+**Problem:** `src/screens/marketing/Features.tsx` is 103 lines. Could be richer.
 
-**Fix:** If under 200 lines, expand with testimonials section or feature grid.
+**Fix:** Expand to ≥180 lines with:
+- Feature grid (6-8 features with icons)
+- Comparison table vs competitors
+- "How it works" 3-step section
+- CTA at bottom
 
 **Verification:**
 ```bash
-wc -l src/screens/marketing/Home.tsx
+wc -l src/screens/marketing/Features.tsx
 ```
 
-**Acceptance Criteria:** Home.tsx is ≥200 lines with hero, features, social proof, CTA.
+**Acceptance Criteria:** Features.tsx ≥180 lines.
 
 ---
 
-## ⚠️ BUILDER INTEGRITY RULES
+## ⚠️ BUILDER INTEGRITY RULES — READ THIS CAREFULLY
 
-1. **DO NOT LIE ABOUT TSC OR TESTS.** Run the actual commands and paste real output.
-2. After Tasks 1 & 2, run `npx tsc --noEmit 2>&1; echo "EXIT: $?"` and paste the FULL output. It must show EXIT: 0.
-3. After Task 3, run `npx vitest run 2>&1 | tail -10` and paste REAL output. File count must match `ls src/__tests__/*.test.* | wc -l`.
-4. If a task fails, say it failed. Don't claim success.
+**THE BUILDER HAS LIED ABOUT TSC AND TESTS FOR 4-5 CONSECUTIVE ITERATIONS.**
+
+1. **Tasks 1-3 are LITERAL find-and-replace fixes.** Do them FIRST. They take 30 seconds.
+2. **Task 4 is a GATE.** Run `npx tsc --noEmit 2>&1` and paste the REAL output. If ANY errors remain, fix them. Do NOT proceed until TSC is clean.
+3. **Task 5: ACTUALLY CREATE THE FILES.** Run `ls src/__tests__/*.test.* | wc -l` before and after. The number must increase from 15 to ≥20. Run `npx vitest run 2>&1 | tail -10` and paste the REAL output.
+4. **If you claim 344 tests again, the planner will grep the actual test files and count assertions. You will be caught.**
+5. **If a task fails, say it failed.** Honesty > completion claims.
 
 ---
 
@@ -290,10 +351,13 @@ wc -l src/screens/marketing/Home.tsx
 - Full offline PWA with background sync
 - Real backend API integration (currently all mock)
 - E2E tests with Playwright
-- Accessibility audit (WCAG AA)
+- Full WCAG AA accessibility audit
 - Performance profiling (Lighthouse ≥90)
 - i18n / localization support
 - Push notifications (real, not just toggles)
 - Analytics dashboard with real data
 - Mobile responsive audit across all screens
 - Dark mode consistency pass
+- High-contrast mode (spec mentions it)
+- Screen reader testing
+- Export formats: PDF, SCORM, Notion, Obsidian (currently only ZIP/Markdown)
