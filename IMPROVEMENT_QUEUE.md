@@ -1,166 +1,81 @@
-# LearnFlow — Improvement Queue (Iteration 41)
+# LearnFlow Improvement Queue — Iteration 42
 
-Status: **DONE**
+Iteration: 42
+Status: READY FOR BUILDER
 
-This queue is the prioritized, build-ready backlog for Iteration 41 based on:
+This queue is **brutally honest** against `LearnFlow_Product_Spec.md` vs current implementation.
 
-- Product spec: `LearnFlow_Product_Spec.md`
-- Current implementation (apps/client, apps/api, packages/core, packages/agents)
-- Screenshot pass (Iter41): `learnflow/evals/screenshots/iter41-desktop`, `iter41-mobile`, `iter41-web`
+## P0 — Must-fix (spec/UX correctness)
 
----
+1. **Onboarding “Connect Your AI Provider” does not actually connect anything**
+   - Spec: BYOAI keys; key is encrypted, validated, stored; used for generation.
+   - Current: `apps/client/src/screens/onboarding/ApiKeys.tsx` collects `key` but never calls API (`POST /api/v1/keys`).
+   - Fix: add provider selector + validate (`/keys/validate`) + save (`/keys`) + show success state + error states.
 
-## P0 — Must ship (breaks spec or blocks core UX)
+2. **Client does not subscribe to mindmap suggestions from MindmapExplorer**
+   - Current: WS mindmap.subscribe is triggered only by `Conversation.tsx` (on connect).
+   - Spec: mindmap should update based on course/lesson context. MindmapExplorer is a primary view.
+   - Fix: in `MindmapExplorer.tsx`, open WS and send `mindmap.subscribe` when screen mounts / active course changes.
 
-### 1) Fix mobile onboarding path mismatch (spec §5.2.1) ✅
+3. **Course creation pipeline mismatch: Spec calls Orchestrator+agents; API uses template + OpenAI-only**
+   - Current: `apps/api/src/routes/courses.ts` uses `TOPIC_CONTENT` templates and `generateLessonContentWithLLM()` with OpenAI only.
+   - Spec: multi-agent orchestration and BYO provider.
+   - Fix: unify around a single “course build pipeline” that calls core orchestrator/agents; support multiple providers using stored keys.
 
-**Problem:** `screenshot-mobile.mjs` captures `/onboarding/experience`, but the actual route set in `App.tsx` is `/onboarding/subscription` and `/onboarding/first-course`. This indicates at least one of:
+4. **Re-engagement (>3 days inactive) not implemented**
+   - Spec §10: “If the student hasn't been active for >3 days, send a gentle re-engagement message (Pro: proactive notification)”.
+   - Current: no scheduler / background job scanning last activity.
+   - Fix: add daily job (simple interval on API for now) using dbProgress last activity; create notification + optionally WS push for Pro.
 
-- old/broken links in onboarding screens,
-- stale screenshot script,
-- or an unmounted screen path.
+5. **Pro feature flags exist but are not enforced end-to-end**
+   - Current: subscription API returns `features`, but UI and server behaviors are not consistently gated (ex: managed keys “Pro-only” but `/keys` route does not check tier).
+   - Fix: add tier checks in API routes; add UI gating and upgrade CTA.
 
-**Build:**
+## P1 — High impact (learning quality & credibility)
 
-- Update `screenshot-mobile.mjs` pages list to match actual onboarding routes.
-- Confirm onboarding screens’ Back/Next buttons use only the canonical routes:
-  - `/onboarding/welcome → /onboarding/goals → /onboarding/topics → /onboarding/api-keys → /onboarding/subscription → /onboarding/first-course`
-- Add a lightweight route alias if needed (e.g., `/onboarding/experience` → redirect to `/onboarding/subscription`) to avoid broken deep links.
+6. **Analytics endpoint is mostly synthetic**
+   - Current: `apps/api/src/routes/analytics.ts` uses `dbProgress.getUserStats()` but weeklyProgress is derived by splitting total minutes into fixed ratios.
+   - Spec expectation: credible analytics.
+   - Fix: store daily aggregates and return real last-7-days minutes; add topTopics + quizAverage.
 
-**Acceptance:** No onboarding links lead to 404; mobile screenshots cover the true 6-step flow.
+7. **Sources: course lesson content has Sources section but client needs first-class UI + attribution**
+   - Current: server parses sources best-effort (`parseLessonSources`); client has `SourceDrawer`.
+   - Gap: ensure every generated lesson includes a structured sources block; enforce at generation time.
+   - Fix: generation prompt/formatter: always emit `Sources:` list with URL/title; validate and re-ask if missing.
 
-### 2) Marketplace “full” backend not wired (spec §7, §11.1) ✅
+8. **Provider abstraction: OpenAI hard-coded in API**
+   - Current: `getOpenAI()` only; ignores Anthropic/Google keys.
+   - Fix: implement provider adapters and select active key per user; update `/keys` UI to manage multiple keys.
 
-**Problem:** A richer marketplace implementation exists (`apps/api/src/routes/marketplace-full.ts` with publish, checkout, agent submit, creator dashboard), but it is not mounted in `createApp()` — only the minimal `routes/marketplace.ts` is active. This makes client marketplace/creator screens mostly demo-only and blocks spec flows (publishing, analytics, payments mock).
+9. **UpdateAgent exists but unused; no proactive “new developments” workflow**
+   - Spec §10/agents: update_agent (Pro) should run on schedule.
+   - Fix: wire UpdateAgent into API; create `dbSubscriptions` topic list; schedule daily check; push notifications.
 
-**Build:**
+## P2 — UX polish & completeness
 
-- Mount the full router behind a feature flag, or merge endpoints into the active router:
-  - `POST /api/v1/marketplace/courses` (publish + quality check)
-  - `POST /api/v1/marketplace/checkout`
-  - `POST /api/v1/marketplace/agents/submit`
-  - `GET /api/v1/marketplace/creator/dashboard`
-- Ensure route naming and payloads align with spec and with current client expectations.
+10. **Mindmap suggested nodes acceptance should attach under correct parent**
 
-**Acceptance:** Creator Dashboard pulls real data from API; course publish/search/enroll flows work end-to-end without mocks.
+- Current: API emits suggestions with `parentLessonId` set to current lesson id; MindmapExplorer attaches by lesson mapping when present.
+- Fix: ensure server sends correct parentLessonId when suggestions were derived from a lesson; include reason text separately (not in `title` field).
 
-### 3) Orchestrator routes “export_agent” but no such agent exists (spec §10)
+11. **“Create course” free limit is enforced only in UI**
 
-**Problem:** `packages/core/src/orchestrator/intent-router.ts` can route export requests to `export_agent`, and the system prompt lists `export_agent`, but `packages/agents` does not implement/register an ExportAgent. This will route to a missing agent and return “capability unavailable.”
+- Current: dashboard limits to 3 courses client-side.
+- Fix: enforce server-side in POST /courses using user tier + count in db.
 
-**Build:**
+12. **Settings should expose API key management for Pro**
 
-- Implement a minimal `ExportAgent` in `packages/agents`:
-  - Capabilities: `export`
-  - Output: markdown/zip export (MVP) using existing client-side exporters as reference.
-- Register it in API orchestrator registry (`apps/api/src/wsOrchestrator.ts`).
-- Alternatively: remove the intent route until the agent exists.
+- Current: Settings screen exists; ensure it shows stored keys from `/keys` with add/remove/activate; show usageCount.
 
-**Acceptance:** Asking “export/download PDF/SCORM/markdown” results in a coherent flow (at least MD export works; Pro-only formats can return “coming soon / Pro” gracefully).
+13. **Web marketing site parity (web app vs client) needs a single source of truth**
 
-### 4) Lesson Reader does not meet “markdown + LaTeX + code highlighting” requirement (spec §5.2.4, §5.2.3)
+- Current: `apps/web` static pages; `apps/client` app routes.
+- Fix: ensure CTAs/links are consistent (download/app) and that pricing reflects subscription API.
 
-**Problem:** Conversation screen uses `remark-math` + `rehype-katex`, but `LessonReader` parses content into custom “structured sections” and does not appear to render full markdown/LaTeX/code blocks equivalently. Spec requires rich lesson rendering parity.
+14. **Error handling: WS ‘error’ event exists but UX is weak**
 
-**Build:**
+- Fix: show inline banners when WS disconnected; degrade gracefully (no mindmap suggestions).
 
-- Standardize lesson rendering on a single markdown pipeline used by both Conversation and Lesson Reader:
-  - markdown → syntax highlighting → KaTeX
-- Ensure inline citations remain functional.
+15. **Testing/Evals: add Iter42 spec compliance checks for keys + subscription gates**
 
-**Acceptance:** Lesson content supports headings, lists, code blocks, and LaTeX equations consistently across Conversation and Lesson Reader.
-
----
-
-## P1 — High value (major spec gaps)
-
-### 5) Make Creator Dashboard real (spec §7.1) ✅
-
-**Problem:** `CreatorDashboard.tsx` uses `MOCK_COURSES`, `MOCK_ANALYTICS`, and `MOCK_EARNINGS` only.
-
-**Build:**
-
-- Replace mocks with API calls:
-  - `GET /api/v1/marketplace/creator/dashboard`
-- Wire “Publish New Course” flow to `POST /api/v1/marketplace/courses`.
-
-**Acceptance:** Creator metrics and lists are data-driven and reflect actual creator activity.
-
-### 6) Course Marketplace: add course detail + enroll actions (spec §5.2.7)
-
-**Problem:** Marketplace exists, but spec calls for course detail page with reviews/creator profile and “one-tap enroll”. There is a `CourseDetail` screen, but backend currently only supports a small static array.
-
-**Build:**
-
-- Add `GET /api/v1/marketplace/courses/:id` (or include detail in list) with:
-  - syllabus preview, creator metadata, rating, price
-- Implement enroll endpoint (`POST /api/v1/marketplace/courses/:id/enroll` or reuse `/checkout` for paid) and persist enrollments.
-
-**Acceptance:** User can open a marketplace course and enroll; course appears in their dashboard/enrolled list.
-
-### 7) “Student Context Object” is inconsistent across REST vs WS (spec §9)
-
-**Problem:** WS path builds a rich `StudentContextObject` with many fields (including `preferredAgents`), but REST `/api/v1/profile/context` returns a smaller shape. This risks drift and UI bugs.
-
-**Build:**
-
-- Define a single SCO schema/type in `packages/shared` and reuse it for both REST + WS.
-- Update `/api/v1/profile/context` to return the same shape (even if values are empty/default).
-
-**Acceptance:** SCO returned by REST matches the shape used by orchestrator; fewer client-side conditionals.
-
-### 8) Marketplace agent activation is hardcoded mapping (spec §7.2)
-
-**Problem:** `intent-router.ts` only maps marketplace ids `ma-1/ma-2` to existing built-in agents and only for two taskTypes. This is not “capability declaration” matching.
-
-**Build:**
-
-- Extend marketplace agent model to include `capabilities[]` and map capabilities → agentName dynamically.
-- Add “first use in session” notification requirement from spec.
-
-**Acceptance:** Activating an agent with a declared capability results in routing for matching intents without hardcoding ids.
-
----
-
-## P2 — Quality / completeness
-
-### 9) Update Agent (Pro proactive updates) is not wired into orchestration triggers (spec §10, §8)
-
-**Build:**
-
-- Add a minimal server-side scheduler/cron hook (dev-only OK) to run `update_agent` for Pro users with subscribed topics.
-- Surface results in dashboard notifications.
-
-### 10) WS event contract: ensure strict spec compatibility (spec §11.2)
-
-**Build:**
-
-- Keep any extra events, but ensure a spec-only client works:
-  - `message` → `response.start|chunk|end`
-  - `agent.spawned|complete`
-  - `mindmap.update`
-  - `progress.update`
-- Add tests validating payload keys and event names.
-
-### 11) Remove/replace marketing docs claims that exceed implementation
-
-**Problem:** Marketing `Docs.tsx` claims spaced repetition, “Today’s Lessons queue,” etc. Implementation is partial.
-
-**Build:**
-
-- Either implement the claimed features or tone down copy to match reality.
-
-### 12) E2E: Playwright smoke tests for every route (spec §15)
-
-**Build:**
-
-- Add E2E tests that hit: onboarding, dashboard, conversation, mindmap, course view, lesson reader, marketplace, settings, pipelines.
-
----
-
-## Brutally honest gaps summary
-
-- Marketplace is still largely a demo because `marketplace-full.ts` isn’t mounted and the creator UI is mock-only.
-- Orchestrator spec mentions `export_agent`, but the agent doesn’t exist → export intents will fail.
-- Lesson Reader is not using the same markdown+LaTeX rendering pipeline as Conversation, which violates spec-level richness.
-- REST vs WS Student Context Objects are drifting; this will cause long-term schema bugs.
+- Add Playwright tests: onboarding key save, `/keys` list, Pro gating, and mindmap subscribe from MindmapExplorer.
