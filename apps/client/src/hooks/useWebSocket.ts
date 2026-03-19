@@ -4,7 +4,7 @@ import type { WsServerEvent } from '@learnflow/shared';
 
 type WsHandler = (event: WsServerEvent) => void;
 
-export function useWebSocket(onEvent: WsHandler) {
+export function useWebSocket(onEvent: WsHandler, deps: ReadonlyArray<unknown> = []) {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const handlersRef = useRef(onEvent);
@@ -49,7 +49,7 @@ export function useWebSocket(onEvent: WsHandler) {
       clearTimeout(reconnectTimer);
       ws?.close();
     };
-  }, []);
+  }, deps);
 
   const send = useCallback((event: string, data: unknown) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {

@@ -1,7 +1,7 @@
 # IMPROVEMENT_QUEUE
 
 Iteration: 39
-Status: READY FOR BUILDER
+Status: IN PROGRESS
 Date: 2026-03-19
 Theme: Mindmap expansions v1 (lesson+course), pipeline UX, onboarding sanity, annotation stability
 
@@ -49,6 +49,8 @@ Theme: Mindmap expansions v1 (lesson+course), pipeline UX, onboarding sanity, an
 - Derive 2–5 adjacent topics (short labels) and return as `mindmap.update` suggestions.
   **Acceptance:** Suggestions are timely and vary by topic; links are attributable via Search latest.
 
+**Status:** DONE ✅
+
 ### 6) Lesson-level mindmap (separate from course mindmap)
 
 **Fix:** Add lesson mindmap view embedded in LessonReader (or routed) that focuses on lesson nodes.
@@ -57,10 +59,14 @@ Theme: Mindmap expansions v1 (lesson+course), pipeline UX, onboarding sanity, an
 - Include suggested nodes (dashed) sourced from Task 5.
   **Acceptance:** Each lesson has its own mindmap; can focus/expand similarly to course.
 
+**Status:** DONE ✅ (v1)
+
 ### 7) Course mindmap: accept suggested nodes should add them under correct parent
 
 **Fix:** Ensure suggested nodes connect to the currently focused lesson/module node when accepted.
 **Acceptance:** Accepted nodes appear in the right place in the course graph (not only as custom root-linked nodes).
+
+**Status:** DONE ✅ (suggestion parentLessonId → attached under lesson node; parentLessonId plumbed through Add to course)
 
 ### 8) Sources attribution hardening
 
@@ -69,10 +75,14 @@ Theme: Mindmap expansions v1 (lesson+course), pipeline UX, onboarding sanity, an
 - When generating new content, require structured `sources[]`.
   **Acceptance:** No fake links; citations/sources are consistent across lessons.
 
+**Status:** DONE ✅ (removed placeholder/fake fallback sources in lesson template)
+
 ### 9) Ports stability enforcement
 
 **Fix:** Add a dev helper or doc note: if ports conflict, kill conflicts and restart systemd services.
 **Acceptance:** `learnflow-api/client/web` are reliably on 3000/3001/3003.
+
+**Status:** DONE ✅ (`DEV_PORTS.md` + verified listeners)
 
 ### 10) QA + evidence (Iter39)
 
@@ -80,3 +90,9 @@ Theme: Mindmap expansions v1 (lesson+course), pipeline UX, onboarding sanity, an
 
 - Screenshots: desktop + mobile authed + web, saved under `evals/screenshots/iter39-*`.
 - Update `BUILD_LOG_ITER39.md`, sync to OneDrive, mark queue DONE, commit.
+
+**Status:** DONE ✅
+
+- QA: `npx tsc --noEmit` ✅, `npx vitest run` ✅, `npx eslint .` ✅
+- Journey test: `npx tsx evals/journey-test.ts` ✅ (17/17)
+- Evidence: `evals/screenshots/iter39-lesson-reader.png`, `evals/screenshots/iter39-mindmap.png`, `evals/screenshots/iter39-journey-test-results.json`

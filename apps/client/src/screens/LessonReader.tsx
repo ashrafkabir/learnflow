@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext.js';
 import { CitationTooltip, Source } from '../components/CitationTooltip.js';
+import { LessonMindmap } from '../components/LessonMindmap.js';
 import { parseSources } from '../lib/sources.js';
 import { SkeletonLessonContent } from '../components/Skeleton.js';
 import { Confetti } from '../components/Confetti.js';
@@ -159,6 +160,9 @@ export function LessonReader() {
   const [comparingLoading, setComparingLoading] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
 
+  // Iter39 Task 6: Lesson-level mindmap (lightweight v1 using vis-network)
+  const [lessonMindmapOpen, setLessonMindmapOpen] = useState(false);
+
   // Feature 3: Text-Anchored Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [floatingToolbar, setFloatingToolbar] = useState<{
@@ -174,6 +178,8 @@ export function LessonReader() {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const lesson = state.activeLesson;
+  const lessonSuggestions =
+    (state.mindmapSuggestions?.[String(courseId || 'global')] as any[]) || [];
   const isComplete = lessonId ? state.completedLessons.has(lessonId) : false;
 
   // Prefer structured sources from the API; fall back to parsing markdown.
@@ -1315,6 +1321,16 @@ export function LessonReader() {
               Quiz Me
             </span>
           </Button>
+          <Button
+            variant={lessonMindmapOpen ? 'primary' : 'secondary'}
+            onClick={() => setLessonMindmapOpen((v) => !v)}
+            aria-label="Lesson mindmap"
+          >
+            <span className="inline-flex items-center gap-2">
+              <IconMap className="w-4 h-4" />
+              Lesson Map
+            </span>
+          </Button>
         </div>
 
         {/* Enhanced Notes panel */}
@@ -1486,6 +1502,19 @@ export function LessonReader() {
 
         {activePanel === 'quiz' && <QuizPanel />}
       </main>
+
+      {/* Lesson mindmap (Iter39 Task 6) */}
+      <LessonMindmap
+        open={lessonMindmapOpen}
+        onClose={() => setLessonMindmapOpen(false)}
+        lessonTitle={lesson?.title || 'Lesson'}
+        lessonContent={lesson?.content || ''}
+        suggestions={lessonSuggestions.map((s: any) => ({
+          id: String(s.id || ''),
+          label: String(s.label || ''),
+          reason: s.reason ? String(s.reason) : undefined,
+        }))}
+      />
 
       {/* Bottom action bar */}
       <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">

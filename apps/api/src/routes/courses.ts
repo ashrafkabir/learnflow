@@ -818,7 +818,9 @@ Then a ## Next Steps section.`,
     }
   }
 
-  // Fallback: structured template (better than before but still template-based)
+  // Fallback: structured template.
+  // IMPORTANT: never emit fake/example links. If we have no crawled sources, provide a minimal
+  // "no sources" section instead of placeholder citations.
   const sources =
     sourceRefs.length > 0
       ? sourceRefs.map((s) => ({
@@ -827,35 +829,9 @@ Then a ## Next Steps section.`,
           publication: s.source || s.domain,
           year: s.publishDate ? new Date(s.publishDate).getFullYear() : 2024,
         }))
-      : [
-          {
-            url: 'https://arxiv.org/abs/2305.10601',
-            author: 'Wang et al.',
-            publication: 'arXiv',
-            year: 2023,
-          },
-          {
-            url: 'https://www.nature.com/articles/s41586-023-06096-3',
-            author: 'Smith & Johnson',
-            publication: 'Nature',
-            year: 2023,
-          },
-          {
-            url: 'https://dl.acm.org/doi/10.1145/3580305',
-            author: 'Chen et al.',
-            publication: 'ACM Computing Surveys',
-            year: 2024,
-          },
-          {
-            url: 'https://ieeexplore.ieee.org/document/10234567',
-            author: 'Patel & Kumar',
-            publication: 'IEEE Transactions',
-            year: 2024,
-          },
-        ];
+      : [];
 
   const sel = sources.sort(() => Math.random() - 0.5).slice(0, 4);
-  while (sel.length < 4) sel.push(sel[0]);
 
   return `# ${lessonTitle}
 
@@ -875,17 +851,15 @@ By the end of this lesson, you will be able to:
 
 ### Understanding ${lessonTitle}
 
-${lessonDesc}. This is a critical area within the broader field of ${topic} that has seen significant advances in recent years [1].
-
-According to research by ${sel[0].author} (${sel[0].year}), published in ${sel[0].publication}, the foundations of this topic rest on several key principles that practitioners must understand [2].
+${lessonDesc}. This is a critical area within the broader field of ${topic}.
 
 ### Key Principles and Concepts
 
-**Theoretical Foundations**: The theoretical basis draws from decades of research. ${sel[1].author} demonstrated in their ${sel[1].year} paper that these principles have broad applicability [3].
+**Theoretical Foundations**: The theoretical basis draws from decades of research and practice.
 
 **Practical Implementation**: Moving from theory to practice requires understanding tools, frameworks, and best practices that the community has developed.
 
-**Evaluation and Metrics**: Measuring success requires both quantitative metrics and qualitative assessment. ${sel[2].author} proposed a comprehensive evaluation framework in ${sel[2].publication} [4].
+**Evaluation and Metrics**: Measuring success requires both quantitative metrics and qualitative assessment.
 
 ### Real-World Applications
 
@@ -903,13 +877,16 @@ According to research by ${sel[0].author} (${sel[0].year}), published in ${sel[0
 
 ## Sources
 
-[1] ${sel[0].author}. "${lessonTitle} — A Comprehensive Study." ${sel[0].publication}, ${sel[0].year}. ${sel[0].url}
-
-[2] ${sel[1].author}. "Advances in ${moduleTitle}." ${sel[1].publication}, ${sel[1].year}. ${sel[1].url}
-
-[3] ${sel[2].author}. "Evaluation Frameworks for ${topic}." ${sel[2].publication}, ${sel[2].year}. ${sel[2].url}
-
-[4] ${sel[3].author}. "Practical Applications and Future Directions." ${sel[3].publication}, ${sel[3].year}. ${sel[3].url}
+${
+  sel.length > 0
+    ? sel
+        .map(
+          (s, i) =>
+            `[${i + 1}] ${s.author}. "${lessonTitle}." ${s.publication}, ${s.year}. ${s.url}`,
+        )
+        .join('\n\n')
+    : '_No external sources were available for this lesson generation run._'
+}
 
 ## Next Steps
 
@@ -1102,6 +1079,9 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
   }
 
   const topic = String(req.body?.topic || '').trim();
+  const parentLessonId = req.body?.parentLessonId ? String(req.body.parentLessonId) : undefined;
+  // parentLessonId is optional for future lesson-level insertion; v1 ignores it server-side.
+  void parentLessonId;
   if (!topic) {
     res.status(400).json({ error: 'validation_error', message: 'topic is required', code: 400 });
     return;

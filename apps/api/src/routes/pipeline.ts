@@ -1030,7 +1030,9 @@ function generateSourceAwareFallback(
 
 /** POST /api/v1/pipeline/add-topic — Add a suggested topic to an existing course with pipeline UX */
 router.post('/add-topic', (req: Request, res: Response) => {
-  const { courseId, topic } = req.body || {};
+  const { courseId, topic, parentLessonId } = req.body || {};
+  // parentLessonId is optional for future lesson-level insertion; v1 ignores it server-side.
+  void parentLessonId;
   if (!courseId || typeof courseId !== 'string') {
     res.status(400).json({ error: 'courseId is required' });
     return;

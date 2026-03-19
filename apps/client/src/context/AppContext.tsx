@@ -413,6 +413,7 @@ interface AppContextType {
   addTopicToCourse: (
     courseId: string,
     topic: string,
+    opts?: { parentLessonId?: string },
   ) => Promise<{ course: Course; pipelineId?: string }>;
   webSearch: (
     query: string,
@@ -565,12 +566,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addTopicToCourse = useCallback(
-    async (courseId: string, topic: string): Promise<{ course: Course; pipelineId?: string }> => {
+    async (
+      courseId: string,
+      topic: string,
+      opts: { parentLessonId?: string } = {},
+    ): Promise<{ course: Course; pipelineId?: string }> => {
       dispatch({ type: 'SET_LOADING', key: 'addTopic', value: true });
       try {
         // Prefer pipeline UX when available.
         try {
-          const started = await apiPost(`/pipeline/add-topic`, { courseId, topic });
+          const started = await apiPost(`/pipeline/add-topic`, {
+            courseId,
+            topic,
+            parentLessonId: opts.parentLessonId,
+          });
           if (started?.pipelineId) {
             // Return minimal stub; caller can navigate to pipeline detail.
             return {
@@ -582,7 +591,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           // Fall back to direct add-topic.
         }
 
-        const data = await apiPost(`/courses/${courseId}/add-topic`, { topic });
+        const data = await apiPost(`/courses/${courseId}/add-topic`, {
+          topic,
+          parentLessonId: opts.parentLessonId,
+        });
         const nextCourse = (data?.course || data) as Course;
         if (nextCourse?.id) {
           dispatch({ type: 'ADD_COURSE', course: nextCourse });

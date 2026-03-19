@@ -76,34 +76,53 @@ async function handleMessage(ws: WebSocket, user: AuthUser, msg: WsEvent): Promi
   if (msg.event === 'mindmap.subscribe') {
     // Dual-purpose event:
     // - Spec §11.2 expects { nodes_added[], edges_added[] }
-    // - Client Iter38 expects { courseId?, suggestions[] } for dashed/dimmed expansion nodes.
-    // Emit heuristic suggestions based on current course + lesson context.
+    // - Client Iter38+ expects { courseId?, suggestions[] } for dashed/dimmed expansion nodes.
+    // Iter39: suggestions should be timely and derived from web search signals.
 
     const courseId = (msg as any)?.data?.courseId || null;
     const lessonId = (msg as any)?.data?.lessonId || null;
 
-    // Simple keyword extraction to seed suggestions.
-    const seed = String((msg as any)?.data?.seedTopic || '').trim();
-    const base =
-      seed || (lessonId ? `Lesson ${lessonId}` : courseId ? `Course ${courseId}` : 'Learning');
+    // Seed topic: if client provides seedTopic use it; else prefer course title; else lesson id fallback.
+    const seedTopic = String((msg as any)?.data?.seedTopic || '').trim();
+    let topic = seedTopic;
 
-    const candidateLabels = [
-      'Key terminology',
-      'Practice exercises',
-      'Common pitfalls',
-      'Real-world examples',
-      'Spaced repetition',
-      'Interleaving practice',
-    ];
+    try {
+      if (!topic && courseId) {
+        const { dbCourses } = await import('./db.js');
+        const course = dbCourses.getById(String(courseId));
+        if (course?.title) topic = String(course.title);
+        else if (course?.topic) topic = String(course.topic);
+      }
+    } catch {
+      // ignore
+    }
 
-    const suggestions = candidateLabels.slice(0, 4).map((label, idx) => ({
-      id: `sug-${Date.now()}-${idx}`,
-      label: label === 'Real-world examples' ? `${base}: real-world examples` : label,
-      parentLessonId: lessonId || undefined,
-      reason: lessonId
-        ? `Suggested next expansion for your current lesson context.`
-        : `Suggested next expansion for your current course context.`,
-    }));
+    if (!topic) topic = lessonId ? `Lesson ${lessonId}` : 'Learning';
+
+    let suggestions: Array<{
+      id: string;
+      label: string;
+      parentLessonId?: string;
+      reason?: string;
+    }> = [];
+
+    try {
+      const mod = await import('@learnflow/agents');
+      const result = await mod.generateSuggestedMindmapNodes(topic, { max: 5 });
+      suggestions = (result.suggestions || []).map((s: any) => ({
+        id: s.id,
+        label: s.label,
+        parentLessonId: lessonId || undefined,
+        reason: s.reason,
+      }));
+    } catch {
+      // very small fallback
+      suggestions = [
+        { id: `sug-${Date.now()}-0`, label: `${topic}: 2025–2026 trends` },
+        { id: `sug-${Date.now()}-1`, label: `${topic}: common pitfalls` },
+        { id: `sug-${Date.now()}-2`, label: `${topic}: real-world case studies` },
+      ].map((s) => ({ ...s, parentLessonId: lessonId || undefined }));
+    }
 
     sendEvent(ws, 'mindmap.update', {
       courseId,

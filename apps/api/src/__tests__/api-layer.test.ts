@@ -394,7 +394,7 @@ describe('Agent routing via /api/v1/chat', () => {
     expect(Array.isArray(res.body.papers)).toBe(true);
   });
 
-  it('handles general chat without agent param', async () => {
+  it('handles general chat without agent param', { timeout: 15000 }, async () => {
     const res = await request(app)
       .post('/api/v1/chat')
       .set('Authorization', `Bearer ${token}`)

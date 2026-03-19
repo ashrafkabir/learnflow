@@ -53,6 +53,8 @@ function MindmapPanel({
   completedLessons: Set<string>;
   onNodeClick: (courseId: string, lessonId?: string) => void;
 }) {
+  // NOTE: Course-level mindmap (not lesson-level). Lesson-level mindmap ships in Iter39 Task 6.
+
   const containerRef = React.useRef<HTMLDivElement>(null);
   const networkRef = React.useRef<{ destroy: () => void } | null>(null);
   const [loaded, setLoaded] = React.useState(!!Network);
@@ -379,124 +381,129 @@ export function Conversation() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // WebSocket streaming
-  const { connected: wsConnected, send: wsSend } = useWebSocket((evt) => {
-    switch (evt.event) {
-      case 'agent.spawned':
-        setActiveAgent(evt.data?.agent_name?.toLowerCase()?.split(' ')[0] || 'orchestrator');
-        break;
-      case 'response.chunk':
-        setStreamingContent((prev) => prev + (evt.data?.content_delta || evt.data?.content || ''));
-        break;
-      case 'response.end': {
-        if (streamingContent) {
-          dispatch({
-            type: 'ADD_CHAT_MESSAGE',
-            message: {
-              id: evt.data?.message_id || `msg-${Date.now()}-ws`,
-              role: 'assistant',
-              content: streamingContent,
-              timestamp: new Date().toISOString(),
-            },
-          });
-        }
-        if (evt.data?.sources?.length) {
-          setDrawerSources(
-            evt.data.sources.map((s: any, i: number) => ({
-              id: i + 1,
-              title: s.title || `Source ${i + 1}`,
-              author: s.author || 'Source',
-              publication: s.publication || '',
-              year: s.year || 2024,
-              url: s.url || '#',
-            })),
+  const { connected: wsConnected, send: wsSend } = useWebSocket(
+    (evt) => {
+      switch (evt.event) {
+        case 'agent.spawned':
+          setActiveAgent(evt.data?.agent_name?.toLowerCase()?.split(' ')[0] || 'orchestrator');
+          break;
+        case 'response.chunk':
+          setStreamingContent(
+            (prev) => prev + (evt.data?.content_delta || evt.data?.content || ''),
           );
-        }
-        setWsActions(Array.isArray(evt.data?.actions) ? evt.data.actions : []);
-        setStreamingContent('');
-        setActiveAgent(null);
-        dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
-        break;
-      }
-      case 'agent.complete':
-        setActiveAgent(null);
-        dispatch({
-          type: 'ADD_NOTIFICATION',
-          notification: {
-            id: `notif-${Date.now()}`,
-            type: 'agent',
-            message: `${evt.data?.agent_name || 'Agent'} completed: ${evt.data?.result_summary || 'Task finished'}`,
-            timestamp: new Date().toISOString(),
-            read: false,
-          },
-        });
-        break;
-      case 'connected':
-        // Ask server for mindmap suggestions on connect.
-        wsSend('mindmap.subscribe', {
-          courseId: state.activeCourse?.id || null,
-          lessonId: state.activeLesson?.id || null,
-        });
-        // Also refresh if context changes shortly after connect.
-        setTimeout(() => {
-          try {
-            wsSend('mindmap.subscribe', {
-              courseId: state.activeCourse?.id || null,
-              lessonId: state.activeLesson?.id || null,
+          break;
+        case 'response.end': {
+          if (streamingContent) {
+            dispatch({
+              type: 'ADD_CHAT_MESSAGE',
+              message: {
+                id: evt.data?.message_id || `msg-${Date.now()}-ws`,
+                role: 'assistant',
+                content: streamingContent,
+                timestamp: new Date().toISOString(),
+              },
             });
-          } catch {
-            /* ignore */
           }
-        }, 400);
-        break;
-      case 'progress.update': {
-        // Spec §11.2: { course_id, lesson_id, completion% }
-        // Our implementation uses completion_percent (valid identifier) instead of completion%.
-        const courseId = evt.data?.course_id;
-        const lessonId = evt.data?.lesson_id;
-        const pct = Number(evt.data?.completion_percent ?? evt.data?.completion ?? 0);
-
-        if (lessonId) dispatch({ type: 'COMPLETE_LESSON', lessonId });
-
-        dispatch({
-          type: 'ADD_NOTIFICATION',
-          notification: {
-            id: `notif-${Date.now()}`,
-            type: 'progress',
-            message:
-              lessonId && courseId
-                ? `Progress updated: ${Math.round(pct)}% — lesson completed`
-                : `Progress updated: ${Math.round(pct)}%`,
-            timestamp: new Date().toISOString(),
-            read: false,
-          },
-        });
-        break;
-      }
-      case 'mindmap.update': {
-        // Expected payload:
-        // {
-        //   courseId?: string,
-        //   suggestions?: Array<{ id, label, parentLessonId?, reason? }>
-        // }
-        const cid = String(evt.data?.courseId || state.activeCourse?.id || 'global');
-        const suggestions = Array.isArray(evt.data?.suggestions) ? evt.data.suggestions : [];
-        if (suggestions.length > 0) {
-          dispatch({ type: 'SET_MINDMAP_SUGGESTIONS', courseId: cid, suggestions });
+          if (evt.data?.sources?.length) {
+            setDrawerSources(
+              evt.data.sources.map((s: any, i: number) => ({
+                id: i + 1,
+                title: s.title || `Source ${i + 1}`,
+                author: s.author || 'Source',
+                publication: s.publication || '',
+                year: s.year || 2024,
+                url: s.url || '#',
+              })),
+            );
+          }
+          setWsActions(Array.isArray(evt.data?.actions) ? evt.data.actions : []);
+          setStreamingContent('');
+          setActiveAgent(null);
+          dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
+          break;
+        }
+        case 'agent.complete':
+          setActiveAgent(null);
           dispatch({
             type: 'ADD_NOTIFICATION',
             notification: {
               id: `notif-${Date.now()}`,
-              type: 'system',
-              message: `Mindmap suggestions updated (${suggestions.length} new topic${suggestions.length === 1 ? '' : 's'})`,
+              type: 'agent',
+              message: `${evt.data?.agent_name || 'Agent'} completed: ${evt.data?.result_summary || 'Task finished'}`,
               timestamp: new Date().toISOString(),
               read: false,
             },
           });
+          break;
+        case 'connected':
+          // Ask server for mindmap suggestions on connect.
+          wsSend('mindmap.subscribe', {
+            courseId: state.activeCourse?.id || null,
+            lessonId: state.activeLesson?.id || null,
+          });
+          // Also refresh if context changes shortly after connect.
+          setTimeout(() => {
+            try {
+              wsSend('mindmap.subscribe', {
+                courseId: state.activeCourse?.id || null,
+                lessonId: state.activeLesson?.id || null,
+              });
+            } catch {
+              /* ignore */
+            }
+          }, 400);
+          break;
+        case 'progress.update': {
+          // Spec §11.2: { course_id, lesson_id, completion% }
+          // Our implementation uses completion_percent (valid identifier) instead of completion%.
+          const courseId = evt.data?.course_id;
+          const lessonId = evt.data?.lesson_id;
+          const pct = Number(evt.data?.completion_percent ?? evt.data?.completion ?? 0);
+
+          if (lessonId) dispatch({ type: 'COMPLETE_LESSON', lessonId });
+
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            notification: {
+              id: `notif-${Date.now()}`,
+              type: 'progress',
+              message:
+                lessonId && courseId
+                  ? `Progress updated: ${Math.round(pct)}% — lesson completed`
+                  : `Progress updated: ${Math.round(pct)}%`,
+              timestamp: new Date().toISOString(),
+              read: false,
+            },
+          });
+          break;
         }
-        break;
+        case 'mindmap.update': {
+          // Expected payload:
+          // {
+          //   courseId?: string,
+          //   suggestions?: Array<{ id, label, parentLessonId?, reason? }>
+          // }
+          const cid = String(evt.data?.courseId || state.activeCourse?.id || 'global');
+          const suggestions = Array.isArray(evt.data?.suggestions) ? evt.data.suggestions : [];
+          if (suggestions.length > 0) {
+            dispatch({ type: 'SET_MINDMAP_SUGGESTIONS', courseId: cid, suggestions });
+            dispatch({
+              type: 'ADD_NOTIFICATION',
+              notification: {
+                id: `notif-${Date.now()}`,
+                type: 'system',
+                message: `Mindmap suggestions updated (${suggestions.length} new topic${suggestions.length === 1 ? '' : 's'})`,
+                timestamp: new Date().toISOString(),
+                read: false,
+              },
+            });
+          }
+          break;
+        }
       }
-    }
-  });
+    },
+    [state.activeCourse?.id, state.activeLesson?.id],
+  );
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });

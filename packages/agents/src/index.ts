@@ -74,3 +74,9 @@ export type {
   FirecrawlConfig,
   FirecrawlSearchResult,
 } from './content-pipeline/firecrawl-provider.js';
+
+// Suggested nodes (Iter39)
+export {
+  generateSuggestedMindmapNodes,
+  type SuggestedMindmapNode,
+} from './content-pipeline/suggested-nodes.js';

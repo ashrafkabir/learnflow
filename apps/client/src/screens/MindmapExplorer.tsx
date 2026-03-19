@@ -117,6 +117,7 @@ export function MindmapExplorer() {
     const nodes: Array<Record<string, unknown>> = [];
     const edges: Array<Record<string, unknown>> = [];
     let nodeId = 1;
+    const lessonIdToNodeId = new Map<string, number>();
 
     // Root node
     const rootId = nodeId++;
@@ -185,6 +186,7 @@ export function MindmapExplorer() {
           const lessonBg = isComplete ? '#16A34A' : isInProgress ? '#F59E0B' : '#E5E7EB';
           const lessonBorder = isComplete ? '#15803D' : isInProgress ? '#D97706' : '#9CA3AF';
           const statusLabel = isComplete ? ' (complete)' : isInProgress ? ' (in progress)' : '';
+          lessonIdToNodeId.set(lesson.id, lessonNodeId);
           nodes.push({
             id: lessonNodeId,
             label: lesson.title.length > 35 ? lesson.title.slice(0, 35) + '…' : lesson.title,
@@ -208,8 +210,9 @@ export function MindmapExplorer() {
     const suggestions = Object.values(state.mindmapSuggestions || {}).flat();
     for (const s of suggestions) {
       const sugId = nodeId++;
-      // Attach suggested nodes to the root for now (minimal contract).
-      // Future: attach to parentLessonId or a selected node.
+      // Attach suggested nodes to the root by default.
+      // Iter39 Task 7: if the suggestion includes parentLessonId, attach under that lesson.
+      const parentLessonId = (s as any).parentLessonId as string | undefined;
       nodes.push({
         id: sugId,
         label: s.label.length > 35 ? s.label.slice(0, 35) + '…' : s.label,
@@ -228,8 +231,13 @@ export function MindmapExplorer() {
         _suggestedTopicId: s.id,
         _suggestedLabel: s.label,
       });
+      const attachFrom =
+        parentLessonId && lessonIdToNodeId.get(parentLessonId)
+          ? (lessonIdToNodeId.get(parentLessonId) as number)
+          : rootId;
+
       edges.push({
-        from: rootId,
+        from: attachFrom,
         to: sugId,
         color: { color: 'rgba(99,102,241,0.55)' },
         dashes: true,
@@ -565,7 +573,9 @@ export function MindmapExplorer() {
                         if (!courseId) return;
                         setAddLoading(true);
                         try {
-                          const result = await addTopicToCourse(courseId, suggestedAction.label);
+                          const result = await addTopicToCourse(courseId, suggestedAction.label, {
+                            parentLessonId: suggestedAction.parentLessonId,
+                          });
 
                           // If pipeline started, navigate to pipeline detail for live UX.
                           if (result.pipelineId) {
