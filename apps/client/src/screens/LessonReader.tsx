@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext.js';
 import { CitationTooltip, Source } from '../components/CitationTooltip.js';
+import { parseSources } from '../lib/sources.js';
 import { SkeletonLessonContent } from '../components/Skeleton.js';
 import { Confetti } from '../components/Confetti.js';
 import { Button } from '../components/Button.js';
@@ -34,82 +35,6 @@ interface Comparison {
   dimensions: string[];
   cells: string[][];
   summary: string;
-}
-
-// Parse source references from lesson content
-function parseSources(content?: string): Source[] {
-  if (!content) return [];
-  const sources: Source[] = [];
-  const seen = new Set<number>();
-
-  const fmt1 = /\[(\d+)\]\s*(.*?)\.\s*"(.*?)"\s*(.*?),?\s*(\d{4})\.\s*(https?:\/\/\S+)/gm;
-  let m;
-  while ((m = fmt1.exec(content)) !== null) {
-    const id = parseInt(m[1]);
-    if (!seen.has(id)) {
-      seen.add(id);
-      sources.push({
-        id,
-        author: m[2],
-        title: m[3],
-        publication: m[4].replace(/,\s*$/, ''),
-        year: parseInt(m[5]),
-        url: m[6],
-      });
-    }
-  }
-
-  const refSection =
-    content.match(/## (?:References|Sources|Further Reading)[\s\S]*$/im)?.[0] || '';
-  const fmt2 = /^(\d+)\.\s*(.*?)\.\s*"(.*?)"(?:.*?,\s*(\d{4}))?\.\s*(https?:\/\/\S+)/gm;
-  while ((m = fmt2.exec(refSection)) !== null) {
-    const id = parseInt(m[1]);
-    if (!seen.has(id)) {
-      seen.add(id);
-      sources.push({
-        id,
-        author: m[2],
-        title: m[3],
-        publication: '',
-        year: parseInt(m[4] || '2024'),
-        url: m[5],
-      });
-    }
-  }
-
-  const fmt3 = /\[(\d+)\]\((https?:\/\/[^\s)]+)\)/gm;
-  while ((m = fmt3.exec(content)) !== null) {
-    const id = parseInt(m[1]);
-    if (!seen.has(id)) {
-      seen.add(id);
-      sources.push({
-        id,
-        author: 'Source',
-        title: `Reference ${id}`,
-        publication: '',
-        year: 2024,
-        url: m[2],
-      });
-    }
-  }
-
-  const urlRegex = /(?:^[-•*]\s*|^\d+\.\s*)(?:\[.*?\]\s*)?.*?(https?:\/\/\S+)/gm;
-  while ((m = urlRegex.exec(refSection)) !== null) {
-    const nextId = sources.length + 1;
-    const url = m[1].replace(/[).,;]+$/, '');
-    if (!sources.find((s) => s.url === url)) {
-      sources.push({
-        id: nextId,
-        author: 'Source',
-        title: url.split('/').slice(2, 4).join('/'),
-        publication: '',
-        year: 2024,
-        url,
-      });
-    }
-  }
-
-  return sources;
 }
 
 // Parse lesson content into structured sections

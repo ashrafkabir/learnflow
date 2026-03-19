@@ -4,34 +4,7 @@ import { useApp } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
 import { SkeletonCourseView } from '../components/Skeleton.js';
 import { CitationTooltip, type Source } from '../components/CitationTooltip.js';
-
-/* Mock sources for inline citation hover previews — Spec §5.2.4 */
-const MOCK_SOURCES: Source[] = [
-  {
-    id: 1,
-    author: 'Smith et al.',
-    title: 'Foundations of Modern Learning',
-    publication: 'Journal of Educational Technology',
-    url: 'https://example.com/foundations',
-    year: 2024,
-  },
-  {
-    id: 2,
-    author: 'OpenAI Research',
-    title: 'Scaling Laws for Neural Language Models',
-    publication: 'arXiv Preprint',
-    url: 'https://arxiv.org/abs/2001.08361',
-    year: 2023,
-  },
-  {
-    id: 3,
-    author: 'García & Chen',
-    title: 'Adaptive Learning Pathways',
-    publication: 'IEEE Learning Sciences',
-    url: 'https://example.com/adaptive',
-    year: 2024,
-  },
-];
+import { mergeUniqueSources, parseSources } from '../lib/sources.js';
 
 /* Estimate read time from lesson description length and estimatedTime */
 function estimateReadTime(lesson: { estimatedTime?: number; description?: string }): number {
@@ -125,6 +98,10 @@ export function CourseView() {
     0,
   );
   const pct = totalLessons > 0 ? Math.round((completed / totalLessons) * 100) : 0;
+
+  const sources: Source[] = mergeUniqueSources(
+    modules.flatMap((m) => (m.lessons ?? []).flatMap((l) => parseSources(l.content))),
+  );
 
   return (
     <section
@@ -285,12 +262,9 @@ export function CourseView() {
                           <p className="text-xs text-gray-500 dark:text-gray-300 truncate">
                             {lesson.description}
                             {/* Inline citation hover previews — Spec §5.2.4 */}
-                            {li < MOCK_SOURCES.length && (
+                            {li < sources.length && (
                               <span className="inline-flex ml-1 align-middle">
-                                <CitationTooltip
-                                  num={MOCK_SOURCES[li].id}
-                                  source={MOCK_SOURCES[li]}
-                                />
+                                <CitationTooltip num={sources[li].id} source={sources[li]} />
                               </span>
                             )}
                           </p>
@@ -398,18 +372,32 @@ export function CourseView() {
             for previews.
           </p>
           <div className="space-y-2">
-            {MOCK_SOURCES.map((src) => (
-              <div key={src.id} className="flex items-start gap-2 text-sm">
-                <span className="text-accent font-semibold">[{src.id}]</span>
-                <div>
-                  <span className="text-gray-900 dark:text-white font-medium">{src.title}</span>
-                  <span className="text-gray-500 dark:text-gray-400">
-                    {' '}
-                    — {src.author} ({src.year})
-                  </span>
+            {sources.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No sources found for this course yet.
+              </p>
+            ) : (
+              sources.map((src) => (
+                <div key={src.id} className="flex items-start gap-2 text-sm">
+                  <span className="text-accent font-semibold">[{src.id}]</span>
+                  <div className="min-w-0">
+                    <a
+                      className="text-gray-900 dark:text-white font-medium hover:underline"
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {src.title}
+                    </a>
+                    <span className="text-gray-500 dark:text-gray-400">
+                      {' '}
+                      — {src.author}
+                      {src.publication ? ` · ${src.publication}` : ''} ({src.year})
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
