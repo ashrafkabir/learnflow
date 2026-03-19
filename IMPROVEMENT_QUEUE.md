@@ -1,95 +1,107 @@
-# LearnFlow Improvement Queue
+# LearnFlow Improvement Queue — Iteration 45
 
-**Iteration:** 44
-**Status:** READY FOR BUILDER
-**Owner:** Planner (Ash)
+**Iteration:** 45  
+**Status:** READY FOR BUILDER  
 **Date:** 2026-03-19
 
-This queue is a **brutally honest** gap list between **LearnFlow_Product_Spec.md** and the current implementation in `/learnflow` (API + Client + Web). It prioritizes tasks that unlock real end-to-end user value and spec compliance.
+This queue is a **spec-vs-implementation gap list** (plus reliability fixes) prioritized by user impact + risk.
 
-## P0 — Spec-critical / blocks real user value
+---
 
-1. **Make course generation truly “web-sourced + attributed” end-to-end (Spec §6, §6.3; Overrides #3/#4)**
-   - **Reality today:** Marketing + UI claim “sourced from the real web,” but in practice citations are inconsistent and WS `sources` are **heuristic** (“Reference 1…”, hard-coded year) and not carried structurally.
-   - **Where:** `apps/api/src/wsOrchestrator.ts` (`makeSourcesFromLesson()`), agents pipeline, course persistence.
-   - **Do:** Introduce a canonical `LessonSources[]` structure produced by the pipeline, persisted in DB, returned via REST + WS, and rendered in UI. Enforce ≥3 sources/lesson with domain diversity + credibility rules.
+## P0 — Breakages / Spec-critical gaps
 
-2. **API key onboarding must actually save/validate keys (Spec §4.4, §5.2.1 step 4)**
-   - **Reality today:** `OnboardingApiKeys` collects a password field and then **does nothing with it** (no provider selection, no API call, no validation feedback).
-   - **Where:** `apps/client/src/screens/onboarding/ApiKeys.tsx`, API `/api/v1/keys`.
-   - **Do:** Provider selector (OpenAI/Anthropic/Google), server-side validation, encrypt-at-rest, success/error states, “test key” action.
+1. **Fix screenshot automation (iter45) so it produces fresh artifacts**
+   - Problem: `screenshot*.mjs` run did not yield new iter45 folders; had to copy iter38 artifacts to satisfy eval packaging.
+   - Likely causes: script expects specific folder naming; missing dependencies; hardcoded date folder; or Playwright/browser not available.
+   - Deliverable: `node screenshot.mjs --out ...` must create files in:
+     - `evals/screenshots/iter45-desktop/`
+     - `evals/screenshots/iter45-mobile/`
+     - `evals/screenshots/iter45-web/`
 
-3. **Subscription UX must match spec or be clearly marked as stub (Spec §8)**
-   - **Reality today:** Pro is blocked by “Pro Coming Soon” modal + email capture, yet spec requires real entitlements and billing flows.
-   - **Where:** `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`, `apps/api/src/routes/subscription.ts`.
-   - **Do:** Implement at least a working mocked upgrade path + entitlement gating; remove misleading claims.
+2. **Install/add `ripgrep` (rg) to dev env OR remove dependency from docs/scripts**
+   - `rg` is not available on this host (`rg: command not found`).
+   - Impacts developer productivity and any scripted grep tasks.
 
-4. **Lesson format contract enforcement (Spec §6.2 “<10 min”, objectives, takeaways, action chips)**
-   - **Reality today:** No hard validator in pipeline; UI can display lesson content but doesn’t guarantee structure/length/citations.
-   - **Where:** agents lesson generator + course routes, `LessonReader.tsx`.
-   - **Do:** Canonical lesson formatter + validator (word count, required sections, sources). Fail closed (regenerate) when non-compliant.
+3. **Onboarding Step “API Keys” should actually validate + persist keys (spec §11.1 /api/v1/keys)**
+   - Current: `OnboardingApiKeys` only stores the key in local React state; it **never calls** `/api/v1/keys` or `/validate`.
+   - Expected: optional validation, then secure save (encrypted at rest) via API.
+   - Also: allow choosing provider (OpenAI/Anthropic/Google) per spec copy.
 
-5. **Replace keyword intent routing with robust routing + topic extraction (Spec §10, §4.1)**
-   - **Reality today:** `routeIntent()` is regex-based and will misroute nuanced intents; also passes full user sentence as “topic”.
-   - **Where:** `packages/core/src/orchestrator/intent-router.ts`.
-   - **Do:** Lightweight classifier (rules + extraction) that outputs `{intent, topic, constraints}`; optionally use a small LLM when BYOAI key exists.
+4. **Marketing website `/features` route returns 500**
+   - Observed in `learnflow-web.service` logs: `GET /features 500`.
+   - Spec §12 requires a working Features page with screenshots/animations.
 
-6. **Mindmap must be concept/mastery-based (Spec §5.2.5, §9, §11.2)**
-   - **Reality today:** Mindmap is present, but mastery coloring and concept-level progression are not genuinely implemented; WS `mindmap.update` sends “suggestions” that are not tied to mastery state.
-   - **Where:** `apps/client/src/screens/MindmapExplorer.tsx`, `apps/api/src/websocket.ts` mindmap handler.
-   - **Do:** Persist mastery per concept; render with colors; generate nodes from course/lesson concepts; update via real progress events.
+5. **WebSocket `mindmap.update` payload mismatch vs spec §11.2**
+   - Spec: `{ nodes_added[], edges_added[] }`.
+   - Current server sends `{ courseId, suggestions, nodes_added: [], edges_added: [] }` to satisfy newer client.
+   - Fix: formalize **versioned payload** or align spec + client; document `suggestions[]` as an extension.
 
-## P1 — UX completeness / end-to-end learning flow quality
+---
 
-7. **First Course onboarding step must actually run a visible pipeline with real-time progress (Spec §5.2.1 step 6, §11.2)**
-   - **Reality today:** Screen exists; pipeline events are not clearly validated as driving the UX in a slow/real scenario.
-   - **Where:** `apps/client/src/screens/onboarding/FirstCourse.tsx`, WS events.
-   - **Do:** Ensure WS progress events drive stage UI; handle retries, timeouts, and “resume pipeline”.
+## P1 — Major UX/product gaps
 
-8. **Course View action bar + “Notes / Quiz Me / Go Deeper / Save” must be consistently present (Spec §5.2.4)**
-   - **Reality today:** Some UI exists, but spec-required bottom action bar behavior needs enforcement and consistent placement.
-   - **Where:** `CourseView.tsx`, `LessonReader.tsx`.
-   - **Do:** Persistent bottom action bar, actions wired to WS/orchestrator tasks, keyboard shortcuts.
+6. **Implement Pro plan flow end-to-end (or remove Pro CTA until real)**
+   - UI: subscription screen says “Pro Coming Soon” modal; API implements mock subscription + IAP mock.
+   - Decide path:
+     - (A) keep mock but label clearly everywhere + don’t imply payment is live
+     - (B) integrate real payments (Stripe/IAP) and drive from UI.
 
-9. **Dashboard must implement explicit “Active courses carousel” + notification feed sources (Spec §5.2.2)**
-   - **Reality today:** Dashboard is present; spec’s “carousel + updates + recommendations” is thin / mostly placeholder.
-   - **Where:** `apps/client/src/screens/Dashboard.tsx`.
-   - **Do:** Carousel component + data model; notifications from progress, agent updates, marketplace recommendations.
+7. **Lesson delivery: enforce <1500 words / <10 min reading time in generator**
+   - Spec “LESSON DELIVERY RULES” require hard cap.
+   - Verify/implement in course-builder + content pipeline (truncate/split lessons, add word-count guardrails).
 
-10. **Collaboration: real study groups + scheduling logic (Spec §5.2.6, §12/Collab sections if present)**
+8. **Source attributions: guarantee clickable links + robust citation parsing**
+   - UI supports “References” and inline citations; ensure generated lesson markdown always includes source blocks.
+   - Add pipeline validation: fail/prompt regeneration if <3 credible sources or missing URLs.
 
-- **Reality today:** Collaboration screen exists but appears to be a lightweight stub.
-- **Where:** `apps/client/src/screens/Collaboration.tsx`, API routes.
-- **Do:** Matching/room creation, basic chat/agenda, opt-in persistence.
+9. **Behavioral adaptation not implemented (quiz score-driven difficulty + inactivity nudges)**
+   - Spec requires adaptation loop based on quiz performance and inactivity.
+   - Implement minimal MVP:
+     - store quiz results per lesson
+     - compute rolling accuracy
+     - adjust difficulty + suggest prerequisites
+     - Pro-only re-engagement notifications after >3 days.
 
-## P2 — Marketplace & creator workflow realism
+10. **Mindmap: “Go Deeper” / expansion should create real course content & attach under lesson**
 
-11. **Marketplace course detail completeness (Spec §7, §5.2.7)**
+- Client supports suggested nodes and “Add to course”; server returns suggestions but doesn’t guarantee parent linkage beyond `parentLessonId` pass-through.
+- Ensure pipeline starts reliably, updates UI via `progress.update`, and suggested nodes become real lessons/modules.
 
-- **Reality today:** Marketplace screens exist, but ensure: price, creator, ratings/reviews, enroll/import into workspace.
-- **Where:** `apps/client/src/screens/marketplace/*`, `apps/api/src/routes/marketplace*.ts`.
-- **Do:** Fill missing fields + implement enroll flow that creates a local course copy/entitlement.
+---
 
-12. **Creator dashboard: publish flow + versioning (Spec §7.3/Creator tools)**
+## P2 — Reliability / Developer Experience
 
-- **Reality today:** CreatorDashboard exists; unclear if it supports publish/updates.
-- **Do:** Publish/unpublish, versions, changelog, preview, basic analytics.
+11. **Unify marketplace routes and client base URL usage**
 
-## P3 — Reliability, compliance, and dev ergonomics
+- Client uses relative fetch for `/api/v1/marketplace/courses` but uses `apiBase()` for checkout.
+- Standardize to `apiBase()` everywhere to avoid CORS/proxy surprises.
 
-13. **Systemd dev services: add health checks + deterministic boot for 3000/3001/3003**
+12. **Clarify auth/dev-mode behavior**
 
-- **Reality today:** Services exist and run, but no explicit health gating; port conflicts require manual intervention.
-- **Where:** `~/.config/systemd/user/learnflow-*.service`.
-- **Do:** Add `ExecStartPre` port check, health endpoint check, and clearer logs; document restart order.
+- API `createApp({devMode})` uses devAuth; WS uses `token=dev` in non-prod.
+- Document this clearly (DEV_PORTS.md or README) so local usage is deterministic.
 
-14. **Replace misleading marketing metrics/claims with “demo-mode” disclaimers or real telemetry (Spec §2 positioning, trust)**
+13. **Add regression tests for onboarding + subscription + marketing routes**
 
-- **Reality today:** Marketing home page claims 50k courses/12k learners/SOC2 etc. These are not backed.
-- **Where:** `apps/client/src/screens/marketing/Home.tsx`.
-- **Do:** Remove/flag as placeholder; add real metrics pipeline later.
+- Add API tests for `/api/v1/keys` + UI tests for onboarding saving behavior.
+- Add Next smoke test for all marketing pages (homepage/features/pricing/marketplace/docs/blog/about/download).
 
-15. **Spec-to-implementation contract tests (Overrides #2/#4)**
+14. **Improve error handling in client for agent failures / BYOAI exhaustion**
 
-- **Reality today:** Many unit tests exist; spec-level E2E contract tests are limited.
-- **Do:** Add Playwright E2E suite that validates: onboarding, key save, course generation with citations, lesson structure, WS events, marketplace enroll.
+- Spec requires user-friendly fallbacks without exposing raw errors.
+- Add consistent toast + remediation links (settings → API keys).
+
+15. **Analytics endpoints: validate parity with spec dashboard needs**
+
+- Spec expects learning analytics dashboard data; verify UI uses it and fields are present (streaks, mastery, time spent, etc.).
+
+---
+
+## Notes (evidence)
+
+- Ports stable and occupied:
+  - 3000 (API)
+  - 3001 (Vite client)
+  - 3003 (Next marketing site)
+- Services running: `learnflow-api`, `learnflow-client`, `learnflow-web`.
+- `OnboardingApiKeys.tsx` does not call API; `ProfileSettings` does call `/api/v1/keys`.
