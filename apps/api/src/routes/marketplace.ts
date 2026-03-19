@@ -117,6 +117,13 @@ router.get('/agents', (_req: Request, res: Response) => {
   res.status(200).json({ agents: marketplaceAgents });
 });
 
+// GET /api/v1/marketplace/agents/activated - list activated agent IDs for current user
+router.get('/agents/activated', (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const activated = dbMarketplace.getActivatedAgents(userId);
+  res.status(200).json({ activatedAgentIds: activated });
+});
+
 // POST /api/v1/marketplace/agents/:id/activate - Activate agent
 router.post('/agents/:id/activate', (req: Request, res: Response) => {
   const agent = marketplaceAgents.find((a) => a.id === req.params.id);

@@ -20,6 +20,14 @@ export interface Module {
   lessons: Lesson[];
 }
 
+export interface LessonSource {
+  title: string;
+  author?: string;
+  publication?: string;
+  year?: number;
+  url: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -27,6 +35,7 @@ export interface Lesson {
   content: string;
   estimatedTime: number;
   wordCount: number;
+  sources?: LessonSource[];
 }
 
 export interface ChatMessage {
@@ -104,6 +113,13 @@ interface AppState {
   completedLessons: Set<string>;
   subscription: SubscriptionTier;
   notifications: Notification[];
+
+  // Mindmap suggestions (dashed/dimmed nodes) emitted by the server.
+  // Keyed by courseId (or "global" if unknown).
+  mindmapSuggestions: Record<
+    string,
+    Array<{ id: string; label: string; parentLessonId?: string; reason?: string }>
+  >;
 }
 
 type Action =
@@ -127,6 +143,11 @@ type Action =
   | { type: 'SET_SUBSCRIPTION'; tier: SubscriptionTier }
   | { type: 'ADD_NOTIFICATION'; notification: Notification }
   | { type: 'DISMISS_NOTIFICATION'; id: string }
+  | {
+      type: 'SET_MINDMAP_SUGGESTIONS';
+      courseId: string;
+      suggestions: Array<{ id: string; label: string; parentLessonId?: string; reason?: string }>;
+    }
   | {
       type: 'SET_ANALYTICS';
       streak: number;
@@ -169,6 +190,13 @@ const initialState: AppState = {
   completedLessons: new Set(),
   subscription: (localStorage.getItem('learnflow-subscription') as SubscriptionTier) || 'free',
   notifications: JSON.parse(localStorage.getItem('learnflow-notifications') || '[]'),
+  mindmapSuggestions: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('learnflow-mindmap-suggestions') || '{}');
+    } catch {
+      return {};
+    }
+  })(),
 };
 
 function reducer(state: AppState, action: Action): AppState {
@@ -253,6 +281,18 @@ function reducer(state: AppState, action: Action): AppState {
       const notifs2 = state.notifications.filter((n) => n.id !== action.id);
       localStorage.setItem('learnflow-notifications', JSON.stringify(notifs2));
       return { ...state, notifications: notifs2 };
+    }
+    case 'SET_MINDMAP_SUGGESTIONS': {
+      const next = {
+        ...state.mindmapSuggestions,
+        [action.courseId]: action.suggestions,
+      };
+      try {
+        localStorage.setItem('learnflow-mindmap-suggestions', JSON.stringify(next));
+      } catch {
+        /* ignore */
+      }
+      return { ...state, mindmapSuggestions: next };
     }
     case 'SET_ANALYTICS':
       return { ...state, streak: action.streak };
@@ -370,6 +410,14 @@ interface AppContextType {
   generateQuiz: (courseId: string, moduleId: string) => Promise<Quiz>;
   completeLesson: (courseId: string, lessonId: string) => Promise<void>;
   searchResearch: (query: string) => Promise<unknown>;
+  addTopicToCourse: (courseId: string, topic: string) => Promise<Course>;
+  webSearch: (
+    query: string,
+    limit?: number,
+  ) => Promise<{
+    query: string;
+    results: Array<{ url: string; title: string; description?: string; source?: string }>;
+  }>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -513,6 +561,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const addTopicToCourse = useCallback(async (courseId: string, topic: string): Promise<Course> => {
+    dispatch({ type: 'SET_LOADING', key: 'addTopic', value: true });
+    try {
+      const data = await apiPost(`/courses/${courseId}/add-topic`, { topic });
+      const nextCourse = (data?.course || data) as Course;
+      if (nextCourse?.id) {
+        dispatch({ type: 'ADD_COURSE', course: nextCourse });
+        dispatch({ type: 'SET_ACTIVE_COURSE', course: nextCourse });
+      }
+      return nextCourse;
+    } finally {
+      dispatch({ type: 'SET_LOADING', key: 'addTopic', value: false });
+    }
+  }, []);
+
+  const webSearch = useCallback(
+    async (
+      query: string,
+      limit = 5,
+    ): Promise<{
+      query: string;
+      results: Array<{ url: string; title: string; description?: string; source?: string }>;
+    }> => {
+      dispatch({ type: 'SET_LOADING', key: 'webSearch', value: true });
+      try {
+        const q = encodeURIComponent(query);
+        const data = await apiGet(`/search?q=${q}&limit=${limit}`);
+        return data;
+      } finally {
+        dispatch({ type: 'SET_LOADING', key: 'webSearch', value: false });
+      }
+    },
+    [],
+  );
+
   const value: AppContextType = {
     state,
     dispatch,
@@ -524,6 +607,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     generateQuiz,
     completeLesson: completeLessonAction,
     searchResearch,
+    addTopicToCourse,
+    webSearch,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

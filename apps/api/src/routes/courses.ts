@@ -4,6 +4,7 @@ import { z } from 'zod';
 import OpenAI from 'openai';
 import { crawlSourcesForTopic, type FirecrawlSource } from '@learnflow/agents';
 import { dbCourses, dbProgress, dbNotes, dbIllustrations, dbAnnotations } from '../db.js';
+import { parseLessonSources } from '../utils/sources.js';
 
 const router = Router();
 
@@ -1083,7 +1084,76 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
     res.status(404).json({ error: 'not_found', message: 'Lesson not found', code: 404 });
     return;
   }
-  res.status(200).json(lesson);
+
+  // Provide structured sources when possible; client can fall back to parsing markdown.
+  // NOTE: This is best-effort. If lesson content doesn't include a Sources section, sources may be empty.
+  const sources = parseLessonSources(lesson.content);
+
+  res.status(200).json({ ...lesson, sources });
+});
+
+// POST /api/v1/courses/:id/add-topic - Add a new topic as a module+lesson to an existing course
+router.post('/:id/add-topic', async (req: Request, res: Response) => {
+  const courseId = String(req.params.id);
+  const course = courses.get(courseId);
+  if (!course) {
+    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    return;
+  }
+
+  const topic = String(req.body?.topic || '').trim();
+  if (!topic) {
+    res.status(400).json({ error: 'validation_error', message: 'topic is required', code: 400 });
+    return;
+  }
+
+  try {
+    let sources: FirecrawlSource[] = [];
+    try {
+      sources = await crawlSourcesForTopic(topic);
+    } catch {
+      sources = [];
+    }
+
+    const moduleIndex = course.modules.length;
+    const moduleId = `${courseId}-m${moduleIndex}`;
+    const moduleTitle = topic;
+    const lessonTitle = `${topic}: Overview`;
+
+    const content = await generateLessonContentWithLLM(
+      topic,
+      moduleTitle,
+      lessonTitle,
+      `A focused, practical introduction to ${topic} for learners already following this course.`,
+      sources,
+    );
+    const wordCount = content.split(/\s+/).filter((w) => w.length > 0).length;
+
+    const lessonId = `${courseId}-m${moduleIndex}-l0`;
+    const newLesson: any = {
+      id: lessonId,
+      title: lessonTitle,
+      description: `Add-on topic: ${topic}`,
+      content,
+      estimatedTime: Math.min(12, Math.max(6, Math.ceil(wordCount / 200))),
+      wordCount,
+    };
+
+    const newModule: any = {
+      id: moduleId,
+      title: moduleTitle,
+      objective: `Learn ${topic} as an extension topic`,
+      description: `Supplemental module added from suggested mindmap topic: ${topic}`,
+      lessons: [newLesson],
+    };
+
+    course.modules.push(newModule);
+    dbCourses.save(course);
+
+    res.status(201).json({ course, module: newModule, lesson: newLesson });
+  } catch (err: any) {
+    res.status(500).json({ error: 'add_topic_failed', message: err?.message || 'Failed' });
+  }
 });
 
 // POST /api/v1/courses/:id/lessons/:lessonId/complete - Mark lesson complete

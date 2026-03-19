@@ -145,6 +145,22 @@ export function AgentMarketplace() {
     return () => clearTimeout(t);
   }, [loading]);
 
+  // Load activated agents for this user from the API (so activation affects runtime).
+  useEffect(() => {
+    const token = localStorage.getItem('learnflow-token');
+    if (!token) return;
+    fetch('/api/v1/marketplace/agents/activated', {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.activatedAgentIds && Array.isArray(data.activatedAgentIds)) {
+          setActivatedIds(new Set(data.activatedAgentIds));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleToggleActivate = async (agent: Agent) => {
     const isActive = activatedIds.has(agent.id);
     if (isActive) {

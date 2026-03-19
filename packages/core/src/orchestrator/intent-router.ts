@@ -56,16 +56,44 @@ const INTENT_PATTERNS: Array<{
   },
 ];
 
-export function routeIntent(input: string): IntentResult | null {
+export function routeIntent(
+  input: string,
+  context?: { preferredAgents?: string[] },
+): IntentResult | null {
+  const preferred = new Set((context?.preferredAgents || []).map((s) => String(s)));
+
   for (const { patterns, agent, taskType } of INTENT_PATTERNS) {
     for (const pattern of patterns) {
-      if (pattern.test(input)) {
-        return {
-          agentName: agent,
-          confidence: 0.9,
-          params: { type: taskType, input },
-        };
+      if (!pattern.test(input)) continue;
+
+      // If the user has activated a marketplace agent that claims this taskType as a capability,
+      // prefer it over the built-in default.
+      if (preferred.size > 0) {
+        for (const id of preferred) {
+          // marketplace ids like "ma-2" (from API seed) can be mapped to agent names.
+          // This mapping is intentionally simple for MVP semantics.
+          if (taskType === 'deep_research' && id === 'ma-2') {
+            return {
+              agentName: 'research_agent',
+              confidence: 0.95,
+              params: { type: taskType, input, activatedMarketplaceAgentId: id },
+            };
+          }
+          if (taskType === 'build_course' && id === 'ma-1') {
+            return {
+              agentName: 'course_builder',
+              confidence: 0.95,
+              params: { type: taskType, input, activatedMarketplaceAgentId: id },
+            };
+          }
+        }
       }
+
+      return {
+        agentName: agent,
+        confidence: 0.9,
+        params: { type: taskType, input },
+      };
     }
   }
   return null;

@@ -32,9 +32,14 @@ export function parseSources(content?: string): Source[] {
   const refSection =
     content.match(/## (?:References|Sources|Further Reading)[\s\S]*$/im)?.[0] || '';
 
+  // If the content contains an "## Examples" section after references, cut it off.
+  // Regression guard: references must never be coerced into examples.
+  const exampleIdx = refSection.search(/\n##\s+Examples\b/i);
+  const refOnly = exampleIdx >= 0 ? refSection.slice(0, exampleIdx) : refSection;
+
   // 1. Author. "Title" ... , 2024. https://...
   const fmt2 = /^(\d+)\.\s*(.*?)\.\s*"(.*?)"(?:.*?,\s*(\d{4}))?\.\s*(https?:\/\/\S+)/gm;
-  while ((m = fmt2.exec(refSection)) !== null) {
+  while ((m = fmt2.exec(refOnly)) !== null) {
     const id = parseInt(m[1]);
     if (!seen.has(id)) {
       seen.add(id);
@@ -68,7 +73,7 @@ export function parseSources(content?: string): Source[] {
 
   // Best-effort URL extraction from the trailing references section.
   const urlRegex = /(?:^[-•*]\s*|^\d+\.\s*)(?:\[.*?\]\s*)?.*?(https?:\/\/\S+)/gm;
-  while ((m = urlRegex.exec(refSection)) !== null) {
+  while ((m = urlRegex.exec(refOnly)) !== null) {
     const nextId = sources.length + 1;
     const url = m[1].replace(/[).,;]+$/, '');
     if (!sources.find((s) => s.url === url)) {

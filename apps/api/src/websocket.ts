@@ -74,14 +74,42 @@ async function handleMessage(ws: WebSocket, user: AuthUser, msg: WsEvent): Promi
   }
 
   if (msg.event === 'mindmap.subscribe') {
-    // §11.2: mindmap.update — { nodes_added[], edges_added[] }
-    // Provide a minimal but meaningful update for the Mindmap Explorer.
+    // Dual-purpose event:
+    // - Spec §11.2 expects { nodes_added[], edges_added[] }
+    // - Client Iter38 expects { courseId?, suggestions[] } for dashed/dimmed expansion nodes.
+    // Emit heuristic suggestions based on current course + lesson context.
+
+    const courseId = (msg as any)?.data?.courseId || null;
+    const lessonId = (msg as any)?.data?.lessonId || null;
+
+    // Simple keyword extraction to seed suggestions.
+    const seed = String((msg as any)?.data?.seedTopic || '').trim();
+    const base =
+      seed || (lessonId ? `Lesson ${lessonId}` : courseId ? `Course ${courseId}` : 'Learning');
+
+    const candidateLabels = [
+      'Key terminology',
+      'Practice exercises',
+      'Common pitfalls',
+      'Real-world examples',
+      'Spaced repetition',
+      'Interleaving practice',
+    ];
+
+    const suggestions = candidateLabels.slice(0, 4).map((label, idx) => ({
+      id: `sug-${Date.now()}-${idx}`,
+      label: label === 'Real-world examples' ? `${base}: real-world examples` : label,
+      parentLessonId: lessonId || undefined,
+      reason: lessonId
+        ? `Suggested next expansion for your current lesson context.`
+        : `Suggested next expansion for your current course context.`,
+    }));
+
     sendEvent(ws, 'mindmap.update', {
-      nodes_added: [
-        { id: 'concept-1', label: 'Learning', kind: 'concept' },
-        { id: 'concept-2', label: 'Practice', kind: 'concept' },
-      ],
-      edges_added: [{ from: 'concept-1', to: 'concept-2', label: 'leads to' }],
+      courseId,
+      suggestions,
+      nodes_added: [],
+      edges_added: [],
     });
   }
 }

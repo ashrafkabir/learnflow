@@ -21,7 +21,7 @@ export class Orchestrator {
    * Process user input: route to agent(s), execute, aggregate response.
    */
   async processMessage(input: string, context: StudentContextObject): Promise<AggregatedResponse> {
-    const intent = routeIntent(input);
+    const intent = routeIntent(input, { preferredAgents: context.preferredAgents });
 
     if (!intent) {
       return {

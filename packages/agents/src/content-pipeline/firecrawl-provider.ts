@@ -839,38 +839,39 @@ export function getSourceCacheSize(): number {
 // ─── Mock Data ───────────────────────────────────────────────────
 
 function getMockSearchResults(topic: string): FirecrawlSearchResult[] {
-  const topicSlug = topic.toLowerCase().replace(/\s+/g, '-');
+  // IMPORTANT: Even in mock mode, URLs must be REAL, resolvable links.
+  // We use reputable *search / landing* URLs that exist for any query.
+  const q = encodeURIComponent(topic);
   return [
     {
-      url: `https://arxiv.org/abs/2024.${topicSlug}-survey`,
-      title: `A Comprehensive Survey of ${topic}`,
-      description: `This paper provides a comprehensive review of recent advances in ${topic}, covering theoretical foundations and practical applications.`,
+      url: `https://arxiv.org/search/?query=${q}&searchtype=all&source=header`,
+      title: `arXiv search results for “${topic}”`,
+      description: `Search results on arXiv for papers related to ${topic}.`,
     },
     {
-      url: `https://docs.python.org/3/library/${topicSlug}.html`,
-      title: `${topic} — Official Documentation`,
-      description: `Official documentation covering the core concepts and API reference for ${topic}.`,
+      url: `https://www.semanticscholar.org/search?q=${q}`,
+      title: `Semantic Scholar search results for “${topic}”`,
+      description: `Academic search results (papers, citations) related to ${topic}.`,
     },
     {
-      url: `https://medium.com/tech-insights/${topicSlug}-guide`,
-      title: `The Complete Guide to ${topic} in 2025`,
-      description: `A practitioner's guide to understanding and implementing ${topic} in modern systems.`,
-      markdown: `# The Complete Guide to ${topic}\n\nThis comprehensive guide covers everything you need to know about ${topic}. From the fundamental principles to advanced implementation patterns, we explore how ${topic} is transforming the technology landscape.\n\n## Core Concepts\n\nAt its heart, ${topic} involves several key principles that practitioners must understand. The field has seen rapid advancement in recent years, with new methodologies and frameworks emerging regularly.\n\n## Implementation\n\nWhen implementing ${topic}, it's crucial to follow established best practices. Leading organizations have found that a systematic approach yields the best results, with measurable improvements in efficiency and accuracy.`,
+      url: `https://en.wikipedia.org/wiki/Special:Search?search=${q}`,
+      title: `Wikipedia search results for “${topic}”`,
+      description: `Background and definitions related to ${topic}.`,
     },
     {
-      url: `https://www.nature.com/articles/${topicSlug}-2025`,
-      title: `Recent Advances in ${topic}: A Review`,
-      description: `Nature article reviewing breakthrough developments in ${topic} across multiple research domains.`,
+      url: `https://developer.mozilla.org/en-US/search?q=${q}`,
+      title: `MDN Web Docs search results for “${topic}”`,
+      description: `Developer documentation results (when applicable) related to ${topic}.`,
     },
     {
-      url: `https://dev.to/techauthor/${topicSlug}-tutorial`,
-      title: `${topic}: A Hands-On Tutorial`,
-      description: `Step-by-step tutorial for getting started with ${topic}, including code examples and best practices.`,
+      url: `https://learn.microsoft.com/en-us/search/?terms=${q}`,
+      title: `Microsoft Learn search results for “${topic}”`,
+      description: `Official Microsoft documentation and learning resources related to ${topic}.`,
     },
     {
-      url: `https://learn.microsoft.com/en-us/${topicSlug}/overview`,
-      title: `${topic} Overview - Microsoft Learn`,
-      description: `Microsoft Learn documentation providing an overview of ${topic} concepts, architecture, and implementation strategies.`,
+      url: `https://www.nature.com/search?q=${q}`,
+      title: `Nature search results for “${topic}”`,
+      description: `Nature site search for articles and news related to ${topic}.`,
     },
   ];
 }
@@ -882,7 +883,19 @@ function getMockScrapedContent(url: string): {
   publishDate: string | null;
 } {
   const domain = extractDomain(url);
-  const baseTopic = url.split('/').pop()?.replace(/-/g, ' ') || 'the topic';
+  let baseTopic = 'the topic';
+  try {
+    const u = new URL(url);
+    baseTopic =
+      u.searchParams.get('query') ||
+      u.searchParams.get('q') ||
+      u.searchParams.get('terms') ||
+      u.searchParams.get('search') ||
+      u.pathname.split('/').filter(Boolean).pop()?.replace(/-/g, ' ') ||
+      'the topic';
+  } catch {
+    baseTopic = url.split('/').pop()?.replace(/-/g, ' ') || 'the topic';
+  }
 
   if (domain.includes('arxiv.org')) {
     return {

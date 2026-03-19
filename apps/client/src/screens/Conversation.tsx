@@ -374,6 +374,7 @@ export function Conversation() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSources, setDrawerSources] = useState<Source[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
+  const [wsActions, setWsActions] = useState<Array<{ type: string; label: string }>>([]);
   const [mindmapOpen, setMindmapOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -410,6 +411,7 @@ export function Conversation() {
             })),
           );
         }
+        setWsActions(Array.isArray(evt.data?.actions) ? evt.data.actions : []);
         setStreamingContent('');
         setActiveAgent(null);
         dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
@@ -427,6 +429,24 @@ export function Conversation() {
             read: false,
           },
         });
+        break;
+      case 'connected':
+        // Ask server for mindmap suggestions on connect.
+        wsSend('mindmap.subscribe', {
+          courseId: state.activeCourse?.id || null,
+          lessonId: state.activeLesson?.id || null,
+        });
+        // Also refresh if context changes shortly after connect.
+        setTimeout(() => {
+          try {
+            wsSend('mindmap.subscribe', {
+              courseId: state.activeCourse?.id || null,
+              lessonId: state.activeLesson?.id || null,
+            });
+          } catch {
+            /* ignore */
+          }
+        }, 400);
         break;
       case 'progress.update': {
         // Spec §11.2: { course_id, lesson_id, completion% }
@@ -452,8 +472,29 @@ export function Conversation() {
         });
         break;
       }
-      case 'mindmap.update':
+      case 'mindmap.update': {
+        // Expected payload:
+        // {
+        //   courseId?: string,
+        //   suggestions?: Array<{ id, label, parentLessonId?, reason? }>
+        // }
+        const cid = String(evt.data?.courseId || state.activeCourse?.id || 'global');
+        const suggestions = Array.isArray(evt.data?.suggestions) ? evt.data.suggestions : [];
+        if (suggestions.length > 0) {
+          dispatch({ type: 'SET_MINDMAP_SUGGESTIONS', courseId: cid, suggestions });
+          dispatch({
+            type: 'ADD_NOTIFICATION',
+            notification: {
+              id: `notif-${Date.now()}`,
+              type: 'system',
+              message: `Mindmap suggestions updated (${suggestions.length} new topic${suggestions.length === 1 ? '' : 's'})`,
+              timestamp: new Date().toISOString(),
+              read: false,
+            },
+          });
+        }
         break;
+      }
     }
   });
 
@@ -485,7 +526,12 @@ export function Conversation() {
       });
       dispatch({ type: 'SET_LOADING', key: 'chat', value: true });
       setStreamingContent('');
-      wsSend('message', { text: msg });
+      setWsActions([]);
+      wsSend('message', {
+        text: msg,
+        courseId: state.activeCourse?.id,
+        lessonId: state.activeLesson?.id,
+      });
     } else {
       await sendChat(msg);
       setActiveAgent(null);
@@ -697,23 +743,35 @@ export function Conversation() {
             {/* Quick-action chips after assistant messages */}
             {msg.role === 'assistant' && idx === state.chat.length - 1 && (
               <div className="flex flex-wrap gap-2 mt-2 ml-1">
-                {getContextChips(msg.content).map((chip) => (
-                  <Button
-                    key={chip.label}
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (chip.message === '__open_sources__') {
-                        setDrawerOpen(true);
-                      } else {
-                        send(chip.message);
-                      }
-                    }}
-                    className="rounded-full border border-gray-200 dark:border-gray-700"
-                  >
-                    {chip.label}
-                  </Button>
-                ))}
+                {wsActions.length > 0
+                  ? wsActions.map((a) => (
+                      <Button
+                        key={a.type || a.label}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => send(a.label)}
+                        className="rounded-full border border-gray-200 dark:border-gray-700"
+                      >
+                        {a.label}
+                      </Button>
+                    ))
+                  : getContextChips(msg.content).map((chip) => (
+                      <Button
+                        key={chip.label}
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (chip.message === '__open_sources__') {
+                            setDrawerOpen(true);
+                          } else {
+                            send(chip.message);
+                          }
+                        }}
+                        className="rounded-full border border-gray-200 dark:border-gray-700"
+                      >
+                        {chip.label}
+                      </Button>
+                    ))}
                 {msg.content.includes('[1]') && (
                   <Button
                     variant="ghost"

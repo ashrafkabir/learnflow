@@ -3,7 +3,9 @@ import { chromium } from 'playwright';
 
 const BASE = process.env.SCREENSHOT_BASE_URL || 'http://localhost:3001';
 const AUTHED = process.env.SCREENSHOT_AUTHED === '1';
-const DIR = AUTHED ? 'evals/screenshots/iter36-mobile-authed' : 'evals/screenshots/iter36-mobile';
+const DIR =
+  process.env.SCREENSHOT_DIR ||
+  (AUTHED ? 'evals/screenshots/iter38-mobile-authed' : 'evals/screenshots/iter38-mobile');
 
 const viewports = [
   { name: 'mobile-320', width: 320, height: 640 },

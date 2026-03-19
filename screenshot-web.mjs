@@ -3,7 +3,7 @@ import { chromium } from 'playwright';
 const BASE = process.env.WEB_BASE_URL || 'http://localhost:3003';
 const DIR =
   process.env.SCREENSHOT_DIR ||
-  `evals/screenshots/iter31-web-${new Date().toISOString().slice(0, 10)}`;
+  `evals/screenshots/iter38-web-${new Date().toISOString().slice(0, 10)}`;
 
 const PAGES = [
   ['/', 'web-home'],

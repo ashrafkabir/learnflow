@@ -1,7 +1,7 @@
 import type { AuthUser } from './middleware.js';
 import type { WebSocket } from 'ws';
 import { courses } from './routes/courses.js';
-import { db } from './db.js';
+import { db, dbMarketplace } from './db.js';
 
 import type { StudentContextObject } from '@learnflow/core';
 import { AgentRegistry, Orchestrator } from '@learnflow/core';
@@ -89,7 +89,7 @@ function buildStudentContext(userId: string): StudentContextObject {
     apiKeyProvider: undefined,
     usageQuotas: {},
     notificationSettings: { email: true, push: true, inApp: true },
-    preferredAgents: [],
+    preferredAgents: dbMarketplace.getActivatedAgents(userId),
     displayPreferences: { theme: 'light', fontSize: 16 },
     collaborationOptIn: false,
     peerConnections: [],
@@ -181,7 +181,9 @@ export async function handleWsMessage(
   send(ws, 'response.start', { message_id: messageId, agent_name: 'orchestrator' });
   send(ws, 'agent.spawned', {
     agent_name: 'Orchestrator',
-    task_summary: `Routing message via orchestrator: "${text.slice(0, 120)}"`,
+    task_summary: context.preferredAgents?.length
+      ? `Routing message with activated marketplace agents (${context.preferredAgents.join(', ')}): "${text.slice(0, 120)}"`
+      : `Routing message via orchestrator: "${text.slice(0, 120)}"`,
   });
 
   let aggregatedText = '';
@@ -199,6 +201,21 @@ export async function handleWsMessage(
     for (let i = 0; i < aggregatedText.length; i += chunkSize) {
       const chunk = aggregatedText.slice(i, i + chunkSize);
       send(ws, 'response.chunk', { message_id: messageId, content_delta: chunk, type: 'text' });
+    }
+
+    // Persist usage (approx): use orchestrator token accounting if available.
+    try {
+      const tokens = Math.max(0, Math.round(result.totalTokensUsed || 0));
+      if (tokens > 0) {
+        db.addTokenUsage({
+          userId: user.sub,
+          agentId: routedAgentName,
+          tokensUsed: tokens,
+          timestamp: new Date(),
+        });
+      }
+    } catch {
+      // ignore usage persistence failures
     }
 
     send(ws, 'agent.complete', {

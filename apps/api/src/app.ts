@@ -9,6 +9,7 @@ import { profileRouter } from './routes/profile.js';
 import { subscriptionRouter } from './routes/subscription.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { pipelineRouter } from './routes/pipeline.js';
+import { searchRouter } from './routes/search.js';
 import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from './middleware.js';
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
@@ -93,6 +94,7 @@ export function createApp(options?: { devMode?: boolean }) {
   app.use('/api/v1/subscription', protectedAuth, rateLimiter, subscriptionRouter);
   app.use('/api/v1/analytics', protectedAuth, rateLimiter, analyticsRouter);
   app.use('/api/v1/pipeline', protectedAuth, rateLimiter, pipelineRouter);
+  app.use('/api/v1/search', protectedAuth, rateLimiter, searchRouter);
 
   // Pro-only endpoint for RBAC testing
   app.get('/api/v1/pro/features', authMiddleware, requireTier('pro'), (_req, res) => {

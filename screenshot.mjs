@@ -1,9 +1,11 @@
 import { chromium } from 'playwright';
 
 const BASE = 'http://localhost:3001';
-const DIR = process.env.SCREENSHOT_AUTHED
-  ? 'evals/screenshots/iter36-desktop-authed'
-  : 'evals/screenshots/iter36-desktop';
+const DIR =
+  process.env.SCREENSHOT_DIR ||
+  (process.env.SCREENSHOT_AUTHED
+    ? 'evals/screenshots/iter38-desktop-authed'
+    : 'evals/screenshots/iter38-desktop');
 
 const pages = [
   ['/', 'home'],

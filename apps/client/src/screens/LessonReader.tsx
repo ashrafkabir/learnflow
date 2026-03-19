@@ -91,10 +91,20 @@ function parseStructuredContent(content?: string) {
     ) {
       flush();
       currentType = 'content';
+    } else if (lower.startsWith('## key points') || lower.startsWith('## key concepts')) {
+      flush();
+      currentType = 'keypoints';
+    } else if (lower.startsWith('## recap') || lower.startsWith('## summary recap')) {
+      flush();
+      currentType = 'recap';
     } else if (lower.startsWith('## key takeaways') || lower.startsWith('## takeaways')) {
       flush();
       currentType = 'takeaways';
-    } else if (lower.startsWith('## sources') || lower.startsWith('## references')) {
+    } else if (
+      lower.startsWith('## sources') ||
+      lower.startsWith('## references') ||
+      lower.startsWith('## further reading')
+    ) {
       flush();
       currentType = 'sources';
     } else if (lower.startsWith('## next steps') || lower.startsWith("## what's next")) {
@@ -165,6 +175,11 @@ export function LessonReader() {
 
   const lesson = state.activeLesson;
   const isComplete = lessonId ? state.completedLessons.has(lessonId) : false;
+
+  // Prefer structured sources from the API; fall back to parsing markdown.
+  const sources = (lesson as any)?.sources?.length
+    ? ((lesson as any).sources as any)
+    : parseSources(lesson?.content);
 
   const [allLessons, setAllLessons] = useState<{ id: string; title: string }[]>([]);
 
@@ -465,7 +480,6 @@ export function LessonReader() {
     );
   }
 
-  const sources = parseSources(lesson.content);
   const sections = parseStructuredContent(lesson.content);
 
   const renderLine = (line: string, key: number) => {
@@ -583,25 +597,62 @@ export function LessonReader() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <article data-component="lesson-content" aria-label="Lesson content" className="space-y-6">
-          {/* Title section */}
+          {/* Hero */}
           {sections
             .filter((s) => s.type === 'title')
             .map((s, i) => (
               <div
                 key={`title-${i}`}
-                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 sm:p-8"
+                data-component="lesson-hero"
+                className="bg-gradient-to-br from-primary-900 to-primary-800 text-white rounded-2xl shadow-card overflow-hidden"
               >
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {s.content.replace(/^#\s*/, '')}
-                </h1>
-                <div className="mt-3 flex items-center gap-3">
-                  <span className="inline-flex items-center gap-1 bg-accent/10 text-accent text-xs font-medium px-3 py-1 rounded-full">
-                    <IconProgressRing className="w-4 h-4" />
-                    {lesson.estimatedTime} min read
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-300">
-                    {lesson.wordCount} words
-                  </span>
+                <div className="p-6 sm:p-8">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                    {s.content.replace(/^#\s*/, '')}
+                  </h1>
+                  <p className="mt-2 text-sm text-primary-200 max-w-prose">
+                    <span className="font-semibold text-primary-100">Why it matters:</span>{' '}
+                    {lesson.description ||
+                      'This lesson builds a practical mental model you can apply immediately.'}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
+                      <IconProgressRing className="w-4 h-4" />
+                      {lesson.estimatedTime} min read
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
+                      <IconBook className="w-4 h-4" />
+                      {lesson.wordCount} words
+                    </span>
+                    <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
+                      <IconBrainSpark className="w-4 h-4" />
+                      {state.profile?.difficulty || 'intermediate'}
+                    </span>
+                    {isComplete && (
+                      <span className="inline-flex items-center gap-1 bg-success/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                        <IconCheck className="w-4 h-4" />
+                        Completed
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Illustration (hero) */}
+                  {sectionIllustrations?.[0]?.imageUrl && (
+                    <div className="mt-5 rounded-xl overflow-hidden border border-white/10 bg-white/5">
+                      <img
+                        src={sectionIllustrations[0].imageUrl}
+                        alt={sectionIllustrations[0].prompt || 'Lesson illustration'}
+                        className="w-full h-56 sm:h-64 object-cover"
+                        loading="lazy"
+                      />
+                      {sectionIllustrations[0].prompt && (
+                        <div className="px-4 py-3 text-xs text-primary-100/90">
+                          {sectionIllustrations[0].prompt}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -1014,6 +1065,57 @@ export function LessonReader() {
               ) : null}
             </div>
           )}
+
+          {/* Key Points */}
+          {sections
+            .filter((s) => s.type === 'keypoints')
+            .map((s, i) => (
+              <div key={`kp-${i}`} className="bg-accent/5 border border-accent/20 rounded-2xl p-5">
+                <h2 className="text-sm font-semibold text-accent mb-3 flex items-center gap-2">
+                  <IconSparkles className="w-4 h-4" />
+                  Key Points
+                </h2>
+                <div className="space-y-2">
+                  {s.content
+                    .split('\n')
+                    .filter((l) => l.trim())
+                    .slice(0, 10)
+                    .map((line, j) => (
+                      <div
+                        key={j}
+                        className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                      >
+                        <span className="text-accent font-bold">•</span>
+                        <span>{line.replace(/^\d+\.\s*/, '').replace(/^[-•]\s*/, '')}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            ))}
+
+          {/* Recap */}
+          {sections
+            .filter((s) => s.type === 'recap')
+            .map((s, i) => (
+              <div
+                key={`recap-${i}`}
+                className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5"
+              >
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <IconClipboard className="w-4 h-4" />
+                  Recap
+                </h2>
+                <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2 whitespace-pre-wrap">
+                  {s.content
+                    .split('\n')
+                    .filter((l) => l.trim())
+                    .slice(0, 12)
+                    .map((line, j) => (
+                      <p key={j}>{renderInlineWithCitations(line, sources as any)}</p>
+                    ))}
+                </div>
+              </div>
+            ))}
 
           {/* Key Takeaways */}
           {sections

@@ -23,7 +23,10 @@ type VisNetworkCtor = new (
 
 export function MindmapExplorer() {
   const nav = useNavigate();
-  const { state, dispatch } = useApp();
+  const { state, dispatch, addTopicToCourse, webSearch, fetchCourse } = useApp();
+  const [focusMode, setFocusMode] = useState(false);
+  const [focusHops, _setFocusHops] = useState(2);
+  const [focusedNodeId, setFocusedNodeId] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [loaded, setLoaded] = useState(false);
   const networkRef = useRef<null | {
@@ -34,6 +37,20 @@ export function MindmapExplorer() {
   }>(null);
   const [showAddNode, setShowAddNode] = useState(false);
   const [newNodeLabel, setNewNodeLabel] = useState('');
+
+  const [suggestedAction, setSuggestedAction] = useState<null | {
+    label: string;
+    topicId?: string;
+    reason?: string;
+  }>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchResults, setSearchResults] = useState<
+    Array<{ url: string; title: string; description?: string; source?: string }>
+  >([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
+  const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
+  const mindmapRef = useRef<HTMLDivElement | null>(null);
   const [customNodes, setCustomNodes] = useState<Array<{ id: string; label: string }>>(() => {
     try {
       return JSON.parse(localStorage.getItem('learnflow-custom-nodes') || '[]');
@@ -96,6 +113,7 @@ export function MindmapExplorer() {
     const DataSetCtor = DataSet as VisDataSetCtor;
     if (state.courses.length === 0) return;
 
+    // Build the full graph first, then optionally focus-filter it.
     const nodes: Array<Record<string, unknown>> = [];
     const edges: Array<Record<string, unknown>> = [];
     let nodeId = 1;
@@ -185,6 +203,39 @@ export function MindmapExplorer() {
       }
     }
 
+    // Suggested expansion nodes (server-driven) — dashed/dimmed.
+    // These are not part of completed curriculum until "accepted".
+    const suggestions = Object.values(state.mindmapSuggestions || {}).flat();
+    for (const s of suggestions) {
+      const sugId = nodeId++;
+      // Attach suggested nodes to the root for now (minimal contract).
+      // Future: attach to parentLessonId or a selected node.
+      nodes.push({
+        id: sugId,
+        label: s.label.length > 35 ? s.label.slice(0, 35) + '…' : s.label,
+        title: `Suggested topic: ${s.label}${s.reason ? `\n${s.reason}` : ''}`,
+        shape: 'dot',
+        color: {
+          background: 'rgba(99,102,241,0.12)',
+          border: 'rgba(99,102,241,0.8)',
+        },
+        borderWidth: 2,
+        opacity: 0.55,
+        size: 9,
+        dashes: true,
+        font: { color: '#4F46E5', size: 12 },
+        _suggested: true,
+        _suggestedTopicId: s.id,
+        _suggestedLabel: s.label,
+      });
+      edges.push({
+        from: rootId,
+        to: sugId,
+        color: { color: 'rgba(99,102,241,0.55)' },
+        dashes: true,
+      });
+    }
+
     // Custom nodes
     for (const cn of customNodes) {
       const cnId = nodeId++;
@@ -200,9 +251,41 @@ export function MindmapExplorer() {
       edges.push({ from: rootId, to: cnId, color: { color: '#DDD6FE' }, dashes: true });
     }
 
+    // Focus mode: filter graph to N-hop neighborhood of a selected node.
+    let finalNodes = nodes;
+    let finalEdges = edges;
+    if (focusMode && focusedNodeId) {
+      const adj = new Map<number, Set<number>>();
+      for (const e of edges) {
+        const a = e.from as number;
+        const b = e.to as number;
+        if (!adj.has(a)) adj.set(a, new Set());
+        if (!adj.has(b)) adj.set(b, new Set());
+        adj.get(a)!.add(b);
+        adj.get(b)!.add(a);
+      }
+      const keep = new Set<number>();
+      let frontier = new Set<number>([focusedNodeId]);
+      keep.add(focusedNodeId);
+      for (let hop = 0; hop < Math.max(1, focusHops); hop++) {
+        const next = new Set<number>();
+        for (const id of frontier) {
+          for (const nb of adj.get(id) || []) {
+            if (!keep.has(nb)) {
+              keep.add(nb);
+              next.add(nb);
+            }
+          }
+        }
+        frontier = next;
+      }
+      finalNodes = nodes.filter((n) => keep.has(n.id as number));
+      finalEdges = edges.filter((e) => keep.has(e.from as number) && keep.has(e.to as number));
+    }
+
     const data: Record<string, unknown> = {
-      nodes: new DataSetCtor(nodes),
-      edges: new DataSetCtor(edges),
+      nodes: new DataSetCtor(finalNodes),
+      edges: new DataSetCtor(finalEdges),
     };
     const options: Record<string, unknown> = {
       layout: { hierarchical: { enabled: false } },
@@ -248,14 +331,52 @@ export function MindmapExplorer() {
     network.on('click', (params: unknown) => {
       const p = params as { nodes?: unknown[] };
       if (Array.isArray(p.nodes) && p.nodes.length === 1) {
-        const clickedId = p.nodes[0];
-        const clickedNode = nodes.find((n) => n.id === clickedId);
+        const clickedId = p.nodes[0] as number;
+        const clickedNode = finalNodes.find((n) => n.id === clickedId);
+        if (!clickedNode) return;
+
+        // In focus mode, selecting any node refocuses.
+        if (focusMode) {
+          setFocusedNodeId(clickedId);
+          return;
+        }
+
         const courseId = clickedNode?._courseId as string | undefined;
         const lessonId = clickedNode?._lessonId as string | undefined;
+        const suggested = Boolean((clickedNode as any)._suggested);
+        if (suggested) {
+          const label = ((clickedNode as any)._suggestedLabel as string) || 'Suggested topic';
+          const topicId = ((clickedNode as any)._suggestedTopicId as string) || undefined;
+          const reason = (clickedNode as any).title as string | undefined;
+
+          // Place the panel near the click (fallback to top-right).
+          try {
+            const mp = mindmapRef.current?.getBoundingClientRect();
+            const ev = params as any;
+            const dom = ev?.event?.srcEvent as MouseEvent | undefined;
+            if (mp && dom) {
+              const x = Math.min(mp.width - 260, Math.max(12, dom.clientX - mp.left + 12));
+              const y = Math.min(mp.height - 160, Math.max(12, dom.clientY - mp.top + 12));
+              setPanelPos({ x, y });
+            } else {
+              setPanelPos({ x: 16, y: 16 });
+            }
+          } catch {
+            setPanelPos({ x: 16, y: 16 });
+          }
+
+          setSuggestedAction({ label, topicId, reason });
+          setSearchOpen(false);
+          setSearchResults([]);
+          return;
+        }
+
         if (lessonId && courseId) {
           nav(`/courses/${courseId}/lessons/${lessonId}`);
         } else if (courseId) {
           nav(`/courses/${courseId}`);
+        } else {
+          setFocusedNodeId(clickedId);
         }
       }
     });
@@ -263,7 +384,18 @@ export function MindmapExplorer() {
     return () => {
       network.destroy();
     };
-  }, [loaded, state.courses, state.completedLessons, customNodes]);
+  }, [
+    loaded,
+    state.courses,
+    state.completedLessons,
+    customNodes,
+    focusMode,
+    focusHops,
+    focusedNodeId,
+    state.mindmapSuggestions,
+    dispatch,
+    nav,
+  ]);
 
   return (
     <section
@@ -282,7 +414,27 @@ export function MindmapExplorer() {
               Knowledge Map
             </h1>
           </div>
-          <div className="hidden sm:flex items-center gap-4 text-xs">
+          <div className="hidden sm:flex items-center gap-3 text-xs">
+            <Button
+              variant={focusMode ? 'primary' : 'secondary'}
+              size="sm"
+              onClick={() => {
+                setFocusMode(!focusMode);
+                // When enabling focus mode without a selected node, keep current view until user clicks a node.
+                if (focusMode) setFocusedNodeId(null);
+              }}
+              title="Focus on a node (N-hop neighborhood)"
+            >
+              {focusMode ? 'Focus: ON' : 'Focus: OFF'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => networkRef.current?.fit({ animation: { duration: 500 } })}
+              title="Fit to screen"
+            >
+              Fit
+            </Button>
             <Button variant="primary" size="sm" onClick={() => setShowAddNode(true)}>
               + Add Node
             </Button>
@@ -312,6 +464,7 @@ export function MindmapExplorer() {
       </header>
       <main className="px-0 sm:px-1 py-0">
         <div
+          ref={mindmapRef}
           data-component="mindmap-preview"
           aria-label="Knowledge mindmap"
           tabIndex={0}
@@ -340,6 +493,176 @@ export function MindmapExplorer() {
           ) : (
             <>
               <div ref={containerRef} className="w-full h-full" />
+
+              {suggestedAction && panelPos && (
+                <div
+                  className="absolute z-20 rounded-xl border border-indigo-200 dark:border-indigo-900 bg-white/95 dark:bg-gray-900/95 shadow-modal p-3 w-[260px]"
+                  style={{ left: panelPos.x, top: panelPos.y }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {suggestedAction.label}
+                      </div>
+                      <div className="text-[11px] text-gray-500 dark:text-gray-300 mt-0.5">
+                        Suggested node
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSuggestedAction(null);
+                        setPanelPos(null);
+                        setSearchOpen(false);
+                        setSearchResults([]);
+                      }}
+                      aria-label="Close"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-col gap-2 mt-3">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={async () => {
+                        if (!suggestedAction?.label) return;
+                        setSearchLoading(true);
+                        setSearchOpen(true);
+                        try {
+                          const data = await webSearch(suggestedAction.label, 5);
+                          setSearchResults(
+                            Array.isArray((data as any)?.results) ? (data as any).results : [],
+                          );
+                        } catch (err: any) {
+                          dispatch({
+                            type: 'ADD_NOTIFICATION',
+                            notification: {
+                              id: `notif-${Date.now()}`,
+                              type: 'system',
+                              message: `Search failed: ${err?.message || 'Unknown error'}`,
+                              timestamp: new Date().toISOString(),
+                              read: false,
+                            },
+                          });
+                          setSearchResults([]);
+                        } finally {
+                          setSearchLoading(false);
+                        }
+                      }}
+                      disabled={searchLoading}
+                    >
+                      {searchLoading ? 'Searching…' : 'Search latest'}
+                    </Button>
+
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={async () => {
+                        const courseId = state.activeCourse?.id || state.courses[0]?.id;
+                        if (!courseId) return;
+                        setAddLoading(true);
+                        try {
+                          const updatedCourse = await addTopicToCourse(
+                            courseId,
+                            suggestedAction.label,
+                          );
+
+                          // Refresh (ensures client state is consistent)
+                          try {
+                            await fetchCourse(updatedCourse.id);
+                          } catch {
+                            // ignore
+                          }
+
+                          // Remove suggestion from local suggestions for that course
+                          const cid = String(updatedCourse.id || courseId || 'global');
+                          const current = state.mindmapSuggestions?.[cid] || [];
+                          const next = current.filter(
+                            (s) =>
+                              s.id !== suggestedAction.topicId && s.label !== suggestedAction.label,
+                          );
+                          dispatch({
+                            type: 'SET_MINDMAP_SUGGESTIONS',
+                            courseId: cid,
+                            suggestions: next,
+                          });
+
+                          dispatch({
+                            type: 'ADD_NOTIFICATION',
+                            notification: {
+                              id: `notif-${Date.now()}`,
+                              type: 'system',
+                              message: `Added to course: ${suggestedAction.label}`,
+                              timestamp: new Date().toISOString(),
+                              read: false,
+                            },
+                          });
+
+                          setSuggestedAction(null);
+                          setPanelPos(null);
+                          setSearchOpen(false);
+                          setSearchResults([]);
+                        } catch (err: any) {
+                          dispatch({
+                            type: 'ADD_NOTIFICATION',
+                            notification: {
+                              id: `notif-${Date.now()}`,
+                              type: 'system',
+                              message: `Add to course failed: ${err?.message || 'Unknown error'}`,
+                              timestamp: new Date().toISOString(),
+                              read: false,
+                            },
+                          });
+                        } finally {
+                          setAddLoading(false);
+                        }
+                      }}
+                      disabled={addLoading}
+                    >
+                      {addLoading ? 'Adding…' : 'Add to course'}
+                    </Button>
+
+                    {searchOpen && (
+                      <div className="mt-1">
+                        <div className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-1">
+                          Results
+                        </div>
+                        {searchResults.length === 0 ? (
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400">
+                            {searchLoading ? 'Searching…' : 'No results'}
+                          </div>
+                        ) : (
+                          <ul className="space-y-1.5">
+                            {searchResults.map((r) => (
+                              <li key={r.url} className="text-[11px]">
+                                <a
+                                  className="text-indigo-700 dark:text-indigo-300 hover:underline break-words"
+                                  href={r.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  {r.title || r.url}
+                                </a>
+                                <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                  {(r.source || '') +
+                                    (r.description ? ` — ${r.description.slice(0, 120)}` : '')}
+                                </div>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="text-[10px] text-gray-400 mt-1">
+                      Links include source attribution.
+                    </div>
+                  </div>
+                </div>
+              )}
               {/* Mastery legend */}
               <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-3 shadow-card z-10 text-xs space-y-1.5">
                 <div className="font-semibold text-gray-700 dark:text-gray-200 mb-1">
