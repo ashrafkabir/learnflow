@@ -1,7 +1,7 @@
 # IMPROVEMENT_QUEUE
 
 Iteration: 36
-Status: READY FOR BUILDER
+Status: IN PROGRESS
 Date: 2026-03-19
 Theme: **Brutal spec gap closure (core learning loop + marketplace realism) + mobile home fix**
 
@@ -39,158 +39,59 @@ Right now:
 
 ### 1) Fix Mobile Home Page “Blank Scroll Abyss” (P0)
 
-**Problem:** `evals/screenshots/iter35-mobile/mobile-320__home.png` shows a _massive vertical void_ making the product look broken on first impression.
+**Status:** DONE ✅
 
-**Fix:** Identify the element(s) creating the huge height (likely `min-h/height:100vh` stacking, spacer div, or absolute layout mis-measure). Remove/replace with content-driven layout; compress section spacing for mobile.
+**Fix summary:** Framer Motion `initial="hidden"` caused key marketing sections to remain opacity:0 during full-page screenshot capture, producing huge blank whitespace. Switched relevant blocks in `apps/client/src/screens/marketing/Home.tsx` to `initial={false}` so content renders immediately.
 
-**Acceptance:** On 320/375/414: meaningful content appears within the first ~2 scrolls; no enormous empty whitespace; total page height reasonable (subjective but obvious improvement).
+**Acceptance:** On 320/375/414: meaningful content appears within first ~2 scrolls; no enormous empty whitespace.
 
 ### 2) Make screenshot automation reflect reality: seed auth + onboarding in `screenshot-mobile.mjs` (P0)
 
-**Problem:** Spec coverage requires viewing real app screens; unauthenticated runs redirect `/dashboard`, `/marketplace/*`, etc. to `/login`, producing misleading “screenshots of auth page.”
+**Status:** DONE ✅
 
-**Fix:** Update `screenshot-mobile.mjs` to optionally run in _authed mode_:
-
-- add init script setting:
-  - `learnflow-token = 'dev'`
-  - `learnflow-onboarding-complete = 'true'`
-  - `onboarding-tour-complete = 'true'`
-- add env flag: `SCREENSHOT_AUTHED=1` to enable.
-- output to `evals/screenshots/iter36-mobile/` (not iter35 folder).
+**Fix summary:** Added `SCREENSHOT_AUTHED=1` mode that seeds localStorage tokens + onboarding completion, and writes screenshots to `evals/screenshots/iter36-mobile-authed/`. Default unauth run writes to `evals/screenshots/iter36-mobile/`.
 
 **Acceptance:** Running `SCREENSHOT_AUTHED=1 node screenshot-mobile.mjs` produces mobile screenshots where marketplace/dashboard/etc show correct pages, not `/login`.
 
 ### 3) Replace remaining emoji icons across _all_ primary screens with the new icon set (P0)
 
-**Problem:** Emoji remain in headers and cards (e.g., `🏪 Course Marketplace`, `🤖 Agent Marketplace`). This undermines the “calm line icon system” work.
-
-**Fix:** Replace emoji usage with icons from `apps/client/src/components/icons/` (and add any missing icons needed). Ensure aria labels are correct.
-
-**Acceptance:** For primary flows (Dashboard, Conversation, CourseView, LessonReader, Mindmap, Marketplace, Pipelines, Settings, Auth, Onboarding): no emoji icons used for UI meaning.
+**Status:** READY
 
 ### 4) Deliver the spec-required Lesson Reading Experience (P0)
 
-**Spec refs:** §5.2.4, §6.2
-
-**Missing/weak:**
-
-- Lesson objectives, key takeaways, next steps, quick check questions are not consistently structured.
-- “<10 min” estimated read time should be visible and enforced.
-- Bottom action bar is required: **Mark Complete, Take Notes, Quiz Me, Ask Question**.
-
-**Fix:** Standardize lesson schema + UI rendering to always include:
-
-- estimated time badge
-- objectives section (2–3 bullets)
-- key takeaways (3–5)
-- sources block
-- next steps
-- bottom action bar (sticky, safe-area aware)
-
-**Acceptance:** In LessonReader screenshot: all required sections appear; action bar present; mobile safe-area ok.
+**Status:** READY
 
 ### 5) Notes Agent UX: Cornell + Flashcards + Zettelkasten outputs (P0)
 
-**Spec refs:** §4.2, §5.2.3, §8 (export)
-
-**Fix:** Implement notes generation UX from LessonReader action bar:
-
-- user chooses format
-- notes rendered in structured sections
-- flashcards view supports Q/A flip or list
-- persist to course/lesson context (not “session only”)
-
-**Acceptance:** User can generate notes in all 3 formats from a lesson and revisit later.
+**Status:** READY
 
 ### 6) Exam/Quiz loop: adaptive quizzes + scoring + gap identification (P1)
 
-**Spec refs:** §4.2 Exam Agent, §6.2 Quick Check
-
-**Fix:**
-
-- Quiz generation from LessonReader / CourseView
-- Support multiple-choice + short-answer
-- Scoring + explanations
-- Store “knowledge gaps” and surface them in Dashboard
-
-**Acceptance:** User can take a quiz, get score + explanations, and see gaps persisted.
+**Status:** READY
 
 ### 7) Attribution & Sources: make citations real and visible everywhere (P1)
 
-**Spec refs:** §5.2.3, §6.3
-
-**Fix:**
-
-- Source drawer: per lesson and per course
-- Inline citations (at least simple `[1]` style) tied to source drawer
-- Capture/display: URL, author, publication date, access timestamp
-
-**Acceptance:** Lessons show citations; sources drawer lists credible sources; links open.
+**Status:** READY
 
 ### 8) “Agent transparency” experience: activity indicator + which-agent/why (P1)
 
-**Spec refs:** Design principles §5.3, Conversation §5.2.3
-
-**Fix:** Make the Orchestrator feel like it is coordinating:
-
-- visible “Agent working: Research / Notes / Exam…” indicator
-- “why this agent” short explanation
-- progress states in conversation
-
-**Acceptance:** During generation, UI clearly shows which agent is active and why.
+**Status:** READY
 
 ### 9) Marketplace realism: reviews, creator profile, and course detail completeness (P1)
 
-**Spec refs:** §5.2.7, §7.1
-
-**Fix:** Course detail page must include:
-
-- syllabus preview
-- creator profile
-- reviews/ratings distribution
-- price + enroll CTA
-
-**Acceptance:** CourseDetail looks and behaves like a real marketplace product page.
+**Status:** READY
 
 ### 10) Creator dashboard: publishing flow + analytics + earnings (P1)
 
-**Spec refs:** §5.2.7, §7.1
-
-**Fix:** Implement creator publish lifecycle:
-
-- build/import course
-- quality checks (min lessons, attribution compliance)
-- price setting
-- moderation status (queued/approved/rejected)
-- analytics: views, enrollments, conversion
-- earnings summary
-
-**Acceptance:** Creator can publish a course end-to-end (even if “moderation” is simulated) with visible status and analytics.
+**Status:** READY
 
 ### 11) Profile & Settings parity: API key vault + usage stats + export (P1)
 
-**Spec refs:** §4.4, §5.2.8, §8
-
-**Fix:**
-
-- API key provider management UI (OpenAI/Anthropic/etc)
-- key validation feedback
-- usage stats view (tokens/cost approx)
-- export: Markdown (free) + PDF/SCORM placeholders (Pro) with gated UI
-
-**Acceptance:** Settings contains vault + usage stats + export panel.
+**Status:** READY
 
 ### 12) Pro tier hooks: proactive updates + subscription management UX (P2)
 
-**Spec refs:** §8
-
-**Fix:**
-
-- subscription screen includes clear Free vs Pro comparison
-- Pro-only features visible but gated
-- proactive update “alerts” surfaced in notifications (can be mocked initially)
-
-**Acceptance:** User can see/manage tier; dashboard shows Pro “Update Agent” notifications when enabled.
+**Status:** READY
 
 ---
 

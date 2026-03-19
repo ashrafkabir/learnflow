@@ -151,7 +151,7 @@ export function HomePage() {
       {/* Social proof */}
       <motion.section
         className="border-y border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50"
-        initial="hidden"
+        initial={false}
         whileInView="visible"
         viewport={{ once: true }}
         variants={stagger}
@@ -172,7 +172,7 @@ export function HomePage() {
       <section id="demo-section" className="max-w-6xl mx-auto px-6 py-20">
         <motion.div
           className="text-center mb-12"
-          initial="hidden"
+          initial={false}
           whileInView="visible"
           viewport={{ once: true }}
           variants={fadeUp}
@@ -184,7 +184,7 @@ export function HomePage() {
         </motion.div>
         <motion.div
           className="grid grid-cols-1 md:grid-cols-3 gap-8"
-          initial="hidden"
+          initial={false}
           whileInView="visible"
           viewport={{ once: true }}
           variants={stagger}
@@ -212,7 +212,7 @@ export function HomePage() {
       <section className="max-w-6xl mx-auto px-6 py-20">
         <motion.div
           className="text-center mb-12"
-          initial="hidden"
+          initial={false}
           whileInView="visible"
           viewport={{ once: true }}
           variants={fadeUp}
@@ -224,7 +224,7 @@ export function HomePage() {
         </motion.div>
         <motion.div
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-          initial="hidden"
+          initial={false}
           whileInView="visible"
           viewport={{ once: true }}
           variants={stagger}
@@ -250,7 +250,7 @@ export function HomePage() {
         <div className="max-w-6xl mx-auto px-6 py-20">
           <motion.div
             className="text-center mb-12"
-            initial="hidden"
+            initial={false}
             whileInView="visible"
             viewport={{ once: true }}
             variants={fadeUp}
@@ -260,7 +260,7 @@ export function HomePage() {
           </motion.div>
           <motion.div
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
-            initial="hidden"
+            initial={false}
             whileInView="visible"
             viewport={{ once: true }}
             variants={stagger}
@@ -301,7 +301,7 @@ export function HomePage() {
       <section className="max-w-6xl mx-auto px-6 py-20">
         <motion.div
           className="text-center mb-12"
-          initial="hidden"
+          initial={false}
           whileInView="visible"
           viewport={{ once: true }}
           variants={fadeUp}
@@ -311,7 +311,7 @@ export function HomePage() {
         </motion.div>
         <motion.div
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
-          initial="hidden"
+          initial={false}
           whileInView="visible"
           viewport={{ once: true }}
           variants={stagger}
@@ -392,7 +392,7 @@ export function HomePage() {
       {/* CTA */}
       <motion.section
         className="max-w-6xl mx-auto px-6 py-20 text-center"
-        initial="hidden"
+        initial={false}
         whileInView="visible"
         viewport={{ once: true }}
         variants={fadeUp}

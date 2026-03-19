@@ -2,7 +2,8 @@
 import { chromium } from 'playwright';
 
 const BASE = process.env.SCREENSHOT_BASE_URL || 'http://localhost:3001';
-const DIR = 'evals/screenshots/iter35-mobile';
+const AUTHED = process.env.SCREENSHOT_AUTHED === '1';
+const DIR = AUTHED ? 'evals/screenshots/iter36-mobile-authed' : 'evals/screenshots/iter36-mobile';
 
 const viewports = [
   { name: 'mobile-320', width: 320, height: 640 },
@@ -33,6 +34,18 @@ for (const vp of viewports) {
     isMobile: true,
     hasTouch: true,
   });
+
+  if (AUTHED) {
+    await ctx.addInitScript(() => {
+      try {
+        globalThis.localStorage.setItem('learnflow-token', 'dev');
+        globalThis.localStorage.setItem('learnflow-onboarding-complete', 'true');
+        globalThis.localStorage.setItem('onboarding-tour-complete', 'true');
+      } catch {
+        // ignore (e.g., storage blocked)
+      }
+    });
+  }
 
   for (const [path, name] of pages) {
     const page = await ctx.newPage();
