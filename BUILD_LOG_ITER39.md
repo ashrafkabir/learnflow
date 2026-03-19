@@ -63,6 +63,29 @@ Date: 2026-03-19
 
 ✅ DONE.
 
+---
+
+## Critical fix) Production/dev DB migration for users.onboardingCompletedAt
+
+✅ DONE.
+
+### Problem
+
+Existing persisted DBs (e.g., `apps/api/.data/learnflow.db`) created before Iter39 may **not** have the `users.onboardingCompletedAt` column. Because our prepared statements now reference that column, the API fails at startup with `no such column: onboardingCompletedAt`.
+
+### Fix
+
+- Added a **safe, idempotent startup migration** in `apps/api/src/db.ts`:
+  - Detects missing column via `PRAGMA table_info(users)`
+  - Runs `ALTER TABLE users ADD COLUMN onboardingCompletedAt TEXT` only if needed
+  - Wrapped in a try/catch so fresh DBs still initialize via `CREATE TABLE IF NOT EXISTS ...`.
+
+### Verification
+
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅
+- `npx eslint .` ✅
+
 ### What I changed
 
 - **Client**: Hardened selection → range logic in `LessonReader`.

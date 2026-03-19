@@ -17,6 +17,22 @@ sqlite.pragma('foreign_keys = ON');
 
 // ── Migrations ──────────────────────────────────────────────────────────────
 
+function hasColumn(table: string, column: string): boolean {
+  const rows = sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return rows.some((r) => r.name === column);
+}
+
+// Legacy DBs may miss new columns; add them safely on startup.
+if (!isTest) {
+  try {
+    if (!hasColumn('users', 'onboardingCompletedAt')) {
+      sqlite.exec(`ALTER TABLE users ADD COLUMN onboardingCompletedAt TEXT;`);
+    }
+  } catch {
+    // If the users table doesn't exist yet, CREATE TABLE below will handle it.
+  }
+}
+
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
