@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { useApp } from './context/AppContext.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { PageTransition } from './components/PageTransition.js';
@@ -124,6 +124,12 @@ function LoadingSpinner() {
       <p className="text-sm text-gray-500 dark:text-gray-400">Loading your learning journey...</p>
     </div>
   );
+}
+
+function LegacyCourseRedirect({ kind }: { kind: 'course' | 'lesson' }) {
+  const params = useParams();
+  if (kind === 'course') return <Navigate to={`/courses/${params.courseId}`} replace />;
+  return <Navigate to={`/courses/${params.courseId}/lessons/${params.lessonId}`} replace />;
 }
 
 function OnboardingGuard({ children }: { children: React.ReactNode }) {
@@ -253,6 +259,7 @@ export function App() {
                       </ErrorBoundary>
                     }
                   />
+                  {/* Canonical course routes */}
                   <Route
                     path="/courses/:courseId"
                     element={
@@ -268,6 +275,16 @@ export function App() {
                         <LessonReader />
                       </ErrorBoundary>
                     }
+                  />
+
+                  {/* Back-compat routes (older tests/links) */}
+                  <Route
+                    path="/course/:courseId"
+                    element={<LegacyCourseRedirect kind="course" />}
+                  />
+                  <Route
+                    path="/course/:courseId/lesson/:lessonId"
+                    element={<LegacyCourseRedirect kind="lesson" />}
                   />
                   <Route
                     path="/mindmap"
