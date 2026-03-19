@@ -12,3 +12,6 @@ coverage/
 # Next.js build outputs (should never be committed)
 apps/web/.next/
 apps/web/out/
+
+# Local artifacts
+artifacts/
