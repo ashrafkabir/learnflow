@@ -1,7 +1,7 @@
 # LearnFlow Improvement Queue — Iteration 45
 
 **Iteration:** 45  
-**Status:** READY FOR BUILDER  
+**Status:** IN PROGRESS (Builder: tasks 1–2 DONE)  
 **Date:** 2026-03-19
 
 This queue is a **spec-vs-implementation gap list** (plus reliability fixes) prioritized by user impact + risk.
