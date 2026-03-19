@@ -73,6 +73,9 @@ router.post('/register', async (req: Request, res: Response) => {
       displayName: user.displayName,
       role: user.role,
       tier: user.tier,
+      onboardingCompletedAt: (user as any).onboardingCompletedAt
+        ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
+        : null,
     },
     ...tokens,
   });
@@ -108,6 +111,9 @@ router.post('/login', async (req: Request, res: Response) => {
       displayName: user.displayName,
       role: user.role,
       tier: user.tier,
+      onboardingCompletedAt: (user as any).onboardingCompletedAt
+        ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
+        : null,
     },
     ...tokens,
   });
@@ -187,6 +193,9 @@ router.get('/google/callback', (req: Request, res: Response) => {
       displayName: user.displayName,
       role: user.role,
       tier: user.tier,
+      onboardingCompletedAt: (user as any).onboardingCompletedAt
+        ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
+        : null,
     },
     ...tokens,
   });

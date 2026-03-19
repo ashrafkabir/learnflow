@@ -37,7 +37,7 @@ export function RegisterScreen() {
       localStorage.setItem('learnflow-token', data.accessToken);
       localStorage.setItem('learnflow-refresh', data.refreshToken);
       localStorage.setItem('learnflow-user', JSON.stringify(data.user));
-      nav('/onboarding/welcome');
+      nav(data?.user?.onboardingCompletedAt ? '/dashboard' : '/onboarding/welcome');
     } catch {
       setError('Network error. Please try again.');
     } finally {

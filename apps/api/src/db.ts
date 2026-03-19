@@ -30,6 +30,7 @@ sqlite.exec(`
     experience TEXT NOT NULL DEFAULT '',
     schedule TEXT NOT NULL DEFAULT '{}',
     preferredLanguage TEXT NOT NULL DEFAULT 'en',
+    onboardingCompletedAt TEXT,
     oauthProvider TEXT,
     oauthId TEXT,
     createdAt TEXT NOT NULL,
@@ -167,10 +168,10 @@ sqlite.exec(`
 const stmts = {
   // Users
   insertUser: sqlite.prepare(
-    `INSERT INTO users (id, email, displayName, passwordHash, role, tier, goals, topics, experience, schedule, preferredLanguage, oauthProvider, oauthId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (id, email, displayName, passwordHash, role, tier, goals, topics, experience, schedule, preferredLanguage, onboardingCompletedAt, oauthProvider, oauthId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   updateUser: sqlite.prepare(
-    `UPDATE users SET email=?, displayName=?, passwordHash=?, role=?, tier=?, goals=?, topics=?, experience=?, schedule=?, preferredLanguage=?, oauthProvider=?, oauthId=?, updatedAt=? WHERE id=?`,
+    `UPDATE users SET email=?, displayName=?, passwordHash=?, role=?, tier=?, goals=?, topics=?, experience=?, schedule=?, preferredLanguage=?, onboardingCompletedAt=?, oauthProvider=?, oauthId=?, updatedAt=? WHERE id=?`,
   ),
   findUserById: sqlite.prepare(`SELECT * FROM users WHERE id = ?`),
   findUserByEmail: sqlite.prepare(`SELECT * FROM users WHERE email = ?`),
@@ -284,6 +285,7 @@ export interface DbUser {
   experience?: string;
   schedule?: any;
   preferredLanguage: string;
+  onboardingCompletedAt?: Date;
   oauthProvider?: string;
   oauthId?: string;
   createdAt: Date;
@@ -318,6 +320,9 @@ function rowToUser(row: any): DbUser | undefined {
     goals: JSON.parse(row.goals || '[]'),
     topics: JSON.parse(row.topics || '[]'),
     schedule: JSON.parse(row.schedule || '{}'),
+    onboardingCompletedAt: row.onboardingCompletedAt
+      ? new Date(row.onboardingCompletedAt)
+      : undefined,
     active: undefined,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
@@ -377,6 +382,7 @@ class SqliteDb {
       user.experience || '',
       JSON.stringify(user.schedule || {}),
       user.preferredLanguage || 'en',
+      user.onboardingCompletedAt ? user.onboardingCompletedAt.toISOString() : null,
       user.oauthProvider || null,
       user.oauthId || null,
       user.createdAt.toISOString(),
@@ -396,6 +402,7 @@ class SqliteDb {
       user.experience || '',
       JSON.stringify(user.schedule || {}),
       user.preferredLanguage || 'en',
+      user.onboardingCompletedAt ? user.onboardingCompletedAt.toISOString() : null,
       user.oauthProvider || null,
       user.oauthId || null,
       user.updatedAt.toISOString(),

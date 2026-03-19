@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../../context/AppContext.js';
+import { useApp, apiBase } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { Confetti } from '../../components/Confetti.js';
@@ -32,6 +32,21 @@ export function FirstCourse() {
 
   useEffect(() => {
     dispatch({ type: 'COMPLETE_ONBOARDING' });
+    // Durable completion flag so onboarding isn't shown again on subsequent logins.
+    // Best-effort: if it fails (offline), localStorage still prevents re-show in this browser.
+    (async () => {
+      try {
+        const token = localStorage.getItem('learnflow-token');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        await fetch(`${apiBase()}/api/v1/profile/onboarding/complete`, {
+          method: 'POST',
+          headers,
+        });
+      } catch {
+        /* ignore */
+      }
+    })();
   }, []);
 
   // Animate through stages

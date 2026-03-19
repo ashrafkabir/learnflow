@@ -15,6 +15,11 @@ router.get('/context', (req: Request, res: Response) => {
   res.status(200).json({
     userId,
     goals: user?.goals || [],
+    topics: (user as any)?.topics || [],
+    experience: (user as any)?.experience || 'beginner',
+    onboardingCompletedAt: (user as any)?.onboardingCompletedAt
+      ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
+      : null,
     strengths: [],
     weaknesses: [],
     learningStyle: 'reading',
@@ -50,6 +55,23 @@ router.post('/goals', (req: Request, res: Response) => {
     db.updateUser(user);
   }
   res.status(200).json({ success: true, goals: user?.goals || goals || [], topics: topics || [] });
+});
+
+// POST /api/v1/profile/onboarding/complete - Durable onboarding completion flag
+router.post('/onboarding/complete', (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const user = db.findUserById(userId);
+  if (user) {
+    (user as any).onboardingCompletedAt = new Date();
+    user.updatedAt = new Date();
+    db.updateUser(user);
+  }
+  res.status(200).json({
+    success: true,
+    onboardingCompletedAt: (user as any)?.onboardingCompletedAt
+      ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
+      : new Date().toISOString(),
+  });
 });
 
 export const profileRouter = router;

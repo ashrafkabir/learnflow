@@ -36,7 +36,9 @@ export function LoginScreen() {
       localStorage.setItem('learnflow-token', data.accessToken);
       localStorage.setItem('learnflow-refresh', data.refreshToken);
       localStorage.setItem('learnflow-user', JSON.stringify(data.user));
-      nav('/dashboard');
+      // If server says onboarding isn't complete, route to onboarding.
+      if (data?.user && !data.user.onboardingCompletedAt) nav('/onboarding/welcome');
+      else nav('/dashboard');
     } catch {
       setError('Network error. Please try again.');
     } finally {

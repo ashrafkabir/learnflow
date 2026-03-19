@@ -151,8 +151,17 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const devAuthBypass =
     (import.meta as any)?.env?.VITE_DEV_AUTH_BYPASS === '1' ||
     (import.meta as any)?.env?.DEV_AUTH_BYPASS === '1';
-  const completed =
-    state.onboarding.completed || localStorage.getItem('learnflow-onboarding-complete') === 'true';
+  // Local-only fallback (pre-durable): older builds used localStorage.
+  const completed = (() => {
+    if (state.onboarding.completed) return true;
+    if (localStorage.getItem('learnflow-onboarding-complete') === 'true') return true;
+    try {
+      const u = JSON.parse(localStorage.getItem('learnflow-user') || 'null');
+      return !!u?.onboardingCompletedAt;
+    } catch {
+      return false;
+    }
+  })();
 
   if (!devAuthBypass && !token && !isPublic && !isOnboarding && !isAuth) {
     return <Navigate to="/login" replace />;
