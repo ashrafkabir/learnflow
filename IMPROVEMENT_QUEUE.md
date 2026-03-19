@@ -1,165 +1,171 @@
 # IMPROVEMENT_QUEUE
 
-Iteration: 32
-Status: DONE
+Iteration: 33
+Status: READY FOR BUILDER
 
 ## Brutal Assessment (vs full spec)
 
-LearnFlow is **not** the platform described in `LearnFlow_Product_Spec.md`. It is a polished, test-covered **UI-first demo** with a lightweight API and mocked/simulated “agentic” behaviors.
+LearnFlow (repo) is still a **UI-first MVP/demo** that resembles the spec’s UX flows, but only partially matches the spec’s **systems claims** (content pipeline, attribution, persistence, multi-agent orchestration depth, marketplace monetization).
 
-### What’s genuinely solid
+The good news: Iteration 32’s WS orchestration wiring **did land** in `apps/api/src/wsOrchestrator.ts` and the client already renders streaming events + agent activity.
 
-- **Client UX coverage**: onboarding, dashboard, conversation, course view, mindmap, marketplaces, settings exist and are screenshot-testable.
-- **Dev ergonomics**: monorepo, tests, Playwright harnesses, deterministic screenshot scripts.
-- **WebSocket infra**: working server, shared contract types, dev auth shortcut (`token=dev`), and Vite WS proxy in client.
+### What’s genuinely solid (evidence)
 
-### What is materially missing vs spec (highest-level)
+- **Screens exist end-to-end** (client + marketing web) and are renderable headlessly.
+- **API test suite is strong**: `npm test -w @learnflow/api` passed (115 tests) during this run.
+- **WS contract largely aligns with spec §11.2**: `response.start/chunk/end`, `agent.spawned/complete`, `progress.update` all exist in runtime and client.
+- **Spec-level UI elements are present**: conversation markdown rendering (GFM, math/KaTeX, syntax highlighting), mindmap drawer, source drawer, dashboard course carousel/progress, marketplaces.
 
-- **Real multi-agent orchestration** (DAG planner + registry exists in `packages/core` but is not wired into the running API/WS chat path).
-- **Real web discovery + attribution** for course/lesson generation (pipeline code exists in `packages/agents`, but the API’s course generation and WS orchestrator do not use it).
-- **Persistent, first-class citations** in lessons (client course view uses `MOCK_SOURCES`; WS sources are heuristic URL extraction from lesson markdown).
-- **Mindmap as knowledge graph** (current WS mindmap.subscribe returns static nodes/edges).
-- **Marketplace reality** (creator flows + purchases are mostly UI simulation; moderation, revenue share, and real distribution are not implemented).
-- **Pro tier behavior** is only partially real (endpoints exist; real feature gating + managed key pool behavior is not end-to-end).
+### What is materially missing vs spec (top gaps)
 
-## Iteration 31 Fix Verification (explicit checks)
-
-Verified **landed**:
-
-- **WS proxy in dev**: `apps/client/vite.config.ts` proxies `/ws -> ws://localhost:3000` with `ws: true`.
-- **Shared WS types**:
-  - Canonical types: `packages/shared/src/types/ws.ts`
-  - API re-export: `apps/api/src/wsContract.ts` (`export type { … } from '@learnflow/shared'`)
-  - Client usage: `apps/client/src/hooks/useWebSocket.ts` parses JSON as `WsServerEvent`.
-
-Notes:
-
-- Vite `strictPort: true` makes screenshot runs deterministic, but **dev will fail if 3001 already used** (which happened during this run). This is good (fail-fast), but ensure dev scripts clean up prior vite instances.
-
-## Boot + Playwright Screenshots (Iteration 32)
-
-### Boot
-
-- `npm run dev` started:
-  - API: http://localhost:3000
-  - Client: http://localhost:3001
-  - Web: http://localhost:3003
-
-### Screenshots generated (every screen harness currently covers)
-
-Location: `learnflow/screenshots/`
-
-- Marketing: `home.png`, `features.png`, `pricing.png`, `download.png`, `blog.png`, `about.png` (if present in harness), `settings.png` etc.
-- Auth: `login.png`, `register.png`
-- Onboarding (collapsed into `onboarding.png` in this harness)
-- App: `dashboard.png`, `conversation.png`, `mindmap.png`
-- Marketplace: `marketplace-courses.png`, `marketplace-agents.png`, `marketplace-creator.png`
-- Course: `courses-c-1.png`, `courses-c-1-lessons-l1.png`
-- Pipelines: `dashboard-pipeline-*.png`, `pipeline-detail.png`
-
-(Execution: `node screenshot-all.mjs` completed successfully.)
-
-## 10–15 Highest-Impact Tasks (Problem → Fix → Acceptance)
-
-### 1) Wire the real Orchestrator (packages/core) into the running API chat path
-
-**Problem:** The WS chat path (`apps/api/src/wsOrchestrator.ts`) is hand-authored streaming text; it does not call `packages/core/src/orchestrator/orchestrator.ts`.
-**Fix:** Instantiate `AgentRegistry` in API, register real agents from `@learnflow/agents`, and route WS `message` events through `Orchestrator.processMessage()`.
-**Acceptance:** WS conversation uses registry-selected agents; `agent.spawned/complete` reflects real agent names and tasks; unit + e2e tests cover at least one routed capability.
-
-**Status:** DONE (Iteration 32)
-
-- Implementation: `apps/api/src/wsOrchestrator.ts` now builds a singleton `AgentRegistry` + `Orchestrator` and routes WS `message` through `orchestrator.processMessage()`.
-- Streaming: aggregated response is chunked into `response.chunk` events.
-- Tests: existing API WS tests still pass (vitest).
-- Screenshots: `evals/screenshots/iter32-2026-03-18/`.
-
-### 2) Make Course Builder actually use the content pipeline
-
-**Problem:** `CourseBuilderAgent` currently only decomposes topics and generates a template syllabus (no discovery/extraction/scoring).
-**Fix:** In `CourseBuilderAgent.process`, call `crawlSourcesForTopic` (Firecrawl/web-search fallback), then run scoring + formatting to produce lesson bodies + sources.
-**Acceptance:** Creating a course produces lessons with real citations; sources are diverse and include publication metadata when available.
-
-### 3) Persist lesson sources as first-class data (remove MOCK_SOURCES)
-
-**Problem:** CourseView uses `MOCK_SOURCES`; WS `sources` are heuristic and not stored.
-**Fix:** Extend lesson model to include `sources[]` in DB; render from stored sources in LessonReader/CourseView and source drawer.
-**Acceptance:** No `MOCK_SOURCES` in production UI; lesson sources are consistent across REST + WS.
-
-### 4) Implement mindmap generation from real course/progress data
-
-**Problem:** `mindmap.subscribe` returns a static 2-node graph.
-**Fix:** Generate nodes/edges from enrolled courses/modules/lessons + mastery status; emit diffs on lesson completion.
-**Acceptance:** Mindmap shows courses + lessons; completing a lesson changes mastery coloring/state.
-
-### 5) WebSocket protocol compliance + event completeness
-
-**Problem:** Spec §11.2 does not define `connected` and client/server event sets drift.
-**Fix:** Either (a) update spec mapping in docs and keep `connected`, or (b) remove/replace with spec event. Add `context_overrides` handling.
-**Acceptance:** One authoritative contract doc + types match runtime; client handles all server events.
-
-### 6) Pro feature gating end-to-end
-
-**Problem:** Pro/free differences exist in spec, but UI + API enforcement is inconsistent.
-**Fix:** Centralize feature flags (server authoritative), reflect locked UI states, enforce on endpoints.
-**Acceptance:** Free users cannot access Pro-only exports/managed keys; upgrading unlocks instantly; tests cover.
-
-### 7) BYOAI key vault UX parity
-
-**Problem:** Endpoints exist, but Settings experience and usage dashboard is incomplete.
-**Fix:** Add Settings → API key vault management UI: provider selection, validation, masked display, rotation.
-**Acceptance:** Add/list/delete keys works; plaintext keys never returned; validation errors are actionable.
-
-### 8) Token usage tracking per agent surfaced to user
-
-**Problem:** Spec requires per-agent token usage; current incrementing is incomplete.
-**Fix:** Track tokens per agent per session where LLM calls occur; add `/analytics` UI panel.
-**Acceptance:** Dashboard/Settings shows per-agent usage totals and last 7 days trend.
-
-### 9) Course marketplace: real discovery/search/filter against API
-
-**Problem:** UI exists but much content is static/simulated.
-**Fix:** Implement search/filter/sort backed by real endpoints and persisted data.
-**Acceptance:** Filters change results; pagination works; e2e covers browse → detail → enroll.
-
-### 10) Creator pipeline: publish flow with quality checks + moderation queue
-
-**Problem:** Spec outlines quality checks and moderation; current creator dashboard is mostly UI.
-**Fix:** Implement course publish state machine: draft → submitted → approved → published; run automated checks (min lessons, attribution completeness, readability).
-**Acceptance:** Creator can submit; admins can approve; published appears in marketplace.
-
-### 11) Exports: Markdown (free) vs PDF/SCORM (Pro)
-
-**Problem:** Export spec is broad; implementation unclear and likely stubbed.
-**Fix:** Implement at least Markdown export fully; gate PDF/SCORM behind Pro.
-**Acceptance:** Exported artifacts download and are reproducible; citations included.
-
-### 12) Collaboration backend MVP (rooms/messages)
-
-**Problem:** Collaboration screen exists but real peer matching + messaging is not end-to-end.
-**Fix:** Add room model, join/leave, message events over WS; basic peer matching based on interests.
-**Acceptance:** Two browser sessions can chat; messages persist; basic matching returns candidates.
-
-### 13) Replace placeholder architecture docs with “truthful MVP architecture”
-
-**Problem:** Spec claims gRPC/K8s/vector DB; current system is SQLite + ws + mocked agents.
-**Fix:** Update docs to clearly state MVP reality and roadmap deltas.
-**Acceptance:** Docs do not mislead; engineering onboarding matches what runs locally.
-
-### 14) Hardening: production auth + WS security
-
-**Problem:** Dev token path exists; ensure it cannot leak to prod.
-**Fix:** Add explicit NODE_ENV guard tests; ensure CORS, rate limiting, WS auth are strict in prod builds.
-**Acceptance:** In production mode, `token=dev` fails; security tests pass.
-
-### 15) Increase test coverage to meet spec threshold (>85%)
-
-**Problem:** PROGRESS reports ~82% coverage.
-**Fix:** Add tests for orchestrator wiring, content pipeline integration paths, and WS events.
-**Acceptance:** Coverage >= 85% statements and critical path e2e.
+1. **Real content acquisition + attribution pipeline** (spec §6): course/lesson generation is still synthetic and citations are not first-class persisted objects.
+2. **True “multi-agent” orchestration behavior**: core orchestrator exists and is now called via WS, but agents themselves are mostly placeholder logic (no web research, no scoring, minimal DAG/parallelization).
+3. **Mindmap as a real knowledge graph**: UI is rich, but it derives nodes from local course/module/lesson structure + local completed state; no CRDT collaboration; no server-driven diffs.
+4. **Marketplace reality**: discovery, creator QA/moderation, purchases/revenue share are mostly simulated vs spec.
+5. **BYOAI key vault and usage tracking**: endpoints exist, but encryption/rotation, provider validation, and user-facing usage dashboards are not end-to-end.
 
 ---
 
-## Builder Notes (what to do first)
+## Iteration 32 Verification: WS Orchestration Changes
 
-If we want the **biggest leap toward the spec** with minimal churn, do tasks **#1–#4** in order. Everything else becomes easier once lessons have real sources and the orchestrator is actually driving behavior.
+### ✅ Landed in `apps/api/src/wsOrchestrator.ts`
+
+Evidence (file inspection):
+
+- Instantiates `AgentRegistry` + registers real agent classes from `@learnflow/agents`.
+- Creates singleton `Orchestrator` from `@learnflow/core` and calls:
+  - `orchestrator.processMessage(text, context)`
+- Emits spec-aligned WS events:
+  - `response.start` → `response.chunk` (chunked streaming) → `response.end`
+  - `agent.spawned` (routing message) and `agent.complete`
+- Provides a best-effort sources payload by extracting URLs from an in-lesson “References/Sources” markdown section.
+
+### ⚠️ Not fully spec-compliant yet
+
+- WS `message` payload spec allows `attachments` and `context_overrides`; API currently reads only `text`, plus non-spec `lessonId/courseId`.
+- No `mindmap.update` emitted by orchestrator path.
+- `sources` are not real bibliographic objects (title/author/publication/year are mostly placeholders).
+
+---
+
+## Boot + Screenshots (Iteration 33)
+
+### Dev boot
+
+`npm run dev` brought up:
+
+- API: `http://localhost:3000`
+- Client: `http://localhost:3001`
+- Web: `http://localhost:3003`
+
+### Screenshots captured (all screens reachable in repo)
+
+Output dir:
+
+- `learnflow/artifacts/iter33/`
+
+Client app:
+
+- `home.png`
+- `login.png`, `register.png`
+- Onboarding: `onboarding_welcome.png`, `onboarding_goals.png`, `onboarding_topics.png`, `onboarding_api_keys.png`, `onboarding_subscription.png`, `onboarding_first_course.png`
+- Core: `dashboard.png`, `conversation.png`, `mindmap.png`, `settings.png`, `pipelines.png`
+- Marketplace: `marketplace_courses.png`, `marketplace_agents.png`, `creator_dashboard.png`
+
+Marketing web:
+
+- `web_home.png`, `web_features.png`, `web_pricing.png`, `web_download.png`, `web_blog.png`, `web_about.png`, `web_docs.png`
+
+---
+
+## Iteration 33 — 10–15 Prioritized Tasks (Problem → Fix → Acceptance)
+
+### 1) Make lesson sources first-class (end-to-end)
+
+**Problem:** UI sources are partially mocked; WS sources are heuristic URL extraction. Spec §6/§11 requires real attribution objects.
+**Fix:** Extend Course/Lesson schema to persist `sources[]` (title, author, publication, date/year, url, accessed_at, license if known). Remove `MOCK_SOURCES` usage.
+**Acceptance:** LessonReader + SourceDrawer render persisted sources consistently via REST + WS; no mocks in production path.
+
+### 2) Real Content Acquisition pipeline (spec §6.1)
+
+**Problem:** CourseBuilderAgent does not actually discover/extract/score web content.
+**Fix:** Implement: topic decomposition → source discovery (search) → extraction (Firecrawl/Playwright) → scoring → dedupe → lesson formatting.
+**Acceptance:** Creating a course yields lessons with recency/authority signals and working citations; sources contain real metadata.
+
+### 3) Orchestrator: implement spec workflow semantics (spec §10)
+
+**Problem:** Orchestrator is invoked, but doesn’t follow the spec’s “clarify → build course → mindmap extend → lesson delivery → action chips” rigor.
+**Fix:** Update orchestrator policy: ask clarifying questions when needed; invoke course_builder; then mindmap_agent; then deliver first lesson; always return 3–4 suggested actions.
+**Acceptance:** New goal messages trigger clarifications; subsequent message builds course; response.end includes actions + sources; first lesson delivered under 1500 words.
+
+### 4) WebSocket protocol: implement `context_overrides` and attachments
+
+**Problem:** Spec §11.2 requires `context_overrides`; current API ignores it.
+**Fix:** Parse and merge `context_overrides` into StudentContextObject; support simple attachment metadata in envelope.
+**Acceptance:** WS message with overrides changes orchestrator behavior (e.g., difficulty, lesson length) and is covered by tests.
+
+### 5) Emit `mindmap.update` and `progress.update` from real state changes
+
+**Problem:** Client listens for these events but server rarely emits them from orchestrator flows.
+**Fix:** When a new course is created, emit `mindmap.update` (nodes_added/edges_added). When lesson completion occurs, emit `progress.update` with `{course_id, lesson_id, completion_percent}`.
+**Acceptance:** Conversation UI shows notifications and mindmap changes without refresh.
+
+### 6) Replace fake “agent activity” with real agent routing signals
+
+**Problem:** Client guesses agent by keywords in user text; spec wants transparency of which agent is working.
+**Fix:** Server should emit `agent.spawned` with real agent name/task summary for each sub-agent call; client should render those directly.
+**Acceptance:** Activity indicator always matches actual invoked agent (no keyword guessing).
+
+### 7) BYOAI key vault: validation + secure storage + UX
+
+**Problem:** Spec §4.4: encrypt keys, validate, rotate, usage dashboard; current flow is partial.
+**Fix:** Implement provider selection, key validation call, store encrypted at rest, return masked keys only; add rotation/delete.
+**Acceptance:** Settings supports add/list/delete/rotate; keys never returned in plaintext; invalid keys show actionable errors.
+
+### 8) Token usage tracking per agent (spec §4.4, §8)
+
+**Problem:** Spec wants per-agent token counts surfaced to user.
+**Fix:** Track tokens per agent per session; aggregate daily/weekly; expose in `/analytics` and UI.
+**Acceptance:** Dashboard/Settings show usage by agent + last-7-days; tests verify increments.
+
+### 9) Mindmap: server-backed graph model (not derived-only)
+
+**Problem:** Mindmap UI is generated from courses + local completion; spec expects a knowledge graph with mastery states + expand/jump.
+**Fix:** Introduce `mindmap` resource in API; build from courses; update mastery with progress; add manual node create API.
+**Acceptance:** `/mindmap` returns persisted nodes/edges; MindmapExplorer renders from server data.
+
+### 10) Collaboration MVP with real-time rooms (spec §4.2 collaboration_agent)
+
+**Problem:** Collaboration experience is largely UI; no WS peer messaging.
+**Fix:** Create rooms, join/leave, message broadcast over WS; minimal peer matching using shared interests.
+**Acceptance:** Two sessions can chat in a room; messages persist; basic matching endpoint works.
+
+### 11) Course marketplace: real search/filter and enroll
+
+**Problem:** Marketplace experience is partially static.
+**Fix:** Implement filtering/sorting/pagination and enroll flow backed by DB.
+**Acceptance:** Filters change results; enroll imports course into learner workspace; e2e covers browse→enroll.
+
+### 12) Creator publish state machine + QA checks (spec §7.1)
+
+**Problem:** Spec requires quality checks + moderation; creator dashboard is mostly presentation.
+**Fix:** Draft→submitted→approved→published states; automated checks (min lessons, attribution completeness, readability).
+**Acceptance:** Submit triggers checks; failures show reasons; approved courses appear in marketplace.
+
+### 13) Export: Markdown (Free) + PDF/SCORM (Pro) incremental
+
+**Problem:** Export spec is broad; current implementation unclear/stubbed.
+**Fix:** Ship Markdown export first; gate PDF/SCORM behind Pro; include citations.
+**Acceptance:** Export produces downloadable artifact with sources; Pro gating enforced server-side.
+
+### 14) Security hardening: dev token guardrails
+
+**Problem:** `token=dev` is useful locally but must never ship.
+**Fix:** Require NODE_ENV=development for dev token; add tests.
+**Acceptance:** In production mode, dev token auth fails; WS rejects unauthenticated connections.
+
+### 15) Reality alignment: update spec/README to reflect MVP vs target architecture
+
+**Problem:** Spec claims gRPC/K8s/vector DB; MVP is Node/WS + in-memory/SQLite-ish.
+**Fix:** Add “MVP architecture” doc + delta list; stop misleading new engineers.
+**Acceptance:** Docs match what runs locally; roadmap clearly states what’s mocked.
