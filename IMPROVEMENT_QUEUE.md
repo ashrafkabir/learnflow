@@ -1,171 +1,138 @@
 # IMPROVEMENT_QUEUE
 
-Iteration: 33
-Status: DONE
+Iteration: 34
+Status: READY FOR BUILDER
 
 ## Brutal Assessment (vs full spec)
 
-LearnFlow (repo) is still a **UI-first MVP/demo** that resembles the spec’s UX flows, but only partially matches the spec’s **systems claims** (content pipeline, attribution, persistence, multi-agent orchestration depth, marketplace monetization).
+This repo is still **an impressive UI demo with a thin “agentic” backend**, not a spec-accurate platform.
 
-The good news: Iteration 32’s WS orchestration wiring **did land** in `apps/api/src/wsOrchestrator.ts` and the client already renders streaming events + agent activity.
+What’s improved recently (Iter 33) is mostly **presentation-level spec compliance** (sources UI, citations hover previews, richer lesson reader interactions). The hard parts of the spec—**real content acquisition + attribution pipeline, true multi-agent orchestration with a real student context object, marketplace economics, and key management/usage tracking**—remain largely stubbed/synthetic.
 
-### What’s genuinely solid (evidence)
+If we pitched this as “spec implemented,” it would be misleading. If we pitch it honestly as “MVP UX + demo orchestration,” it’s strong.
 
-- **Screens exist end-to-end** (client + marketing web) and are renderable headlessly.
-- **API test suite is strong**: `npm test -w @learnflow/api` passed (115 tests) during this run.
-- **WS contract largely aligns with spec §11.2**: `response.start/chunk/end`, `agent.spawned/complete`, `progress.update` all exist in runtime and client.
-- **Spec-level UI elements are present**: conversation markdown rendering (GFM, math/KaTeX, syntax highlighting), mindmap drawer, source drawer, dashboard course carousel/progress, marketplaces.
+### Evidence collected (Iteration 34)
 
-### What is materially missing vs spec (top gaps)
+- Spec read: `LearnFlow_Product_Spec.md` (full)
+- Iter 33 changes verified landed:
+  - `apps/client/src/lib/sources.ts` exists and is used.
+  - `apps/client/src/screens/CourseView.tsx` consumes `parseSources()` + `mergeUniqueSources()` and renders Sources section.
+  - `apps/client/src/screens/LessonReader.tsx` parses sources and renders inline citation tooltips.
+- Screenshots captured (Playwright scripts; **no e2e suite run**):
+  - App/client routes: `evals/screenshots/iter34-app-2026-03-18/` (≈ 27+ PNGs)
+  - Marketing web routes: `evals/screenshots/iter34-web-2026-03-18/` (8 PNGs)
+  - Total PNG count for iter34 dirs: **35**
 
-1. **Real content acquisition + attribution pipeline** (spec §6): course/lesson generation is still synthetic and citations are not first-class persisted objects.
-2. **True “multi-agent” orchestration behavior**: core orchestrator exists and is now called via WS, but agents themselves are mostly placeholder logic (no web research, no scoring, minimal DAG/parallelization).
-3. **Mindmap as a real knowledge graph**: UI is rich, but it derives nodes from local course/module/lesson structure + local completed state; no CRDT collaboration; no server-driven diffs.
-4. **Marketplace reality**: discovery, creator QA/moderation, purchases/revenue share are mostly simulated vs spec.
-5. **BYOAI key vault and usage tracking**: endpoints exist, but encryption/rotation, provider validation, and user-facing usage dashboards are not end-to-end.
+### Boot reality (important)
 
----
+- `npm run dev` (turbo) **fails** because `@learnflow/client` wants port **3001** and it was already in use:
+  - Error: `Error: Port 3001 is already in use`
+- Despite that, screenshots succeeded because something was already listening on `http://localhost:3001`.
 
-## Iteration 32 Verification: WS Orchestration Changes
-
-### ✅ Landed in `apps/api/src/wsOrchestrator.ts`
-
-Evidence (file inspection):
-
-- Instantiates `AgentRegistry` + registers real agent classes from `@learnflow/agents`.
-- Creates singleton `Orchestrator` from `@learnflow/core` and calls:
-  - `orchestrator.processMessage(text, context)`
-- Emits spec-aligned WS events:
-  - `response.start` → `response.chunk` (chunked streaming) → `response.end`
-  - `agent.spawned` (routing message) and `agent.complete`
-- Provides a best-effort sources payload by extracting URLs from an in-lesson “References/Sources” markdown section.
-
-### ⚠️ Not fully spec-compliant yet
-
-- WS `message` payload spec allows `attachments` and `context_overrides`; API currently reads only `text`, plus non-spec `lessonId/courseId`.
-- No `mindmap.update` emitted by orchestrator path.
-- `sources` are not real bibliographic objects (title/author/publication/year are mostly placeholders).
+This is a reliability smell: a clean boot should work without manual port policing.
 
 ---
 
-## Boot + Screenshots (Iteration 33)
+## Spec Coverage Scorecard (high-level)
 
-### Dev boot
-
-`npm run dev` brought up:
-
-- API: `http://localhost:3000`
-- Client: `http://localhost:3001`
-- Web: `http://localhost:3003`
-
-### Screenshots captured (all screens reachable in repo)
-
-Output dir:
-
-- `learnflow/artifacts/iter33/`
-
-Client app:
-
-- `home.png`
-- `login.png`, `register.png`
-- Onboarding: `onboarding_welcome.png`, `onboarding_goals.png`, `onboarding_topics.png`, `onboarding_api_keys.png`, `onboarding_subscription.png`, `onboarding_first_course.png`
-- Core: `dashboard.png`, `conversation.png`, `mindmap.png`, `settings.png`, `pipelines.png`
-- Marketplace: `marketplace_courses.png`, `marketplace_agents.png`, `creator_dashboard.png`
-
-Marketing web:
-
-- `web_home.png`, `web_features.png`, `web_pricing.png`, `web_download.png`, `web_blog.png`, `web_about.png`, `web_docs.png`
+- **Client UX screens** (§5.2): ~70% present (route-level), but many are thin/stubbed.
+- **Conversation + WS events** (§11.2): partial. Streaming exists, but not all payload semantics.
+- **Content pipeline** (§6): ~10–20% real; mostly synthetic lessons + best-effort source parsing.
+- **BYOAI key vault + usage dashboards** (§4.4, §8): partial endpoints; not end-to-end secure/validated/observable.
+- **Marketplace** (§7): mostly UI scaffolding, not a two-sided economic system.
+- **Multi-agent architecture** (§4, §10): orchestrator exists, but “agent mesh” behavior is not truly present.
 
 ---
 
-## Iteration 33 — 10–15 Prioritized Tasks (Problem → Fix → Acceptance)
+## Iteration 34 — Prioritized Task Queue (10–15)
 
-### 1) Make lesson sources first-class (end-to-end) — DONE (UI path)
+### 1) Fix dev boot determinism (ports + turbo)
 
-**Problem:** UI sources were partially mocked; WS sources are heuristic URL extraction.
-**Fix:** Removed `MOCK_SOURCES` usage in the client course view. Unified source parsing with `apps/client/src/lib/sources.ts` and render sources from actual lesson markdown content.
-**Acceptance:** CourseView + LessonReader render sources with no mock sources in the production UI path. (Persisted `sources[]` in DB is still a follow-up.)
+**Problem:** `npm run dev` fails due to hard-coded port 3001 collisions; dev flow is brittle.
+**Fix:** Make client/web/api ports configurable and auto-increment if busy (or check and fail with guidance). Update turbo pipeline to not kill the entire dev run when one workspace fails.
+**Acceptance criteria:** Fresh repo + `npm run dev` succeeds on a clean machine; if a port is busy, it chooses another or prints a clear actionable message.
 
-### 2) Real Content Acquisition pipeline (spec §6.1)
+### 2) Make sources/citations a first-class domain model (not markdown regex)
 
-**Problem:** CourseBuilderAgent does not actually discover/extract/score web content.
-**Fix:** Implement: topic decomposition → source discovery (search) → extraction (Firecrawl/Playwright) → scoring → dedupe → lesson formatting.
-**Acceptance:** Creating a course yields lessons with recency/authority signals and working citations; sources contain real metadata.
+**Problem:** Sources are extracted by regex from lesson markdown (`parseSources()`), which is fragile and loses metadata.
+**Fix:** Add `Lesson.sources[]` to API + DB, store bibliographic fields (url, title, author, publication, year, accessedAt). Render UI from structured sources; keep markdown parsing as fallback only.
+**Acceptance criteria:** Lesson JSON includes `sources[]`; UI renders citations + Sources drawer from structured data; no reliance on regex for normal path.
 
-### 3) Orchestrator: implement spec workflow semantics (spec §10)
+### 3) CourseView inline citation preview is logically wrong
 
-**Problem:** Orchestrator is invoked, but doesn’t follow the spec’s “clarify → build course → mindmap extend → lesson delivery → action chips” rigor.
-**Fix:** Update orchestrator policy: ask clarifying questions when needed; invoke course_builder; then mindmap_agent; then deliver first lesson; always return 3–4 suggested actions.
-**Acceptance:** New goal messages trigger clarifications; subsequent message builds course; response.end includes actions + sources; first lesson delivered under 1500 words.
+**Problem (evidence):** In `CourseView.tsx`, inline citation preview for each lesson description uses `sources[li]` (lesson index) rather than parsing the lesson’s own citation number(s). That is incorrect and will mismatch sources.
+**Fix:** Parse citation numbers inside each lesson (or attach source ids to lesson metadata) and render the matching tooltip(s).
+**Acceptance criteria:** Lesson list shows correct tooltip(s) for that specific lesson; no index-based guess.
 
-### 4) WebSocket protocol: implement `context_overrides` and attachments
+### 4) Implement the spec §10 “course creation workflow semantics” in orchestrator
 
-**Problem:** Spec §11.2 requires `context_overrides`; current API ignores it.
-**Fix:** Parse and merge `context_overrides` into StudentContextObject; support simple attachment metadata in envelope.
-**Acceptance:** WS message with overrides changes orchestrator behavior (e.g., difficulty, lesson length) and is covered by tests.
+**Problem:** Orchestrator is invoked, but does not reliably follow: clarify questions → build course → extend mindmap → deliver first lesson → action chips.
+**Fix:** Encode explicit policy/state machine for goal-setting and course creation; ensure `response.end` includes suggested actions (3–4) every time.
+**Acceptance criteria:** New goal conversation produces clarifying questions when needed; after clarification, a course is created and first lesson delivered under 1500 words; `actions[]` always populated.
 
-### 5) Emit `mindmap.update` and `progress.update` from real state changes
+### 5) WebSocket protocol compliance: implement `context_overrides` + attachments
 
-**Problem:** Client listens for these events but server rarely emits them from orchestrator flows.
-**Fix:** When a new course is created, emit `mindmap.update` (nodes_added/edges_added). When lesson completion occurs, emit `progress.update` with `{course_id, lesson_id, completion_percent}`.
-**Acceptance:** Conversation UI shows notifications and mindmap changes without refresh.
+**Problem:** Spec WS message payload includes `{ text, attachments, context_overrides }`; current system uses non-spec ad hoc params.
+**Fix:** Implement schema validation; merge overrides into Student Context Object; support basic attachments metadata in the envelope.
+**Acceptance criteria:** WS messages with overrides change behavior (difficulty, lesson length, etc.); coverage tests for merge logic.
 
-### 6) Replace fake “agent activity” with real agent routing signals
+### 6) Emit `mindmap.update` from real state changes
 
-**Problem:** Client guesses agent by keywords in user text; spec wants transparency of which agent is working.
-**Fix:** Server should emit `agent.spawned` with real agent name/task summary for each sub-agent call; client should render those directly.
-**Acceptance:** Activity indicator always matches actual invoked agent (no keyword guessing).
+**Problem:** Spec requires server-driven mindmap updates; current mindmap is largely derived client-side.
+**Fix:** Add persisted mindmap model (nodes/edges/mastery) and emit `mindmap.update` when courses are created or lessons completed.
+**Acceptance criteria:** Creating a course triggers `mindmap.update` events; Mindmap screen updates without reload.
 
-### 7) BYOAI key vault: validation + secure storage + UX
+### 7) Make “Mark Complete” consistent and real everywhere
 
-**Problem:** Spec §4.4: encrypt keys, validate, rotate, usage dashboard; current flow is partial.
-**Fix:** Implement provider selection, key validation call, store encrypted at rest, return masked keys only; add rotation/delete.
-**Acceptance:** Settings supports add/list/delete/rotate; keys never returned in plaintext; invalid keys show actionable errors.
+**Problem (evidence):** `CourseView` bottom action bar has `✅ Mark Complete` button with stub comment (`/* mark complete logic */`). `LessonReader` has working `completeLesson()`.
+**Fix:** Wire `CourseView` action bar to call `completeLesson` for the selected lesson; refresh progress and emit `progress.update`.
+**Acceptance criteria:** Marking complete from either screen updates progress rings/percent immediately; server emits `progress.update`.
 
-### 8) Token usage tracking per agent (spec §4.4, §8)
+### 8) Replace LessonReader’s direct fetches with the app API layer
 
-**Problem:** Spec wants per-agent token counts surfaced to user.
-**Fix:** Track tokens per agent per session; aggregate daily/weekly; expose in `/analytics` and UI.
-**Acceptance:** Dashboard/Settings show usage by agent + last-7-days; tests verify increments.
+**Problem (evidence):** `LessonReader` calls `fetch('/api/v1/courses/...')` directly for course flattening, illustrations, annotations, notes, compare. This bypasses the central app context and makes auth/error handling inconsistent.
+**Fix:** Move these calls into `AppContext` (or a typed API client), with consistent token headers, retry, and error UI.
+**Acceptance criteria:** No direct `fetch('/api/v1/...')` from UI screens; all calls go through a shared client; errors render in UI (not just `console.error`).
 
-### 9) Mindmap: server-backed graph model (not derived-only)
+### 9) BYOAI key vault: real validation + encryption + rotation + usage dashboard
 
-**Problem:** Mindmap UI is generated from courses + local completion; spec expects a knowledge graph with mastery states + expand/jump.
-**Fix:** Introduce `mindmap` resource in API; build from courses; update mastery with progress; add manual node create API.
-**Acceptance:** `/mindmap` returns persisted nodes/edges; MindmapExplorer renders from server data.
+**Problem:** Spec §4.4 requires encrypted at rest, provider validation, rotation, and usage dashboards. Current implementation appears partial.
+**Fix:** Implement provider-based validation, AES-GCM encryption with per-user key, masked key display only, rotation endpoint, and usage aggregation per agent.
+**Acceptance criteria:** Keys never returned in plaintext; invalid keys produce actionable errors; dashboard shows token usage per agent over last 7 days.
 
-### 10) Collaboration MVP with real-time rooms (spec §4.2 collaboration_agent)
+### 10) Real content acquisition pipeline (spec §6.1) — stop shipping synthetic lessons
 
-**Problem:** Collaboration experience is largely UI; no WS peer messaging.
-**Fix:** Create rooms, join/leave, message broadcast over WS; minimal peer matching using shared interests.
-**Acceptance:** Two sessions can chat in a room; messages persist; basic matching endpoint works.
+**Problem:** The platform’s core claim is “real-time internet curation with attribution.” Current course/lesson generation is still largely synthetic.
+**Fix:** Implement: topic decomposition → discovery (search) → extraction → scoring (authority/recency/readability) → dedupe → formatter (<1500 words) → attributions.
+**Acceptance criteria:** Creating a course yields lessons with real citations including author/publication/date; stale sources are avoided or flagged.
 
-### 11) Course marketplace: real search/filter and enroll
+### 11) Marketplace: convert from UI scaffolding to real browse/search/enroll
 
-**Problem:** Marketplace experience is partially static.
-**Fix:** Implement filtering/sorting/pagination and enroll flow backed by DB.
-**Acceptance:** Filters change results; enroll imports course into learner workspace; e2e covers browse→enroll.
+**Problem:** Marketplace views exist but are not a real two-sided marketplace.
+**Fix:** Implement DB-backed course discovery (filters/sort/pagination), enroll flow importing into user workspace, ratings/reviews.
+**Acceptance criteria:** Filters change results deterministically; enrolling adds the course to Dashboard; review submission persists.
 
-### 12) Creator publish state machine + QA checks (spec §7.1)
+### 12) Course publishing state machine + QA checks (spec §7.1)
 
-**Problem:** Spec requires quality checks + moderation; creator dashboard is mostly presentation.
-**Fix:** Draft→submitted→approved→published states; automated checks (min lessons, attribution completeness, readability).
-**Acceptance:** Submit triggers checks; failures show reasons; approved courses appear in marketplace.
+**Problem:** Spec requires quality checks + moderation queue; creator flow is mostly presentation.
+**Fix:** Implement Draft → Submitted → Approved → Published; automated checks for minimum lessons + attribution completeness + readability; moderation placeholder.
+**Acceptance criteria:** Submitting a course runs checks and blocks publish with reasons if failing; approved courses appear in marketplace.
 
-### 13) Export: Markdown (Free) + PDF/SCORM (Pro) incremental
+### 13) Security guardrails: dev token cannot ship
 
-**Problem:** Export spec is broad; current implementation unclear/stubbed.
-**Fix:** Ship Markdown export first; gate PDF/SCORM behind Pro; include citations.
-**Acceptance:** Export produces downloadable artifact with sources; Pro gating enforced server-side.
+**Problem:** There is a dev localStorage token behavior used for screenshots and likely dev auth.
+**Fix:** Restrict dev-token acceptance to `NODE_ENV=development`; add explicit test.
+**Acceptance criteria:** In prod mode, dev token is rejected for HTTP + WS.
 
-### 14) Security hardening: dev token guardrails
+### 14) Align docs/spec claims with MVP reality
 
-**Problem:** `token=dev` is useful locally but must never ship.
-**Fix:** Require NODE_ENV=development for dev token; add tests.
-**Acceptance:** In production mode, dev token auth fails; WS rejects unauthenticated connections.
+**Problem:** Spec claims gRPC, K8s agent mesh, vector DB, etc. MVP is Node/Express/WS + SQLite-ish.
+**Fix:** Add `docs/MVP_ARCHITECTURE.md` describing what’s real vs planned; update README to avoid misleading contributors.
+**Acceptance criteria:** New engineer can run the stack and understand which subsystems are mocked vs implemented.
 
-### 15) Reality alignment: update spec/README to reflect MVP vs target architecture
+---
 
-**Problem:** Spec claims gRPC/K8s/vector DB; MVP is Node/WS + in-memory/SQLite-ish.
-**Fix:** Add “MVP architecture” doc + delta list; stop misleading new engineers.
-**Acceptance:** Docs match what runs locally; roadmap clearly states what’s mocked.
+## Notes for Builder
+
+- Iter 33 UI additions in `LessonReader` (illustrations, comparison mode, annotations) are ambitious; they now require **API hardening** to be meaningful (auth, persistence, consistent error handling).
+- Screenshots for iter34 exist and can be used as a baseline visual regression set.
