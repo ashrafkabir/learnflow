@@ -1,36 +1,49 @@
-# BUILD_LOG_ITER39
+# LearnFlow — BUILD LOG (Iteration 39)
 
-Iteration: 39
-Date: 2026-03-19
-
-## Task 1) Onboarding only once (not every login)
+## Task 4) Pipeline UX for “Add to course” from MindmapExplorer
 
 ✅ DONE.
 
-### What I changed
+### What shipped
 
-- **API (SQLite)**: Added durable field `users.onboardingCompletedAt`.
-  - Updated schema creation to include column.
-  - Updated `insertUser` / `updateUser` statements and serialization.
-  - Updated `DbUser` typing + row mapping.
-- **API (profile routes)**:
-  - `GET /api/v1/profile/context` now returns `topics`, `experience`, and `onboardingCompletedAt`.
-  - Added `POST /api/v1/profile/onboarding/complete` to set `onboardingCompletedAt` for the authenticated user.
-- **API (auth responses)**:
-  - `/auth/register`, `/auth/login`, and Google OAuth callback responses now include `user.onboardingCompletedAt` (nullable).
-- **Client**:
-  - `FirstCourse` onboarding completion step now calls `/api/v1/profile/onboarding/complete` (best-effort) in addition to setting localStorage.
-  - `App.tsx` onboarding guard now treats onboarding as completed if **either**:
-    - local state says completed, or
-    - legacy `learnflow-onboarding-complete` localStorage is true, or
-    - `learnflow-user.onboardingCompletedAt` exists.
-  - `LoginScreen` routes to onboarding if the server indicates onboarding is incomplete.
-  - `RegisterScreen` routes to dashboard if onboarding is already complete, else onboarding.
+**Client (MindmapExplorer → Add to course)**
 
-### Notes
+- `Add to course` now **starts a pipeline** (when available) and **navigates** to `/pipeline/:pipelineId` for live progress UI.
+- Falls back to the legacy direct endpoint (`POST /courses/:id/add-topic`) if pipeline start fails.
 
-- Backward compatible with the prior localStorage-only behavior.
-- Durable completion requires the user to reach the final onboarding step at least once.
+**Client (Pipeline UI)**
+
+- Pipeline stages already map cleanly to requested UX:
+  - `scraping` → **Discovery**
+  - `organizing` → **Extract**
+  - `synthesizing` → **Synthesize**
+  - `quality_check` → **Course update**
+- `PipelineView` now surfaces:
+  - **Sources discovered** (attributed links)
+  - **Synthesis summary** (short “what happened” line)
+
+**API**
+
+- Added `POST /api/v1/pipeline/add-topic` that:
+  1. Runs discovery (prefers web search)
+  2. Extracts/dedupes
+  3. Synthesizes a lesson
+  4. Updates the existing course by adding a new module
+- Re-uses course generation helper `generateLessonContentWithLLM` for consistent lesson formatting.
+
+### Web-search preference + source hardening
+
+- Firecrawl search can fail/402 in some environments.
+- Added defensive fallback so pipelines still provide **real, resolvable sources**:
+  - `packages/agents/src/content-pipeline/firecrawl-provider.ts`: if Firecrawl returns **0 results**, fall back to the free `web-search-provider`.
+  - `apps/api/src/routes/pipeline.ts`: if `searchTopicTrending()` fails, fall back to importing `@learnflow/agents/dist/content-pipeline/web-search-provider.js`.
+
+### Ports stability
+
+- Enforced stable ports by restarting systemd user services:
+  - `learnflow-api` (3000)
+  - `learnflow-client` (3001)
+  - `learnflow-web` (3003)
 
 ### Verification
 
@@ -38,68 +51,11 @@ Date: 2026-03-19
 - `npx vitest run` ✅
 - `npx eslint .` ✅
 
-## Task 2) Onboarding must not force course creation
+### Runtime evidence (API)
 
-✅ DONE.
+- Verified add-topic pipeline completes and produces sources + summary + course update.
 
-### What I changed
+### Notes / follow-ups
 
-- **Client**: Updated onboarding flow to avoid implying/triggering course creation.
-  - `SubscriptionChoice` now routes to `/onboarding/ready` (final “ready” screen) instead of `/onboarding/first-course`.
-  - Updated copy comment in `FirstCourse` to clarify no course is auto-created during onboarding.
-
-### Acceptance check
-
-- Onboarding captures profile/goals/topics and ends on a “You’re all set” screen.
-- Users are directed to the Dashboard to create a course intentionally.
-
-### Verification
-
-- `npx tsc --noEmit` ✅
-- `npx vitest run` ✅
-- `npx eslint .` ✅
-
-## Task 3) Fix annotation bug: double-click heading throws errors
-
-✅ DONE.
-
----
-
-## Critical fix) Production/dev DB migration for users.onboardingCompletedAt
-
-✅ DONE.
-
-### Problem
-
-Existing persisted DBs (e.g., `apps/api/.data/learnflow.db`) created before Iter39 may **not** have the `users.onboardingCompletedAt` column. Because our prepared statements now reference that column, the API fails at startup with `no such column: onboardingCompletedAt`.
-
-### Fix
-
-- Added a **safe, idempotent startup migration** in `apps/api/src/db.ts`:
-  - Detects missing column via `PRAGMA table_info(users)`
-  - Runs `ALTER TABLE users ADD COLUMN onboardingCompletedAt TEXT` only if needed
-  - Wrapped in a try/catch so fresh DBs still initialize via `CREATE TABLE IF NOT EXISTS ...`.
-
-### Verification
-
-- `npx tsc --noEmit` ✅
-- `npx vitest run` ✅
-- `npx eslint .` ✅
-
-### What I changed
-
-- **Client**: Hardened selection → range logic in `LessonReader`.
-  - Added guard for `Selection.rangeCount` before calling `getRangeAt(0)`.
-  - Wrapped `getRangeAt(0)` in `try/catch` to avoid `IndexSizeError`.
-  - Validated the selection range is inside the lesson content container before computing toolbar position.
-
-### Acceptance check
-
-- Double-click on headings (or other text) no longer throws.
-- Annotation UI still appears for valid selections inside the lesson content.
-
-### Verification
-
-- `npx tsc --noEmit` ✅
-- `npx vitest run` ✅
-- `npx eslint .` ✅
+- We still need Iter39 QA screenshot evidence under `evals/screenshots/iter39-*`.
+- Journey test was temporarily updated to point to API 3000 for local runs.

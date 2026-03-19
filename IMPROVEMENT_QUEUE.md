@@ -35,11 +35,11 @@ Theme: Mindmap expansions v1 (lesson+course), pipeline UX, onboarding sanity, an
 
 ### 4) Pipeline UX for “Add to course”
 
-**Fix:** When user clicks “Add to course” on a suggested node, show pipeline progress and artifacts:
+**Status:** DONE ✅ (Iter39)
 
-- stages: discovery → extract → synthesize → course update
-- show sources discovered (attributed links) and synthesis summary
-  **Acceptance:** User sees live progress, sees what sources were used, and result is added to course.
+- Add-to-course now starts `POST /api/v1/pipeline/add-topic` and navigates to `/pipeline/:pipelineId`.
+- Pipeline UI shows stages (Discovery → Extract → Synthesize → Course update) plus attributed **sources discovered** and **synthesis summary**.
+- Web-search fallback added for environments where Firecrawl search fails/402.
 
 ### 5) Generate “cutting-edge” suggested nodes via web search (v1)
 
