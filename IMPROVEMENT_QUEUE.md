@@ -1,104 +1,130 @@
 # IMPROVEMENT_QUEUE
 
-Iteration: 36
-Status: DONE ✅
+Iteration: 37
+Status: READY FOR BUILDER
 Date: 2026-03-19
-Theme: **Brutal spec gap closure (core learning loop + marketplace realism) + mobile home fix**
+Theme: **From “responsive demo” → “agentic learning OS”: orchestration semantics, content pipeline realism, marketplace + creator economy, BYOAI vault**
 
-## Brutal Assessment (evidence-driven)
+## Verification (Iteration 36 landed)
 
-Iteration 35 shipped real improvements (icon system, tap-target fix, mobile screenshot script). But compared to the **Product Spec v1.0**, LearnFlow is still far from “agentic learning OS” and reads like a responsive demo with placeholders.
+**What was required to verify:** mobile home fix, screenshot-mobile authed mode, emoji removal, icon enforcement, and run fresh screenshots.
 
-**Evidence (local runs + screenshots):**
+**Evidence (repo state):**
 
-- Iter 35 deliverables landed:
-  - New calm line icons exist in `apps/client/src/components/icons/` ✅
-  - `screenshot-mobile.mjs` exists and runs ✅
-  - Mobile button shrink override removed (grep for `h-6 w-6 p-0` found none) ✅
-- Mobile screenshots were regenerated (320/375/414) under:
-  - `evals/screenshots/iter35-mobile/` ✅
-  - Additional authed mobile set created for Iter 36 validation: `evals/screenshots/iter36-mobile-authed/` ✅
-- **Major mobile UX bug remains:** `mobile-320__home.png` shows **massive empty whitespace** (page becomes extremely tall with long blank sections). This is a high-severity “looks broken” issue.
-- The mobile screenshot script captures routes unauthenticated, so **marketplace routes redirect to /login** unless we seed `learnflow-token` and `learnflow-onboarding-complete`. That’s expected from `OnboardingGuard`, but it means current script output can be misleading without auth seeding.
-- Many screens still contain emoji/icon placeholders across the app (43 TSX files contain emoji-like chars; e.g. Marketplace headers show `🏪`, `🤖`). This conflicts with the “cohesive icon system” goal.
+- `BUILD_LOG_ITER36.md` confirms emoji removal + icon enforcement + screenshot updates.
+- `screenshot-mobile.mjs` includes `SCREENSHOT_AUTHED=1` mode and seeds localStorage token/onboarding.
+- `apps/client/src` no longer depends on emoji icons (per Iter 36 log).
 
-## What matters vs spec (big gaps)
+**Screenshots executed (Iteration 37 planner run):**
 
-The spec’s differentiators are **multi-agent orchestration, attribution, mastery loop (notes/quizzes/progress), and a credible marketplace + creator economy**.
+- Desktop app routes: `node screenshot.mjs` (outputs still default to iter36 folders; scripts hardcode DIR)
+- Desktop app routes (authed): `SCREENSHOT_AUTHED=1 node screenshot.mjs`
+- Mobile authed: `SCREENSHOT_AUTHED=1 node screenshot-mobile.mjs`
+- Marketing web: `SCREENSHOT_DIR=evals/screenshots/iter37-web node screenshot-web.mjs`
 
-Right now:
+**Dev boot (planner run):**
 
-- Multi-agent orchestration is mostly implied, not delivered as a coherent in-product experience.
-- Citations/attribution and source drawer are not consistently present.
-- Lesson loop (≤10 min, objectives/takeaways, action bar, quizzes, notes formats) is incomplete/inconsistent.
-- Marketplace feels like a static catalog; creator publishing/moderation/reviews/earnings are thin.
+- Noted dev-port contention:
+  - `apps/client` default port 3001 is frequently already in use; `npm run dev` fails hard.
+  - `apps/api` default 3000 also frequently in use.
+  - For screenshots, a server already running on the default ports is assumed.
 
----
+## Brutal spec compliance assessment (v1.0)
 
-## Prioritized Task Queue (12) — biggest spec gaps first
+LearnFlow is **not yet** the product described in the spec. It’s a credible UI shell with some API endpoints + localStorage “auth bypass”, but the differentiators are mostly missing:
 
-### 1) Fix Mobile Home Page “Blank Scroll Abyss” (P0)
+### Biggest gaps vs spec differentiators
 
-**Status:** DONE ✅
+1. **Orchestration is not real**: no visible multi-agent DAG planning, no agent spawning events, no parallelization semantics, no tool registry/activation workflow that affects behavior.
+2. **Content pipeline is not real**: no scraping/discovery/quality scoring/deduplication/attribution chain that drives lesson creation.
+3. **BYOAI key management is not real**: key vault exists UI-wise, but no per-provider validation, encryption semantics surfaced, or usage dashboards that match spec.
+4. **Marketplace is thin**: course + agent marketplace pages exist, but no credible publishing/moderation/reviews/earnings pipeline, and no “agent activation changes orchestrator behavior” loop.
+5. **Mastery loop incomplete**: lesson format requirements (objectives, takeaways, sources, next steps, quick check) and adaptive quizzes/notes are inconsistent/placeholder.
 
-**Fix summary:** Framer Motion `initial="hidden"` caused key marketing sections to remain opacity:0 during full-page screenshot capture, producing huge blank whitespace. Switched relevant blocks in `apps/client/src/screens/marketing/Home.tsx` to `initial={false}` so content renders immediately.
+## Iteration 37 — prioritized task queue (15)
 
-**Acceptance:** On 320/375/414: meaningful content appears within first ~2 scrolls; no enormous empty whitespace.
+Focus is **P0/P1 only**: deliver spec-critical semantics and credibility. Each task includes crisp acceptance.
 
-### 2) Make screenshot automation reflect reality: seed auth + onboarding in `screenshot-mobile.mjs` (P0)
+### P0 — Make “agentic” real (or obviously simulated with correct semantics)
 
-**Status:** DONE ✅
+1. **Implement Orchestrator “event stream” UI (spec §11.2)**
+   - Add WebSocket event handling + UI timeline: `response.start/chunk/end`, `agent.spawned/complete`, `mindmap.update`, `progress.update`.
+   - Acceptance: in Conversation, sending a message shows agent activity (name + why), and streaming chunks appear; at end, action chips + sources render.
 
-**Fix summary:** Added `SCREENSHOT_AUTHED=1` mode that seeds localStorage tokens + onboarding completion, and writes screenshots to `evals/screenshots/iter36-mobile-authed/`. Default unauth run writes to `evals/screenshots/iter36-mobile/`.
+2. **Define/implement Agent Registry + activation affecting runtime**
+   - Add a registry model: built-in agents + marketplace agents with capabilities + required provider.
+   - Activation persisted in profile/context; orchestrator chooses marketplace agent when relevant.
+   - Acceptance: activating a marketplace agent changes subsequent chat routing (visible via `agent.spawned` events and “first use this session” notice).
 
-**Acceptance:** Running `SCREENSHOT_AUTHED=1 node screenshot-mobile.mjs` produces mobile screenshots where marketplace/dashboard/etc show correct pages, not `/login`.
+3. **Course creation workflow aligned to spec (spec §10)**
+   - Enforce: clarifying questions → outline → mindmap update → first lesson → post-lesson actions.
+   - Acceptance: “Create course” triggers these steps deterministically; lesson is <1500 words and has objectives/takeaways/sources/next steps.
 
-### 3) Replace remaining emoji icons across _all_ primary screens with the new icon set (P0)
+4. **Real source citations everywhere (spec §6.3 + §5.2.3)**
+   - Standardize `SourcesDrawer` and inline citations (hover/tap preview).
+   - Acceptance: every lesson and long assistant response includes a `Sources` section with URLs + author/date when available.
 
-**Status:** DONE ✅
+### P0 — Content pipeline realism (spec §6)
 
-**Fix summary:** Removed all emoji/icon placeholders across primary client screens + marketing/docs/blog copy and replaced with the shared line-icon set in `apps/client/src/components/icons/`. Verified no emoji remain in `apps/client/src/**` TS/TSX sources.
+5. **Implement pipeline artifacts model: discovery → extraction → scoring → dedupe → lesson formatting**
+   - It can be “local simulated” but must store: URL, author, date, license, access timestamp, scores, dedupe hash.
+   - Acceptance: Pipeline view shows each stage with inputs/outputs; creating a course produces pipeline artifacts saved in DB.
 
-### 4) Deliver the spec-required Lesson Reading Experience (P0)
+6. **Quality scoring + recency gating**
+   - Implement scoring rubric fields (authority, recency, relevance, readability) and reject/flag staleness.
+   - Acceptance: pipeline shows numeric scores; stale sources (>6 months for fast topics) are flagged and trigger refresh.
 
-**Status:** READY
+7. **Deduplication (MinHash/SimHash-lite acceptable)**
+   - Acceptance: adding near-duplicate URLs collapses into one canonical source with linkage.
 
-### 5) Notes Agent UX: Cornell + Flashcards + Zettelkasten outputs (P0)
+### P0 — BYOAI vault and usage tracking (spec §4.4 + §8)
 
-**Status:** READY
+8. **BYOAI provider model + validation semantics**
+   - Support provider selection (OpenAI/Anthropic/Gemini/Mistral/Groq/Ollama) with per-provider key format validation.
+   - Acceptance: `/api/v1/keys` stores provider + masked key; UI shows per-provider status (valid/invalid/unknown).
 
-### 6) Exam/Quiz loop: adaptive quizzes + scoring + gap identification (P1)
+9. **Usage tracking by agent and by provider**
+   - Token/event counters per agent surfaced in Settings → API Key Vault.
+   - Acceptance: chat interactions increment usage; dashboard shows last-7-days usage.
 
-**Status:** READY
+### P1 — Mastery loop and learning science scaffolding
 
-### 7) Attribution & Sources: make citations real and visible everywhere (P1)
+10. **Lesson reader spec parity**
 
-**Status:** READY
+- Enforce structure: time badge, objectives, core content, takeaways, sources, next steps, quick check.
+- Acceptance: `LessonReader` renders those sections and they are present in seeded demo content.
 
-### 8) “Agent transparency” experience: activity indicator + which-agent/why (P1)
+11. **Notes agent outputs: Cornell + flashcards + Zettelkasten**
 
-**Status:** READY
+- Acceptance: “Take Notes” produces structured payload (not just text) and UI renders appropriately.
 
-### 9) Marketplace realism: reviews, creator profile, and course detail completeness (P1)
+12. **Exam agent: quizzes + scoring + gap identification + difficulty adaptation**
 
-**Status:** READY
+- Acceptance: quiz submission yields score + gaps; next quiz difficulty changes based on last score.
 
-### 10) Creator dashboard: publishing flow + analytics + earnings (P1)
+### P1 — Marketplace + creator economy credibility
 
-**Status:** READY
+13. **Course marketplace: reviews/ratings + creator profile completeness**
 
-### 11) Profile & Settings parity: API key vault + usage stats + export (P1)
+- Acceptance: course detail page shows reviews, average rating, creator profile, syllabus preview, enroll.
 
-**Status:** READY
+14. **Creator publishing workflow + moderation queue**
 
-### 12) Pro tier hooks: proactive updates + subscription management UX (P2)
+- Add draft → submit → automated checks (attribution/readability/min lessons) → moderation state.
+- Acceptance: creator dashboard shows status pipeline and blocked reasons.
 
-**Status:** READY
+15. **Monetization semantics (Free vs Pro vs paid courses)**
 
----
+- Wire subscription tier into feature gates (export formats, proactive updates, paid publishing).
+- Acceptance: toggling subscription tier changes visible options and API enforces gates.
 
-## Notes for Builder
+## Builder notes (non-negotiables)
 
-- **Do not** treat “auth bypass” as a product feature. It should remain dev/eval-only.
-- Mobile automation should support both unauthenticated (marketing + auth + onboarding) and authenticated coverage.
-- Prioritize **core learning loop** before expanding secondary screens.
+- If a feature is mocked, **mock it with correct data shapes and events** so the UI/semantics match the spec.
+- Prioritize **orchestration + pipeline + sources + BYOAI vault** before visual polish.
+- Fix dev ergonomics: hardcoded screenshot output dirs (`iter36-*`) are now a recurring footgun.
+
+## Known technical debt surfaced in planner run
+
+- Screenshot scripts hardcode output directories (`iter36-*`) and ignore `SCREENSHOT_DIR` for app/mobile. This makes iteration evidence messy.
+- Dev servers frequently collide on ports 3000/3001/3003; consider `.env`-driven ports with printed URLs and screenshot scripts consuming `SCREENSHOT_BASE_URL`.
