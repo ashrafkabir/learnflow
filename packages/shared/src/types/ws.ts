@@ -39,7 +39,25 @@ export type WsServerEvent =
   | { event: 'agent.complete'; data: { agent_name: string; result_summary: string } }
   | {
       event: 'mindmap.update';
-      data: { nodes_added: unknown[]; edges_added: unknown[] };
+      data:
+        | {
+            // Spec §11.2
+            nodes_added: unknown[];
+            edges_added: unknown[];
+          }
+        | {
+            // Extension used by the current UI (Conversation route)
+            courseId?: string | null;
+            suggestions?: Array<{
+              id: string;
+              label: string;
+              parentLessonId?: string;
+              reason?: string;
+            }>;
+            // Keep spec fields present to make clients tolerant
+            nodes_added?: unknown[];
+            edges_added?: unknown[];
+          };
     }
   | {
       event: 'progress.update';

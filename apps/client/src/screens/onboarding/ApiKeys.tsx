@@ -1,17 +1,91 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../../context/AppContext.js';
+import { useApp, apiBase } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
+import { useToast } from '../../components/Toast.js';
+
+type KeyProvider = 'openai' | 'anthropic' | 'google';
 
 export function OnboardingApiKeys() {
   const nav = useNavigate();
   const { dispatch } = useApp();
+  const { toast } = useToast();
+
+  const [provider, setProvider] = useState<KeyProvider>('openai');
   const [key, setKey] = useState('');
+  const [validating, setValidating] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const canSave = useMemo(() => key.trim().length > 0, [key]);
 
   const next = () => {
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 4 });
     nav('/onboarding/subscription');
+  };
+
+  const validateKey = async (): Promise<boolean> => {
+    const token = localStorage.getItem('learnflow-token');
+    if (!token) {
+      toast('Please log in first', 'error');
+      return false;
+    }
+
+    setValidating(true);
+    try {
+      const res = await fetch(`${apiBase()}/api/v1/keys/validate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey: key.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.message || 'Invalid API key', 'error');
+        return false;
+      }
+      return true;
+    } catch {
+      toast('Network error while validating', 'error');
+      return false;
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const saveKey = async () => {
+    if (!canSave) return;
+
+    const token = localStorage.getItem('learnflow-token');
+    if (!token) {
+      toast('Please log in first', 'error');
+      return;
+    }
+
+    // Optional validation: run basic provider format validation for a clearer UX.
+    const ok = await validateKey();
+    if (!ok) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`${apiBase()}/api/v1/keys`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey: key.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.message || 'Failed to save key', 'error');
+        return;
+      }
+
+      toast('API key saved securely', 'success');
+      setKey('');
+      next();
+    } catch {
+      toast('Network error while saving', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -39,31 +113,65 @@ export function OnboardingApiKeys() {
           shared.
         </p>
 
-        <label
-          htmlFor="api-key-input"
-          className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block"
-        >
-          API Key
-        </label>
-        <input
-          id="api-key-input"
-          type="password"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          placeholder="sk-..."
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent mb-8"
-        />
+        <div className="grid grid-cols-1 gap-4 mb-6">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+              Provider
+            </span>
+            <select
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as KeyProvider)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+            >
+              <option value="openai">OpenAI</option>
+              <option value="anthropic">Anthropic</option>
+              <option value="google">Google</option>
+            </select>
+          </label>
+
+          <label htmlFor="api-key-input" className="block">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 block">
+              API Key
+            </span>
+            <input
+              id="api-key-input"
+              type="password"
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder={
+                provider === 'anthropic' ? 'sk-ant-...' : provider === 'google' ? 'AI...' : 'sk-...'
+              }
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              We&apos;ll validate the key format and store it encrypted.
+            </p>
+          </label>
+        </div>
 
         <div className="flex gap-3">
           <Button
             variant="secondary"
             onClick={() => nav('/onboarding/topics')}
             className="px-6 py-4"
+            disabled={saving || validating}
           >
             Back
           </Button>
-          <Button variant="primary" onClick={next} fullWidth className="py-4">
-            {key ? 'Save & Continue' : 'Skip for now'}
+          <Button
+            variant="primary"
+            onClick={canSave ? saveKey : next}
+            fullWidth
+            className="py-4"
+            disabled={saving || validating}
+          >
+            {canSave
+              ? saving
+                ? 'Saving…'
+                : validating
+                  ? 'Validating…'
+                  : 'Validate, Save & Continue'
+              : 'Skip for now'}
           </Button>
         </div>
       </div>
