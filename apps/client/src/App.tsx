@@ -224,6 +224,10 @@ export function App() {
                   <Route path="/onboarding/interests" element={<OnboardingTopics />} />
                   <Route path="/onboarding/api-keys" element={<OnboardingApiKeys />} />
                   <Route path="/onboarding/api-key" element={<OnboardingApiKeys />} />
+                  <Route
+                    path="/onboarding/experience"
+                    element={<Navigate to="/onboarding/subscription" replace />}
+                  />
                   <Route path="/onboarding/subscription" element={<SubscriptionChoice />} />
                   <Route path="/onboarding/first-course" element={<FirstCourse />} />
                   <Route path="/onboarding/ready" element={<FirstCourse />} />

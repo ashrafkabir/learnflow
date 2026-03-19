@@ -57,7 +57,7 @@ export function OnboardingApiKeys() {
         <div className="flex gap-3">
           <Button
             variant="secondary"
-            onClick={() => nav('/onboarding/experience')}
+            onClick={() => nav('/onboarding/topics')}
             className="px-6 py-4"
           >
             Back

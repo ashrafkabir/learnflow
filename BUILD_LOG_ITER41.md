@@ -31,8 +31,30 @@ Copied (no delete) the following Iter41 planning artifacts to:
 - `learnflow/evals/screenshots/iter41-mobile/`
 - `learnflow/evals/screenshots/iter41-web/`
 
+## Task 1 — Fix onboarding route mismatch (/onboarding/experience)
+
+**Problem**: the Back button on `/onboarding/api-keys` navigated to a non-existent route (`/onboarding/experience`). Screenshot scripts also tried to capture `/onboarding/experience`.
+
+**Changes**
+
+- Client: `/onboarding/api-keys` Back button now routes to `/onboarding/topics`.
+- Router: added a compatibility redirect `/onboarding/experience → /onboarding/subscription` (so any stale links don’t 404).
+- Screenshot script: updated mobile screenshots to capture the real onboarding pages:
+  - api-keys, subscription, first-course
+
+**Verification (required)**
+
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅
+- `npx eslint .` ✅
+
+**Screenshots (required)**
+
+- Updated Iter41 screenshots after change:
+  - `evals/screenshots/iter41-mobile/*` ✅
+  - `evals/screenshots/iter41-web/*` ✅
+  - `evals/screenshots/iter41-desktop/*` ✅ (via `screenshot-all.mjs`)
+
 ## Notes
 
-- A prior commit already exists for Iter41 plan:
-  - `22d5e85 Iteration 41 planner: improvement queue + build log`
 - Screenshots are ignored by git (expected), so they remain as local + OneDrive artifacts.
