@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
+import { apiBase } from '../../context/AppContext.tsx';
 import { useToast } from '../../components/Toast.js';
 import {
   IconChart,
@@ -23,6 +24,29 @@ interface CreatorCourse {
   rating: number;
   revenue: number;
   created: string;
+}
+
+interface CreatorDashboardPayload {
+  courses: Array<{
+    id: string;
+    title: string;
+    status: 'draft' | 'review' | 'published' | 'rejected';
+    enrollmentCount: number;
+    rating: number;
+    revenue: number;
+    publishedAt: string | null;
+  }>;
+  totalEarnings: number;
+  totalEnrollments: number;
+  payouts: Array<{
+    id: string;
+    courseId: string;
+    amount: number;
+    creatorShare: number;
+    platformShare: number;
+    status: 'pending' | 'paid';
+    createdAt: string;
+  }>;
 }
 
 const MOCK_COURSES: CreatorCourse[] = [
@@ -88,7 +112,74 @@ export function CreatorDashboard() {
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>('My Courses');
   const [showPublishForm, setShowPublishForm] = useState(false);
+  const [_loading, setLoading] = useState(false);
+  const [creatorCourses, setCreatorCourses] = useState<CreatorCourse[]>(MOCK_COURSES);
+  const [creatorAnalytics, setCreatorAnalytics] = useState(MOCK_ANALYTICS);
+  const [creatorEarnings, setCreatorEarnings] = useState(MOCK_EARNINGS);
   const [publishStep, setPublishStep] = useState(0);
+  useEffect(() => {
+    const loadDashboard = async () => {
+      setLoading(true);
+      try {
+        const token = localStorage.getItem('learnflow-token');
+        const res = await fetch(`${apiBase()}/api/v1/marketplace/creator/dashboard`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+        if (res.ok) {
+          const data = (await res.json()) as CreatorDashboardPayload;
+          const courses: CreatorCourse[] = (data.courses || []).map((c) => ({
+            id: c.id,
+            title: c.title,
+            status:
+              c.status === 'published'
+                ? 'published'
+                : c.status === 'review'
+                  ? 'under_review'
+                  : c.status === 'draft'
+                    ? 'draft'
+                    : 'draft',
+            enrollments: c.enrollmentCount ?? 0,
+            rating: c.rating ?? 0,
+            revenue: c.revenue ?? 0,
+            created: (c.publishedAt || new Date().toISOString()).slice(0, 10),
+          }));
+
+          setCreatorCourses(courses.length ? courses : MOCK_COURSES);
+
+          // Derive high-level analytics from payload (keep mock chart series for now).
+          const avgRating = courses.length
+            ? courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length
+            : MOCK_ANALYTICS.avgRating;
+          setCreatorAnalytics({
+            ...MOCK_ANALYTICS,
+            enrollmentsThisMonth: data.totalEnrollments ?? MOCK_ANALYTICS.enrollmentsThisMonth,
+            avgRating: Math.round(avgRating * 10) / 10,
+          });
+
+          setCreatorEarnings({
+            ...MOCK_EARNINGS,
+            totalEarnings: data.totalEarnings ?? MOCK_EARNINGS.totalEarnings,
+            pendingPayout: (data.payouts || [])
+              .filter((p) => p.status === 'pending')
+              .reduce((sum, p) => sum + (p.creatorShare || 0), 0),
+            payoutHistory: (data.payouts || []).slice(0, 6).map((p) => ({
+              id: p.id,
+              date: p.createdAt.slice(0, 10),
+              amount: p.creatorShare,
+              status: p.status,
+            })),
+          });
+        }
+      } catch {
+        // keep mocks
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadDashboard();
+  }, []);
+
   const [newCourse, setNewCourse] = useState({
     title: '',
     description: '',
@@ -111,21 +202,75 @@ export function CreatorDashboard() {
     );
   };
 
-  const handleSubmitForReview = () => {
+  const handleSubmitForReview = async () => {
     if (!newCourse.title.trim()) {
       toast('Please enter a course title', 'error');
       return;
     }
-    toast('Course submitted for review!', 'success');
-    setShowPublishForm(false);
-    setPublishStep(0);
-    setNewCourse({
-      title: '',
-      description: '',
-      topic: 'programming',
-      difficulty: 'beginner',
-      price: '0',
-    });
+    try {
+      const token = localStorage.getItem('learnflow-token');
+      const payload = {
+        title: newCourse.title,
+        description: newCourse.description,
+        topic: newCourse.topic,
+        difficulty: newCourse.difficulty,
+        price: parseFloat(newCourse.price || '0'),
+        // MVP: placeholder quality inputs
+        lessonCount: 7,
+        attributionCount: 3,
+        readabilityScore: 0.7,
+      };
+
+      const res = await fetch(`${apiBase()}/api/v1/marketplace/courses`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error('Publish failed');
+
+      toast('Course submitted for review!', 'success');
+
+      // Refresh dashboard so table/metrics become data-driven.
+      const dash = await fetch(`${apiBase()}/api/v1/marketplace/creator/dashboard`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+      if (dash.ok) {
+        const data = (await dash.json()) as CreatorDashboardPayload;
+        const courses: CreatorCourse[] = (data.courses || []).map((c) => ({
+          id: c.id,
+          title: c.title,
+          status:
+            c.status === 'published'
+              ? 'published'
+              : c.status === 'review'
+                ? 'under_review'
+                : c.status === 'draft'
+                  ? 'draft'
+                  : 'draft',
+          enrollments: c.enrollmentCount ?? 0,
+          rating: c.rating ?? 0,
+          revenue: c.revenue ?? 0,
+          created: (c.publishedAt || new Date().toISOString()).slice(0, 10),
+        }));
+        setCreatorCourses(courses.length ? courses : MOCK_COURSES);
+      }
+
+      setShowPublishForm(false);
+      setPublishStep(0);
+      setNewCourse({
+        title: '',
+        description: '',
+        topic: 'programming',
+        difficulty: 'beginner',
+        price: '0',
+      });
+    } catch {
+      toast('Failed to publish course. Please try again.', 'error');
+    }
   };
 
   const renderMyCourses = () => (
@@ -290,7 +435,7 @@ export function CreatorDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {MOCK_COURSES.map((c) => (
+              {creatorCourses.map((c) => (
                 <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{c.title}</td>
                   <td className="px-4 py-3">{statusBadge(c.status)}</td>
@@ -343,7 +488,7 @@ export function CreatorDashboard() {
         </div>
       </div>
 
-      {MOCK_COURSES.length === 0 && (
+      {creatorCourses.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
           <IconTrophy className="w-12 h-12 text-gray-400" />
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">No courses yet</h2>
@@ -365,22 +510,22 @@ export function CreatorDashboard() {
         {[
           {
             label: 'Total Views',
-            value: MOCK_ANALYTICS.totalViews.toLocaleString(),
+            value: creatorAnalytics.totalViews.toLocaleString(),
             icon: <IconEye className="w-5 h-5" />,
           },
           {
             label: 'Enrollments This Month',
-            value: MOCK_ANALYTICS.enrollmentsThisMonth.toString(),
+            value: creatorAnalytics.enrollmentsThisMonth.toString(),
             icon: <IconChart className="w-5 h-5" />,
           },
           {
             label: 'Completion Rate',
-            value: `${MOCK_ANALYTICS.completionRate}%`,
+            value: `${creatorAnalytics.completionRate}%`,
             icon: <IconCheck className="w-5 h-5" />,
           },
           {
             label: 'Avg Rating',
-            value: `${MOCK_ANALYTICS.avgRating}`,
+            value: `${creatorAnalytics.avgRating}`,
             icon: <IconStar className="w-5 h-5" />,
           },
         ].map((stat) => (
@@ -401,7 +546,7 @@ export function CreatorDashboard() {
           Views This Week
         </h3>
         <div className="flex items-end gap-2 h-32">
-          {MOCK_ANALYTICS.viewsThisWeek.map((v, i) => {
+          {creatorAnalytics.viewsThisWeek.map((v, i) => {
             const max = Math.max(...MOCK_ANALYTICS.viewsThisWeek);
             const pct = (v / max) * 100;
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -426,22 +571,24 @@ export function CreatorDashboard() {
           Per-Course Performance
         </h3>
         <div className="space-y-3">
-          {MOCK_COURSES.filter((c) => c.status === 'published').map((c) => (
-            <div key={c.id} className="flex items-center gap-3">
-              <div className="flex-1">
-                <p className="text-sm font-medium text-gray-900 dark:text-white">{c.title}</p>
-                <div className="mt-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent rounded-full"
-                    style={{ width: `${(c.enrollments / 400) * 100}%` }}
-                  />
+          {creatorCourses
+            .filter((c) => c.status === 'published')
+            .map((c) => (
+              <div key={c.id} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{c.title}</p>
+                  <div className="mt-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-accent rounded-full"
+                      style={{ width: `${(c.enrollments / 400) * 100}%` }}
+                    />
+                  </div>
                 </div>
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  {c.enrollments} enrolled
+                </span>
               </div>
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {c.enrollments} enrolled
-              </span>
-            </div>
-          ))}
+            ))}
         </div>
       </div>
     </div>
@@ -453,12 +600,16 @@ export function CreatorDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-5 text-white">
           <p className="text-sm opacity-90">Total Earnings</p>
-          <p className="text-3xl font-bold mt-1">${MOCK_EARNINGS.totalEarnings.toLocaleString()}</p>
+          <p className="text-3xl font-bold mt-1">
+            ${creatorEarnings.totalEarnings.toLocaleString()}
+          </p>
           <p className="text-sm opacity-75 mt-1">Lifetime revenue from courses</p>
         </div>
         <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-5 text-white">
           <p className="text-sm opacity-90">Pending Payout</p>
-          <p className="text-3xl font-bold mt-1">${MOCK_EARNINGS.pendingPayout.toLocaleString()}</p>
+          <p className="text-3xl font-bold mt-1">
+            ${creatorEarnings.pendingPayout.toLocaleString()}
+          </p>
           <p className="text-sm opacity-75 mt-1">Next payout: Aug 1, 2025</p>
         </div>
       </div>
@@ -480,7 +631,7 @@ export function CreatorDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {MOCK_EARNINGS.payoutHistory.map((p) => (
+              {creatorEarnings.payoutHistory.map((p) => (
                 <tr key={p.id}>
                   <td className="px-4 py-3 text-gray-900 dark:text-white">
                     {new Date(p.date).toLocaleDateString('en-US', {
@@ -510,14 +661,16 @@ export function CreatorDashboard() {
           Revenue by Course
         </h3>
         <div className="space-y-3">
-          {MOCK_COURSES.filter((c) => c.revenue > 0).map((c) => (
-            <div key={c.id} className="flex items-center justify-between">
-              <span className="text-sm text-gray-900 dark:text-white">{c.title}</span>
-              <span className="text-sm font-bold text-green-600 dark:text-green-400">
-                ${c.revenue}
-              </span>
-            </div>
-          ))}
+          {creatorCourses
+            .filter((c) => c.revenue > 0)
+            .map((c) => (
+              <div key={c.id} className="flex items-center justify-between">
+                <span className="text-sm text-gray-900 dark:text-white">{c.title}</span>
+                <span className="text-sm font-bold text-green-600 dark:text-green-400">
+                  ${c.revenue}
+                </span>
+              </div>
+            ))}
         </div>
       </div>
     </div>

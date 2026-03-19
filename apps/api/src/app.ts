@@ -5,6 +5,7 @@ import { chatRouter } from './routes/chat.js';
 import { coursesRouter } from './routes/courses.js';
 import { mindmapRouter } from './routes/mindmap.js';
 import { marketplaceRouter } from './routes/marketplace.js';
+import { marketplaceFullRouter } from './routes/marketplace-full.js';
 import { profileRouter } from './routes/profile.js';
 import { subscriptionRouter } from './routes/subscription.js';
 import { analyticsRouter } from './routes/analytics.js';
@@ -89,7 +90,10 @@ export function createApp(options?: { devMode?: boolean }) {
   app.use('/api/v1/chat', protectedAuth, rateLimiter, chatRouter);
   app.use('/api/v1/courses', protectedAuth, rateLimiter, coursesRouter);
   app.use('/api/v1/mindmap', protectedAuth, rateLimiter, mindmapRouter);
+  // Marketplace
+  // Keep public browse endpoints accessible without auth; protect creator/checkout flows.
   app.use('/api/v1/marketplace', rateLimiter, marketplaceRouter);
+  app.use('/api/v1/marketplace', protectedAuth, rateLimiter, marketplaceFullRouter);
   app.use('/api/v1/profile', protectedAuth, rateLimiter, profileRouter);
   app.use('/api/v1/subscription', protectedAuth, rateLimiter, subscriptionRouter);
   app.use('/api/v1/analytics', protectedAuth, rateLimiter, analyticsRouter);

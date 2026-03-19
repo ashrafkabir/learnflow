@@ -55,6 +55,37 @@ Copied (no delete) the following Iter41 planning artifacts to:
   - `evals/screenshots/iter41-web/*` ✅
   - `evals/screenshots/iter41-desktop/*` ✅ (via `screenshot-all.mjs`)
 
+## Task 2 — Hook marketplace creator dashboard + publish flow to real APIs
+
+**Problem**: `/marketplace/creator` used only mocked data and publish flow was local-only.
+
+**Changes**
+
+- API
+  - Restored public access to browse endpoints required by tests:
+    - `/api/v1/marketplace/courses` and `/api/v1/marketplace/agents` remain public.
+  - Enabled full creator endpoints behind auth:
+    - `/api/v1/marketplace/creator/dashboard`
+    - `POST /api/v1/marketplace/courses` (alias of `/publish`)
+    - `GET /api/v1/marketplace/courses/:id` (detail)
+    - `GET /api/v1/marketplace/agents/activated` (activated agent IDs)
+- Client
+  - Creator dashboard now loads from `/api/v1/marketplace/creator/dashboard` when available and falls back to mocks.
+  - Publish flow now POSTs to `/api/v1/marketplace/courses` and refreshes dashboard on success.
+
+**Verification (required)**
+
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅
+- `npx eslint .` ✅
+
+**Screenshots (required)**
+
+- Regenerated Iter41 screenshots after change:
+  - `evals/screenshots/iter41-mobile/*` ✅
+  - `evals/screenshots/iter41-web/*` ✅
+  - `evals/screenshots/iter41-desktop/*` ✅
+
 ## Notes
 
 - Screenshots are ignored by git (expected), so they remain as local + OneDrive artifacts.

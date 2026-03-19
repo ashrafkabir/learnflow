@@ -139,7 +139,8 @@ const searchSchema = z.object({
 // ─── Routes ───
 
 // POST /api/v1/marketplace/publish — publish a course (S09-A01)
-router.post('/publish', (req: Request, res: Response) => {
+// POST /api/v1/marketplace/courses — publish a course (compat with client spec wording)
+router.post(['/publish', '/courses'], (req: Request, res: Response) => {
   const parse = publishCourseSchema.safeParse(req.body);
   if (!parse.success) {
     res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
@@ -147,10 +148,24 @@ router.post('/publish', (req: Request, res: Response) => {
   }
 
   const data = parse.data;
+  // Map client payloads (`lessonCount`, `attributionCount`, `readabilityScore`) if present; otherwise rely on defaults.
+  const lessonCount =
+    typeof (req.body as any)?.lessonCount === 'number'
+      ? (req.body as any).lessonCount
+      : data.lessonCount;
+  const attributionCount =
+    typeof (req.body as any)?.attributionCount === 'number'
+      ? (req.body as any).attributionCount
+      : data.attributionCount;
+  const readabilityScore =
+    typeof (req.body as any)?.readabilityScore === 'number'
+      ? (req.body as any).readabilityScore
+      : data.readabilityScore;
+
   const qc = qualityCheck({
-    lessonCount: data.lessonCount,
-    attributionCount: data.attributionCount,
-    readabilityScore: data.readabilityScore,
+    lessonCount,
+    attributionCount,
+    readabilityScore,
   });
 
   const course: PublishedCourse = {
@@ -191,6 +206,16 @@ router.get('/courses', (req: Request, res: Response) => {
   if (maxPrice !== undefined) results = results.filter((c) => c.price <= maxPrice);
 
   res.status(200).json({ courses: results });
+});
+
+// GET /api/v1/marketplace/courses/:id — course detail (client expects this)
+router.get('/courses/:id', (req: Request, res: Response) => {
+  const course = publishedCourses.get(String(req.params.id));
+  if (!course || course.status !== 'published') {
+    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    return;
+  }
+  res.status(200).json({ course });
 });
 
 // POST /api/v1/marketplace/checkout — Stripe checkout (S09-A02)
@@ -259,6 +284,13 @@ router.post('/agents/submit', (req: Request, res: Response) => {
 router.get('/agents', (_req: Request, res: Response) => {
   const agents = Array.from(agentSubmissions.values()).filter((a) => a.status === 'approved');
   res.status(200).json({ agents });
+});
+
+// GET /api/v1/marketplace/agents/activated — list activated agent IDs for current user (client expects this)
+router.get('/agents/activated', (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const ids = Array.from(activatedAgents.get(userId) || []);
+  res.status(200).json({ activatedAgentIds: ids });
 });
 
 // POST /api/v1/marketplace/agents/:id/activate — activate agent (S09-A07)
