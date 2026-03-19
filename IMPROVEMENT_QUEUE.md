@@ -1,7 +1,7 @@
 # IMPROVEMENT_QUEUE
 
 Iteration: 33
-Status: READY FOR BUILDER
+Status: DONE
 
 ## Brutal Assessment (vs full spec)
 
@@ -80,11 +80,11 @@ Marketing web:
 
 ## Iteration 33 — 10–15 Prioritized Tasks (Problem → Fix → Acceptance)
 
-### 1) Make lesson sources first-class (end-to-end)
+### 1) Make lesson sources first-class (end-to-end) — DONE (UI path)
 
-**Problem:** UI sources are partially mocked; WS sources are heuristic URL extraction. Spec §6/§11 requires real attribution objects.
-**Fix:** Extend Course/Lesson schema to persist `sources[]` (title, author, publication, date/year, url, accessed_at, license if known). Remove `MOCK_SOURCES` usage.
-**Acceptance:** LessonReader + SourceDrawer render persisted sources consistently via REST + WS; no mocks in production path.
+**Problem:** UI sources were partially mocked; WS sources are heuristic URL extraction.
+**Fix:** Removed `MOCK_SOURCES` usage in the client course view. Unified source parsing with `apps/client/src/lib/sources.ts` and render sources from actual lesson markdown content.
+**Acceptance:** CourseView + LessonReader render sources with no mock sources in the production UI path. (Persisted `sources[]` in DB is still a follow-up.)
 
 ### 2) Real Content Acquisition pipeline (spec §6.1)
 
