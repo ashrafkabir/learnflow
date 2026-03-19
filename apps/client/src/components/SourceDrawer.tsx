@@ -1,5 +1,6 @@
 import React from 'react';
 import { Source } from './CitationTooltip.js';
+import { IconBook, IconClose } from './icons/index.js';
 
 interface SourceDrawerProps {
   open: boolean;
@@ -18,12 +19,16 @@ export function SourceDrawer({ open, onClose, sources }: SourceDrawerProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-5 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">📚 Sources</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+            <IconBook size={18} className="text-accent" decorative />
+            Sources
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            aria-label="Close sources"
           >
-            ✕
+            <IconClose size={16} className="text-current" decorative />
           </button>
         </div>
         <div className="p-5 space-y-4">

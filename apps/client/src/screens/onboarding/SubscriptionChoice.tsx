@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
+import { IconCheck, IconRocket } from '../../components/icons/index.js';
 
 const PLANS = [
   {
@@ -110,7 +111,10 @@ export function SubscriptionChoice() {
                       key={f}
                       className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2"
                     >
-                      <span className="text-success">✓</span> {f}
+                      <span className="text-success inline-flex items-center">
+                        <IconCheck className="w-4 h-4" />
+                      </span>
+                      {f}
                     </li>
                   ))}
                 </ul>
@@ -154,7 +158,9 @@ export function SubscriptionChoice() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="text-center">
-              <div className="text-4xl mb-3">🚀</div>
+              <div className="text-4xl mb-3 text-accent inline-flex justify-center">
+                <IconRocket className="w-10 h-10" />
+              </div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                 Pro Coming Soon!
               </h2>

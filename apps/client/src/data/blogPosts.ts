@@ -154,7 +154,7 @@ Most AI-powered apps work the same way: you pay them a subscription, and they us
 
 LearnFlow lets you bring your own API keys. Here's why:
 
-### 🔑 You Control Your Keys
+### You Control Your Keys
 
 Your API keys are encrypted with AES-256-GCM before storage:
 
@@ -167,7 +167,7 @@ const encrypted = crypto.createCipheriv('aes-256-gcm', derivedKey, iv);
 
 We store the encrypted key and IV. Only authenticated requests can decrypt and use them.
 
-### 💰 You Control Your Costs
+### You Control Your Costs
 
 With your own API key, you see exactly what each course generation costs. A typical course generation uses:
 
@@ -180,7 +180,7 @@ With your own API key, you see exactly what each course generation costs. A typi
 
 That's 11 cents for a full course. Compare that to $20/month subscriptions.
 
-### 🔄 You Choose Your Model
+### You Choose Your Model
 
 Want to use Claude instead of GPT-4? Prefer a local model via Ollama? LearnFlow's agent system is model-agnostic. Set your preferred provider and model in settings, and all agents will use it.
 

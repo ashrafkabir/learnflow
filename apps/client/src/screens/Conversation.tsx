@@ -13,11 +13,13 @@ import type { Source } from '../components/CitationTooltip.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { Button } from '../components/Button.js';
 import {
+  IconClose,
   IconMindmap,
   IconShieldKey,
   IconBrainSpark,
   IconCourse,
   IconSearch,
+  IconSparkles,
 } from '../components/icons/index.js';
 
 // Dynamically import vis-network for mindmap panel
@@ -171,8 +173,8 @@ function MindmapPanel({
             </span>
             Knowledge Map
           </h2>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            ✕
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Close mindmap">
+            <IconClose size={16} className="text-gray-700 dark:text-gray-200" decorative />
           </Button>
         </div>
         <div
@@ -678,7 +680,10 @@ export function Conversation() {
                     }}
                     className="mt-2 rounded-full bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20"
                   >
-                    ✨ Copy Improved Content
+                    <span className="inline-flex items-center gap-1">
+                      <IconSparkles size={14} className="text-accent" decorative />
+                      Copy Improved Content
+                    </span>
                   </Button>
                 )}
                 <p className="text-[10px] mt-1 opacity-50">
@@ -839,8 +844,9 @@ export function Conversation() {
               size="sm"
               onClick={() => setContextBadge(null)}
               className="ml-auto text-gray-300 hover:text-gray-500"
+              aria-label="Clear context"
             >
-              ✕
+              <IconClose size={14} className="text-current" decorative />
             </Button>
           </div>
         )}

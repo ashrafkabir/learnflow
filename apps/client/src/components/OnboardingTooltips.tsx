@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './Button.js';
+import { IconBrainSpark, IconClose, IconMarketplace, IconSpark } from './icons/index.js';
 
 const STORAGE_KEY = 'onboarding-tour-complete';
 
@@ -7,28 +8,33 @@ interface TooltipStep {
   target: string;
   title: string;
   description: string;
-  icon: string;
+  Icon: React.ComponentType<{
+    size?: number;
+    className?: string;
+    title?: string;
+    decorative?: boolean;
+  }>;
 }
 
 const STEPS: TooltipStep[] = [
   {
     target: 'create-course',
     title: 'Create a Course',
-    icon: '🚀',
+    Icon: IconSpark,
     description:
       'Start here! Tell the AI what you want to learn and it will generate a personalized course for you.',
   },
   {
     target: 'mindmap-nav',
     title: 'Knowledge Mindmap',
-    icon: '🧠',
+    Icon: IconBrainSpark,
     description:
       'Watch your knowledge grow as you learn. Your mindmap visualizes connections between topics.',
   },
   {
     target: 'marketplace-nav',
     title: 'Course Marketplace',
-    icon: '🏪',
+    Icon: IconMarketplace,
     description:
       'Browse courses created by the community and find AI agents to enhance your learning.',
   },
@@ -70,6 +76,7 @@ export function OnboardingTooltips() {
   if (!visible) return null;
 
   const current = STEPS[step];
+  const StepIcon = current.Icon;
 
   return (
     <div className="fixed inset-0 z-50 pointer-events-none" aria-label="Onboarding tour">
@@ -98,12 +105,14 @@ export function OnboardingTooltips() {
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
               type="button"
             >
-              ✕
+              <IconClose size={16} className="text-gray-500" title="Close" />
             </button>
           </div>
 
           <div className="text-center space-y-2">
-            <span className="text-4xl">{current.icon}</span>
+            <div className="flex justify-center">
+              <StepIcon size={34} className="text-accent" decorative />
+            </div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">{current.title}</h3>
             <p className="text-sm text-gray-600 dark:text-gray-300">{current.description}</p>
           </div>

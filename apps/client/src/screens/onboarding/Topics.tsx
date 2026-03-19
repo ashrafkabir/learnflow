@@ -3,20 +3,34 @@ import { useNavigate } from 'react-router-dom';
 import { useApp, apiBase } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
+import {
+  IconBrainSpark,
+  IconChart,
+  IconCloud,
+  IconDna,
+  IconGlobe,
+  IconLeaf,
+  IconLink,
+  IconLock,
+  IconMoney,
+  IconPalette,
+  IconRobot,
+  IconSettings,
+} from '../../components/icons/index.js';
 
 const TOPICS = [
-  { id: 'ai', icon: '🤖', label: 'Artificial Intelligence' },
-  { id: 'web', icon: '🌐', label: 'Web Development' },
-  { id: 'data', icon: '📊', label: 'Data Science' },
-  { id: 'rust', icon: '⚙️', label: 'Rust / Systems' },
-  { id: 'quantum', icon: '⚛️', label: 'Quantum Computing' },
-  { id: 'security', icon: '🔒', label: 'Cybersecurity' },
-  { id: 'cloud', icon: '☁️', label: 'Cloud & DevOps' },
-  { id: 'blockchain', icon: '🔗', label: 'Blockchain' },
-  { id: 'design', icon: '🎨', label: 'UI/UX Design' },
-  { id: 'climate', icon: '🌱', label: 'Climate Tech' },
-  { id: 'bio', icon: '🧬', label: 'Biotech & Genomics' },
-  { id: 'finance', icon: '💰', label: 'FinTech' },
+  { id: 'ai', icon: <IconRobot className="w-5 h-5" />, label: 'Artificial Intelligence' },
+  { id: 'web', icon: <IconGlobe className="w-5 h-5" />, label: 'Web Development' },
+  { id: 'data', icon: <IconChart className="w-5 h-5" />, label: 'Data Science' },
+  { id: 'rust', icon: <IconSettings className="w-5 h-5" />, label: 'Rust / Systems' },
+  { id: 'quantum', icon: <IconBrainSpark className="w-5 h-5" />, label: 'Quantum Computing' },
+  { id: 'security', icon: <IconLock className="w-5 h-5" />, label: 'Cybersecurity' },
+  { id: 'cloud', icon: <IconCloud className="w-5 h-5" />, label: 'Cloud & DevOps' },
+  { id: 'blockchain', icon: <IconLink className="w-5 h-5" />, label: 'Blockchain' },
+  { id: 'design', icon: <IconPalette className="w-5 h-5" />, label: 'UI/UX Design' },
+  { id: 'climate', icon: <IconLeaf className="w-5 h-5" />, label: 'Climate Tech' },
+  { id: 'bio', icon: <IconDna className="w-5 h-5" />, label: 'Biotech & Genomics' },
+  { id: 'finance', icon: <IconMoney className="w-5 h-5" />, label: 'FinTech' },
 ];
 
 /** Adjacent topic suggestions — spec §5.2.1 step 3 */
@@ -109,7 +123,7 @@ export function OnboardingTopics() {
                   : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
               }`}
             >
-              <span className="text-xl">{t.icon}</span>
+              <span className="text-gray-600 dark:text-gray-300">{t.icon}</span>
               <span className="text-sm font-medium text-gray-900 dark:text-white">{t.label}</span>
             </Button>
           ))}
@@ -118,7 +132,7 @@ export function OnboardingTopics() {
         {/* Adjacent topic suggestions */}
         {suggestions.length > 0 && (
           <div className="mb-6 animate-fade-in">
-            <p className="text-xs text-gray-500 dark:text-gray-300 mb-2">💡 Suggested for you:</p>
+            <p className="text-xs text-gray-500 dark:text-gray-300 mb-2">Suggested for you:</p>
             <div className="flex flex-wrap gap-2">
               {suggestions.map((t) => (
                 <Button
@@ -128,7 +142,10 @@ export function OnboardingTopics() {
                   onClick={() => toggle(t.id)}
                   className="border border-dashed border-accent/40 text-accent hover:bg-accent/5 rounded-full"
                 >
-                  {t.icon} {t.label}
+                  <span className="inline-flex items-center gap-2">
+                    <span className="text-gray-600 dark:text-gray-300">{t.icon}</span>
+                    {t.label}
+                  </span>
                 </Button>
               ))}
             </div>

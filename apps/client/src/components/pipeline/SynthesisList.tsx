@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LessonSynthesis } from '../../hooks/usePipeline.js';
+import { IconCheck, IconX } from '../icons/index.js';
 
 export function SynthesisList({
   lessons,
@@ -34,12 +35,12 @@ export function SynthesisList({
           key={l.lessonId}
           className="flex items-center gap-2 bg-white dark:bg-gray-900 rounded-lg px-2 py-1.5 border border-gray-100 dark:border-gray-700"
         >
-          {l.status === 'pending' && <span className="text-gray-400 text-[10px]">○</span>}
+          {l.status === 'pending' && <span className="text-gray-400 text-[10px]">•</span>}
           {l.status === 'generating' && (
             <span className="inline-block w-3 h-3 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
           )}
-          {l.status === 'done' && <span className="text-teal-500 text-[10px]">✓</span>}
-          {l.status === 'failed' && <span className="text-red-500 text-[10px]">✗</span>}
+          {l.status === 'done' && <IconCheck size={14} className="text-teal-500" decorative />}
+          {l.status === 'failed' && <IconX size={14} className="text-red-500" decorative />}
           <div className="flex-1 min-w-0">
             <p className="truncate text-gray-700 dark:text-gray-300">{l.lessonTitle}</p>
             {l.status === 'done' && (

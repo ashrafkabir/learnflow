@@ -5,6 +5,17 @@ import { Button } from '../components/Button.js';
 import { SkeletonCourseView } from '../components/Skeleton.js';
 import { CitationTooltip, type Source } from '../components/CitationTooltip.js';
 import { mergeUniqueSources, parseSources } from '../lib/sources.js';
+import {
+  IconBook,
+  IconCelebrate,
+  IconCheck,
+  IconChart,
+  IconClipboard,
+  IconCourse,
+  IconLesson,
+  IconX,
+  IconTestTube,
+} from '../components/icons/index.js';
 
 /* Estimate read time from lesson description length and estimatedTime */
 function estimateReadTime(lesson: { estimatedTime?: number; description?: string }): number {
@@ -52,7 +63,9 @@ export function CourseView() {
         className="min-h-screen bg-bg dark:bg-bg-dark flex items-center justify-center"
       >
         <div className="text-center space-y-3 max-w-sm">
-          <span className="text-4xl">❌</span>
+          <span className="text-red-600 dark:text-red-400">
+            <IconX className="w-10 h-10" />
+          </span>
           <p className="text-gray-700 dark:text-gray-300 font-medium">Failed to load course</p>
           <p className="text-sm text-gray-500">{error}</p>
           <div className="flex gap-3 justify-center">
@@ -149,7 +162,10 @@ export function CourseView() {
                 </p>
               )}
               {pct === 100 && (
-                <p className="text-xs text-green-300 mt-1.5 font-medium">🎉 Course complete!</p>
+                <p className="text-xs text-green-300 mt-1.5 font-medium inline-flex items-center gap-1">
+                  <IconCelebrate className="w-4 h-4" />
+                  Course complete!
+                </p>
               )}
             </div>
             {/* Circular progress indicator */}
@@ -228,7 +244,7 @@ export function CourseView() {
                   className="text-gray-500 dark:text-gray-300 text-lg transition-transform"
                   style={{ transform: expandedModule === mod.id ? 'rotate(180deg)' : '' }}
                 >
-                  ▼
+                  ▾
                 </span>
               </Button>
               {expandedModule === mod.id && (
@@ -253,7 +269,7 @@ export function CourseView() {
                         <span
                           className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${isComplete ? 'bg-success text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500'}`}
                         >
-                          {isComplete ? '✓' : li + 1}
+                          {isComplete ? <IconCheck className="w-3.5 h-3.5" /> : li + 1}
                         </span>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
@@ -274,7 +290,7 @@ export function CourseView() {
                           className="text-xs text-gray-500 dark:text-gray-300 whitespace-nowrap mr-2 flex items-center gap-1"
                           title={`Estimated read time: ~${estimateReadTime(lesson)} min`}
                         >
-                          📖 ~{estimateReadTime(lesson)} min
+                          <IconBook className="w-4 h-4" /> ~{estimateReadTime(lesson)} min
                         </span>
                         <Button
                           variant={isComplete ? 'ghost' : 'primary'}
@@ -303,17 +319,23 @@ export function CourseView() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-            <span className="text-2xl block mb-1">📚</span>
+            <span className="text-accent block mb-1 inline-flex justify-center">
+              <IconCourse className="w-7 h-7" />
+            </span>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{modules.length}</p>
             <p className="text-xs text-gray-500">Modules</p>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-            <span className="text-2xl block mb-1">📝</span>
+            <span className="text-accent block mb-1 inline-flex justify-center">
+              <IconLesson className="w-7 h-7" />
+            </span>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalLessons}</p>
             <p className="text-xs text-gray-500">Total Lessons</p>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-4 text-center">
-            <span className="text-2xl block mb-1">⏱️</span>
+            <span className="text-accent block mb-1 inline-flex justify-center">
+              <IconChart className="w-7 h-7" />
+            </span>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {modules.reduce(
                 (s, m) => s + (m.lessons ?? []).reduce((ls, l) => ls + estimateReadTime(l), 0),
@@ -364,8 +386,9 @@ export function CourseView() {
 
         {/* Source References */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
-            📎 Sources & References
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3 inline-flex items-center gap-2">
+            <IconClipboard className="w-5 h-5 text-accent" />
+            Sources & References
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
             This course draws from the following research and materials. Hover over inline citations
@@ -413,7 +436,10 @@ export function CourseView() {
                 /* mark complete logic */
               }}
             >
-              ✅ Mark Complete
+              <span className="inline-flex items-center gap-2">
+                <IconCheck className="w-4 h-4" />
+                Mark Complete
+              </span>
             </Button>
             <Button
               variant="ghost"
@@ -424,7 +450,10 @@ export function CourseView() {
                 )
               }
             >
-              🧪 Quiz Me
+              <span className="inline-flex items-center gap-2">
+                <IconTestTube className="w-4 h-4" />
+                Quiz Me
+              </span>
             </Button>
             <Button
               variant="ghost"
@@ -435,7 +464,10 @@ export function CourseView() {
                 )
               }
             >
-              📝 Take Notes
+              <span className="inline-flex items-center gap-2">
+                <IconLesson className="w-4 h-4" />
+                Take Notes
+              </span>
             </Button>
           </div>
         </div>

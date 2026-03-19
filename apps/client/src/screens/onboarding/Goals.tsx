@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp, apiBase } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
+import { IconX } from '../../components/icons/index.js';
 
 const GOAL_SUGGESTIONS = [
   'Career advancement',
@@ -103,7 +104,7 @@ export function OnboardingGoals() {
                   onClick={() => removeGoal(g)}
                   className="ml-1 text-accent/50 hover:text-accent p-0 h-auto"
                 >
-                  ✕
+                  <IconX className="w-4 h-4" />
                 </Button>
               </span>
             ))}

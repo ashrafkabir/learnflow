@@ -3,6 +3,13 @@ import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
 import { motion } from 'framer-motion';
+import {
+  IconRobot,
+  IconApple,
+  IconLinux,
+  IconSparkles,
+  IconWindows,
+} from '../../components/icons/index.js';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -11,29 +18,35 @@ const fadeUp = {
 
 const PLATFORMS = [
   {
-    icon: '🍎',
+    icon: <IconApple className="w-7 h-7" />,
     name: 'macOS',
     key: 'mac',
     req: 'Requires macOS 12 or later',
     formats: ['Universal (.dmg)', 'Apple Silicon (.dmg)'],
   },
   {
-    icon: '🪟',
+    icon: <IconWindows className="w-7 h-7" />,
     name: 'Windows',
     key: 'windows',
     req: 'Requires Windows 10 or later',
     formats: ['Installer (.exe)', 'Portable (.zip)'],
   },
   {
-    icon: '🐧',
+    icon: <IconLinux className="w-7 h-7" />,
     name: 'Linux',
     key: 'linux',
     req: 'Ubuntu 20.04+, Fedora 36+',
     formats: ['AppImage', '.deb package', '.rpm package'],
   },
-  { icon: '📱', name: 'iOS', key: 'ios', req: 'Requires iOS 16 or later', formats: ['App Store'] },
   {
-    icon: '🤖',
+    icon: <IconApple className="w-7 h-7" />,
+    name: 'iOS',
+    key: 'ios',
+    req: 'Requires iOS 16 or later',
+    formats: ['App Store'],
+  },
+  {
+    icon: <IconRobot className="w-7 h-7" />,
     name: 'Android',
     key: 'android',
     req: 'Requires Android 12 or later',
@@ -115,10 +128,13 @@ export function DownloadPage() {
             >
               {p.key === recommended && (
                 <span className="inline-block mb-2 text-xs font-bold text-accent bg-accent/10 px-3 py-1 rounded-full">
-                  ✨ Recommended for you
+                  <span className="inline-flex items-center gap-2">
+                    <IconSparkles className="w-4 h-4" />
+                    Recommended for you
+                  </span>
                 </span>
               )}
-              <span className="text-4xl block mb-3">{p.icon}</span>
+              <span className="text-accent block mb-3 inline-flex justify-center">{p.icon}</span>
               <h3 className="font-bold text-lg mb-1">{p.name}</h3>
               <p className="text-xs text-gray-500 dark:text-gray-300 mb-4">{p.req}</p>
               <div className="space-y-2">

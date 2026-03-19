@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { apiBase } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
+import { IconChat, IconCourse, IconPeople, IconStar } from '../../components/icons/index.js';
 
 interface CourseDetailData {
   id: string;
@@ -33,7 +34,7 @@ const SAMPLE_COURSES: Record<string, CourseDetailData> = {
     enrollmentCount: 1200,
     lessonCount: 12,
     creatorName: 'Dr. Sarah Chen',
-    creatorAvatar: '👩‍🔬',
+    creatorAvatar: 'creator-1',
     syllabus: [
       {
         module: 'Introduction to ML',
@@ -75,7 +76,7 @@ const SAMPLE_COURSES: Record<string, CourseDetailData> = {
     enrollmentCount: 800,
     lessonCount: 15,
     creatorName: 'Marcus Dev',
-    creatorAvatar: '👨‍💻',
+    creatorAvatar: 'creator-2',
     syllabus: [
       { module: 'Design Patterns', lessons: ['Singleton', 'Factory', 'Observer', 'Strategy'] },
       { module: 'Metaprogramming', lessons: ['Decorators', 'Metaclasses', 'Descriptors'] },
@@ -101,7 +102,7 @@ const SAMPLE_COURSES: Record<string, CourseDetailData> = {
     enrollmentCount: 650,
     lessonCount: 10,
     creatorName: 'Ops Team',
-    creatorAvatar: '⚙️',
+    creatorAvatar: 'creator-3',
     syllabus: [
       {
         module: 'Core Concepts',
@@ -122,7 +123,7 @@ const SAMPLE_COURSES: Record<string, CourseDetailData> = {
     enrollmentCount: 2100,
     lessonCount: 20,
     creatorName: 'Frontend Academy',
-    creatorAvatar: '⚛️',
+    creatorAvatar: 'creator-4',
     syllabus: [
       {
         module: 'TypeScript Foundations',
@@ -266,15 +267,23 @@ export function CourseDetail() {
           <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
 
           <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-300 mb-4">
-            <span>⭐ {course.rating}</span>
-            <span>{course.enrollmentCount.toLocaleString()} enrolled</span>
+            <span className="inline-flex items-center gap-1">
+              <IconStar className="w-4 h-4 text-amber-500" />
+              {course.rating}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <IconPeople className="w-4 h-4 text-gray-400" />
+              {course.enrollmentCount.toLocaleString()} enrolled
+            </span>
             {course.lessonCount && <span>{course.lessonCount} lessons</span>}
           </div>
 
           {/* Creator */}
           {course.creatorName && (
             <div className="flex items-center gap-3 py-3 border-t border-gray-100 dark:border-gray-800">
-              <span className="text-2xl">{course.creatorAvatar || '👤'}</span>
+              <span className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <IconCourse className="w-5 h-5 text-gray-600 dark:text-gray-200" />
+              </span>
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   {course.creatorName}
@@ -308,7 +317,10 @@ export function CourseDetail() {
         {/* Syllabus */}
         {course.syllabus && course.syllabus.length > 0 && (
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-card">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">📚 Syllabus</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 inline-flex items-center gap-2">
+              <IconCourse className="w-5 h-5 text-accent" />
+              Syllabus
+            </h2>
             <div className="space-y-2">
               {course.syllabus.map((mod, idx) => (
                 <div
@@ -324,7 +336,10 @@ export function CourseDetail() {
                       Module {idx + 1}: {mod.module}
                     </span>
                     <span className="text-xs text-gray-500">
-                      {mod.lessons.length} lessons {expandedModules.has(idx) ? '▲' : '▼'}
+                      <span className="inline-flex items-center gap-1">
+                        {mod.lessons.length} lessons
+                        {expandedModules.has(idx) ? '▴' : '▾'}
+                      </span>
                     </span>
                   </Button>
                   {expandedModules.has(idx) && (
@@ -351,7 +366,10 @@ export function CourseDetail() {
         {/* Reviews */}
         {course.reviews && course.reviews.length > 0 && (
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-card">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">💬 Reviews</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 inline-flex items-center gap-2">
+              <IconChat className="w-5 h-5 text-accent" />
+              Reviews
+            </h2>
             <div className="space-y-4">
               {course.reviews.map((r, idx) => (
                 <div
@@ -364,9 +382,12 @@ export function CourseDetail() {
                     </span>
                     <span className="text-xs text-gray-500">{r.date}</span>
                   </div>
-                  <div className="text-xs text-yellow-500 mb-1">
-                    {'★'.repeat(r.rating)}
-                    {'☆'.repeat(5 - r.rating)}
+                  <div className="text-xs text-yellow-500 mb-1 inline-flex items-center gap-1">
+                    <IconStar className="w-3.5 h-3.5" />
+                    <span>
+                      {r.rating}
+                      <span className="sr-only"> out of 5</span>
+                    </span>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-gray-300">{r.text}</p>
                 </div>

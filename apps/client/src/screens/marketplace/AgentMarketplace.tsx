@@ -2,6 +2,13 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
+import {
+  IconCheck,
+  IconKey,
+  IconRobot,
+  IconSearch,
+  IconStar,
+} from '../../components/icons/index.js';
 
 interface Agent {
   id: string;
@@ -193,7 +200,10 @@ export function AgentMarketplace() {
           <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>
             ←
           </Button>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">🤖 Agent Marketplace</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-2">
+            <IconRobot className="w-5 h-5 text-accent" />
+            Agent Marketplace
+          </h1>
         </div>
       </header>
 
@@ -202,7 +212,10 @@ export function AgentMarketplace() {
         {activatedIds.size > 0 && (
           <div className="mb-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-              ✅ My Agents
+              <span className="inline-flex items-center gap-2">
+                <IconCheck className="w-4 h-4 text-green-600 dark:text-green-400" />
+                My Agents
+              </span>
             </h2>
             <div className="flex flex-wrap gap-2">
               {AGENTS.filter((a) => activatedIds.has(a.id)).map((a) => (
@@ -210,7 +223,7 @@ export function AgentMarketplace() {
                   key={a.id}
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-sm"
                 >
-                  🤖 {a.name}
+                  <IconRobot className="w-4 h-4 text-green-700 dark:text-green-300" /> {a.name}
                 </span>
               ))}
             </div>
@@ -228,7 +241,9 @@ export function AgentMarketplace() {
               aria-label="Search agents"
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <IconSearch className="w-4 h-4" />
+            </span>
           </div>
           <select
             value={sortBy}
@@ -266,7 +281,7 @@ export function AgentMarketplace() {
           <>
             {filteredAgents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
-                <span className="text-4xl">🔍</span>
+                <IconSearch className="w-10 h-10 text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-300">
                   No results found. Try a different search or category.
                 </p>
@@ -311,13 +326,17 @@ export function AgentMarketplace() {
                         {a.description}
                       </p>
                       <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-300 mb-2">
-                        <span>⭐ {a.rating}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <IconStar className="w-3.5 h-3.5 text-amber-500" />
+                          {a.rating}
+                        </span>
                         <span>·</span>
                         <span>{a.usageCount.toLocaleString()} uses</span>
                       </div>
                       <div className="mb-3">
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-full font-medium">
-                          🔑 Requires {a.requiredProvider}
+                          <IconKey className="w-3.5 h-3.5" />
+                          Requires {a.requiredProvider}
                         </span>
                       </div>
                       <div className="flex flex-wrap gap-1.5 mb-4">

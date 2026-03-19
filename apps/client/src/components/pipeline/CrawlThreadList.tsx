@@ -1,5 +1,6 @@
 import React from 'react';
 import type { CrawlThread } from '../../hooks/usePipeline.js';
+import { IconCheck, IconRefresh, IconX } from '../icons/index.js';
 
 export function CrawlThreadList({ threads }: { threads?: CrawlThread[] }) {
   const safeThreads = threads ?? [];
@@ -14,10 +15,14 @@ export function CrawlThreadList({ threads }: { threads?: CrawlThread[] }) {
           className="bg-white dark:bg-gray-900 rounded-lg p-2 border border-gray-100 dark:border-gray-700"
         >
           <div className="flex items-center gap-2">
-            {t.status === 'pending' && <span className="text-gray-400">○</span>}
-            {t.status === 'crawling' && <span className="animate-spin">⟳</span>}
-            {t.status === 'done' && <span className="text-teal-500">✓</span>}
-            {t.status === 'failed' && <span className="text-red-500">✗</span>}
+            {t.status === 'pending' && <span className="text-gray-400">•</span>}
+            {t.status === 'crawling' && (
+              <span className="animate-spin">
+                <IconRefresh size={14} className="text-gray-600 dark:text-gray-300" decorative />
+              </span>
+            )}
+            {t.status === 'done' && <IconCheck size={14} className="text-teal-500" decorative />}
+            {t.status === 'failed' && <IconX size={14} className="text-red-500" decorative />}
             <span className="truncate font-medium text-gray-700 dark:text-gray-300">
               {t.title || t.url}
             </span>

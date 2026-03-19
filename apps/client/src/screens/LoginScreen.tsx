@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiBase } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
+import {
+  IconApple,
+  IconBrainSpark,
+  IconEye,
+  IconEyeOff,
+  IconGitHub,
+} from '../components/icons/index.js';
 
 export function LoginScreen() {
   const nav = useNavigate();
@@ -42,7 +49,7 @@ export function LoginScreen() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-3">
-            <span className="text-2xl">🧠</span>
+            <IconBrainSpark size={26} className="text-accent" title="LearnFlow" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back</h1>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Sign in to LearnFlow</p>
@@ -93,7 +100,11 @@ export function LoginScreen() {
                 className="absolute right-2 top-1/2 -translate-y-1/2"
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? '🙈' : '👁️'}
+                {showPassword ? (
+                  <IconEyeOff size={18} className="text-gray-600 dark:text-gray-300" />
+                ) : (
+                  <IconEye size={18} className="text-gray-600 dark:text-gray-300" />
+                )}
               </Button>
             </div>
           </div>
@@ -128,7 +139,11 @@ export function LoginScreen() {
               onClick={() => alert('Google OAuth coming soon')}
               className="flex items-center justify-center gap-2"
             >
-              <span>🔵</span> Continue with Google
+              <span
+                className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"
+                aria-hidden="true"
+              />
+              Continue with Google
             </Button>
             <Button
               type="button"
@@ -137,7 +152,8 @@ export function LoginScreen() {
               onClick={() => alert('GitHub OAuth coming soon')}
               className="flex items-center justify-center gap-2"
             >
-              <span>⚫</span> Continue with GitHub
+              <IconGitHub size={18} className="text-gray-800 dark:text-gray-100" title="GitHub" />
+              Continue with GitHub
             </Button>
             <Button
               type="button"
@@ -146,7 +162,8 @@ export function LoginScreen() {
               onClick={() => alert('Apple OAuth coming soon')}
               className="flex items-center justify-center gap-2"
             >
-              <span>🍎</span> Continue with Apple
+              <IconApple size={18} className="text-gray-800 dark:text-gray-100" title="Apple" />
+              Continue with Apple
             </Button>
           </div>
         </form>

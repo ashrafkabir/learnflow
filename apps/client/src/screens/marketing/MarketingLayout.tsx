@@ -1,6 +1,7 @@
 import React, { useState, type ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
+import { IconBrainSpark, IconClose, IconMenu } from '../../components/icons/index.js';
 
 const NAV_LINKS = [
   { label: 'Features', href: '/features' },
@@ -26,7 +27,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
             onClick={() => nav('/')}
             className="flex items-center gap-2 font-bold text-xl p-0 h-auto"
           >
-            <span className="text-2xl">🧠</span>
+            <IconBrainSpark size={22} className="text-accent" title="LearnFlow" />
             <span>LearnFlow</span>
           </Button>
 
@@ -63,10 +64,15 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
           <Button
             variant="ghost"
             size="icon"
-            className="md:hidden text-2xl"
+            className="md:hidden"
             onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
           >
-            {mobileOpen ? '✕' : '☰'}
+            {mobileOpen ? (
+              <IconClose size={18} className="text-gray-800 dark:text-gray-100" decorative />
+            ) : (
+              <IconMenu size={18} className="text-gray-800 dark:text-gray-100" decorative />
+            )}
           </Button>
         </div>
 
@@ -172,7 +178,7 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="border-t border-gray-200 dark:border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-              <span>🧠</span>
+              <IconBrainSpark size={16} className="text-accent" decorative />
               <span>© {new Date().getFullYear()} LearnFlow. All rights reserved.</span>
             </div>
             <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-300">

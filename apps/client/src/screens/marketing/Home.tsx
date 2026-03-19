@@ -5,6 +5,25 @@ import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
 import { KnowledgeGraphBg } from '../../components/KnowledgeGraphBg.js';
 import { motion } from 'framer-motion';
+import {
+  IconBook,
+  IconBrainSpark,
+  IconChat,
+  IconCourse,
+  IconLesson,
+  IconLock,
+  IconGlobe,
+  IconMarketplace,
+  IconMindmap,
+  IconPeople,
+  IconSearch,
+  IconSettings,
+  IconShield,
+  IconShieldKey,
+  IconSparkles,
+  IconStar,
+  IconTrophy,
+} from '../../components/icons/index.js';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -14,32 +33,32 @@ const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 
 const FEATURES = [
   {
-    icon: '🤖',
+    icon: <IconCourse className="w-6 h-6" />,
     title: 'AI-Generated Courses',
     desc: 'Paste a topic and get a full, structured course in minutes — sourced from the real web.',
   },
   {
-    icon: '📝',
+    icon: <IconLesson className="w-6 h-6" />,
     title: 'Smart Note-Taking',
     desc: 'Cornell notes, flashcards, and Zettelkasten — auto-generated from your lessons.',
   },
   {
-    icon: '🧪',
+    icon: <IconBrainSpark className="w-6 h-6" />,
     title: 'Adaptive Quizzes',
     desc: 'AI identifies your weak spots and generates targeted quizzes to close gaps.',
   },
   {
-    icon: '🗺️',
+    icon: <IconMindmap className="w-6 h-6" />,
     title: 'Knowledge Mindmap',
     desc: 'Visualize what you know. Tap nodes to explore, expand, or jump to lessons.',
   },
   {
-    icon: '🔍',
+    icon: <IconSearch className="w-6 h-6" />,
     title: 'Research Agent',
     desc: 'Ask questions and get answers backed by real sources with inline citations.',
   },
   {
-    icon: '🏪',
+    icon: <IconMarketplace className="w-6 h-6" />,
     title: 'Course Marketplace',
     desc: 'Browse and share community-created courses. Publish your own.',
   },
@@ -61,19 +80,19 @@ const STATS = [
 
 const DEMO_STEPS = [
   {
-    icon: '💬',
+    icon: <IconChat className="w-6 h-6" />,
     title: 'Tell us your goal',
     desc: 'Type any topic — "Learn Rust programming" or "Understand quantum mechanics." Our AI listens.',
     color: 'from-blue-500 to-cyan-400',
   },
   {
-    icon: '⚙️',
+    icon: <IconSettings className="w-6 h-6" />,
     title: 'AI builds your course',
     desc: 'Multiple agents research the web, curate content, build lessons, and generate quizzes — in minutes.',
     color: 'from-violet-500 to-purple-400',
   },
   {
-    icon: '🏆',
+    icon: <IconTrophy className="w-6 h-6" />,
     title: 'Learn and master',
     desc: 'Study at your pace with adaptive quizzes, smart notes, and a mindmap that grows with your knowledge.',
     color: 'from-emerald-500 to-teal-400',
@@ -112,7 +131,10 @@ export function HomePage() {
             variants={fadeUp}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/20 text-accent text-sm font-semibold mb-6 border border-accent/30"
           >
-            <span>✨</span> Now with multi-agent AI pipeline
+            <span className="inline-flex items-center gap-2">
+              <IconSparkles className="w-4 h-4" />
+              Now with multi-agent AI pipeline
+            </span>
           </motion.div>
           <motion.h1
             variants={fadeUp}
@@ -235,7 +257,7 @@ export function HomePage() {
               variants={fadeUp}
               className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 hover:shadow-card transition-all group"
             >
-              <span className="text-3xl block mb-3">{f.icon}</span>
+              <span className="text-accent block mb-3">{f.icon}</span>
               <h3 className="font-semibold text-lg mb-2 group-hover:text-accent transition-colors">
                 {f.title}
               </h3>
@@ -268,25 +290,25 @@ export function HomePage() {
             {[
               {
                 step: '1',
-                icon: '💬',
+                icon: <IconChat className="w-6 h-6" />,
                 title: 'Tell us what to learn',
                 desc: 'Type any topic. Our AI agents research, curate, and build a full course from real web sources.',
               },
               {
                 step: '2',
-                icon: '📖',
+                icon: <IconBook className="w-6 h-6" />,
                 title: 'Learn at your pace',
                 desc: 'Read lessons with inline citations, take smart notes, and get quizzed on what matters.',
               },
               {
                 step: '3',
-                icon: '🗺️',
+                icon: <IconMindmap className="w-6 h-6" />,
                 title: 'Watch your knowledge grow',
                 desc: 'Your mindmap expands as you learn. See connections, identify gaps, and level up.',
               },
             ].map((s) => (
               <motion.div key={s.step} className="text-center" variants={fadeUp}>
-                <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center text-2xl mx-auto mb-4">
+                <div className="w-14 h-14 rounded-2xl bg-accent/10 text-accent flex items-center justify-center mx-auto mb-4">
                   {s.icon}
                 </div>
                 <h3 className="font-semibold text-lg mb-2">{s.title}</h3>
@@ -322,21 +344,21 @@ export function HomePage() {
                 "LearnFlow completely changed how I study. The AI-generated courses are better than most online courses I've paid for.",
               name: 'Sarah Chen',
               role: 'Software Engineer',
-              avatar: '👩💻',
+              avatar: 'a1',
             },
             {
               quote:
                 'The mindmap feature is incredible. I can finally see how all the concepts connect. My retention has improved dramatically.',
               name: 'Marcus Johnson',
               role: 'Data Scientist',
-              avatar: '👨🔬',
+              avatar: 'a2',
             },
             {
               quote:
                 'I used LearnFlow to prepare for my AWS certification and passed on the first try. The adaptive quizzes found my weak spots.',
               name: 'Priya Patel',
               role: 'Cloud Architect',
-              avatar: '👩🏫',
+              avatar: 'a3',
             },
           ].map((t) => (
             <motion.div
@@ -348,7 +370,9 @@ export function HomePage() {
                 "{t.quote}"
               </p>
               <div className="flex items-center gap-3">
-                <span className="text-2xl">{t.avatar}</span>
+                <span className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <IconPeople className="w-5 h-5 text-gray-600 dark:text-gray-200" />
+                </span>
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.name}</p>
                   <p className="text-xs text-gray-600 dark:text-gray-300">{t.role}</p>
@@ -359,16 +383,16 @@ export function HomePage() {
         </motion.div>
         <div className="flex flex-wrap justify-center gap-6 mb-12">
           {[
-            { icon: '🔒', label: 'AES-256 Encryption' },
-            { icon: '🛡️', label: 'SOC 2 Compliant' },
-            { icon: '🇪🇺', label: 'GDPR Ready' },
-            { icon: '🔑', label: 'BYOK — Your Keys, Your Data' },
+            { icon: <IconLock className="w-4 h-4" />, label: 'AES-256 Encryption' },
+            { icon: <IconShield className="w-4 h-4" />, label: 'SOC 2 Compliant' },
+            { icon: <IconGlobe className="w-4 h-4" />, label: 'GDPR Ready' },
+            { icon: <IconShieldKey className="w-4 h-4" />, label: 'BYOK — Your Keys, Your Data' },
           ].map((b) => (
             <div
               key={b.label}
               className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300"
             >
-              <span>{b.icon}</span>
+              <span className="text-gray-500 dark:text-gray-300">{b.icon}</span>
               <span>{b.label}</span>
             </div>
           ))}
@@ -378,11 +402,18 @@ export function HomePage() {
             {[
               { value: METRICS.courses, label: 'Courses created' },
               { value: METRICS.learners, label: 'Active learners' },
-              { value: `${METRICS.rating}★`, label: 'Average rating' },
+              {
+                value: METRICS.rating,
+                label: 'Average rating',
+                icon: <IconStar className="w-4 h-4 text-amber-500" />,
+              },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-300">{stat.label}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300 inline-flex items-center justify-center gap-1.5">
+                  {stat.icon}
+                  {stat.label}
+                </p>
               </div>
             ))}
           </div>

@@ -55,7 +55,9 @@ Right now:
 
 ### 3) Replace remaining emoji icons across _all_ primary screens with the new icon set (P0)
 
-**Status:** READY
+**Status:** DONE ✅
+
+**Fix summary:** Removed all emoji/icon placeholders across primary client screens + marketing/docs/blog copy and replaced with the shared line-icon set in `apps/client/src/components/icons/`. Verified no emoji remain in `apps/client/src/**` TS/TSX sources.
 
 ### 4) Deliver the spec-required Lesson Reading Experience (P0)
 

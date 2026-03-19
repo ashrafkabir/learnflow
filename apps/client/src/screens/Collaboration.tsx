@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
 import { SEO } from '../components/SEO.js';
 import { Button } from '../components/Button.js';
+import {
+  IconBrainSpark,
+  IconCourse,
+  IconDocument,
+  IconHandshake,
+  IconMail,
+  IconMap,
+  IconPeople,
+  IconRocket,
+  IconSettings,
+} from '../components/icons/index.js';
 
 const TABS = ['Find Study Partners', 'My Groups', 'Shared Mindmaps'] as const;
 
@@ -27,7 +38,7 @@ const MOCK_GROUPS = [
     name: 'Rust Systems Programmers',
     members: 12,
     topic: 'Rust & Systems Programming',
-    emoji: '🦀',
+    icon: <IconSettings className="w-6 h-6" />,
     active: true,
   },
   {
@@ -35,7 +46,7 @@ const MOCK_GROUPS = [
     name: 'ML Paper Reading Club',
     members: 28,
     topic: 'Machine Learning Research',
-    emoji: '🧠',
+    icon: <IconBrainSpark className="w-6 h-6" />,
     active: true,
   },
   {
@@ -43,7 +54,7 @@ const MOCK_GROUPS = [
     name: 'Full-Stack Builders',
     members: 19,
     topic: 'React + Node.js Projects',
-    emoji: '🏗️',
+    icon: <IconCourse className="w-6 h-6" />,
     active: false,
   },
 ];
@@ -51,21 +62,21 @@ const MOCK_GROUPS = [
 const MOCK_PARTNERS = [
   {
     name: 'Alex K.',
-    avatar: '👨‍💻',
+    avatar: 'a1',
     topics: ['Rust', 'System Design'],
     level: 'Intermediate',
     online: true,
   },
   {
     name: 'Maria S.',
-    avatar: '👩‍🔬',
+    avatar: 'a2',
     topics: ['Machine Learning', 'Python'],
     level: 'Advanced',
     online: true,
   },
   {
     name: 'Jordan T.',
-    avatar: '🧑‍🎓',
+    avatar: 'a3',
     topics: ['Web Development', 'DevOps'],
     level: 'Beginner',
     online: false,
@@ -97,9 +108,9 @@ const SHARED_NOTES = [
 ];
 
 const ACTIVE_COLLABORATORS = [
-  { name: 'Alex K.', avatar: '👨‍💻', status: 'Studying Rust' },
-  { name: 'Maria S.', avatar: '👩‍🔬', status: 'Reading ML papers' },
-  { name: 'Jordan T.', avatar: '🧑‍🎓', status: 'Offline' },
+  { name: 'Alex K.', avatar: 'a1', status: 'Studying Rust' },
+  { name: 'Maria S.', avatar: 'a2', status: 'Reading ML papers' },
+  { name: 'Jordan T.', avatar: 'a3', status: 'Offline' },
 ];
 
 export function Collaboration() {
@@ -137,8 +148,10 @@ export function Collaboration() {
         </p>
 
         <div className="mb-6 p-4 rounded-xl bg-accent/10 border border-accent/30 text-sm text-accent font-medium flex items-center gap-2">
-          <span>🚀</span> Collaboration features are in active development. Early access coming
-          soon!
+          <span className="inline-flex items-center">
+            <IconRocket className="w-4 h-4" />
+          </span>
+          Collaboration features are in active development. Early access coming soon!
         </div>
 
         {/* Tabs */}
@@ -159,8 +172,9 @@ export function Collaboration() {
         {activeTab === 'Find Study Partners' && (
           <div className="space-y-6">
             <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white">
-                🏷️ Select Your Interests
+              <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white inline-flex items-center gap-2">
+                <IconSettings className="w-5 h-5 text-accent" />
+                Select Your Interests
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                 Choose topics to match with study partners who share your goals.
@@ -191,8 +205,9 @@ export function Collaboration() {
             </div>
 
             <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                🤝 Suggested Partners
+              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white inline-flex items-center gap-2">
+                <IconHandshake className="w-5 h-5 text-accent" />
+                Suggested Partners
               </h2>
               <div className="space-y-3">
                 {MOCK_PARTNERS.map((p) => (
@@ -200,7 +215,9 @@ export function Collaboration() {
                     key={p.name}
                     className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors"
                   >
-                    <span className="text-3xl">{p.avatar}</span>
+                    <span className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                      <IconPeople className="w-5 h-5 text-gray-600 dark:text-gray-200" />
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
@@ -238,8 +255,9 @@ export function Collaboration() {
         {activeTab === 'My Groups' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                👥 Study Groups
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                <IconPeople className="w-5 h-5 text-accent" />
+                Study Groups
               </h2>
               <Button
                 variant="primary"
@@ -292,7 +310,7 @@ export function Collaboration() {
                   key={g.id}
                   className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-accent/30 transition-colors"
                 >
-                  <span className="text-3xl">{g.emoji}</span>
+                  <span className="text-accent">{g.icon}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-gray-900 dark:text-white">{g.name}</span>
@@ -324,8 +342,9 @@ export function Collaboration() {
           <div className="space-y-6">
             {/* Active Collaborators */}
             <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-                🟢 Active Collaborators
+              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white inline-flex items-center gap-2">
+                <IconPeople className="w-5 h-5 text-accent" />
+                Active Collaborators
               </h2>
               <div className="flex flex-wrap gap-3">
                 {ACTIVE_COLLABORATORS.map((c) => (
@@ -333,7 +352,9 @@ export function Collaboration() {
                     key={c.name}
                     className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800"
                   >
-                    <span className="text-xl">{c.avatar}</span>
+                    <span className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                      <IconPeople className="w-4 h-4 text-gray-600 dark:text-gray-200" />
+                    </span>
                     <div>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{c.name}</p>
                       <p className="text-xs text-gray-500">{c.status}</p>
@@ -346,8 +367,9 @@ export function Collaboration() {
             {/* Shared Notes */}
             <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  📄 Shared Notes
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                  <IconDocument className="w-5 h-5 text-accent" />
+                  Shared Notes
                 </h2>
                 <Button variant="primary" size="sm" onClick={() => alert('Share a note... (Mock)')}>
                   + Share Note
@@ -377,7 +399,9 @@ export function Collaboration() {
 
             {/* Invite Peer */}
             <div className="rounded-2xl border border-accent/30 bg-accent/5 p-6 text-center">
-              <span className="text-3xl block mb-2">✉️</span>
+              <span className="text-accent block mb-2 inline-flex justify-center">
+                <IconMail className="w-8 h-8" />
+              </span>
               <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Invite a Peer</h3>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                 Share your learning journey — invite friends to collaborate on mindmaps and notes.
@@ -393,7 +417,9 @@ export function Collaboration() {
 
             {/* Shared Mindmaps preview */}
             <div className="text-center py-10 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-              <span className="text-4xl block mb-3">🗺️</span>
+              <span className="text-accent block mb-3 inline-flex justify-center">
+                <IconMap className="w-10 h-10" />
+              </span>
               <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
                 Shared Mindmaps
               </h2>

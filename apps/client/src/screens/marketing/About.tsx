@@ -2,6 +2,15 @@ import React from 'react';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { motion } from 'framer-motion';
+import {
+  IconBook,
+  IconChat,
+  IconGitHub,
+  IconInfo,
+  IconLock,
+  IconPeople,
+  IconShieldKey,
+} from '../../components/icons/index.js';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -12,47 +21,47 @@ const TEAM = [
   {
     name: 'Alex Rivera',
     role: 'Founder & CEO',
-    emoji: '🧑‍💻',
+    icon: <IconPeople className="w-8 h-8" />,
     bio: 'Former ML engineer at Google. Passionate about democratizing education through AI.',
   },
   {
     name: 'Priya Sharma',
     role: 'Head of AI',
-    emoji: '👩‍🔬',
+    icon: <IconPeople className="w-8 h-8" />,
     bio: 'PhD in NLP. Led research teams building conversational agents for education.',
   },
   {
     name: 'Marcus Chen',
     role: 'Head of Product',
-    emoji: '👨‍🎨',
+    icon: <IconPeople className="w-8 h-8" />,
     bio: '10+ years building consumer products. Previously at Duolingo and Notion.',
   },
   {
     name: 'Elena Kosova',
     role: 'Head of Engineering',
-    emoji: '👩‍🏭',
+    icon: <IconPeople className="w-8 h-8" />,
     bio: 'Full-stack architect. Built scalable learning platforms serving millions.',
   },
 ];
 
 const VALUES = [
   {
-    icon: '🔓',
+    icon: <IconGitHub className="w-7 h-7" />,
     title: 'Open Source First',
     desc: 'Our core platform is open source. We believe knowledge tools should be transparent and community-driven.',
   },
   {
-    icon: '🔑',
+    icon: <IconShieldKey className="w-7 h-7" />,
     title: 'BYOAI — Your Keys, Your Data',
     desc: 'Bring your own API keys. Your data stays yours. We never train on your content or share it with third parties.',
   },
   {
-    icon: '📚',
+    icon: <IconBook className="w-7 h-7" />,
     title: 'Attribution Always',
     desc: 'Every piece of AI-generated content cites its sources. We believe in giving credit and enabling verification.',
   },
   {
-    icon: '♿',
+    icon: <IconInfo className="w-7 h-7" />,
     title: 'Accessible to All',
     desc: 'WCAG 2.1 AA compliant. Learning should be available to everyone regardless of ability.',
   },
@@ -98,7 +107,7 @@ export function AboutPage() {
                 key={v.title}
                 className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors"
               >
-                <span className="text-3xl block mb-3">{v.icon}</span>
+                <span className="text-accent block mb-3 inline-flex justify-center">{v.icon}</span>
                 <h3 className="font-semibold text-lg mb-2">{v.title}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{v.desc}</p>
               </div>
@@ -121,7 +130,7 @@ export function AboutPage() {
                 key={t.name}
                 className="text-center p-6 rounded-2xl border border-gray-100 dark:border-gray-800"
               >
-                <span className="text-5xl block mb-3">{t.emoji}</span>
+                <span className="text-accent block mb-3 inline-flex justify-center">{t.icon}</span>
                 <h3 className="font-semibold text-lg">{t.name}</h3>
                 <p className="text-sm text-accent font-medium mb-2">{t.role}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{t.bio}</p>
@@ -202,7 +211,9 @@ export function AboutPage() {
           viewport={{ once: true }}
           variants={fadeUp}
         >
-          <span className="text-4xl block mb-4">🔒</span>
+          <span className="text-accent block mb-4 inline-flex justify-center">
+            <IconLock className="w-10 h-10" />
+          </span>
           <h2 className="text-2xl font-bold mb-4">Our Privacy Commitment</h2>
           <div className="max-w-2xl mx-auto text-sm text-gray-600 dark:text-gray-300 leading-relaxed space-y-3">
             <p>
@@ -234,7 +245,8 @@ export function AboutPage() {
               href="mailto:hello@learnflow.ai"
               className="inline-flex items-center gap-2 bg-accent text-white font-medium px-6 py-3 rounded-xl hover:bg-accent-dark transition-colors"
             >
-              ✉️ Contact Us
+              <IconChat className="w-4 h-4" />
+              Contact Us
             </a>
             <a
               href="https://github.com/learnflow"
@@ -242,7 +254,8 @@ export function AboutPage() {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 font-medium px-6 py-3 rounded-xl hover:border-accent hover:text-accent transition-colors"
             >
-              🐙 GitHub
+              <IconGitHub className="w-4 h-4" />
+              GitHub
             </a>
           </div>
         </motion.div>

@@ -7,6 +7,7 @@ import React, {
   ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { IconCheck, IconClose, IconWarning, IconX } from './icons/index.js';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
 
@@ -27,11 +28,11 @@ export function useToast() {
   return useContext(ToastContext);
 }
 
-const ICONS: Record<ToastType, string> = {
-  success: '✅',
-  error: '❌',
-  info: 'ℹ️',
-  warning: '⚠️',
+const ICONS: Record<ToastType, React.ComponentType<{ size?: number; className?: string }>> = {
+  success: IconCheck,
+  error: IconX,
+  info: IconClose,
+  warning: IconWarning,
 };
 
 const COLORS: Record<ToastType, string> = {
@@ -53,10 +54,13 @@ function ToastItem({ item, onRemove }: { item: ToastItem; onRemove: () => void }
       role="alert"
       aria-live="assertive"
     >
-      <span>{ICONS[item.type]}</span>
+      {(() => {
+        const Icon = ICONS[item.type];
+        return <Icon size={18} className="shrink-0" />;
+      })()}
       <p className="text-sm font-medium flex-1">{item.message}</p>
-      <button onClick={onRemove} className="opacity-50 hover:opacity-100 text-xs">
-        ✕
+      <button onClick={onRemove} className="opacity-50 hover:opacity-100" aria-label="Dismiss">
+        <IconClose size={14} className="text-current" decorative />
       </button>
     </div>
   );

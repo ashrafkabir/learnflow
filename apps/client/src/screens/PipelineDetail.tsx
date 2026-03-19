@@ -4,6 +4,14 @@ import { usePipeline } from '../hooks/usePipeline.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { Button } from '../components/Button.js';
 import { useToast } from '../components/Toast.js';
+import {
+  IconCheck,
+  IconClipboard,
+  IconPackage,
+  IconRefresh,
+  IconThread,
+  IconBook,
+} from '../components/icons/index.js';
 
 export function PipelineDetail() {
   const { pipelineId } = useParams<{ pipelineId: string }>();
@@ -117,7 +125,14 @@ export function PipelineDetail() {
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
               <Button variant="secondary" size="sm" onClick={() => setShowLogs(!showLogs)}>
-                {showLogs ? 'Hide Logs' : '📋 View Logs'}
+                <span className="inline-flex items-center gap-2">
+                  <IconClipboard
+                    size={16}
+                    className="text-gray-700 dark:text-gray-200"
+                    decorative
+                  />
+                  {showLogs ? 'Hide Logs' : 'View Logs'}
+                </span>
               </Button>
               <Button
                 variant="secondary"
@@ -125,14 +140,17 @@ export function PipelineDetail() {
                 onClick={() => toast('Pipeline paused', 'success')}
                 disabled={state.stage === 'published' || state.stage === 'reviewing'}
               >
-                ⏸ Pause
+                Pause
               </Button>
               <Button
                 variant="primary"
                 size="sm"
                 onClick={() => toast('Pipeline restarted', 'success')}
               >
-                🔄 Restart Pipeline
+                <span className="inline-flex items-center gap-2">
+                  <IconRefresh size={16} className="text-white" decorative />
+                  Restart Pipeline
+                </span>
               </Button>
             </div>
           </div>
@@ -143,20 +161,24 @@ export function PipelineDetail() {
         {/* Summary Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Stage', value: state.stage || 'idle', icon: '📦' },
-            { label: 'Sources', value: state.organizedSources ?? 0, icon: '✅' },
-            { label: 'Active Threads', value: `${activeThreads}/${totalThreads}`, icon: '🧵' },
+            { label: 'Stage', value: state.stage || 'idle', Icon: IconPackage },
+            { label: 'Sources', value: state.organizedSources ?? 0, Icon: IconCheck },
+            {
+              label: 'Active Threads',
+              value: `${activeThreads}/${totalThreads}`,
+              Icon: IconThread,
+            },
             {
               label: 'Modules / Lessons',
               value: `${state.moduleCount ?? 0} / ${state.lessonCount ?? 0}`,
-              icon: '📚',
+              Icon: IconBook,
             },
           ].map((stat) => (
             <div
               key={stat.label}
               className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4 text-center"
             >
-              <span className="text-2xl">{stat.icon}</span>
+              <stat.Icon size={22} className="text-accent mx-auto" decorative />
               <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{stat.value}</p>
               <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
             </div>
@@ -190,8 +212,9 @@ export function PipelineDetail() {
         {/* Logs Panel */}
         {showLogs && (
           <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-card p-6">
-            <h2 className="text-lg font-semibold text-green-400 mb-3 font-mono">
-              📋 Pipeline Logs
+            <h2 className="text-lg font-semibold text-green-400 mb-3 font-mono inline-flex items-center gap-2">
+              <IconClipboard size={18} className="text-green-400" decorative />
+              Pipeline Logs
             </h2>
             <div className="font-mono text-xs text-green-300 space-y-1 max-h-64 overflow-y-auto">
               {crawlThreads.map((t: any, i: number) => (

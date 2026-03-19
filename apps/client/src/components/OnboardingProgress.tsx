@@ -1,4 +1,5 @@
 import React from 'react';
+import { IconCheck } from './icons/index.js';
 
 const STEPS = [
   { path: 'welcome', label: 'Welcome' },
@@ -29,7 +30,11 @@ export function OnboardingProgress({ current }: { current: string }) {
                     : 'w-8 h-8 bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
               }`}
             >
-              {i < currentIdx ? '✓' : i + 1}
+              {i < currentIdx ? (
+                <IconCheck size={16} className="text-white" title="Complete" />
+              ) : (
+                i + 1
+              )}
             </div>
             <span
               className={`text-[10px] mt-1 font-medium ${

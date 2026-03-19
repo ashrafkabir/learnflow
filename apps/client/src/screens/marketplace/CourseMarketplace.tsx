@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiBase } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
+import { IconBag, IconStar } from '../../components/icons/index.js';
 
 interface MarketplaceCourse {
   id: string;
@@ -225,7 +226,10 @@ export function CourseMarketplace() {
           <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>
             ←
           </Button>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">🏪 Course Marketplace</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-2">
+            <IconBag className="w-5 h-5 text-accent" />
+            Course Marketplace
+          </h1>
         </div>
       </header>
 
@@ -234,7 +238,10 @@ export function CourseMarketplace() {
         {!loading && featured.length > 0 && (
           <div className="mb-8">
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-3">
-              ⭐ Featured Courses
+              <span className="inline-flex items-center gap-2">
+                <IconStar className="w-4 h-4 text-amber-400" />
+                Featured Courses
+              </span>
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {featured.map((c) => (
@@ -246,7 +253,10 @@ export function CourseMarketplace() {
                   <h3 className="font-semibold mb-1">{c.title}</h3>
                   <p className="text-sm text-blue-100 line-clamp-2 mb-3">{c.description}</p>
                   <div className="flex items-center justify-between text-sm">
-                    <span>⭐ {c.rating}</span>
+                    <span className="inline-flex items-center gap-1">
+                      <IconStar className="w-3.5 h-3.5 text-amber-300" />
+                      {c.rating}
+                    </span>
                     <span>{c.enrollmentCount.toLocaleString()} enrolled</span>
                   </div>
                 </div>
@@ -356,7 +366,11 @@ export function CourseMarketplace() {
                   {c.price === 0 ? 'Free' : `$${c.price}`}
                 </span>
                 <span className="text-xs text-gray-600 dark:text-gray-300">
-                  ⭐ {c.rating} · {c.enrollmentCount} enrolled
+                  <span className="inline-flex items-center gap-1">
+                    <IconStar className="w-3.5 h-3.5 text-amber-500" />
+                    {c.rating}
+                  </span>
+                  · {c.enrollmentCount} enrolled
                 </span>
               </div>
               <Button

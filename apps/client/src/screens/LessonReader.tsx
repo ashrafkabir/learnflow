@@ -8,6 +8,28 @@ import { Confetti } from '../components/Confetti.js';
 import { Button } from '../components/Button.js';
 import { useSwipe } from '../hooks/useSwipe.js';
 import { analytics } from '../lib/analytics.js';
+import {
+  IconBookmark,
+  IconBook,
+  IconBrainSpark,
+  IconBulb,
+  IconCheck,
+  IconClipboard,
+  IconClose,
+  IconDocument,
+  IconInfo,
+  IconMap,
+  IconPalette,
+  IconPencil,
+  IconProgressRing,
+  IconRefresh,
+  IconScale,
+  IconSearch,
+  IconSparkles,
+  IconTestTube,
+  IconTrash,
+  IconX,
+} from '../components/icons/index.js';
 
 // ── Types ──────────────────────────────────────────────────
 interface Illustration {
@@ -506,9 +528,8 @@ export function LessonReader() {
               onClick={generateComparison}
               aria-label="Compare concepts"
               title="Compare concepts in this lesson"
-              className="text-lg"
             >
-              ⚖️
+              <IconScale className="w-4 h-4" />
             </Button>
             <Button
               variant="ghost"
@@ -539,16 +560,21 @@ export function LessonReader() {
             >
               {JSON.parse(localStorage.getItem('learnflow-bookmarks') || '[]').includes(
                 lessonId || '',
-              )
-                ? '🔖'
-                : '📑'}
+              ) ? (
+                <IconBookmark className="w-4 h-4" />
+              ) : (
+                <IconBook className="w-4 h-4" />
+              )}
             </Button>
             <span className="text-xs text-gray-500 dark:text-gray-300">
               {lesson.wordCount} words · {lesson.estimatedTime} min
             </span>
             {isComplete && (
               <span className="text-xs bg-success/10 text-success px-2 py-0.5 rounded-full font-medium">
-                ✓ Complete
+                <span className="inline-flex items-center gap-2">
+                  <IconCheck className="w-4 h-4" />
+                  Complete
+                </span>
               </span>
             )}
           </div>
@@ -570,7 +596,8 @@ export function LessonReader() {
                 </h1>
                 <div className="mt-3 flex items-center gap-3">
                   <span className="inline-flex items-center gap-1 bg-accent/10 text-accent text-xs font-medium px-3 py-1 rounded-full">
-                    ⏱️ {lesson.estimatedTime} min read
+                    <IconProgressRing className="w-4 h-4" />
+                    {lesson.estimatedTime} min read
                   </span>
                   <span className="text-xs text-gray-500 dark:text-gray-300">
                     {lesson.wordCount} words
@@ -585,7 +612,8 @@ export function LessonReader() {
             .map((s, i) => (
               <div key={`obj-${i}`} className="bg-accent/5 border border-accent/20 rounded-2xl p-5">
                 <h2 className="text-sm font-semibold text-accent mb-3 flex items-center gap-2">
-                  🎯 Learning Objectives
+                  <IconBrainSpark className="w-4 h-4" />
+                  Learning Objectives
                 </h2>
                 <div className="space-y-1">
                   {s.content
@@ -631,7 +659,10 @@ export function LessonReader() {
                   className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
                   title="Add a note"
                 >
-                  📝 Note
+                  <span className="inline-flex items-center gap-2">
+                    <IconLesson className="w-4 h-4" />
+                    Note
+                  </span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -648,7 +679,10 @@ export function LessonReader() {
                   className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
                   title="AI explanation"
                 >
-                  🔍 Explain
+                  <span className="inline-flex items-center gap-2">
+                    <IconSearch className="w-4 h-4" />
+                    Explain
+                  </span>
                 </Button>
                 <Button
                   variant="ghost"
@@ -665,9 +699,17 @@ export function LessonReader() {
                   className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
                   title="AI example"
                 >
-                  💡 Example
+                  <span className="inline-flex items-center gap-2">
+                    <IconBulb className="w-4 h-4" />
+                    Example
+                  </span>
                 </Button>
-                {annotationLoading && <span className="text-xs px-1">⏳</span>}
+                {annotationLoading && (
+                  <span className="text-xs px-1 inline-flex items-center gap-1">
+                    <IconSparkles className="w-3.5 h-3.5" />
+                    Loading
+                  </span>
+                )}
               </div>
             )}
 
@@ -726,7 +768,10 @@ export function LessonReader() {
                               className="opacity-0 group-hover/section:opacity-100 bg-accent/10 text-accent hover:bg-accent/20"
                               title="Generate illustration for this section"
                             >
-                              🎨 Illustrate
+                              <span className="inline-flex items-center gap-2">
+                                <IconPalette className="w-4 h-4" />
+                                Illustrate
+                              </span>
                             </Button>
                           </div>
                         )}
@@ -748,7 +793,17 @@ export function LessonReader() {
                                 onClick={generateSectionIllustration}
                                 disabled={generatingSectionIll || !illustratePrompt.trim()}
                               >
-                                {generatingSectionIll ? '⏳ Generating...' : '🎨 Generate'}
+                                {generatingSectionIll ? (
+                                  <span className="inline-flex items-center gap-2">
+                                    <IconSparkles className="w-4 h-4" />
+                                    Generating...
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-2">
+                                    <IconPalette className="w-4 h-4" />
+                                    Generate
+                                  </span>
+                                )}
                               </Button>
                               <Button
                                 variant="ghost"
@@ -785,7 +840,7 @@ export function LessonReader() {
                                   className="text-red-400 hover:text-red-600"
                                   title="Remove illustration"
                                 >
-                                  ✕
+                                  <IconX className="w-4 h-4" />
                                 </Button>
                               </div>
                             </div>
@@ -800,7 +855,10 @@ export function LessonReader() {
             {annotations.length > 0 && (
               <div className="mt-4 bg-yellow-50/50 dark:bg-yellow-900/10 rounded-2xl border border-yellow-200 dark:border-yellow-800/30 p-5">
                 <h3 className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-3">
-                  📝 Your Annotations ({annotations.length})
+                  <span className="inline-flex items-center gap-2">
+                    <IconLesson className="w-4 h-4" />
+                    Your Annotations ({annotations.length})
+                  </span>
                 </h3>
                 <div className="space-y-3">
                   {annotations.map((ann) => (
@@ -818,7 +876,11 @@ export function LessonReader() {
                           {ann.selectedText.length > 80 ? '…' : ''}"
                         </span>
                         <span className="ml-2 text-xs text-gray-500 dark:text-gray-300">
-                          {ann.type === 'note' ? '📝' : ann.type === 'explain' ? '🔍' : '💡'}
+                          {ann.type === 'note'
+                            ? 'Note'
+                            : ann.type === 'explain'
+                              ? 'Explain'
+                              : 'Example'}
                         </span>
                       </Button>
                       {activeAnnotation === ann.id && (
@@ -832,7 +894,10 @@ export function LessonReader() {
                             onClick={() => deleteAnnotation(ann.id)}
                             className="mt-2"
                           >
-                            🗑️ Delete
+                            <span className="inline-flex items-center gap-2">
+                              <IconTrash className="w-4 h-4" />
+                              Delete
+                            </span>
                           </Button>
                         </div>
                       )}
@@ -848,7 +913,8 @@ export function LessonReader() {
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  ⚖️ Concept Comparison
+                  <IconScale className="w-5 h-5 text-accent" />
+                  Concept Comparison
                 </h2>
                 <div className="flex gap-2">
                   <Button
@@ -857,16 +923,25 @@ export function LessonReader() {
                     onClick={generateComparison}
                     className="text-accent"
                   >
-                    🔄 Regenerate
+                    <span className="inline-flex items-center gap-2">
+                      <IconRefresh className="w-4 h-4" />
+                      Regenerate
+                    </span>
                   </Button>
                   <Button variant="ghost" size="sm" onClick={() => setShowComparison(false)}>
-                    ✕ Close
+                    <span className="inline-flex items-center gap-2">
+                      <IconClose className="w-4 h-4" />
+                      Close
+                    </span>
                   </Button>
                 </div>
               </div>
               {comparingLoading ? (
                 <div className="text-center py-8 text-gray-500">
-                  ⏳ Analyzing lesson for comparable concepts...
+                  <span className="inline-flex items-center gap-2 justify-center">
+                    <IconSparkles className="w-4 h-4" />
+                    Analyzing lesson for comparable concepts...
+                  </span>
                 </div>
               ) : comparison && comparison.concepts.length > 0 ? (
                 <>
@@ -949,7 +1024,8 @@ export function LessonReader() {
                 className="bg-success/5 border border-success/20 rounded-2xl p-5"
               >
                 <h2 className="text-sm font-semibold text-success mb-3 flex items-center gap-2">
-                  💡 Key Takeaways
+                  <IconBulb className="w-4 h-4" />
+                  Key Takeaways
                 </h2>
                 <div className="space-y-2">
                   {s.content
@@ -972,7 +1048,8 @@ export function LessonReader() {
           {sources.length > 0 && (
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                📚 References
+                <IconBook className="w-4 h-4" />
+                References
               </h2>
               <div className="space-y-3">
                 {sources.map((s) => (
@@ -1010,7 +1087,8 @@ export function LessonReader() {
                   className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5"
                 >
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                    🚀 Next Steps
+                    <IconRocket className="w-4 h-4" />
+                    Next Steps
                   </h2>
                   <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
                     {s.content
@@ -1024,7 +1102,7 @@ export function LessonReader() {
               ))
           ) : (
             <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
-              🚀 No next steps listed for this lesson.
+              No next steps listed for this lesson.
             </div>
           )}
 
@@ -1035,13 +1113,13 @@ export function LessonReader() {
               .map((s, i) => <InlineQuickCheck key={`qc-${i}`} content={s.content} />)
           ) : (
             <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
-              ✅ No quick check questions for this lesson. Try the "Quiz Me" button below!
+              No quick check questions for this lesson. Try the "Quiz Me" button below!
             </div>
           )}
 
           {sections.filter((s) => s.type === 'objectives').length === 0 && (
             <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
-              🎯 No learning objectives listed for this lesson.
+              No learning objectives listed for this lesson.
             </div>
           )}
         </article>
@@ -1089,21 +1167,37 @@ export function LessonReader() {
                 : 'bg-success hover:bg-success/90'
             }
           >
-            {isComplete ? '✅ Completed' : '✅ Mark Complete'}
+            {isComplete ? (
+              <span className="inline-flex items-center gap-2">
+                <IconCheck className="w-4 h-4" />
+                Completed
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2">
+                <IconCheck className="w-4 h-4" />
+                Mark Complete
+              </span>
+            )}
           </Button>
           <Button
             variant={activePanel === 'notes' ? 'primary' : 'secondary'}
             onClick={handleNotes}
             aria-label="Take Notes"
           >
-            📝 Take Notes
+            <span className="inline-flex items-center gap-2">
+              <IconPencil className="w-4 h-4" />
+              Take Notes
+            </span>
           </Button>
           <Button
             variant={activePanel === 'quiz' ? 'primary' : 'secondary'}
             onClick={handleQuiz}
             aria-label="Quiz Me"
           >
-            ❓ Quiz Me
+            <span className="inline-flex items-center gap-2">
+              <IconTestTube className="w-4 h-4" />
+              Quiz Me
+            </span>
           </Button>
         </div>
 
@@ -1111,15 +1205,33 @@ export function LessonReader() {
         {activePanel === 'notes' && (
           <div className="mt-4 space-y-4">
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">📝 Notes</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 inline-flex items-center gap-2">
+                <IconPencil className="w-5 h-5 text-accent" />
+                Notes
+              </h3>
               <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
                 Generate AI-powered notes or write your own:
               </p>
               <div className="flex flex-wrap gap-2 mb-4">
                 {[
-                  { key: 'summary', label: '📄 Auto-Summary', desc: 'Concise lesson summary' },
-                  { key: 'cornell', label: '📋 Cornell Notes', desc: 'Cues, notes, summary' },
-                  { key: 'mindmap', label: '🗺️ Mind Map', desc: 'Hierarchical outline' },
+                  {
+                    key: 'summary',
+                    label: 'Auto-Summary',
+                    desc: 'Concise lesson summary',
+                    icon: <IconDocument className="w-4 h-4" />,
+                  },
+                  {
+                    key: 'cornell',
+                    label: 'Cornell Notes',
+                    desc: 'Cues, notes, summary',
+                    icon: <IconClipboard className="w-4 h-4" />,
+                  },
+                  {
+                    key: 'mindmap',
+                    label: 'Mind Map',
+                    desc: 'Hierarchical outline',
+                    icon: <IconMap className="w-4 h-4" />,
+                  },
                 ].map((opt) => (
                   <Button
                     key={opt.key}
@@ -1129,11 +1241,17 @@ export function LessonReader() {
                     className="flex-col items-start px-4 py-3 border border-gray-200 dark:border-gray-700 hover:border-accent hover:bg-accent/5 h-auto text-left"
                   >
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {opt.label}
+                      <span className="inline-flex items-center gap-2">
+                        <span className="text-accent">{opt.icon}</span>
+                        {opt.label}
+                      </span>
                     </span>
                     <span className="text-xs text-gray-500">{opt.desc}</span>
                     {generatingNoteFormat === opt.key && (
-                      <span className="text-xs text-accent mt-1">⏳ Generating...</span>
+                      <span className="text-xs text-accent mt-1 inline-flex items-center gap-1">
+                        <IconSparkles className="w-3.5 h-3.5" />
+                        Generating...
+                      </span>
                     )}
                   </Button>
                 ))}
@@ -1151,7 +1269,10 @@ export function LessonReader() {
                       onClick={saveCustomNote}
                       className="text-accent"
                     >
-                      💾 Save
+                      <span className="inline-flex items-center gap-2">
+                        <IconBook className="w-4 h-4" />
+                        Save
+                      </span>
                     </Button>
                   </div>
                   <div className="prose dark:prose-invert max-w-none text-sm">
@@ -1176,7 +1297,10 @@ export function LessonReader() {
 
               <div className="mt-4">
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">
-                  ✏️ Your Notes
+                  <span className="inline-flex items-center gap-2">
+                    <IconPencil className="w-4 h-4" />
+                    Your Notes
+                  </span>
                 </label>
                 <textarea
                   value={customNoteText}
@@ -1191,7 +1315,10 @@ export function LessonReader() {
 
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
               <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
-                🎨 Generate Illustration
+                <span className="inline-flex items-center gap-2">
+                  <IconPalette className="w-5 h-5 text-accent" />
+                  Generate Illustration
+                </span>
               </h3>
               <div className="flex gap-2">
                 <input
@@ -1207,7 +1334,17 @@ export function LessonReader() {
                   onClick={generateIllustration}
                   disabled={generatingIllustration || !illustrationDesc.trim()}
                 >
-                  {generatingIllustration ? '⏳' : '🎨'} Generate
+                  {generatingIllustration ? (
+                    <span className="inline-flex items-center gap-2">
+                      <IconSparkles className="w-4 h-4" />
+                      Generating
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-2">
+                      <IconPalette className="w-4 h-4" />
+                      Generate
+                    </span>
+                  )}
                 </Button>
               </div>
               {illustrations.length > 0 && (
@@ -1246,7 +1383,11 @@ export function LessonReader() {
             className={`flex-col gap-1 h-auto ${state.completedLessons.has(lessonId || '') ? 'text-success' : ''}`}
           >
             <span className="text-lg">
-              {state.completedLessons.has(lessonId || '') ? '✅' : '☑️'}
+              {state.completedLessons.has(lessonId || '') ? (
+                <IconCheck className="w-5 h-5" />
+              ) : (
+                <IconProgressRing className="w-5 h-5" />
+              )}
             </span>
             <span>Mark Complete</span>
           </Button>
@@ -1258,7 +1399,7 @@ export function LessonReader() {
             }
             className="flex-col gap-1 h-auto"
           >
-            <span className="text-lg">📝</span>
+            <IconPencil className="w-5 h-5" />
             <span>Take Notes</span>
           </Button>
           <Button
@@ -1269,7 +1410,7 @@ export function LessonReader() {
             }
             className="flex-col gap-1 h-auto"
           >
-            <span className="text-lg">🧪</span>
+            <IconTestTube className="w-5 h-5" />
             <span>Quiz Me</span>
           </Button>
           <Button
@@ -1280,7 +1421,7 @@ export function LessonReader() {
             }
             className="flex-col gap-1 h-auto"
           >
-            <span className="text-lg">❓</span>
+            <IconInfo className="w-5 h-5" />
             <span>Ask Question</span>
           </Button>
         </div>
@@ -1325,7 +1466,10 @@ function InlineQuickCheck({ content }: { content: string }) {
   return (
     <div className="bg-accent/5 dark:bg-accent/5 border border-accent/20 dark:border-accent/20/30 rounded-2xl p-5">
       <h2 className="text-sm font-semibold text-accent dark:text-accent-light mb-3 flex items-center gap-2">
-        ✅ Quick Check
+        <span className="inline-flex items-center gap-2">
+          <IconCheck className="w-4 h-4" />
+          Quick Check
+        </span>
       </h2>
       <div className="space-y-3">
         {lines.map((line, j) => {
@@ -1355,7 +1499,10 @@ function InlineQuickCheck({ content }: { content: string }) {
                 key={j}
                 className="text-sm text-green-700 dark:text-green-400 pl-4 border-l-2 border-green-300 dark:border-green-700 page-enter"
               >
-                💡 {clean}
+                <span className="inline-flex items-center gap-2">
+                  <IconBulb className="w-4 h-4" />
+                  {clean}
+                </span>
               </p>
             );
           }
@@ -1371,7 +1518,12 @@ function InlineQuickCheck({ content }: { content: string }) {
               {!revealed.has(j) && (
                 <span className="text-xs text-blue-500 ml-2">(tap to reveal answer)</span>
               )}
-              {revealed.has(j) && <span className="text-xs text-green-500 ml-2">✓</span>}
+              {revealed.has(j) && (
+                <span className="text-xs text-green-500 ml-2 inline-flex items-center gap-1">
+                  <IconCheck className="w-3.5 h-3.5" />
+                  Revealed
+                </span>
+              )}
             </Button>
           );
         })}
@@ -1388,7 +1540,10 @@ function QuizPanel() {
   if (state.loading.quiz)
     return (
       <div className="mt-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 text-center text-gray-500 dark:text-gray-300">
-        ⏳ Generating quiz...
+        <span className="inline-flex items-center gap-2 justify-center">
+          <IconSparkles className="w-4 h-4" />
+          Generating quiz...
+        </span>
       </div>
     );
   if (!quiz || !quiz.questions.length) return null;
@@ -1400,7 +1555,10 @@ function QuizPanel() {
   return (
     <div className="mt-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-        ❓ Knowledge Check
+        <span className="inline-flex items-center gap-2">
+          <IconTestTube className="w-5 h-5 text-accent" />
+          Knowledge Check
+        </span>
       </h3>
       {quiz.submitted && quiz.score !== undefined && (
         <div
@@ -1446,7 +1604,12 @@ function QuizPanel() {
                 rows={2}
               />
             )}
-            {quiz.submitted && <p className="text-xs text-gray-500 ml-4">💡 {q.explanation}</p>}
+            {quiz.submitted && (
+              <p className="text-xs text-gray-500 ml-4 inline-flex items-start gap-2">
+                <IconBulb className="w-4 h-4 flex-shrink-0" />
+                <span>{q.explanation}</span>
+              </p>
+            )}
           </div>
         ))}
       </div>

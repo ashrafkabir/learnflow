@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
+import { IconZap } from '../../components/icons/index.js';
 
 const SECTIONS = [
   {
@@ -279,7 +280,10 @@ export function DocsPage() {
               {activeCategory === 'Getting Started' && activeItem === 0 && (
                 <div className="mb-8 p-6 rounded-2xl bg-accent/5 border border-accent/20">
                   <h3 className="font-bold text-lg mb-4 text-gray-900 dark:text-white">
-                    ⚡ Quick Start (5 steps)
+                    <span className="inline-flex items-center gap-2">
+                      <IconZap className="w-5 h-5 text-accent" />
+                      Quick Start (5 steps)
+                    </span>
                   </h3>
                   <div className="space-y-3">
                     {QUICK_START_STEPS.map((qs) => (

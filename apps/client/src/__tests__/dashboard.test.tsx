@@ -100,7 +100,7 @@ describe('Dashboard', () => {
     renderAt('/dashboard');
     await waitFor(() => {
       const text = document.body.textContent || '';
-      expect(text.match(/streak|day|🔥/i)).toBeTruthy();
+      expect(text.match(/streak|day/i)).toBeTruthy();
     });
   });
 });

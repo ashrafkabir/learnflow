@@ -22,6 +22,13 @@ import {
   IconSettings,
   IconShieldKey,
   IconSpark,
+  IconCelebrate,
+  IconCalendar,
+  IconClose,
+  IconFlame,
+  IconMap,
+  IconRocket,
+  IconSparkles,
 } from '../components/icons/index.js';
 
 export function Dashboard() {
@@ -285,8 +292,11 @@ export function Dashboard() {
                 className="bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl p-4 text-white card stat-animate"
               >
                 <p className="text-sm font-medium opacity-90">Streak</p>
-                <p className="text-3xl font-bold">
-                  <span className="flame-flicker">🔥</span> {state.streak}
+                <p className="text-3xl font-bold flex items-center gap-2">
+                  <span className="flame-flicker" aria-hidden>
+                    <IconFlame size={22} className="text-white" decorative />
+                  </span>
+                  {state.streak}
                 </p>
                 <p className="text-xs opacity-75 mt-1">days in a row</p>
               </div>
@@ -442,8 +452,9 @@ export function Dashboard() {
             {/* Today's Lessons */}
             {todaysLessons.length > 0 && (
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                  📅 Today's Lessons
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 inline-flex items-center gap-2">
+                  <IconCalendar size={18} className="text-accent" decorative />
+                  Today's Lessons
                 </h2>
                 <div className="space-y-2">
                   {todaysLessons.map((tl, i) => (
@@ -502,7 +513,10 @@ export function Dashboard() {
                   size="large"
                   className="w-full sm:w-auto whitespace-nowrap"
                 >
-                  {creating || pipelineLoading ? '⏳ Starting...' : '✨ Create Course'}
+                  <span className="inline-flex items-center gap-2">
+                    <IconSparkles size={16} className="text-white" decorative />
+                    {creating || pipelineLoading ? 'Starting...' : 'Create Course'}
+                  </span>
                 </Button>
               </div>
             </div>
@@ -641,8 +655,9 @@ export function Dashboard() {
                         size="sm"
                         onClick={() => dispatch({ type: 'DISMISS_NOTIFICATION', id: n.id })}
                         className="text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100"
+                        aria-label="Dismiss notification"
                       >
-                        ✕
+                        <IconClose size={14} className="text-current" decorative />
                       </Button>
                     </div>
                   ))}
@@ -659,7 +674,7 @@ export function Dashboard() {
                   )}
                   {state.completedLessons.size > 0 && (
                     <div className="flex items-center gap-3 p-2 text-sm">
-                      <span className="text-green-500">🎉</span>
+                      <IconCelebrate size={16} className="text-green-500" decorative />
                       <span className="text-gray-600 dark:text-gray-300">
                         {state.completedLessons.size} lesson
                         {state.completedLessons.size !== 1 ? 's' : ''} completed. Great progress!
@@ -667,7 +682,7 @@ export function Dashboard() {
                     </div>
                   )}
                   <div className="flex items-center gap-3 p-2 text-sm">
-                    <span className="text-orange-500">🔥</span>
+                    <IconFlame size={16} className="text-orange-500" decorative />
                     <span className="text-gray-700 dark:text-gray-300">
                       {state.streak === 0
                         ? 'Start your streak! Complete a lesson today.'
@@ -695,7 +710,7 @@ export function Dashboard() {
               {state.courses.length === 0 ? (
                 <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-dashed border-accent/30 dark:border-accent/20 shadow-card p-12 text-center">
                   <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-accent/10 flex items-center justify-center">
-                    <span className="text-4xl">🚀</span>
+                    <IconRocket size={34} className="text-accent" decorative />
                   </div>
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                     Create your first course
@@ -800,8 +815,9 @@ export function Dashboard() {
             {/* Knowledge Map Preview — Spec §5.2.2 */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-white">
-                  🗺️ Knowledge Map
+                <h2 className="text-base font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                  <IconMap size={18} className="text-accent" decorative />
+                  Knowledge Map
                 </h2>
                 <Button variant="ghost" size="sm" onClick={() => nav('/mindmap')}>
                   Explore →
@@ -869,8 +885,9 @@ export function Dashboard() {
               className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5 cursor-pointer hover:border-accent/50 transition-colors"
             >
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  🗺️ Knowledge Mindmap
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                  <IconMap size={18} className="text-accent" decorative />
+                  Knowledge Mindmap
                 </h2>
                 <span className="text-xs text-accent font-medium">View Full Map →</span>
               </div>

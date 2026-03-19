@@ -4,12 +4,20 @@ import { useApp } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { Confetti } from '../../components/Confetti.js';
+import {
+  IconBrainSpark,
+  IconCheck,
+  IconCelebrate,
+  IconPipeline,
+  IconSearch,
+  IconSparkles,
+} from '../../components/icons/index.js';
 
 const STAGES = [
-  { emoji: '🔍', label: 'Researching sources...', pct: 25 },
-  { emoji: '📝', label: 'Building syllabus...', pct: 50 },
-  { emoji: '🧠', label: 'Creating lessons...', pct: 75 },
-  { emoji: '✨', label: 'Polishing content...', pct: 100 },
+  { icon: <IconSearch className="w-10 h-10" />, label: 'Researching sources...', pct: 25 },
+  { icon: <IconPipeline className="w-10 h-10" />, label: 'Building syllabus...', pct: 50 },
+  { icon: <IconBrainSpark className="w-10 h-10" />, label: 'Creating lessons...', pct: 75 },
+  { icon: <IconSparkles className="w-10 h-10" />, label: 'Polishing content...', pct: 100 },
 ];
 
 /**
@@ -60,7 +68,7 @@ export function FirstCourse() {
         {!complete ? (
           <>
             {/* Progress animation */}
-            <div className="text-6xl mb-6 animate-bounce">{stage.emoji}</div>
+            <div className="text-6xl mb-6 animate-bounce text-accent">{stage.icon}</div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
               Setting up your experience
             </h1>
@@ -87,7 +95,10 @@ export function FirstCourse() {
                         : 'text-gray-400'
                   }`}
                 >
-                  {i < stageIdx ? '✓' : s.emoji} {s.label.replace('...', '')}
+                  <span className="inline-flex items-center gap-1.5">
+                    {i < stageIdx ? <IconCheck className="w-3.5 h-3.5" /> : s.icon}
+                    <span>{s.label.replace('...', '')}</span>
+                  </span>
                 </div>
               ))}
             </div>
@@ -96,7 +107,9 @@ export function FirstCourse() {
           <>
             {/* Completion */}
             <Confetti trigger={true} />
-            <div className="text-7xl mb-6">🎉</div>
+            <div className="text-7xl mb-6 text-accent">
+              <IconCelebrate className="w-16 h-16" />
+            </div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
               You're All Set!
             </h1>

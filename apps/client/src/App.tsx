@@ -7,6 +7,7 @@ import { analytics } from './lib/analytics.js';
 import { MobileNav } from './components/MobileNav.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 import { ShortcutsModal } from './components/ShortcutsModal.js';
+import { IconBrainSpark } from './components/icons/index.js';
 
 // Code-split all screen components via React.lazy
 const OnboardingWelcome = React.lazy(() =>
@@ -116,7 +117,7 @@ function LoadingSpinner() {
       aria-label="Loading"
     >
       <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
-        <span className="text-3xl animate-pulse">🧠</span>
+        <IconBrainSpark size={30} className="text-accent animate-pulse" title="LearnFlow" />
       </div>
       <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-2">LearnFlow</h1>
       <div className="w-8 h-8 border-4 border-accent border-t-transparent rounded-full animate-spin mb-3" />

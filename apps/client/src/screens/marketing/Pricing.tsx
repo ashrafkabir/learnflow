@@ -4,6 +4,7 @@ import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
 import { motion } from 'framer-motion';
+import { IconCheck, IconShield, IconX } from '../../components/icons/index.js';
 
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.95 },
@@ -170,7 +171,10 @@ export function PricingPage() {
               <ul className="space-y-3">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-center gap-2 text-sm">
-                    <span className="text-accent">✓</span> {f}
+                    <span className="text-accent inline-flex items-center">
+                      <IconCheck className="w-4 h-4" />
+                    </span>
+                    {f}
                   </li>
                 ))}
                 {plan.missing.map((f) => (
@@ -178,7 +182,10 @@ export function PricingPage() {
                     key={f}
                     className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-300"
                   >
-                    <span className="text-red-400 dark:text-red-500">✕</span> {f}
+                    <span className="text-red-400 dark:text-red-500 inline-flex items-center">
+                      <IconX className="w-4 h-4" />
+                    </span>
+                    {f}
                   </li>
                 ))}
               </ul>
@@ -189,7 +196,9 @@ export function PricingPage() {
         {/* Money-back guarantee */}
         <div className="flex justify-center mb-16">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40">
-            <span className="text-2xl">🛡️</span>
+            <span className="text-green-700 dark:text-green-300 inline-flex items-center">
+              <IconShield className="w-5 h-5" />
+            </span>
             <div>
               <p className="text-sm font-semibold text-green-800 dark:text-green-300">
                 30-day money-back guarantee

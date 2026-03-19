@@ -1,14 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from './Button.js';
+import {
+  IconBrainSpark,
+  IconChart,
+  IconChat,
+  IconClose,
+  IconHandshake,
+  IconMarketplace,
+  IconMenu,
+  IconMindmap,
+  IconSettings,
+} from './icons/index.js';
 
 const NAV_ITEMS = [
-  { icon: '📊', label: 'Dashboard', path: '/dashboard' },
-  { icon: '💬', label: 'Conversation', path: '/conversation' },
-  { icon: '🗺️', label: 'Mind Map', path: '/mindmap' },
-  { icon: '🤝', label: 'Collaborate', path: '/collaborate' },
-  { icon: '🏪', label: 'Marketplace', path: '/marketplace' },
-  { icon: '⚙️', label: 'Settings', path: '/settings' },
+  { icon: IconChart, label: 'Dashboard', path: '/dashboard' },
+  { icon: IconChat, label: 'Conversation', path: '/conversation' },
+  { icon: IconMindmap, label: 'Mind Map', path: '/mindmap' },
+  { icon: IconHandshake, label: 'Collaborate', path: '/collaborate' },
+  { icon: IconMarketplace, label: 'Marketplace', path: '/marketplace' },
+  { icon: IconSettings, label: 'Settings', path: '/settings' },
 ];
 
 /** Mobile-responsive hamburger nav for authenticated app screens */
@@ -28,7 +39,7 @@ export function MobileNav() {
           aria-label="Open navigation"
           className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md shadow-card"
         >
-          ☰
+          <IconMenu size={20} className="text-gray-800 dark:text-gray-100" title="Menu" />
         </Button>
       </div>
 
@@ -46,7 +57,8 @@ export function MobileNav() {
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
           <span className="font-bold text-lg flex items-center gap-2">
-            <span>🧠</span> LearnFlow
+            <IconBrainSpark size={20} className="text-accent" title="LearnFlow" />
+            LearnFlow
           </span>
           <Button
             variant="ghost"
@@ -54,38 +66,44 @@ export function MobileNav() {
             onClick={() => setOpen(false)}
             aria-label="Close navigation"
           >
-            ✕
+            <IconClose size={18} className="text-gray-700 dark:text-gray-200" title="Close" />
           </Button>
         </div>
         <div className="p-3 space-y-1">
-          {NAV_ITEMS.map((item) => (
-            <Button
-              key={item.path}
-              variant="ghost"
-              fullWidth
-              onClick={() => {
-                nav(item.path);
-                setOpen(false);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            const active = location.pathname.startsWith(item.path);
+            return (
+              <Button
+                key={item.path}
+                variant="ghost"
+                fullWidth
+                onClick={() => {
                   nav(item.path);
                   setOpen(false);
-                }
-              }}
-              tabIndex={0}
-              aria-current={location.pathname.startsWith(item.path) ? 'page' : undefined}
-              className={`justify-start gap-3 text-sm font-medium py-3 ${
-                location.pathname.startsWith(item.path)
-                  ? 'bg-accent/10 text-accent'
-                  : 'text-gray-600 dark:text-gray-300'
-              }`}
-            >
-              <span className="text-lg">{item.icon}</span>
-              {item.label}
-            </Button>
-          ))}
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    nav(item.path);
+                    setOpen(false);
+                  }
+                }}
+                tabIndex={0}
+                aria-current={active ? 'page' : undefined}
+                className={`justify-start gap-3 text-sm font-medium py-3 ${
+                  active ? 'bg-accent/10 text-accent' : 'text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                <Icon
+                  size={18}
+                  className={active ? 'text-accent' : 'text-gray-500 dark:text-gray-300'}
+                  decorative
+                />
+                {item.label}
+              </Button>
+            );
+          })}
         </div>
       </nav>
     </>

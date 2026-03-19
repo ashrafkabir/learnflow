@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { getAllBlogPosts } from '../../data/blogPosts.js';
+import { IconLesson, IconSearch } from '../../components/icons/index.js';
 
 export function BlogPage() {
   const nav = useNavigate();
@@ -47,7 +48,9 @@ export function BlogPage() {
         {/* Search & Filter Bar */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 mb-8">
           <div className="relative flex-1 w-full">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <IconSearch className="w-4 h-4" />
+            </span>
             <input
               type="search"
               value={search}
@@ -116,7 +119,9 @@ export function BlogPage() {
 
           {filtered.length === 0 && (
             <div className="text-center py-16 text-gray-400 dark:text-gray-500">
-              <p className="text-4xl mb-3">📝</p>
+              <p className="text-accent mb-3 inline-flex justify-center">
+                <IconLesson className="w-10 h-10" />
+              </p>
               <p className="text-lg font-medium">No articles found</p>
               <p className="text-sm mt-1">Try adjusting your search or category filter.</p>
               <button

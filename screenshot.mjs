@@ -1,7 +1,9 @@
 import { chromium } from 'playwright';
 
 const BASE = 'http://localhost:3001';
-const DIR = 'evals/screenshots/rebuild';
+const DIR = process.env.SCREENSHOT_AUTHED
+  ? 'evals/screenshots/iter36-desktop-authed'
+  : 'evals/screenshots/iter36-desktop';
 
 const pages = [
   ['/', 'home'],
@@ -19,6 +21,21 @@ const pages = [
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+
+if (process.env.SCREENSHOT_AUTHED) {
+  await ctx.addInitScript(() => {
+    try {
+      // eslint-disable-next-line no-undef
+      localStorage.setItem('learnflow-token', 'dev');
+      // eslint-disable-next-line no-undef
+      localStorage.setItem('learnflow-onboarding-complete', 'true');
+      // eslint-disable-next-line no-undef
+      localStorage.setItem('onboarding-tour-complete', 'true');
+    } catch {
+      /* ignore */
+    }
+  });
+}
 
 for (const [path, name] of pages) {
   const page = await ctx.newPage();

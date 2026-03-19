@@ -2,6 +2,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
 import { useToast } from '../../components/Toast.js';
+import {
+  IconChart,
+  IconEye,
+  IconPalette,
+  IconStar,
+  IconTrophy,
+  IconCheck,
+  IconX,
+} from '../../components/icons/index.js';
 
 const TABS = ['My Courses', 'Analytics', 'Earnings'] as const;
 type Tab = (typeof TABS)[number];
@@ -145,7 +154,9 @@ export function CreatorDashboard() {
                 setPublishStep(0);
               }}
             >
-              ✕
+              <span className="inline-flex items-center">
+                <IconX className="w-4 h-4" />
+              </span>
             </Button>
           </div>
           <div className="flex gap-1 mb-2">
@@ -334,7 +345,7 @@ export function CreatorDashboard() {
 
       {MOCK_COURSES.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-          <span className="text-5xl">📚</span>
+          <IconTrophy className="w-12 h-12 text-gray-400" />
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">No courses yet</h2>
           <p className="text-gray-600 dark:text-gray-300 max-w-sm">
             Publish your first course to see it here.
@@ -352,14 +363,26 @@ export function CreatorDashboard() {
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Course Analytics</h2>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total Views', value: MOCK_ANALYTICS.totalViews.toLocaleString(), icon: '👁️' },
+          {
+            label: 'Total Views',
+            value: MOCK_ANALYTICS.totalViews.toLocaleString(),
+            icon: <IconEye className="w-5 h-5" />,
+          },
           {
             label: 'Enrollments This Month',
             value: MOCK_ANALYTICS.enrollmentsThisMonth.toString(),
-            icon: '📈',
+            icon: <IconChart className="w-5 h-5" />,
           },
-          { label: 'Completion Rate', value: `${MOCK_ANALYTICS.completionRate}%`, icon: '✅' },
-          { label: 'Avg Rating', value: `⭐ ${MOCK_ANALYTICS.avgRating}`, icon: '⭐' },
+          {
+            label: 'Completion Rate',
+            value: `${MOCK_ANALYTICS.completionRate}%`,
+            icon: <IconCheck className="w-5 h-5" />,
+          },
+          {
+            label: 'Avg Rating',
+            value: `${MOCK_ANALYTICS.avgRating}`,
+            icon: <IconStar className="w-5 h-5" />,
+          },
         ].map((stat) => (
           <div
             key={stat.label}
@@ -511,7 +534,10 @@ export function CreatorDashboard() {
           <Button variant="ghost" size="sm" onClick={() => nav('/marketplace')}>
             ←
           </Button>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">🎨 Creator Dashboard</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-2">
+            <IconPalette className="w-5 h-5 text-accent" />
+            Creator Dashboard
+          </h1>
           <div className="ml-auto">
             <Button variant="primary" onClick={() => setShowPublishForm(true)}>
               + Create Course

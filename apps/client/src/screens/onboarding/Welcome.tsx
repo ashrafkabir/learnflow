@@ -3,6 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { useSwipe } from '../../hooks/useSwipe.js';
+import {
+  IconBrainSpark,
+  IconCourse,
+  IconLesson,
+  IconProgressRing,
+} from '../../components/icons/index.js';
 
 export function OnboardingWelcome() {
   const nav = useNavigate();
@@ -18,7 +24,7 @@ export function OnboardingWelcome() {
         <OnboardingProgress current="welcome" />
         <div className="flex justify-center">
           <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-            <span className="text-4xl">🧠</span>
+            <IconBrainSpark className="w-10 h-10 text-white" />
           </div>
         </div>
 
@@ -32,15 +38,24 @@ export function OnboardingWelcome() {
 
         <div className="grid grid-cols-1 gap-3 text-left">
           {[
-            { icon: '📚', text: 'AI-generated courses from real web sources' },
-            { icon: '🎯', text: 'Personalized learning paths & adaptive quizzes' },
-            { icon: '📝', text: 'Cornell notes, flashcards & mind maps' },
+            {
+              icon: <IconCourse className="w-5 h-5" />,
+              text: 'AI-generated courses from real web sources',
+            },
+            {
+              icon: <IconProgressRing className="w-5 h-5" />,
+              text: 'Personalized learning paths & adaptive quizzes',
+            },
+            {
+              icon: <IconLesson className="w-5 h-5" />,
+              text: 'Cornell notes, flashcards & mind maps',
+            },
           ].map((f) => (
             <div
               key={f.text}
               className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl p-4"
             >
-              <span className="text-2xl">{f.icon}</span>
+              <span className="text-primary-100">{f.icon}</span>
               <span className="text-sm text-primary-100">{f.text}</span>
             </div>
           ))}

@@ -5,13 +5,25 @@ import { CrawlThreadList } from './CrawlThreadList.js';
 import { SynthesisList } from './SynthesisList.js';
 import { QualityCheckList } from './QualityCheckList.js';
 import { OrganizingView } from './OrganizingView.js';
+import {
+  IconChart,
+  IconCheck,
+  IconDocument,
+  IconPencil,
+  IconRobot,
+  IconSearch,
+} from '../icons/index.js';
 
-const STAGES: { key: PipelineStage; label: string; icon: string }[] = [
-  { key: 'scraping', label: 'Web Scraping', icon: '🔍' },
-  { key: 'organizing', label: 'Organizing', icon: '📊' },
-  { key: 'synthesizing', label: 'Synthesizing', icon: '🤖' },
-  { key: 'quality_check', label: 'Quality Check', icon: '✅' },
-  { key: 'reviewing', label: 'Review', icon: '📝' },
+const STAGES: {
+  key: PipelineStage;
+  label: string;
+  Icon: React.ComponentType<{ size?: number; className?: string; decorative?: boolean }>;
+}[] = [
+  { key: 'scraping', label: 'Web Scraping', Icon: IconSearch },
+  { key: 'organizing', label: 'Organizing', Icon: IconChart },
+  { key: 'synthesizing', label: 'Synthesizing', Icon: IconRobot },
+  { key: 'quality_check', label: 'Quality Check', Icon: IconCheck },
+  { key: 'reviewing', label: 'Review', Icon: IconDocument },
 ];
 
 function stageIndex(stage: PipelineStage): number {
@@ -79,9 +91,10 @@ function LessonEditCard({ lesson, pipelineId }: { lesson: LessonData; pipelineId
           </button>
           <button
             onClick={() => setEditing(!editing)}
-            className="px-2 py-1 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium"
+            className="px-2 py-1 text-xs bg-accent/10 text-accent rounded-lg hover:bg-accent/20 font-medium inline-flex items-center gap-1"
           >
-            ✏️ Edit
+            <IconPencil size={14} className="text-accent" decorative />
+            Edit
           </button>
         </div>
       </div>
@@ -110,7 +123,7 @@ function LessonEditCard({ lesson, pipelineId }: { lesson: LessonData; pipelineId
               disabled={loading || !editPrompt.trim()}
               className="px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent/90 disabled:opacity-50 font-medium"
             >
-              {loading ? '⏳ Updating...' : 'Apply Edit'}
+              {loading ? 'Updating...' : 'Apply Edit'}
             </button>
             <button
               onClick={() => {
@@ -159,7 +172,7 @@ function ReviewingPanel({
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-500 dark:text-gray-300">
-        ✅ Course ready! Review and edit lessons below.
+        Course ready! Review and edit lessons below.
       </p>
 
       {loading ? (
@@ -187,13 +200,13 @@ function ReviewingPanel({
           onClick={handlePublish}
           className="flex-1 px-3 py-2 bg-success/10 text-success rounded-xl text-xs font-semibold hover:bg-success/20 transition-colors border border-success/20"
         >
-          🌐 Publish to Marketplace
+          Publish to Marketplace
         </button>
         <button
           onClick={handlePersonal}
           className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-semibold hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors border border-gray-200 dark:border-gray-700"
         >
-          🔒 Keep Personal
+          Keep Personal
         </button>
       </div>
     </div>
@@ -230,7 +243,7 @@ export function PipelineView({
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${state.sourceMode === 'real' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}
             >
-              {state.sourceMode === 'real' ? '🌐 Live Sources' : '🧪 Mock Sources'}
+              {state.sourceMode === 'real' ? 'Live Sources' : 'Mock Sources'}
             </span>
           )}
         </div>
@@ -257,7 +270,7 @@ export function PipelineView({
         {STAGES.map((s, i) => {
           const status = i < currentIdx ? 'complete' : i === currentIdx ? 'active' : 'pending';
           return (
-            <StageColumn key={s.key} icon={s.icon} label={s.label} status={status}>
+            <StageColumn key={s.key} Icon={s.Icon} label={s.label} status={status}>
               {s.key === 'scraping' && i <= currentIdx && (
                 <CrawlThreadList threads={state.crawlThreads} />
               )}
@@ -286,7 +299,7 @@ export function PipelineView({
       {state.stage === 'failed' && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
           <p className="text-sm text-red-700 dark:text-red-400">
-            ❌ Pipeline failed: {state.error || 'Unknown error'}
+            Pipeline failed: {state.error || 'Unknown error'}
           </p>
         </div>
       )}

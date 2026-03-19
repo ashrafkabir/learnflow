@@ -1,13 +1,14 @@
 import React, { type ReactNode } from 'react';
+import { IconCheck } from '../icons/index.js';
 
 interface Props {
-  icon: string;
+  Icon: React.ComponentType<{ size?: number; className?: string; decorative?: boolean }>;
   label: string;
   status: 'pending' | 'active' | 'complete';
   children?: ReactNode;
 }
 
-export function StageColumn({ icon, label, status, children }: Props) {
+export function StageColumn({ Icon, label, status, children }: Props) {
   const borderColor =
     status === 'complete'
       ? 'border-teal-400 dark:border-teal-500'
@@ -35,9 +36,13 @@ export function StageColumn({ icon, label, status, children }: Props) {
     >
       {/* Header */}
       <div className={`${headerBg} px-3 py-2 flex items-center gap-2`}>
-        <span className="text-lg">{icon}</span>
+        <Icon size={18} className="text-gray-700 dark:text-gray-200" decorative />
         <span className="text-sm font-semibold text-gray-900 dark:text-white">{label}</span>
-        {status === 'complete' && <span className="ml-auto text-teal-500">✓</span>}
+        {status === 'complete' && (
+          <span className="ml-auto text-teal-500">
+            <IconCheck size={16} className="text-teal-500" decorative />
+          </span>
+        )}
         {status === 'active' && (
           <span className="ml-auto">
             <span className="inline-block w-2 h-2 bg-sky-500 rounded-full animate-pulse" />

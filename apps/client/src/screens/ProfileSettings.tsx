@@ -4,6 +4,16 @@ import { useApp, apiBase } from '../context/AppContext.js';
 import { useToast } from '../components/Toast.js';
 import { useTheme } from '../design-system/ThemeProvider.js';
 import { Button } from '../components/Button.js';
+import {
+  IconBrainSpark,
+  IconChart,
+  IconCheck,
+  IconCourse,
+  IconInfinity,
+  IconKey,
+  IconRefresh,
+  IconRobot,
+} from '../components/icons/index.js';
 
 export function ProfileSettings() {
   const nav = useNavigate();
@@ -100,7 +110,10 @@ export function ProfileSettings() {
             ) : (
               <div className="flex flex-col items-end gap-2">
                 <span className="bg-white/20 text-white font-semibold text-sm px-5 py-2.5 rounded-xl">
-                  ✓ Active
+                  <span className="inline-flex items-center gap-2">
+                    <IconCheck className="w-4 h-4" />
+                    Active
+                  </span>
                 </span>
                 <p className="text-xs opacity-75">Next billing: Aug 21, 2025</p>
               </div>
@@ -116,7 +129,10 @@ export function ProfileSettings() {
             </h2>
             <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
               <span>
-                📊 API calls this month:{' '}
+                <span className="inline-flex items-center gap-2">
+                  <IconChart className="w-4 h-4" />
+                  API calls this month:{' '}
+                </span>
                 <strong className="text-gray-900 dark:text-white">1,234 / 10,000</strong>
               </span>
             </div>
@@ -165,25 +181,32 @@ export function ProfileSettings() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Pro Features</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { icon: '♾️', label: 'Unlimited courses', pro: true },
-              { icon: '🤖', label: 'Priority agent access', pro: true },
-              { icon: '🔑', label: 'Managed API keys', pro: true },
-              { icon: '🔄', label: 'Update Agent', pro: true },
-              { icon: '📚', label: '3 courses', pro: false },
-              { icon: '🧠', label: 'Basic agents', pro: false },
+              { icon: <IconInfinity className="w-5 h-5" />, label: 'Unlimited courses', pro: true },
+              {
+                icon: <IconRobot className="w-5 h-5" />,
+                label: 'Priority agent access',
+                pro: true,
+              },
+              { icon: <IconKey className="w-5 h-5" />, label: 'Managed API keys', pro: true },
+              { icon: <IconRefresh className="w-5 h-5" />, label: 'Update Agent', pro: true },
+              { icon: <IconCourse className="w-5 h-5" />, label: '3 courses', pro: false },
+              { icon: <IconBrainSpark className="w-5 h-5" />, label: 'Basic agents', pro: false },
             ].map((f) => (
               <div
                 key={f.label}
                 className={`flex items-center gap-3 p-3 rounded-xl ${f.pro ? 'bg-purple-50 dark:bg-purple-900/20' : 'bg-gray-50 dark:bg-gray-800'}`}
               >
-                <span>{f.icon}</span>
+                <span className="text-gray-600 dark:text-gray-300">{f.icon}</span>
                 <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{f.label}</span>
                 {f.pro ? (
                   <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">
                     PRO
                   </span>
                 ) : (
-                  <span className="text-xs text-success font-medium">✓ Free</span>
+                  <span className="text-xs text-success font-medium inline-flex items-center gap-1">
+                    <IconCheck className="w-3.5 h-3.5" />
+                    Free
+                  </span>
                 )}
               </div>
             ))}
@@ -270,9 +293,16 @@ export function ProfileSettings() {
                     </div>
                     {/* Usage stats — Task 12 */}
                     <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-300">
-                      <span>📊 Used {k.usageCount ?? 0} times this month</span>
-                      <span>
-                        🕐 Last used:{' '}
+                      <span className="inline-flex items-center gap-1">
+                        <IconChart className="w-4 h-4" />
+                        Used {k.usageCount ?? 0} times this month
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600"
+                          aria-hidden="true"
+                        />
+                        Last used:{' '}
                         {k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never'}
                       </span>
                     </div>

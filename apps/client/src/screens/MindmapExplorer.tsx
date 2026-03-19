@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, apiGet } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
+import { IconMap, IconMaximize, IconZoomIn, IconZoomOut } from '../components/icons/index.js';
 
 // Dynamically import vis-network to avoid SSR issues
 let Network: unknown = null;
@@ -165,7 +166,7 @@ export function MindmapExplorer() {
           const isInProgress = !isComplete && lesson.id === firstIncompleteLessonId;
           const lessonBg = isComplete ? '#16A34A' : isInProgress ? '#F59E0B' : '#E5E7EB';
           const lessonBorder = isComplete ? '#15803D' : isInProgress ? '#D97706' : '#9CA3AF';
-          const statusLabel = isComplete ? ' ✓' : isInProgress ? ' (in progress)' : '';
+          const statusLabel = isComplete ? ' (complete)' : isInProgress ? ' (in progress)' : '';
           nodes.push({
             id: lessonNodeId,
             label: lesson.title.length > 35 ? lesson.title.slice(0, 35) + '…' : lesson.title,
@@ -276,7 +277,10 @@ export function MindmapExplorer() {
             <Button variant="ghost" size="sm" onClick={() => nav('/dashboard')}>
               ←
             </Button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">🗺️ Knowledge Map</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-2">
+              <IconMap size={20} className="text-accent" decorative />
+              Knowledge Map
+            </h1>
           </div>
           <div className="hidden sm:flex items-center gap-4 text-xs">
             <Button variant="primary" size="sm" onClick={() => setShowAddNode(true)}>
@@ -318,7 +322,9 @@ export function MindmapExplorer() {
           {state.courses.length === 0 ? (
             <div className="flex items-center justify-center h-full text-center">
               <div>
-                <span className="text-5xl block mb-4">🗺️</span>
+                <div className="flex justify-center mb-4">
+                  <IconMap size={44} className="text-accent" decorative />
+                </div>
                 <p className="text-gray-500 dark:text-gray-300 text-lg">
                   Create a course to see your knowledge map
                 </p>
@@ -369,7 +375,7 @@ export function MindmapExplorer() {
                   title="Zoom in"
                   className="shadow-card"
                 >
-                  +
+                  <IconZoomIn size={18} className="text-gray-800 dark:text-gray-100" decorative />
                 </Button>
                 <Button
                   variant="secondary"
@@ -386,7 +392,7 @@ export function MindmapExplorer() {
                   title="Zoom out"
                   className="shadow-card"
                 >
-                  −
+                  <IconZoomOut size={18} className="text-gray-800 dark:text-gray-100" decorative />
                 </Button>
                 <Button
                   variant="secondary"
@@ -399,7 +405,7 @@ export function MindmapExplorer() {
                   title="Fit to screen"
                   className="shadow-card"
                 >
-                  ⊞
+                  <IconMaximize size={18} className="text-gray-800 dark:text-gray-100" decorative />
                 </Button>
               </div>
             </>

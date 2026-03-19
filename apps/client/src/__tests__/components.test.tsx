@@ -36,7 +36,7 @@ describe('ProgressRing component', () => {
 describe('BrandedLoading component', () => {
   it('renders LearnFlow branding', () => {
     render(<BrandedLoading />);
-    expect(screen.getByText('LearnFlow')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'LearnFlow' })).toBeInTheDocument();
   });
 
   it('shows default loading message', () => {

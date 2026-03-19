@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button.js';
+import { IconMail, IconSparkles } from '../components/icons/index.js';
 
 /* Pipeline stage label → color mapping */
 const STAGE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -124,7 +125,10 @@ export function PipelineViewScreen() {
             </p>
           </div>
           <Button variant="primary" onClick={() => nav('/conversation')}>
-            ✨ Start New Course
+            <span className="inline-flex items-center gap-2">
+              <IconSparkles size={16} className="text-white" decorative />
+              Start New Course
+            </span>
           </Button>
         </div>
       </header>
@@ -206,7 +210,9 @@ export function PipelineViewScreen() {
 
           {filtered.length === 0 && (
             <div className="text-center py-12 text-gray-400 dark:text-gray-500">
-              <p className="text-4xl mb-2">📭</p>
+              <div className="flex justify-center mb-2">
+                <IconMail size={34} className="text-gray-400 dark:text-gray-500" decorative />
+              </div>
               <p className="text-lg font-medium">No pipelines match this filter</p>
               <p className="text-sm mt-1">Try a different filter or start a new course.</p>
             </div>

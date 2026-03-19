@@ -1,5 +1,6 @@
 import React from 'react';
 import type { QualityCheck } from '../../hooks/usePipeline.js';
+import { IconCheck, IconWarning } from '../icons/index.js';
 
 export function QualityCheckList({ results }: { results?: QualityCheck[] }) {
   const safeResults = results ?? [];
@@ -14,9 +15,11 @@ export function QualityCheckList({ results }: { results?: QualityCheck[] }) {
           className="bg-white dark:bg-gray-900 rounded-lg px-2 py-1.5 border border-gray-100 dark:border-gray-700"
         >
           <div className="flex items-center gap-2">
-            <span className={r.overallPass ? 'text-teal-500' : 'text-amber-500'}>
-              {r.overallPass ? '✓' : '⚠'}
-            </span>
+            {r.overallPass ? (
+              <IconCheck size={14} className="text-teal-500" decorative />
+            ) : (
+              <IconWarning size={14} className="text-amber-500" decorative />
+            )}
             <span className="truncate font-medium text-gray-700 dark:text-gray-300">
               {r.lessonTitle}
             </span>

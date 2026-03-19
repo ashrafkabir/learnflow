@@ -2,6 +2,18 @@ import React from 'react';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { motion } from 'framer-motion';
+import {
+  IconChat,
+  IconCheck,
+  IconCourse,
+  IconLesson,
+  IconMarketplace,
+  IconMindmap,
+  IconRocket,
+  IconSettings,
+  IconSparkles,
+  IconTestTube,
+} from '../../components/icons/index.js';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -20,7 +32,7 @@ const GRADIENT_COLORS = [
 
 const FEATURES = [
   {
-    icon: '🤖',
+    icon: <IconCourse className="w-6 h-6" />,
     title: 'AI Course Generation',
     desc: 'Enter any topic and our multi-agent pipeline researches the web, synthesizes content, and builds a structured course with modules, lessons, and citations.',
     benefits: [
@@ -30,25 +42,25 @@ const FEATURES = [
     ],
   },
   {
-    icon: '📝',
+    icon: <IconLesson className="w-6 h-6" />,
     title: 'Smart Note-Taking',
     desc: 'Generate Cornell notes, flashcards, or Zettelkasten entries from any lesson. Notes are contextualized to your learning level.',
     benefits: ['Three note formats', 'Auto-generated cue questions', 'Export to Markdown/PDF'],
   },
   {
-    icon: '🧪',
+    icon: <IconTestTube className="w-6 h-6" />,
     title: 'Adaptive Quizzes',
     desc: 'Our Exam Agent generates quizzes that target your weak areas. Get explanations for every answer and track improvement over time.',
     benefits: ['Gap analysis', 'Multiple question types', 'Spaced repetition ready'],
   },
   {
-    icon: '🗺️',
+    icon: <IconMindmap className="w-6 h-6" />,
     title: 'Knowledge Mindmap',
     desc: 'Visualize your entire knowledge graph. Color-coded by mastery level — tap nodes to expand, jump to lessons, or add connections.',
     benefits: ['Interactive vis-network graph', 'Mastery-based coloring', 'Click-to-navigate'],
   },
   {
-    icon: '💬',
+    icon: <IconChat className="w-6 h-6" />,
     title: 'AI Chat Assistant',
     desc: 'Have conversations with specialized AI agents. Ask questions, get research summaries, or create new courses — all through chat.',
     benefits: [
@@ -58,7 +70,7 @@ const FEATURES = [
     ],
   },
   {
-    icon: '🏪',
+    icon: <IconMarketplace className="w-6 h-6" />,
     title: 'Marketplace',
     desc: 'Browse community-created courses, activate specialized agents, and share your own courses with the world.',
     benefits: ['Course search & filter', 'Agent marketplace', 'One-click publish'],
@@ -99,7 +111,7 @@ export function FeaturesPage() {
                 <div
                   className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${GRADIENT_COLORS[i % GRADIENT_COLORS.length]} flex items-center justify-center mb-4 shadow-elevated group-hover:scale-110 transition-transform duration-300`}
                 >
-                  <span className="text-2xl filter drop-shadow-sm">{f.icon}</span>
+                  <span className="text-accent filter drop-shadow-sm">{f.icon}</span>
                 </div>
                 <h2 className="text-2xl font-bold mb-3">{f.title}</h2>
                 <p className="text-gray-600 dark:text-gray-300 leading-relaxed mb-4">{f.desc}</p>
@@ -109,7 +121,10 @@ export function FeaturesPage() {
                       key={b}
                       className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300"
                     >
-                      <span className="text-accent">✓</span> {b}
+                      <span className="text-accent inline-flex items-center">
+                        <IconCheck className="w-4 h-4" />
+                      </span>
+                      {b}
                     </li>
                   ))}
                 </ul>
@@ -118,7 +133,7 @@ export function FeaturesPage() {
                 {/* Decorative circles */}
                 <div className="absolute top-4 right-4 w-16 h-16 rounded-full bg-accent/5 dark:bg-accent/10" />
                 <div className="absolute bottom-6 left-6 w-10 h-10 rounded-full bg-purple-200/30 dark:bg-purple-500/10" />
-                <span className="text-7xl drop-shadow-sm">{f.icon}</span>
+                <span className="text-accent drop-shadow-sm">{f.icon}</span>
                 <div className="flex flex-wrap justify-center gap-2">
                   {f.benefits.slice(0, 3).map((b, j) => (
                     <span
@@ -146,19 +161,19 @@ export function FeaturesPage() {
             {[
               {
                 step: '1',
-                icon: '💬',
+                icon: <IconChat className="w-8 h-8" />,
                 title: 'Tell Us What to Learn',
                 desc: 'Enter any topic or paste a URL. Our AI agents begin researching from real web sources — academic papers, docs, tutorials, and more.',
               },
               {
                 step: '2',
-                icon: '⚙️',
+                icon: <IconSettings className="w-8 h-8" />,
                 title: 'AI Builds Your Course',
                 desc: 'Our multi-agent pipeline organizes sources, deduplicates content, checks quality, and synthesizes structured lessons with citations.',
               },
               {
                 step: '3',
-                icon: '🚀',
+                icon: <IconRocket className="w-8 h-8" />,
                 title: 'Learn & Master',
                 desc: 'Study at your pace with interactive lessons, adaptive quizzes, smart notes, and a knowledge mindmap that tracks your mastery.',
               },
@@ -170,7 +185,9 @@ export function FeaturesPage() {
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-accent text-white text-sm font-bold flex items-center justify-center shadow-card">
                   {s.step}
                 </div>
-                <span className="text-4xl block mb-4 mt-2">{s.icon}</span>
+                <span className="text-accent block mb-4 mt-2 inline-flex justify-center">
+                  {s.icon}
+                </span>
                 <h3 className="text-lg font-semibold mb-2">{s.title}</h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{s.desc}</p>
               </div>
@@ -255,10 +272,18 @@ export function FeaturesPage() {
                 ].map((row) => (
                   <tr key={row.feature}>
                     <td className="py-2.5 px-4 text-gray-700 dark:text-gray-300">{row.feature}</td>
-                    <td className="py-2.5 px-4 text-center">{row.lf ? '✅' : '—'}</td>
-                    <td className="py-2.5 px-4 text-center">{row.gpt ? '✅' : '—'}</td>
-                    <td className="py-2.5 px-4 text-center">{row.coursera ? '✅' : '—'}</td>
-                    <td className="py-2.5 px-4 text-center">{row.duo ? '✅' : '—'}</td>
+                    <td className="py-2.5 px-4 text-center">
+                      {row.lf ? <IconCheck className="w-4 h-4 text-success inline" /> : '—'}
+                    </td>
+                    <td className="py-2.5 px-4 text-center">
+                      {row.gpt ? <IconCheck className="w-4 h-4 text-success inline" /> : '—'}
+                    </td>
+                    <td className="py-2.5 px-4 text-center">
+                      {row.coursera ? <IconCheck className="w-4 h-4 text-success inline" /> : '—'}
+                    </td>
+                    <td className="py-2.5 px-4 text-center">
+                      {row.duo ? <IconCheck className="w-4 h-4 text-success inline" /> : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -326,7 +351,8 @@ export function FeaturesPage() {
             href="/register"
             className="inline-flex items-center gap-2 bg-accent text-white font-semibold px-8 py-3 rounded-xl hover:bg-accent-dark transition-colors shadow-card"
           >
-            ✨ Get Started Free
+            <IconSparkles className="w-4 h-4" />
+            Get Started Free
           </a>
         </motion.div>
       </section>

@@ -1,4 +1,5 @@
 import React, { Component, type ReactNode, type ErrorInfo } from 'react';
+import { IconWarning } from './icons/index.js';
 
 interface Props {
   children: ReactNode;
@@ -33,7 +34,9 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-6">
           <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-elevated p-8 text-center space-y-4">
-            <span className="text-5xl block">⚠️</span>
+            <div className="flex justify-center">
+              <IconWarning size={44} className="text-amber-500" title="Warning" />
+            </div>
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
               Something went wrong
             </h2>

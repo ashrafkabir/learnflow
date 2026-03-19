@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button.js';
+import {
+  IconChart,
+  IconChat,
+  IconMarketplace,
+  IconMindmap,
+  IconSearch,
+  IconSettings,
+} from '../components/icons/index.js';
 
 const SUGGESTED_LINKS = [
-  { label: '📊 Dashboard', path: '/dashboard' },
-  { label: '💬 Conversation', path: '/conversation' },
-  { label: '🛒 Marketplace', path: '/marketplace' },
-  { label: '🧠 Mindmap', path: '/mindmap' },
-  { label: '⚙️ Settings', path: '/settings' },
+  { Icon: IconChart, label: 'Dashboard', path: '/dashboard' },
+  { Icon: IconChat, label: 'Conversation', path: '/conversation' },
+  { Icon: IconMarketplace, label: 'Marketplace', path: '/marketplace' },
+  { Icon: IconMindmap, label: 'Mindmap', path: '/mindmap' },
+  { Icon: IconSettings, label: 'Settings', path: '/settings' },
 ];
 
 export function NotFound() {
@@ -25,8 +33,8 @@ export function NotFound() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-gray-900 px-4">
       {/* 404 Illustration */}
       <div className="text-center mb-8">
-        <div className="text-8xl mb-4" aria-hidden="true">
-          🗺️
+        <div className="flex justify-center mb-4" aria-hidden="true">
+          <IconMindmap size={64} className="text-accent" decorative />
         </div>
         <div className="text-9xl font-black text-accent/20 select-none mb-2">404</div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Page not found</h1>
@@ -39,7 +47,9 @@ export function NotFound() {
       {/* Search Bar */}
       <form onSubmit={handleSearch} className="w-full max-w-md mb-8">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <IconSearch size={18} className="text-gray-400" decorative />
+          </span>
           <input
             type="search"
             value={search}
@@ -66,8 +76,9 @@ export function NotFound() {
             <button
               key={link.path}
               onClick={() => nav(link.path)}
-              className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-accent/10 hover:text-accent transition-colors"
+              className="text-sm px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-accent/10 hover:text-accent transition-colors inline-flex items-center gap-2"
             >
+              <link.Icon size={16} className="text-gray-500 dark:text-gray-300" decorative />
               {link.label}
             </button>
           ))}
