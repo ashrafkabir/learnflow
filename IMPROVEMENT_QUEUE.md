@@ -1,6 +1,6 @@
 # LearnFlow — Improvement Queue (Iteration 41)
 
-Status: **READY FOR BUILDER**
+Status: **IN PROGRESS**
 
 This queue is the prioritized, build-ready backlog for Iteration 41 based on:
 
