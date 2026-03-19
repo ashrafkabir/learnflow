@@ -1,7 +1,7 @@
 # IMPROVEMENT_QUEUE
 
 Iteration: 39
-Status: IN PROGRESS
+Status: DONE
 Date: 2026-03-19
 Theme: Mindmap expansions v1 (lesson+course), pipeline UX, onboarding sanity, annotation stability
 
