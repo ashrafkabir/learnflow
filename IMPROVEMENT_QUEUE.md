@@ -1,6 +1,6 @@
 # LearnFlow — Improvement Queue (Iteration 41)
 
-Status: **IN PROGRESS**
+Status: **DONE**
 
 This queue is the prioritized, build-ready backlog for Iteration 41 based on:
 
@@ -12,7 +12,7 @@ This queue is the prioritized, build-ready backlog for Iteration 41 based on:
 
 ## P0 — Must ship (breaks spec or blocks core UX)
 
-### 1) Fix mobile onboarding path mismatch (spec §5.2.1)
+### 1) Fix mobile onboarding path mismatch (spec §5.2.1) ✅
 
 **Problem:** `screenshot-mobile.mjs` captures `/onboarding/experience`, but the actual route set in `App.tsx` is `/onboarding/subscription` and `/onboarding/first-course`. This indicates at least one of:
 
@@ -29,7 +29,7 @@ This queue is the prioritized, build-ready backlog for Iteration 41 based on:
 
 **Acceptance:** No onboarding links lead to 404; mobile screenshots cover the true 6-step flow.
 
-### 2) Marketplace “full” backend not wired (spec §7, §11.1)
+### 2) Marketplace “full” backend not wired (spec §7, §11.1) ✅
 
 **Problem:** A richer marketplace implementation exists (`apps/api/src/routes/marketplace-full.ts` with publish, checkout, agent submit, creator dashboard), but it is not mounted in `createApp()` — only the minimal `routes/marketplace.ts` is active. This makes client marketplace/creator screens mostly demo-only and blocks spec flows (publishing, analytics, payments mock).
 
@@ -74,7 +74,7 @@ This queue is the prioritized, build-ready backlog for Iteration 41 based on:
 
 ## P1 — High value (major spec gaps)
 
-### 5) Make Creator Dashboard real (spec §7.1)
+### 5) Make Creator Dashboard real (spec §7.1) ✅
 
 **Problem:** `CreatorDashboard.tsx` uses `MOCK_COURSES`, `MOCK_ANALYTICS`, and `MOCK_EARNINGS` only.
 
