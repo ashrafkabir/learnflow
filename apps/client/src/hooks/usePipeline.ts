@@ -19,6 +19,15 @@ export interface CrawlThread {
   wordCount?: number;
 }
 
+export interface PipelineSource {
+  url: string;
+  title: string;
+  domain?: string;
+  author?: string;
+  publishDate?: string;
+  credibilityScore?: number;
+}
+
 export interface LessonSynthesis {
   lessonId: string;
   lessonTitle: string;
@@ -49,6 +58,8 @@ export interface PipelineState {
   startedAt: string;
   updatedAt: string;
   crawlThreads: CrawlThread[];
+  sources?: PipelineSource[];
+  synthesisSummary?: string;
   organizedSources: number;
   deduplicatedCount: number;
   credibilityScores: number[];

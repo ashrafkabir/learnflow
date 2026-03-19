@@ -410,7 +410,10 @@ interface AppContextType {
   generateQuiz: (courseId: string, moduleId: string) => Promise<Quiz>;
   completeLesson: (courseId: string, lessonId: string) => Promise<void>;
   searchResearch: (query: string) => Promise<unknown>;
-  addTopicToCourse: (courseId: string, topic: string) => Promise<Course>;
+  addTopicToCourse: (
+    courseId: string,
+    topic: string,
+  ) => Promise<{ course: Course; pipelineId?: string }>;
   webSearch: (
     query: string,
     limit?: number,
@@ -561,20 +564,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const addTopicToCourse = useCallback(async (courseId: string, topic: string): Promise<Course> => {
-    dispatch({ type: 'SET_LOADING', key: 'addTopic', value: true });
-    try {
-      const data = await apiPost(`/courses/${courseId}/add-topic`, { topic });
-      const nextCourse = (data?.course || data) as Course;
-      if (nextCourse?.id) {
-        dispatch({ type: 'ADD_COURSE', course: nextCourse });
-        dispatch({ type: 'SET_ACTIVE_COURSE', course: nextCourse });
+  const addTopicToCourse = useCallback(
+    async (courseId: string, topic: string): Promise<{ course: Course; pipelineId?: string }> => {
+      dispatch({ type: 'SET_LOADING', key: 'addTopic', value: true });
+      try {
+        // Prefer pipeline UX when available.
+        try {
+          const started = await apiPost(`/pipeline/add-topic`, { courseId, topic });
+          if (started?.pipelineId) {
+            // Return minimal stub; caller can navigate to pipeline detail.
+            return {
+              course: (state.activeCourse as Course) || ({ id: courseId } as any),
+              pipelineId: started.pipelineId,
+            };
+          }
+        } catch {
+          // Fall back to direct add-topic.
+        }
+
+        const data = await apiPost(`/courses/${courseId}/add-topic`, { topic });
+        const nextCourse = (data?.course || data) as Course;
+        if (nextCourse?.id) {
+          dispatch({ type: 'ADD_COURSE', course: nextCourse });
+          dispatch({ type: 'SET_ACTIVE_COURSE', course: nextCourse });
+        }
+        return { course: nextCourse };
+      } finally {
+        dispatch({ type: 'SET_LOADING', key: 'addTopic', value: false });
       }
-      return nextCourse;
-    } finally {
-      dispatch({ type: 'SET_LOADING', key: 'addTopic', value: false });
-    }
-  }, []);
+    },
+    [state.activeCourse],
+  );
 
   const webSearch = useCallback(
     async (

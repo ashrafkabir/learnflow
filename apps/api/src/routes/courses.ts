@@ -751,7 +751,7 @@ function matchTopic(input: string): string {
   return 'quantum';
 }
 
-async function generateLessonContentWithLLM(
+export async function generateLessonContentWithLLM(
   topic: string,
   moduleTitle: string,
   lessonTitle: string,
@@ -947,7 +947,7 @@ interface Course {
 
 // Courses are now stored in SQLite via dbCourses
 // This Map is a runtime cache, synced from SQLite on startup
-const courses: Map<string, Course> = new Map();
+export const courses: Map<string, Course> = new Map();
 for (const c of dbCourses.getAll()) courses.set(c.id, c as Course);
 
 const createCourseSchema = z.object({
@@ -1495,4 +1495,3 @@ router.delete('/:id/lessons/:lessonId/annotations/:annId', (req: Request, res: R
 });
 
 export const coursesRouter = router;
-export { courses };

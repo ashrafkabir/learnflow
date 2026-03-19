@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { PipelineState, PipelineStage } from '../../hooks/usePipeline.js';
 import { StageColumn } from './StageColumn.js';
 import { CrawlThreadList } from './CrawlThreadList.js';
+import { SourceList } from './SourceList.js';
 import { SynthesisList } from './SynthesisList.js';
 import { QualityCheckList } from './QualityCheckList.js';
 import { OrganizingView } from './OrganizingView.js';
@@ -19,10 +20,10 @@ const STAGES: {
   label: string;
   Icon: React.ComponentType<{ size?: number; className?: string; decorative?: boolean }>;
 }[] = [
-  { key: 'scraping', label: 'Web Scraping', Icon: IconSearch },
-  { key: 'organizing', label: 'Organizing', Icon: IconChart },
-  { key: 'synthesizing', label: 'Synthesizing', Icon: IconRobot },
-  { key: 'quality_check', label: 'Quality Check', Icon: IconCheck },
+  { key: 'scraping', label: 'Discovery', Icon: IconSearch },
+  { key: 'organizing', label: 'Extract', Icon: IconChart },
+  { key: 'synthesizing', label: 'Synthesize', Icon: IconRobot },
+  { key: 'quality_check', label: 'Course update', Icon: IconCheck },
   { key: 'reviewing', label: 'Review', Icon: IconDocument },
 ];
 
@@ -272,7 +273,15 @@ export function PipelineView({
           return (
             <StageColumn key={s.key} Icon={s.Icon} label={s.label} status={status}>
               {s.key === 'scraping' && i <= currentIdx && (
-                <CrawlThreadList threads={state.crawlThreads} />
+                <div className="space-y-2">
+                  <CrawlThreadList threads={state.crawlThreads} />
+                  <div>
+                    <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-1">
+                      Sources discovered
+                    </p>
+                    <SourceList sources={state.sources} />
+                  </div>
+                </div>
               )}
               {s.key === 'organizing' && i <= currentIdx && (
                 <OrganizingView
@@ -282,7 +291,14 @@ export function PipelineView({
                 />
               )}
               {s.key === 'synthesizing' && i <= currentIdx && (
-                <SynthesisList lessons={state.lessonSyntheses} courseId={state.courseId} />
+                <div className="space-y-2">
+                  {state.synthesisSummary ? (
+                    <div className="text-[11px] text-gray-600 dark:text-gray-300 bg-white/70 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+                      <span className="font-semibold">Summary:</span> {state.synthesisSummary}
+                    </div>
+                  ) : null}
+                  <SynthesisList lessons={state.lessonSyntheses} courseId={state.courseId} />
+                </div>
               )}
               {s.key === 'quality_check' && i <= currentIdx && (
                 <QualityCheckList results={state.qualityResults} />

@@ -56,6 +56,15 @@ export interface QualityResult {
   overallPass: boolean;
 }
 
+export interface PipelineSource {
+  url: string;
+  title: string;
+  domain?: string;
+  author?: string;
+  publishDate?: string;
+  credibilityScore?: number;
+}
+
 export interface PipelineState {
   id: string;
   courseId: string;
@@ -66,6 +75,8 @@ export interface PipelineState {
   updatedAt: string;
   // Stage data
   crawlThreads: CrawlThread[];
+  sources?: PipelineSource[];
+  synthesisSummary?: string;
   organizedSources: number;
   deduplicatedCount: number;
   credibilityScores: number[];
@@ -246,6 +257,185 @@ ${hasRealSources ? `- You have REAL scraped web sources below. Use them to infor
 
 // ── Pipeline execution ───────────────────────────────────────────────────────
 
+async function runAddTopicPipeline(pipelineId: string) {
+  console.log('[Pipeline] Starting add-topic pipeline', pipelineId);
+  const p = pipelines.get(pipelineId);
+  if (!p) return;
+
+  const topic = p.topic;
+  const courseId = p.courseId;
+
+  // Validate target course exists
+  const { courses } = await import('./courses.js');
+  const existing = courses.get(courseId) as any;
+  if (!existing) {
+    updatePipeline(p, { stage: 'failed', error: 'Course not found' });
+    return;
+  }
+
+  // ── STAGE 1: Discovery (web search) ──────────────────────────────────
+  updatePipeline(p, { stage: 'scraping', progress: 5 });
+
+  const threads: CrawlThread[] = Array.from({ length: 4 }).map((_, i) => ({
+    id: `thread-${i}`,
+    url: `Discovery thread ${i + 1}`,
+    status: 'pending' as const,
+  }));
+  updatePipeline(p, { crawlThreads: threads });
+
+  let crawledSources: FirecrawlSource[] = [];
+
+  for (let i = 0; i < threads.length; i++) {
+    threads[i].status = 'crawling';
+    updatePipeline(p, {
+      crawlThreads: [...threads],
+      progress: 5 + Math.round((i / threads.length) * 20),
+    });
+  }
+
+  try {
+    // Prefer web-search provider over paid scraping where possible.
+    // NOTE: @learnflow/agents currently exports the Firecrawl provider by default,
+    // which may 402 in some environments. Fall back to the internal free provider.
+    try {
+      crawledSources = await searchTopicTrending(topic);
+    } catch {
+      const mod = await import('@learnflow/agents/dist/content-pipeline/web-search-provider.js');
+      crawledSources = await mod.searchTopicTrending(topic);
+    }
+
+    updatePipeline(p, {
+      sources: crawledSources.map((s) => ({
+        url: s.url,
+        title: s.title,
+        domain: s.domain,
+        author: s.author,
+        publishDate: s.publishDate || undefined,
+        credibilityScore: s.credibilityScore,
+      })),
+    });
+
+    for (let i = 0; i < threads.length; i++) {
+      threads[i].status = 'done';
+      const chunk = crawledSources.slice(i * 3, (i + 1) * 3);
+      threads[i].title = chunk.length > 0 ? `Found ${chunk.length} sources` : 'Completed';
+      threads[i].contentPreview = chunk
+        .map((s) => s.title)
+        .join(', ')
+        .slice(0, 100);
+      threads[i].wordCount = chunk.reduce((s, c) => s + c.wordCount, 0);
+    }
+  } catch (err) {
+    console.warn(
+      '[Pipeline] Add-topic discovery failed, falling back to crawlSourcesForTopic:',
+      err,
+    );
+    try {
+      crawledSources = await crawlSourcesForTopic(topic);
+    } catch {
+      crawledSources = [];
+    }
+
+    updatePipeline(p, {
+      sources: crawledSources.map((s) => ({
+        url: s.url,
+        title: s.title,
+        domain: s.domain,
+        author: s.author,
+        publishDate: s.publishDate || undefined,
+        credibilityScore: s.credibilityScore,
+      })),
+    });
+
+    for (const t of threads) t.status = crawledSources.length > 0 ? 'done' : 'failed';
+  }
+
+  updatePipeline(p, { crawlThreads: [...threads], progress: 25, sourceMode: 'real' });
+
+  // ── STAGE 2: Extract (dedupe/themes) ──────────────────────────────────
+  updatePipeline(p, { stage: 'organizing', progress: 35 });
+
+  const uniqueSources = crawledSources.filter(
+    (s, i, arr) => arr.findIndex((x) => x.url === s.url) === i,
+  );
+  const credScores = uniqueSources.map((s) => s.credibilityScore);
+
+  updatePipeline(p, {
+    organizedSources: uniqueSources.length,
+    deduplicatedCount: crawledSources.length - uniqueSources.length,
+    credibilityScores: credScores,
+    themes: uniqueSources
+      .map((s) => s.domain)
+      .filter(Boolean)
+      .slice(0, 6) as string[],
+    progress: 50,
+  });
+
+  await new Promise((r) => setTimeout(r, 400));
+
+  // ── STAGE 3: Synthesize (generate new module+lesson) ─────────────────
+  updatePipeline(p, { stage: 'synthesizing', progress: 60 });
+
+  // Create a single synthetic lesson entry so UI shows work happening
+  const moduleIndex = existing.modules.length;
+  const lessonId = `${courseId}-m${moduleIndex}-l0`;
+  const syntheses: LessonSynthesis[] = [
+    {
+      lessonId,
+      lessonTitle: `${topic}: Overview`,
+      status: 'generating',
+      wordCount: 0,
+      sourcesUsed: Math.min(6, uniqueSources.length),
+    },
+  ];
+  updatePipeline(p, { lessonSyntheses: [...syntheses] });
+
+  // Generate content by calling shared generator in courses.ts through dynamic import.
+  // Keeps the add-topic behavior consistent with the direct /courses/:id/add-topic path.
+  const { generateLessonContentWithLLM } = await import('./courses.js');
+  const content = await generateLessonContentWithLLM(
+    topic,
+    topic,
+    `${topic}: Overview`,
+    `A focused, practical introduction to ${topic} for learners already following this course.`,
+    uniqueSources.slice(0, 8),
+  );
+  const wc = content.split(/\s+/).filter((w: string) => w).length;
+
+  syntheses[0].status = 'done';
+  syntheses[0].wordCount = wc;
+
+  const synthesisSummary = `Added 1 new module to an existing course using ${uniqueSources.length} sources. Focus: ${topic}.`;
+  updatePipeline(p, { lessonSyntheses: [...syntheses], synthesisSummary, progress: 80 });
+
+  // ── STAGE 4: Course update (persist) ─────────────────────────────────
+  updatePipeline(p, { stage: 'quality_check', progress: 90 });
+
+  const moduleId = `${courseId}-m${moduleIndex}`;
+  const newLesson: any = {
+    id: lessonId,
+    title: `${topic}: Overview`,
+    description: `Add-on topic: ${topic}`,
+    content,
+    estimatedTime: Math.min(12, Math.max(6, Math.ceil(wc / 200))),
+    wordCount: wc,
+  };
+
+  const newModule: any = {
+    id: moduleId,
+    title: topic,
+    objective: `Learn ${topic} as an extension topic`,
+    description: `Supplemental module added from suggested mindmap topic: ${topic}`,
+    lessons: [newLesson],
+  };
+
+  existing.modules.push(newModule);
+  dbCourses.save(existing);
+
+  updatePipeline(p, { stage: 'reviewing', progress: 100 });
+  broadcast(p.id, 'pipeline:complete', { courseId });
+}
+
 async function runPipeline(pipelineId: string) {
   console.log('[Pipeline] Starting pipeline', pipelineId);
   const p = pipelines.get(pipelineId);
@@ -280,6 +470,19 @@ async function runPipeline(pipelineId: string) {
 
   try {
     crawledSources = await searchTopicTrending(topic);
+
+    // Persist the actual sources discovered so the UI can attribute what was used.
+    updatePipeline(p, {
+      sources: crawledSources.map((s) => ({
+        url: s.url,
+        title: s.title,
+        domain: s.domain,
+        author: s.author,
+        publishDate: s.publishDate || undefined,
+        credibilityScore: s.credibilityScore,
+      })),
+    });
+
     for (let i = 0; i < threads.length; i++) {
       threads[i].status = 'done';
       const chunk = crawledSources.slice(i * 4, (i + 1) * 4);
@@ -297,6 +500,18 @@ async function runPipeline(pipelineId: string) {
     } catch {
       /* will use empty sources */
     }
+
+    updatePipeline(p, {
+      sources: crawledSources.map((s) => ({
+        url: s.url,
+        title: s.title,
+        domain: s.domain,
+        author: s.author,
+        publishDate: s.publishDate || undefined,
+        credibilityScore: s.credibilityScore,
+      })),
+    });
+
     for (const t of threads) {
       t.status = crawledSources.length > 0 ? 'done' : 'failed';
     }
@@ -475,7 +690,8 @@ async function runPipeline(pipelineId: string) {
     }
   }
 
-  updatePipeline(p, { progress: 82 });
+  const synthesisSummary = `Generated ${allLessons.length} lessons across ${modules.length} modules using ${uniqueSources.length} primary sources. Key themes: ${themes.slice(0, 5).join(', ') || 'N/A'}.`;
+  updatePipeline(p, { progress: 82, synthesisSummary });
 
   // ── STAGE 4: Quality Check ─────────────────────────────────────────────
   updatePipeline(p, { stage: 'quality_check', progress: 85 });
@@ -812,6 +1028,50 @@ function generateSourceAwareFallback(
 
 // ── Routes ───────────────────────────────────────────────────────────────────
 
+/** POST /api/v1/pipeline/add-topic — Add a suggested topic to an existing course with pipeline UX */
+router.post('/add-topic', (req: Request, res: Response) => {
+  const { courseId, topic } = req.body || {};
+  if (!courseId || typeof courseId !== 'string') {
+    res.status(400).json({ error: 'courseId is required' });
+    return;
+  }
+  if (!topic || typeof topic !== 'string') {
+    res.status(400).json({ error: 'topic is required' });
+    return;
+  }
+
+  const pipelineId = uuid();
+
+  const state: PipelineState = {
+    id: pipelineId,
+    courseId,
+    topic: topic.trim(),
+    stage: 'scraping',
+    progress: 0,
+    startedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    crawlThreads: [],
+    sources: [],
+    synthesisSummary: '',
+    organizedSources: 0,
+    deduplicatedCount: 0,
+    credibilityScores: [],
+    themes: [],
+    lessonSyntheses: [],
+    qualityResults: [],
+  };
+
+  pipelines.set(pipelineId, state);
+  dbPipelines.save(state);
+
+  runAddTopicPipeline(pipelineId).catch((err) => {
+    const p = pipelines.get(pipelineId);
+    if (p) updatePipeline(p, { stage: 'failed', error: String(err) });
+  });
+
+  res.status(201).json({ pipelineId, courseId });
+});
+
 /** POST /api/v1/pipeline — Start a new course creation pipeline */
 router.post('/', (req: Request, res: Response) => {
   const { topic } = req.body;
@@ -832,6 +1092,8 @@ router.post('/', (req: Request, res: Response) => {
     startedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     crawlThreads: [],
+    sources: [],
+    synthesisSummary: '',
     organizedSources: 0,
     deduplicatedCount: 0,
     credibilityScores: [],

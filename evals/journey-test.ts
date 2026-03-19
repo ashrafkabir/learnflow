@@ -3,7 +3,7 @@
  * Run: npx tsx evals/journey-test.ts
  */
 
-const API = process.env.API_URL || 'http://localhost:3002/api/v1';
+const API = process.env.API_URL || 'http://localhost:3000/api/v1';
 
 interface TestResult {
   name: string;

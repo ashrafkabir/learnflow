@@ -792,6 +792,17 @@ export async function searchTopicTrending(
 
   console.log(`[Firecrawl] Trending research found ${allResults.length} unique results`);
 
+  // If Firecrawl is unavailable/unauthorized (e.g., 402) or returns no results,
+  // fall back to the free multi-source Web Search provider.
+  if (allResults.length === 0) {
+    try {
+      const mod = await import('./web-search-provider.js');
+      return await mod.searchTopicTrending(topic, config);
+    } catch (err) {
+      console.warn('[Firecrawl] WebSearch fallback failed:', err);
+    }
+  }
+
   // Convert search results to sources WITHOUT individual scraping (fast path for planning).
   // The search API returns title + description which is enough for course planning.
   // Per-lesson scraping in Stage 2 will get the full content.

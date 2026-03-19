@@ -565,10 +565,15 @@ export function MindmapExplorer() {
                         if (!courseId) return;
                         setAddLoading(true);
                         try {
-                          const updatedCourse = await addTopicToCourse(
-                            courseId,
-                            suggestedAction.label,
-                          );
+                          const result = await addTopicToCourse(courseId, suggestedAction.label);
+
+                          // If pipeline started, navigate to pipeline detail for live UX.
+                          if (result.pipelineId) {
+                            nav(`/pipeline/${result.pipelineId}`);
+                            return;
+                          }
+
+                          const updatedCourse = result.course;
 
                           // Refresh (ensures client state is consistent)
                           try {
