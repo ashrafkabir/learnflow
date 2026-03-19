@@ -17,15 +17,21 @@ Theme: Mindmap expansions v1 (lesson+course), pipeline UX, onboarding sanity, an
 **Fix:** Persist a durable flag (e.g., `onboardingCompletedAt`) and skip onboarding on subsequent logins.
 **Acceptance:** Fresh profile sees onboarding once; returning user lands on Dashboard/Conversation without onboarding.
 
+**Status:** DONE ✅
+
 ### 2) Onboarding must not force course creation
 
 **Fix:** Ensure onboarding flow captures profile/goals/topics without auto-creating a course.
 **Acceptance:** After onboarding, user can browse/explore or start a course intentionally (via Create Course / suggestions), but onboarding itself does not create one.
 
+**Status:** DONE ✅
+
 ### 3) Fix annotation bug: double-click heading throws errors
 
 **Fix:** Reproduce and patch the annotation handler (likely selection/range/DOM mismatch on double-click).
 **Acceptance:** Double-click headings (and other text) does not throw; annotations still function.
+
+**Status:** DONE ✅
 
 ### 4) Pipeline UX for “Add to course”
 

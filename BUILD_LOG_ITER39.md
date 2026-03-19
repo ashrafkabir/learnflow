@@ -5,10 +5,12 @@ Date: 2026-03-19
 
 ## Task 1) Onboarding only once (not every login)
 
+✅ DONE.
+
 ### What I changed
 
 - **API (SQLite)**: Added durable field `users.onboardingCompletedAt`.
-  - Updated migrations to include column.
+  - Updated schema creation to include column.
   - Updated `insertUser` / `updateUser` statements and serialization.
   - Updated `DbUser` typing + row mapping.
 - **API (profile routes)**:
@@ -27,8 +29,51 @@ Date: 2026-03-19
 
 ### Notes
 
-- This preserves backward-compat with the prior localStorage-only behavior.
-- Durable completion requires user to reach the final onboarding step (FirstCourse) at least once.
+- Backward compatible with the prior localStorage-only behavior.
+- Durable completion requires the user to reach the final onboarding step at least once.
+
+### Verification
+
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅
+- `npx eslint .` ✅
+
+## Task 2) Onboarding must not force course creation
+
+✅ DONE.
+
+### What I changed
+
+- **Client**: Updated onboarding flow to avoid implying/triggering course creation.
+  - `SubscriptionChoice` now routes to `/onboarding/ready` (final “ready” screen) instead of `/onboarding/first-course`.
+  - Updated copy comment in `FirstCourse` to clarify no course is auto-created during onboarding.
+
+### Acceptance check
+
+- Onboarding captures profile/goals/topics and ends on a “You’re all set” screen.
+- Users are directed to the Dashboard to create a course intentionally.
+
+### Verification
+
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅
+- `npx eslint .` ✅
+
+## Task 3) Fix annotation bug: double-click heading throws errors
+
+✅ DONE.
+
+### What I changed
+
+- **Client**: Hardened selection → range logic in `LessonReader`.
+  - Added guard for `Selection.rangeCount` before calling `getRangeAt(0)`.
+  - Wrapped `getRangeAt(0)` in `try/catch` to avoid `IndexSizeError`.
+  - Validated the selection range is inside the lesson content container before computing toolbar position.
+
+### Acceptance check
+
+- Double-click on headings (or other text) no longer throws.
+- Annotation UI still appears for valid selections inside the lesson content.
 
 ### Verification
 

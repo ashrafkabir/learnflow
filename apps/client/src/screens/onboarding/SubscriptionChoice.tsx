@@ -46,13 +46,13 @@ export function SubscriptionChoice() {
       return;
     }
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 });
-    nav('/onboarding/first-course');
+    nav('/onboarding/ready');
   };
 
   const continueAfterModal = () => {
     setShowModal(false);
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 });
-    nav('/onboarding/first-course');
+    nav('/onboarding/ready');
   };
 
   return (
@@ -139,7 +139,7 @@ export function SubscriptionChoice() {
             size="sm"
             onClick={() => {
               dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 });
-              nav('/onboarding/first-course');
+              nav('/onboarding/ready');
             }}
           >
             Skip

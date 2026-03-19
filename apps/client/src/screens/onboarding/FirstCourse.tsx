@@ -22,7 +22,7 @@ const STAGES = [
 
 /**
  * Onboarding completion screen with staged progress animation.
- * Spec §5.2.1 step 6 — "orchestrator builds initial course in real-time with progress animation"
+ * Spec §5.2.1 step 6 — progress animation (no course is auto-created during onboarding).
  */
 export function FirstCourse() {
   const nav = useNavigate();

@@ -376,10 +376,24 @@ export function LessonReader() {
     }
     const text = sel.toString().trim();
     if (text.length < 3) return;
-    const range = sel.getRangeAt(0);
+
+    // Double-click selection can momentarily report text but have no ranges.
+    // Guard to prevent "IndexSizeError: Failed to execute 'getRangeAt'".
+    if (sel.rangeCount < 1) return;
+
+    let range: Range;
+    try {
+      range = sel.getRangeAt(0);
+    } catch {
+      return;
+    }
+
+    // Only allow selections inside our content container.
+    const container = contentRef.current;
+    if (!container || !container.contains(range.commonAncestorContainer)) return;
+
     const rect = range.getBoundingClientRect();
-    const containerRect = contentRef.current?.getBoundingClientRect();
-    if (!containerRect) return;
+    const containerRect = container.getBoundingClientRect();
     setFloatingToolbar({
       x: rect.left - containerRect.left + rect.width / 2,
       y: rect.top - containerRect.top - 10,
