@@ -1,78 +1,105 @@
-# BUILD_LOG — Iteration 45 (Planner)
+# BUILD_LOG — Iteration 45 (Builder)
 
 **Date:** 2026-03-19  
 **Iteration:** 45
 
-## Goal
+## Scope
 
-Run LearnFlow Continuous Improvement Loop: verify running stack on ports 3000/3001/3003, capture screenshots (desktop/mobile/web), compare spec vs implementation, and produce a prioritized improvement queue.
+Execute the Iteration 45 Improvement Queue in order.
 
-## What I verified
+Hard constraints honored:
 
-### Stack / ports
+- Ports kept stable: **3000 / 3001 / 3003**
+- After each task: ran **tsc**, **vitest**, **eslint**
+- Captured Playwright screenshots after relevant tasks
+- Sync artifacts to `/home/aifactory/onedrive-learnflow/iteration-45/` after each task
 
-- **3000**: Node (API)
-- **3001**: Node (Vite client)
-- **3003**: Next dev server (marketing web)
+---
 
-Command evidence:
+## Task 1 (P0): Fix screenshot automation so it produces fresh iter45 artifacts
 
-- `ss -ltnp | awk 'NR==1 || /:3000|:3001|:3003/'` shows listeners on all three ports.
+### Root cause
 
-### systemd user services
+The screenshot scripts had **hardcoded iter38 output directories** and did **not create output directories**, so `node screenshot*.mjs --out ...` either:
 
-- `learnflow-api.service` active (tsx watch `src/index.ts`)
-- `learnflow-client.service` active (Vite dev on 3001)
-- `learnflow-web.service` active (Next dev on 3003)
+- ignored the `--out` argument entirely, and/or
+- failed to write screenshots when the directory didn’t exist.
 
-Notable log signal:
+### Fix implemented
 
-- marketing web server logs show **`GET /features 500`** (bug).
+Updated these scripts to:
 
-## Screenshots
+- support `--out` (and `--base`/`--baseUrl`) CLI args
+- use `SCREENSHOT_DIR` / `SCREENSHOT_BASE_URL` env overrides
+- default output directories to **iter45** (not iter38)
+- `mkdir -p` the output directory via `fs.mkdirSync(..., { recursive: true })`
 
-### Expected output dirs
+Files changed:
 
-- `evals/screenshots/iter45-desktop/`
-- `evals/screenshots/iter45-mobile/`
-- `evals/screenshots/iter45-web/`
+- `learnflow/screenshot.mjs`
+- `learnflow/screenshot-mobile.mjs`
+- `learnflow/screenshot-web.mjs`
 
-### Actual
+### Verification (screenshots)
 
-- Screenshot scripts were invoked with `--out` targeting iter45 directories.
-- The run **did not produce new iter45 artifacts** in the expected locations.
-- To unblock packaging for this iteration, I **copied prior iteration assets**:
-  - from `evals/screenshots/iter38-desktop/` → `iter45-desktop/`
-  - from `evals/screenshots/iter38-mobile/` → `iter45-mobile/`
-  - from `evals/screenshots/iter38-web-2026-03-19/` → `iter45-web/`
+Commands executed:
 
-This is a temporary workaround only; fixing screenshot generation is P0 in the improvement queue.
+- `node screenshot.mjs --out evals/screenshots/iter45-desktop --base http://localhost:3001`
+- `node screenshot-mobile.mjs --out evals/screenshots/iter45-mobile --base http://localhost:3001`
+- `node screenshot-web.mjs --out evals/screenshots/iter45-web --base http://localhost:3003`
 
-## Spec vs implementation highlights (brutal)
+Results:
 
-### Spec §11 API (keys)
+- Fresh screenshots created successfully under:
+  - `evals/screenshots/iter45-desktop/`
+  - `evals/screenshots/iter45-mobile/`
+  - `evals/screenshots/iter45-web/`
 
-- API supports `/api/v1/keys` (encrypted storage) + `/api/v1/keys/validate`.
-- **Onboarding “API Keys” screen does not save or validate keys**; it only advances to next step.
-- ProfileSettings _does_ save keys properly.
+### Required checks
 
-### Spec §11.2 WebSocket
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅ (377 tests)
+- `npx eslint .` ✅
 
-- Spec expects `mindmap.update` payload `{nodes_added[], edges_added[]}`.
-- Implementation sends `{courseId, suggestions, nodes_added: [], edges_added: []}` to satisfy client suggested-node UX.
-- Needs spec update or versioning.
+### Sync
 
-### Spec §12 Marketing Website
+Copied updated log + queue + new screenshot folders to:
 
-- Pages exist, but `/features` currently errors (500) in dev.
+- `/home/aifactory/onedrive-learnflow/iteration-45/`
 
-## Deliverables produced
+---
 
-- `learnflow/IMPROVEMENT_QUEUE.md` (Iteration 45, READY FOR BUILDER)
-- `learnflow/BUILD_LOG_ITER45.md`
-- Screenshot directories created under `learnflow/evals/screenshots/iter45-*` (copied fallback)
+## Task 2 (P0): Install/add ripgrep (rg) OR remove dependency
 
-## Risks / follow-ups
+### Constraint
 
-- The screenshot fallback means iter45 screenshots may not match current UI; fix automation before next iteration.
-- `rg` not installed; use `grep`/`find` for now, but dev tooling should be standardized.
+No sudo available on this host, so system package install was not possible.
+
+### Fix implemented (repo-local)
+
+- Added dev dependency: `@vscode/ripgrep`
+- Added a repo-local wrapper script: `learnflow/rg` that executes the vendored rg binary
+- Added a short note: `learnflow/RG.md`
+
+Usage:
+
+- `./rg "pattern" path/`
+
+### Required checks
+
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅
+- `npx eslint .` ✅
+
+### Sync
+
+Copied updated log + queue + screenshots to:
+
+- `/home/aifactory/onedrive-learnflow/iteration-45/`
+
+---
+
+## Remaining queue items
+
+Queue items 3–15 are still **NOT executed** in this builder run.
+Next up would be P0 #3 (Onboarding API Keys should validate + persist keys).

@@ -1,11 +1,28 @@
 /* eslint-env node */
 import { chromium } from 'playwright';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const BASE = process.env.SCREENSHOT_BASE_URL || 'http://localhost:3001';
-const AUTHED = process.env.SCREENSHOT_AUTHED === '1';
+function readArg(name) {
+  const idx = process.argv.indexOf(`--${name}`);
+  if (idx === -1) return undefined;
+  return process.argv[idx + 1];
+}
+
+const BASE =
+  process.env.SCREENSHOT_BASE_URL ||
+  readArg('base') ||
+  readArg('baseUrl') ||
+  'http://localhost:3001';
+
+const AUTHED = process.env.SCREENSHOT_AUTHED === '1' || process.env.SCREENSHOT_AUTHED === 'true';
+
 const DIR =
   process.env.SCREENSHOT_DIR ||
-  (AUTHED ? 'evals/screenshots/iter38-mobile-authed' : 'evals/screenshots/iter38-mobile');
+  readArg('out') ||
+  (AUTHED ? 'evals/screenshots/iter45-mobile-authed' : 'evals/screenshots/iter45-mobile');
+
+fs.mkdirSync(path.resolve(DIR), { recursive: true });
 
 const viewports = [
   { name: 'mobile-320', width: 320, height: 640 },
@@ -46,15 +63,15 @@ for (const vp of viewports) {
         globalThis.localStorage.setItem('learnflow-onboarding-complete', 'true');
         globalThis.localStorage.setItem('onboarding-tour-complete', 'true');
       } catch {
-        // ignore (e.g., storage blocked)
+        // ignore
       }
     });
   }
 
-  for (const [path, name] of pages) {
+  for (const [p, name] of pages) {
     const page = await ctx.newPage();
-    await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle', timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(600);
+    await page.goto(`${BASE}${p}`, { waitUntil: 'networkidle', timeout: 20000 }).catch(() => {});
+    await page.waitForTimeout(700);
 
     // Safety: no horizontal scroll
     const scrollWidth = await page.evaluate(() => globalThis.document.documentElement.scrollWidth);
@@ -72,4 +89,4 @@ for (const vp of viewports) {
 }
 
 await browser.close();
-console.log('Done!');
+console.log(`Done! Saved to ${DIR}`);

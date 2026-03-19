@@ -1,11 +1,27 @@
 import { chromium } from 'playwright';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const BASE = 'http://localhost:3001';
+function readArg(name) {
+  const idx = process.argv.indexOf(`--${name}`);
+  if (idx === -1) return undefined;
+  return process.argv[idx + 1];
+}
+
+const BASE =
+  process.env.SCREENSHOT_BASE_URL ||
+  readArg('base') ||
+  readArg('baseUrl') ||
+  'http://localhost:3001';
+
+const AUTHED = process.env.SCREENSHOT_AUTHED === '1' || process.env.SCREENSHOT_AUTHED === 'true';
+
 const DIR =
   process.env.SCREENSHOT_DIR ||
-  (process.env.SCREENSHOT_AUTHED
-    ? 'evals/screenshots/iter38-desktop-authed'
-    : 'evals/screenshots/iter38-desktop');
+  readArg('out') ||
+  (AUTHED ? 'evals/screenshots/iter45-desktop-authed' : 'evals/screenshots/iter45-desktop');
+
+fs.mkdirSync(path.resolve(DIR), { recursive: true });
 
 const pages = [
   ['/', 'home'],
@@ -24,7 +40,7 @@ const pages = [
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 
-if (process.env.SCREENSHOT_AUTHED) {
+if (AUTHED) {
   await ctx.addInitScript(() => {
     try {
       // eslint-disable-next-line no-undef
@@ -39,10 +55,10 @@ if (process.env.SCREENSHOT_AUTHED) {
   });
 }
 
-for (const [path, name] of pages) {
+for (const [p, name] of pages) {
   const page = await ctx.newPage();
-  await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle', timeout: 10000 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await page.goto(`${BASE}${p}`, { waitUntil: 'networkidle', timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(600);
   await page.screenshot({ path: `${DIR}/${name}.png`, fullPage: true });
   await page.close();
   console.log(`✓ ${name}`);
@@ -50,26 +66,26 @@ for (const [path, name] of pages) {
 
 // Create a course then screenshot course view and lesson
 const page = await ctx.newPage();
-await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle', timeout: 10000 }).catch(() => {});
-await page.waitForTimeout(500);
+await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle', timeout: 15000 }).catch(() => {});
+await page.waitForTimeout(600);
 
 // Type topic and create course
 const input = await page.$('input[placeholder*="topic"]');
 if (input) {
   await input.fill('Agentic AI');
   await page.click('button:has-text("Create Course")');
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(2500);
   await page.screenshot({ path: `${DIR}/course-view.png`, fullPage: true });
 
   // Click first lesson
   const lessonEl = await page.$('[role="article"]');
   if (lessonEl) {
     await lessonEl.click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1200);
     await page.screenshot({ path: `${DIR}/lesson-reader.png`, fullPage: true });
   }
 }
 await page.close();
 
 await browser.close();
-console.log('Done!');
+console.log(`Done! Saved to ${DIR}`);
