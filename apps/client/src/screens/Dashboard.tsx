@@ -9,6 +9,20 @@ import { usePipeline } from '../hooks/usePipeline.js';
 import { Button } from '../components/Button.js';
 import { SkeletonDashboard } from '../components/Skeleton.js';
 import { OnboardingTooltips } from '../components/OnboardingTooltips.js';
+import {
+  IconBrainSpark,
+  IconChatTutor,
+  IconCourse,
+  IconLesson,
+  IconMarketplace,
+  IconMindmap,
+  IconPipeline,
+  IconProgressRing,
+  IconSearch,
+  IconSettings,
+  IconShieldKey,
+  IconSpark,
+} from '../components/icons/index.js';
 
 export function Dashboard() {
   const nav = useNavigate();
@@ -160,7 +174,9 @@ export function Dashboard() {
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">🧠</span>
+            <span className="text-2xl text-accent" aria-hidden>
+              <IconBrainSpark size={22} />
+            </span>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
               LearnFlow
             </h1>
@@ -172,7 +188,11 @@ export function Dashboard() {
               onClick={toggleDarkMode}
               aria-label="Toggle dark mode"
             >
-              {themeMode === 'dark' ? '☀️' : '🌙'}
+              {themeMode === 'dark' ? (
+                <IconSpark size={20} title="Light mode" decorative={false} />
+              ) : (
+                <IconSpark size={20} title="Dark mode" decorative={false} />
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -180,7 +200,7 @@ export function Dashboard() {
               onClick={() => nav('/conversation')}
               aria-label="Chat"
             >
-              💬
+              <IconChatTutor size={20} title="Chat" decorative={false} />
             </Button>
             <Button
               variant="ghost"
@@ -188,7 +208,7 @@ export function Dashboard() {
               onClick={() => nav('/settings')}
               aria-label="Settings"
             >
-              ⚙️
+              <IconSettings size={20} title="Settings" decorative={false} />
             </Button>
           </div>
         </div>
@@ -321,8 +341,11 @@ export function Dashboard() {
                           }}
                           className="justify-start text-left px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/30"
                         >
-                          <span className="font-medium text-gray-900 dark:text-white">
-                            🔄 {l.title}
+                          <span className="font-medium text-gray-900 dark:text-white inline-flex items-center gap-2">
+                            <span className="text-accent" aria-hidden>
+                              <IconPipeline size={16} />
+                            </span>
+                            {l.title}
                           </span>
                           <span className="text-gray-600 dark:text-gray-300 ml-2">
                             — Review due
@@ -515,8 +538,11 @@ export function Dashboard() {
                 !['reviewing', 'published', 'personal'].includes(p.stage),
             ).length > 0 && (
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                  🔄 Courses In Progress
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <span className="text-accent" aria-hidden>
+                    <IconPipeline size={18} />
+                  </span>
+                  Courses In Progress
                 </h2>
                 <div className="space-y-2">
                   {pipelineList
@@ -534,16 +560,18 @@ export function Dashboard() {
                         className="justify-start text-left gap-3 p-3 h-auto"
                       >
                         <div className="w-10 h-10 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center">
-                          <span className="text-lg">
-                            {p.stage === 'scraping'
-                              ? '🔍'
-                              : p.stage === 'organizing'
-                                ? '📊'
-                                : p.stage === 'synthesizing'
-                                  ? '🤖'
-                                  : p.stage === 'quality_check'
-                                    ? '✅'
-                                    : '📝'}
+                          <span className="text-accent" aria-hidden>
+                            {p.stage === 'scraping' ? (
+                              <IconSearch size={18} />
+                            ) : p.stage === 'organizing' ? (
+                              <IconPipeline size={18} />
+                            ) : p.stage === 'synthesizing' ? (
+                              <IconBrainSpark size={18} />
+                            ) : p.stage === 'quality_check' ? (
+                              <IconShieldKey size={18} />
+                            ) : (
+                              <IconLesson size={18} />
+                            )}
                           </span>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -572,8 +600,11 @@ export function Dashboard() {
               aria-live="polite"
             >
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  🔔 Notifications
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                  <span className="text-accent" aria-hidden>
+                    <IconSpark size={18} />
+                  </span>
+                  Notifications
                   {state.notifications.filter((n) => !n.read).length > 0 && (
                     <span className="ml-2 text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">
                       {state.notifications.filter((n) => !n.read).length}
@@ -589,7 +620,15 @@ export function Dashboard() {
                 <div className="space-y-2">
                   {state.notifications.slice(0, 5).map((n) => (
                     <div key={n.id} className="flex items-center gap-3 p-2 text-sm group">
-                      <span>{n.type === 'agent' ? '🤖' : n.type === 'progress' ? '📈' : '💡'}</span>
+                      <span className="text-accent" aria-hidden>
+                        {n.type === 'agent' ? (
+                          <IconBrainSpark size={16} />
+                        ) : n.type === 'progress' ? (
+                          <IconProgressRing size={16} />
+                        ) : (
+                          <IconSpark size={16} />
+                        )}
+                      </span>
                       <span className="flex-1 text-gray-600 dark:text-gray-300">{n.message}</span>
                       <span className="text-xs text-gray-300">
                         {new Date(n.timestamp).toLocaleTimeString([], {
@@ -609,7 +648,9 @@ export function Dashboard() {
                   ))}
                   {state.courses.length > 0 && (
                     <div className="flex items-center gap-3 p-2 text-sm">
-                      <span className="text-blue-500">📚</span>
+                      <span className="text-accent" aria-hidden>
+                        <IconCourse size={16} />
+                      </span>
                       <span className="text-gray-600 dark:text-gray-300">
                         You have {state.courses.length} active course
                         {state.courses.length !== 1 ? 's' : ''}. Keep up the momentum!
@@ -872,10 +913,14 @@ export function Dashboard() {
             {/* Quick Actions */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { icon: '💬', label: 'Chat', path: '/conversation' },
-                { icon: '🗺️', label: 'Mind Map', path: '/mindmap' },
-                { icon: '🏪', label: 'Marketplace', path: '/marketplace/courses' },
-                { icon: '⚙️', label: 'Settings', path: '/settings' },
+                { icon: <IconChatTutor size={22} />, label: 'Chat', path: '/conversation' },
+                { icon: <IconMindmap size={22} />, label: 'Mind Map', path: '/mindmap' },
+                {
+                  icon: <IconMarketplace size={22} />,
+                  label: 'Marketplace',
+                  path: '/marketplace/courses',
+                },
+                { icon: <IconSettings size={22} />, label: 'Settings', path: '/settings' },
               ].map((action) => (
                 <Button
                   key={action.label}
@@ -883,7 +928,9 @@ export function Dashboard() {
                   onClick={() => nav(action.path)}
                   className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4 text-center hover:border-accent h-auto flex-col gap-1"
                 >
-                  <span className="text-2xl block">{action.icon}</span>
+                  <span className="text-2xl block text-accent" aria-hidden>
+                    {action.icon}
+                  </span>
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {action.label}
                   </span>

@@ -12,6 +12,13 @@ import { SourceDrawer } from '../components/SourceDrawer.js';
 import type { Source } from '../components/CitationTooltip.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { Button } from '../components/Button.js';
+import {
+  IconMindmap,
+  IconShieldKey,
+  IconBrainSpark,
+  IconCourse,
+  IconSearch,
+} from '../components/icons/index.js';
 
 // Dynamically import vis-network for mindmap panel
 let Network: unknown = null;
@@ -158,7 +165,12 @@ function MindmapPanel({
         aria-label="Knowledge mindmap"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">🧠 Knowledge Map</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <span className="text-accent" aria-hidden>
+              <IconMindmap size={16} />
+            </span>
+            Knowledge Map
+          </h2>
           <Button variant="ghost" size="sm" onClick={onClose}>
             ✕
           </Button>
@@ -184,12 +196,32 @@ function MindmapPanel({
 }
 
 // Agent display names and activity messages
-const AGENT_LABELS: Record<string, { icon: string; label: string; activity: string }> = {
-  notes: { icon: '📝', label: 'Notes Agent', activity: 'is organizing your notes...' },
-  exam: { icon: '❓', label: 'Exam Agent', activity: 'is crafting questions...' },
-  research: { icon: '🔍', label: 'Research Agent', activity: 'is finding sources...' },
-  summarizer: { icon: '📄', label: 'Summarizer', activity: 'is condensing content...' },
-  course: { icon: '📚', label: 'Course Builder', activity: 'is synthesizing curriculum...' },
+const AGENT_LABELS: Record<string, { icon: React.ReactNode; label: string; activity: string }> = {
+  notes: {
+    icon: <IconShieldKey size={18} />,
+    label: 'Notes Agent',
+    activity: 'is organizing your notes...',
+  },
+  exam: {
+    icon: <IconBrainSpark size={18} />,
+    label: 'Exam Agent',
+    activity: 'is crafting questions...',
+  },
+  research: {
+    icon: <IconShieldKey size={18} />,
+    label: 'Research Agent',
+    activity: 'is finding sources...',
+  },
+  summarizer: {
+    icon: <IconCourse size={18} />,
+    label: 'Summarizer',
+    activity: 'is condensing content...',
+  },
+  course: {
+    icon: <IconCourse size={18} />,
+    label: 'Course Builder',
+    activity: 'is synthesizing curriculum...',
+  },
 };
 
 // Rich markdown renderer
@@ -459,7 +491,11 @@ export function Conversation() {
   };
 
   const agentInfo = activeAgent
-    ? AGENT_LABELS[activeAgent] || { icon: '🤖', label: 'AI Assistant', activity: 'is thinking...' }
+    ? AGENT_LABELS[activeAgent] || {
+        icon: <IconBrainSpark size={18} />,
+        label: 'AI Assistant',
+        activity: 'is thinking...',
+      }
     : null;
 
   return (
@@ -498,8 +534,11 @@ export function Conversation() {
             onClick={() => setDrawerOpen(!drawerOpen)}
             className="border border-gray-200 dark:border-gray-700"
             title="View sources"
+            aria-label="View sources"
           >
-            📚
+            <span className="text-accent" aria-hidden>
+              <IconSearch size={18} />
+            </span>
           </Button>
           <Button
             variant="ghost"
@@ -507,8 +546,11 @@ export function Conversation() {
             onClick={() => setMindmapOpen(!mindmapOpen)}
             className="border border-gray-200 dark:border-gray-700"
             title="Knowledge mindmap"
+            aria-label="Knowledge mindmap"
           >
-            🧠
+            <span className="text-accent" aria-hidden>
+              <IconMindmap size={18} />
+            </span>
           </Button>
           <div className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
@@ -533,7 +575,9 @@ export function Conversation() {
         {state.chat.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 space-y-6">
             <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
-              <span className="text-3xl">🧠</span>
+              <span className="text-accent" aria-hidden>
+                <IconBrainSpark size={26} />
+              </span>
             </div>
             <div className="text-center space-y-2">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -547,19 +591,19 @@ export function Conversation() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl">
               {[
                 {
-                  icon: '📚',
+                  icon: <IconCourse size={22} />,
                   title: 'Create a course',
                   desc: 'On any topic from the web',
                   text: 'Create a course on Rust programming',
                 },
                 {
-                  icon: '🧠',
+                  icon: <IconBrainSpark size={22} />,
                   title: 'Quiz me',
                   desc: 'Test your knowledge',
                   text: 'Quiz me on React hooks',
                 },
                 {
-                  icon: '📝',
+                  icon: <IconShieldKey size={22} />,
                   title: 'Summarize notes',
                   desc: 'From your lessons',
                   text: 'Summarize my machine learning notes',
@@ -571,7 +615,9 @@ export function Conversation() {
                   onClick={() => send(s.text)}
                   className="flex-col items-center gap-2 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 hover:border-accent hover:shadow-card-hover h-auto"
                 >
-                  <span className="text-2xl">{s.icon}</span>
+                  <span className="text-2xl text-accent" aria-hidden>
+                    {s.icon}
+                  </span>
                   <span className="text-sm font-semibold text-gray-900 dark:text-white">
                     {s.title}
                   </span>
@@ -582,11 +628,11 @@ export function Conversation() {
             <div className="flex flex-wrap justify-center gap-2">
               {[
                 {
-                  label: '💡 Explain transformers',
+                  label: 'Explain transformers',
                   text: 'Explain transformer architecture simply',
                 },
-                { label: '🔍 Research agentic AI', text: 'Teach me about Agentic AI' },
-                { label: '🗺️ DevOps roadmap', text: 'Create a learning roadmap for DevOps' },
+                { label: 'Research agentic AI', text: 'Teach me about Agentic AI' },
+                { label: 'DevOps roadmap', text: 'Create a learning roadmap for DevOps' },
               ].map((s) => (
                 <Button
                   key={s.label}
@@ -699,7 +745,7 @@ export function Conversation() {
                     }}
                     className="rounded-full border border-accent/30 text-accent hover:bg-accent/10"
                   >
-                    📚 View Sources
+                    View Sources
                   </Button>
                 )}
               </div>
@@ -730,7 +776,9 @@ export function Conversation() {
               <div className="flex items-center gap-2 text-sm text-gray-500 animate-pulse">
                 {agentInfo ? (
                   <>
-                    <span className="text-lg">{agentInfo.icon}</span>
+                    <span className="text-lg text-accent" aria-hidden>
+                      {agentInfo.icon}
+                    </span>
                     <span className="font-medium text-gray-900 dark:text-white">
                       {agentInfo.label}
                     </span>
@@ -738,7 +786,9 @@ export function Conversation() {
                   </>
                 ) : (
                   <>
-                    <span className="text-lg">🤖</span>
+                    <span className="text-lg text-accent" aria-hidden>
+                      <IconBrainSpark size={18} />
+                    </span>
                     <span className="text-gray-500 dark:text-gray-300">Thinking...</span>
                   </>
                 )}
@@ -764,7 +814,9 @@ export function Conversation() {
       <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-3 safe-area-bottom">
         {(contextBadge || state.activeCourse || state.activeLesson) && (
           <div className="max-w-4xl mx-auto mb-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
-            <span>📚</span>
+            <span className="text-accent" aria-hidden>
+              <IconCourse size={14} />
+            </span>
             {contextBadge ? (
               <span className="font-medium text-gray-600 dark:text-gray-300">{contextBadge}</span>
             ) : (
@@ -786,7 +838,7 @@ export function Conversation() {
               variant="ghost"
               size="sm"
               onClick={() => setContextBadge(null)}
-              className="ml-auto text-gray-300 hover:text-gray-500 h-6 w-6 p-0"
+              className="ml-auto text-gray-300 hover:text-gray-500"
             >
               ✕
             </Button>
