@@ -15,3 +15,13 @@ apps/web/out/
 
 # Local artifacts
 artifacts/
+
+apps/api/.data/
+apps/web/.next/
+apps/web/out/
+evals/screenshots/
+
+learnflow/screenshots/
+screenshots/iter*/
+playwright-report/
+apps/client/.vite/

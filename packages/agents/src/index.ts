@@ -54,7 +54,10 @@ export type {
   CrdtOperation,
 } from './mindmap-agent/mindmap-agent.js';
 
-// Firecrawl Content Provider
+// Firecrawl Content Provider (default) + WebSearch fallback
+// NOTE: historically, `crawlSourcesForTopic/searchTopicTrending/searchForLesson` were exported from the
+// Firecrawl provider. In environments without FIRECRAWL_API_KEY this silently returns mock sources.
+// For spec compliance (Override #3), prefer the WebSearch provider which uses free public sources.
 export {
   crawlSourcesForTopic,
   searchSources,
@@ -68,7 +71,7 @@ export {
   extractDomain,
   searchForLesson,
   searchTopicTrending,
-} from './content-pipeline/firecrawl-provider.js';
+} from './content-pipeline/web-search-provider.js';
 export type {
   FirecrawlSource,
   FirecrawlConfig,

@@ -28,6 +28,14 @@ if (!isTest) {
     if (!hasColumn('users', 'onboardingCompletedAt')) {
       sqlite.exec(`ALTER TABLE users ADD COLUMN onboardingCompletedAt TEXT;`);
     }
+
+    if (!hasColumn('mindmaps', 'yjsState')) {
+      sqlite.exec(`ALTER TABLE mindmaps ADD COLUMN yjsState TEXT;`);
+    }
+
+    if (!hasColumn('mindmaps', 'updatedAt')) {
+      sqlite.exec(`ALTER TABLE mindmaps ADD COLUMN updatedAt TEXT;`);
+    }
   } catch {
     // If the users table doesn't exist yet, CREATE TABLE below will handle it.
   }
@@ -128,7 +136,9 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS mindmaps (
     userId TEXT PRIMARY KEY,
     nodes TEXT NOT NULL DEFAULT '[]',
-    edges TEXT NOT NULL DEFAULT '[]'
+    edges TEXT NOT NULL DEFAULT '[]',
+    yjsState TEXT,
+    updatedAt TEXT
   );
 
   CREATE TABLE IF NOT EXISTS marketplace_agents_activated (
@@ -249,7 +259,7 @@ const stmts = {
 
   // Mindmaps
   upsertMindmap: sqlite.prepare(
-    `INSERT OR REPLACE INTO mindmaps (userId, nodes, edges) VALUES (?, ?, ?)`,
+    `INSERT OR REPLACE INTO mindmaps (userId, nodes, edges, yjsState, updatedAt) VALUES (?, ?, ?, ?, ?)`,
   ),
   getMindmap: sqlite.prepare(`SELECT * FROM mindmaps WHERE userId = ?`),
 
@@ -610,14 +620,45 @@ export const dbInvoices = {
 // ── Mindmap helpers ─────────────────────────────────────────────────────────
 
 export const dbMindmaps = {
-  get(userId: string): { userId: string; nodes: unknown[]; edges: unknown[] } {
+  get(userId: string): {
+    userId: string;
+    nodes: unknown[];
+    edges: unknown[];
+    yjsState?: string | null;
+    updatedAt?: string | null;
+  } {
     const row = stmts.getMindmap.get(userId) as any;
-    if (!row) return { userId, nodes: [], edges: [] };
-    return { userId, nodes: JSON.parse(row.nodes || '[]'), edges: JSON.parse(row.edges || '[]') };
+    if (!row) return { userId, nodes: [], edges: [], yjsState: null, updatedAt: null };
+    return {
+      userId,
+      nodes: JSON.parse(row.nodes || '[]'),
+      edges: JSON.parse(row.edges || '[]'),
+      yjsState: row.yjsState ?? null,
+      updatedAt: row.updatedAt ?? null,
+    };
   },
 
   save(userId: string, nodes: unknown[], edges: unknown[]): void {
-    stmts.upsertMindmap.run(userId, JSON.stringify(nodes), JSON.stringify(edges));
+    stmts.upsertMindmap.run(
+      userId,
+      JSON.stringify(nodes),
+      JSON.stringify(edges),
+      null,
+      new Date().toISOString(),
+    );
+  },
+
+  upsert(
+    userId: string,
+    payload: { nodes: string; edges: string; yjsState: string | null; updatedAt: string },
+  ): void {
+    stmts.upsertMindmap.run(
+      userId,
+      payload.nodes,
+      payload.edges,
+      payload.yjsState,
+      payload.updatedAt,
+    );
   },
 };
 

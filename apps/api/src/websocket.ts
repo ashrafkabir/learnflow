@@ -18,7 +18,7 @@ interface WsEvent {
  *         mindmap.update, progress.update, error
  */
 export function createWebSocketServer(server: HttpServer): WebSocketServer {
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  const wss = new WebSocketServer({ server, path: '/ws', perMessageDeflate: false });
 
   wss.on('connection', (ws: WebSocket, req) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);

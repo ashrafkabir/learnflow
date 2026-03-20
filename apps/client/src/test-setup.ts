@@ -16,8 +16,7 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
       return [];
     }
   }
-  // @ts-expect-error - global polyfill
-  globalThis.IntersectionObserver = IntersectionObserver;
+  globalThis.IntersectionObserver = IntersectionObserver as any;
 }
 
 // ── Network mocks ───────────────────────────────────────────────────────────

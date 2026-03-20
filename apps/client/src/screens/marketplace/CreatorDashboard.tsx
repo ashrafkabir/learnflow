@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
-import { apiBase } from '../../context/AppContext.tsx';
+import { apiBase } from '../../context/AppContext.js';
 import { useToast } from '../../components/Toast.js';
 import {
   IconChart,

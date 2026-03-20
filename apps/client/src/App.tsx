@@ -154,7 +154,16 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
 
   // Explicit, env-gated bypass for local dev / eval automation.
   // Usage: set `VITE_DEV_AUTH_BYPASS=1` when running the client.
+  //
+  // Playwright determinism: we also allow overriding Vite env via a runtime global
+  // so tests don't depend on systemd/user shell environment.
+  const runtimeEnv =
+    (globalThis as any)?.__LEARNFLOW_ENV__ &&
+    typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+      ? (globalThis as any).__LEARNFLOW_ENV__
+      : null;
   const devAuthBypass =
+    runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1' ||
     (import.meta as any)?.env?.VITE_DEV_AUTH_BYPASS === '1' ||
     (import.meta as any)?.env?.DEV_AUTH_BYPASS === '1';
   // Local-only fallback (pre-durable): older builds used localStorage.

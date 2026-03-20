@@ -11,6 +11,7 @@ import { subscriptionRouter } from './routes/subscription.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { pipelineRouter } from './routes/pipeline.js';
 import { searchRouter } from './routes/search.js';
+import { yjsRouter } from './yjsRouter.js';
 import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from './middleware.js';
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
@@ -79,11 +80,14 @@ export function createApp(options?: { devMode?: boolean }) {
       }
     }
     if (!req.user) {
+      // Default dev user.
+      // NOTE: keep this FREE by default so devMode more closely matches the product posture.
+      // Tests that require pro features can still set a valid JWT with tier=pro.
       req.user = {
         sub: 'test-user-1',
         email: 'test@learnflow.dev',
         role: 'student' as const,
-        tier: 'pro' as const,
+        tier: 'free' as const,
       };
     }
     next();
@@ -106,6 +110,7 @@ export function createApp(options?: { devMode?: boolean }) {
   app.use('/api/v1/analytics', protectedAuth, rateLimiter, analyticsRouter);
   app.use('/api/v1/pipeline', protectedAuth, rateLimiter, pipelineRouter);
   app.use('/api/v1/search', protectedAuth, rateLimiter, searchRouter);
+  app.use('/api/v1/yjs', protectedAuth, rateLimiter, yjsRouter);
 
   // Pro-only endpoint for RBAC testing
   app.get('/api/v1/pro/features', authMiddleware, requireTier('pro'), (_req, res) => {

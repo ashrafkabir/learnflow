@@ -196,6 +196,15 @@ test.describe('§5.2.7 Course Marketplace UI', () => {
 test.describe('§5.2.8 Profile & Settings', () => {
   // Spec: Learning goals management, API key vault, subscription, notifications, export, privacy
   test('Settings page has all required sections', async ({ page }) => {
+    // Deterministic: force dev auth bypass ON for this suite so spec checks don't depend on
+    // external env/systemd configuration.
+    await page.addInitScript(() => {
+      (window as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+      localStorage.removeItem('learnflow-token');
+      localStorage.removeItem('learnflow-user');
+      localStorage.removeItem('learnflow-onboarding-complete');
+    });
+
     await page.goto('/settings');
     await page.waitForTimeout(2000);
     await page.screenshot({ path: `${SS}/settings-page.png`, fullPage: true });
@@ -219,6 +228,13 @@ test.describe('§5.2.8 Profile & Settings', () => {
 
   // Spec: API key vault with provider management and usage stats
   test('Settings shows API key management', async ({ page }) => {
+    await page.addInitScript(() => {
+      (window as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+      localStorage.removeItem('learnflow-token');
+      localStorage.removeItem('learnflow-user');
+      localStorage.removeItem('learnflow-onboarding-complete');
+    });
+
     await page.goto('/settings');
     await page.waitForTimeout(2000);
 

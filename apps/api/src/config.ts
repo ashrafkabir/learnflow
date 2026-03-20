@@ -7,4 +7,5 @@ export const config = {
   bcryptRounds: 12,
   encryptionKey: process.env.ENCRYPTION_KEY || 'a'.repeat(64), // 32 bytes hex
   port: parseInt(process.env.PORT || '3000', 10),
+  yjsPort: parseInt(process.env.YJS_PORT || '3002', 10),
 };

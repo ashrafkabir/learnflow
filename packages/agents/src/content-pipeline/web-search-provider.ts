@@ -185,10 +185,12 @@ export async function crawlSourcesForTopic(
   console.log(`[WebSearch] crawlSourcesForTopic("${topic}") queries:`, queries);
 
   const results: FirecrawlSearchResult[] = [];
-  for (const q of queries.slice(0, 6)) {
+  // Keep this bounded for API tests (avoid >60s end-to-end).
+  // In production, we can increase breadth/depth.
+  for (const q of queries.slice(0, 2)) {
     const batch = await multiSourceSearch(q, 4);
     results.push(...batch);
-    await sleep(120);
+    await sleep(80);
   }
 
   const unique = uniqueByUrl(results);

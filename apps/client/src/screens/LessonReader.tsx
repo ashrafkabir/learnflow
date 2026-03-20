@@ -19,12 +19,14 @@ import {
   IconClose,
   IconDocument,
   IconInfo,
+  IconLesson,
   IconMap,
   IconPalette,
   IconPencil,
   IconProgressRing,
   IconRefresh,
   IconScale,
+  IconRocket,
   IconSearch,
   IconSparkles,
   IconTestTube,
@@ -647,7 +649,7 @@ export function LessonReader() {
                     </span>
                     <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
                       <IconBrainSpark className="w-4 h-4" />
-                      {state.profile?.difficulty || 'intermediate'}
+                      {(state.profile as any)?.difficulty || 'intermediate'}
                     </span>
                     {isComplete && (
                       <span className="inline-flex items-center gap-1 bg-success/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
@@ -1174,7 +1176,7 @@ export function LessonReader() {
                 References
               </h2>
               <div className="space-y-3">
-                {sources.map((s) => (
+                {sources.map((s: any) => (
                   <div key={s.id} className="flex items-start gap-3 text-sm">
                     <span className="bg-accent/10 text-accent font-bold text-xs px-2 py-0.5 rounded-full flex-shrink-0">
                       [{s.id}]
@@ -1216,7 +1218,7 @@ export function LessonReader() {
                     {s.content
                       .split('\n')
                       .filter((l) => l.trim())
-                      .map((line, j) => (
+                      .map((line: string, j) => (
                         <p key={j}>{line.replace(/^[-•]\s*/, '')}</p>
                       ))}
                   </div>

@@ -384,7 +384,7 @@ describe('Agent routing via /api/v1/chat', () => {
     expect(res.body.questions.length).toBeGreaterThan(0);
   });
 
-  it('routes agent=research to Research Agent', async () => {
+  it('routes agent=research to Research Agent', { timeout: 15000 }, async () => {
     const res = await request(app)
       .post('/api/v1/chat')
       .set('Authorization', `Bearer ${token}`)

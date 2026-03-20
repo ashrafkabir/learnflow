@@ -388,9 +388,7 @@ export function Conversation() {
           setActiveAgent(evt.data?.agent_name?.toLowerCase()?.split(' ')[0] || 'orchestrator');
           break;
         case 'response.chunk':
-          setStreamingContent(
-            (prev) => prev + (evt.data?.content_delta || evt.data?.content || ''),
-          );
+          setStreamingContent((prev) => prev + (evt.data?.content_delta || ''));
           break;
         case 'response.end': {
           if (streamingContent) {
@@ -458,7 +456,7 @@ export function Conversation() {
           // Our implementation uses completion_percent (valid identifier) instead of completion%.
           const courseId = evt.data?.course_id;
           const lessonId = evt.data?.lesson_id;
-          const pct = Number(evt.data?.completion_percent ?? evt.data?.completion ?? 0);
+          const pct = Number(evt.data?.completion_percent ?? 0);
 
           if (lessonId) dispatch({ type: 'COMPLETE_LESSON', lessonId });
 
@@ -483,8 +481,9 @@ export function Conversation() {
           //   courseId?: string,
           //   suggestions?: Array<{ id, label, parentLessonId?, reason? }>
           // }
-          const cid = String(evt.data?.courseId || state.activeCourse?.id || 'global');
-          const suggestions = Array.isArray(evt.data?.suggestions) ? evt.data.suggestions : [];
+          const d: any = evt.data as any;
+          const cid = String(d?.courseId || state.activeCourse?.id || 'global');
+          const suggestions = Array.isArray(d?.suggestions) ? d.suggestions : [];
           if (suggestions.length > 0) {
             dispatch({ type: 'SET_MINDMAP_SUGGESTIONS', courseId: cid, suggestions });
             dispatch({

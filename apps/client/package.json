@@ -20,7 +20,9 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "vis-data": "^8.0.3",
-    "vis-network": "^10.0.2"
+    "vis-network": "^10.0.2",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.30"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",

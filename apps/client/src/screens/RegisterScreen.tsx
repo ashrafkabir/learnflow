@@ -46,7 +46,10 @@ export function RegisterScreen() {
   };
 
   return (
-    <section className="min-h-screen bg-bg dark:bg-bg-dark flex items-center justify-center px-4">
+    <section
+      data-screen="register"
+      className="min-h-screen bg-bg dark:bg-bg-dark flex items-center justify-center px-4"
+    >
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-3">

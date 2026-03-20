@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp, apiGet } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
 import { IconMap, IconMaximize, IconZoomIn, IconZoomOut } from '../components/icons/index.js';
+import { useMindmapYjs } from '../hooks/useMindmapYjs.js';
 
 // Dynamically import vis-network to avoid SSR issues
 let Network: unknown = null;
@@ -42,6 +43,7 @@ export function MindmapExplorer() {
     label: string;
     topicId?: string;
     reason?: string;
+    parentLessonId?: string;
   }>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<
@@ -51,20 +53,45 @@ export function MindmapExplorer() {
   const [addLoading, setAddLoading] = useState(false);
   const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
   const mindmapRef = useRef<HTMLDivElement | null>(null);
-  const [customNodes, setCustomNodes] = useState<Array<{ id: string; label: string }>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('learnflow-custom-nodes') || '[]');
-    } catch {
-      return [];
+  // Yjs-backed shared mindmap state (room per course)
+  // Deterministic room for CRDT MVP (first course if available, otherwise a fixed dev course)
+  const activeCourseId = state.courses?.[0]?.id || 'dev-course';
+  const { nodes: yNodes } = useMindmapYjs(activeCourseId);
+
+  // Dev/test hook: expose the shared Yjs nodes array for Playwright assertions.
+  // (vis-network renders to canvas so DOM text isn't stable.)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      (globalThis as any).__learnflowMindmapNodes = yNodes;
     }
-  });
+  }, [yNodes]);
+
+  const [customNodes, setCustomNodes] = useState<Array<{ id: string; label: string }>>([]);
+
+  // Keep local customNodes in sync with the shared Yjs doc.
+  useEffect(() => {
+    const syncFromDoc = () => {
+      try {
+        const next = (yNodes.toArray() as any[]).map((n) => ({
+          id: String(n.id),
+          label: String(n.label),
+        }));
+        setCustomNodes(next);
+      } catch {
+        // ignore
+      }
+    };
+    syncFromDoc();
+    yNodes.observe(syncFromDoc);
+    return () => {
+      yNodes.unobserve(syncFromDoc);
+    };
+  }, [yNodes]);
 
   const addCustomNode = () => {
     if (!newNodeLabel.trim()) return;
     const node = { id: `custom-${Date.now()}`, label: newNodeLabel.trim() };
-    const updated = [...customNodes, node];
-    setCustomNodes(updated);
-    localStorage.setItem('learnflow-custom-nodes', JSON.stringify(updated));
+    yNodes.push([node as any]);
     setNewNodeLabel('');
     setShowAddNode(false);
   };
