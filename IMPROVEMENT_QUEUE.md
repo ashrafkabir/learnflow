@@ -19,11 +19,13 @@ This queue is written after reviewing the full product spec and inspecting the c
 - **Fix:** `/api/v1/chat` with `agent=research` now returns real crawled sources via `crawlSourcesForTopic(input)` and a `sources[]` array with metadata (title/url/author/publishDate/domain/source).
 - **Removed:** hard-coded fake arXiv/DOI URLs.
 
-3. **Unify chat routing: REST `/api/v1/chat` should use Core Orchestrator like WebSocket does**
+3. **Unify chat routing: REST `/api/v1/chat` should use Core Orchestrator like WebSocket does** ✅
 
 - **Spec:** Central Orchestrator spawns/routes specialized agents.
 - **Current:** WS uses `Orchestrator` + `AgentRegistry` (`wsOrchestrator.ts`) but REST `/chat` has its own routing + bespoke OpenAI prompt.
 - **Build:** Route REST chat through the same orchestrator path to ensure consistent behavior and telemetry.
+
+✅ DONE (Iter48): Extracted shared orchestrator builder/helpers (`apps/api/src/orchestratorShared.ts`), refactored WS orchestrator to use it, and updated REST `/api/v1/chat` general chat path to call `getOrchestrator().processMessage()` with `buildStudentContext(req.user.sub)`. Added best-effort `token_usage` persistence and `sources[]` extraction from lesson References.
 
 4. **Fix mindmap “CRDT collaborative editing” gap (currently only suggestions + local graph)**
 

@@ -180,3 +180,45 @@ Planned:
 Proposed commit message:
 
 - `planner: iteration 48 improvement queue + build log`
+
+## Builder progress
+
+### Task 3 — Unify chat routing: REST `/api/v1/chat` uses Core Orchestrator like WebSocket
+
+Status: ✅ DONE
+
+Changes:
+
+- Extracted shared orchestrator utilities from WS into `apps/api/src/orchestratorShared.ts`:
+  - `getOrchestrator()` singleton (AgentRegistry + core agents)
+  - `buildStudentContext(userId)` (uses sqlite user + activated marketplace agents)
+  - `mapActions()` and `makeSourcesFromLesson()` helpers
+- Updated `apps/api/src/wsOrchestrator.ts` to import shared utilities (no behavior change intended).
+
+Verification:
+
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅
+- `npx eslint .` ✅
+
+Notes:
+
+- REST `/api/v1/chat` is not yet routed through the orchestrator; next step is updating `apps/api/src/routes/chat.ts` to call `getOrchestrator().processMessage()` and map the output to the existing REST response schema (including agent-specific responses for notes/exam/research).
+
+### Task 4 — REST chat `/api/v1/chat` uses Core Orchestrator for general chat
+
+Status: ✅ DONE
+
+Changes:
+
+- Updated `apps/api/src/routes/chat.ts` general chat branch to call `getOrchestrator().processMessage()` using `buildStudentContext(req.user.sub)`.
+- Persists token usage via `db.addTokenUsage` (best-effort, same as WS).
+- Returns `agentName` as the routed agent (from `agentResults[0].agentName`).
+- Returns best-effort `sources` derived from current lesson content (`makeSourcesFromLesson`).
+- Kept legacy OpenAI direct chat generator as `_generateChatResponse` (unused) for reference.
+
+Verification:
+
+- `npx tsc --noEmit` ✅
+- `npx vitest run` ✅
+- `npx eslint .` ✅

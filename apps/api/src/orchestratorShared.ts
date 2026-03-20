@@ -1,0 +1,120 @@
+import { db, dbMarketplace } from './db.js';
+import type { StudentContextObject } from '@learnflow/core';
+import { AgentRegistry, Orchestrator } from '@learnflow/core';
+import {
+  CollaborationAgent,
+  CourseBuilderAgent,
+  ExamAgent,
+  MindmapAgent,
+  NotesAgent,
+  ResearchAgent,
+  SummarizerAgent,
+} from '@learnflow/agents';
+
+export function buildStudentContext(userId: string): StudentContextObject {
+  const dbUser = db.findUserById(userId);
+
+  const user = {
+    id: userId,
+    email: dbUser?.email || 'dev@learnflow.local',
+    displayName: dbUser?.displayName || 'Learner',
+    role: (dbUser?.role || 'student') as 'student' | 'creator' | 'admin',
+    tier: (dbUser?.tier || 'free') as 'free' | 'pro',
+    goals: (dbUser?.goals || []) as string[],
+    preferredLanguage: dbUser?.preferredLanguage || 'en',
+    createdAt: dbUser?.createdAt || new Date(),
+    updatedAt: dbUser?.updatedAt || new Date(),
+  };
+
+  return {
+    userId,
+    user,
+    currentCourseId: undefined,
+    currentLessonId: undefined,
+    enrolledCourseIds: [],
+    completedLessonIds: [],
+    goals: user.goals,
+    strengths: [],
+    weaknesses: [],
+    learningStyle: 'reading',
+    quizScores: {},
+    studyStreak: 0,
+    totalStudyMinutes: 0,
+    lastActiveAt: new Date(),
+
+    goalDetails: user.goals.map((g) => ({ goal: g, priority: 'medium' as const })),
+    interests: [],
+    browseHistory: [],
+    searchQueries: [],
+    bookmarkedContent: [],
+    sessionFrequency: 0,
+    preferredTimeOfDay: 'morning',
+    preferredLessonLength: 10,
+    subscriptionTier: user.tier,
+    billingStatus: 'active',
+    apiKeyProvider: undefined,
+    usageQuotas: {},
+    notificationSettings: { email: true, push: true, inApp: true },
+    preferredAgents: dbMarketplace.getActivatedAgents(userId),
+    displayPreferences: { theme: 'light', fontSize: 16 },
+    collaborationOptIn: false,
+    peerConnections: [],
+    sharedCourses: [],
+    lessonRatings: {},
+    agentRatings: {},
+    courseReviews: [],
+  };
+}
+
+let singletonOrchestrator: Orchestrator | null = null;
+export async function getOrchestrator(): Promise<Orchestrator> {
+  if (singletonOrchestrator) return singletonOrchestrator;
+
+  const registry = new AgentRegistry();
+  const agents = [
+    new CourseBuilderAgent(),
+    new NotesAgent(),
+    new ExamAgent(),
+    new ResearchAgent(),
+    new SummarizerAgent(),
+    new MindmapAgent(),
+    new CollaborationAgent(),
+  ];
+
+  for (const a of agents) {
+    await a.initialize();
+    registry.register(a);
+  }
+
+  singletonOrchestrator = new Orchestrator(registry);
+  return singletonOrchestrator;
+}
+
+export function mapActions(actions: string[]): Array<{ type: string; label: string }> {
+  return (actions || []).slice(0, 5).map((label) => ({
+    type: label.toLowerCase().replace(/\s+/g, '_'),
+    label,
+  }));
+}
+
+export function makeSourcesFromLesson(lessonContent: string): Array<{
+  title: string;
+  author?: string;
+  publication?: string;
+  year?: number;
+  url: string;
+}> {
+  const refSection =
+    lessonContent.match(/## (?:References|Sources|Further Reading)[\s\S]*$/im)?.[0] || '';
+  const urls = Array.from(refSection.matchAll(/https?:\/\/\S+/g)).map((m) =>
+    m[0].replace(/[).,;]+$/, ''),
+  );
+  const unique = Array.from(new Set(urls)).slice(0, 5);
+  return unique.map((url, i) => ({
+    title: `Reference ${i + 1}`,
+    author: 'Source',
+    publication: '',
+    year: 2024,
+    url,
+  }));
+}

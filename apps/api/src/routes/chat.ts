@@ -3,6 +3,12 @@ import { z } from 'zod';
 import { courses } from './courses.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { crawlSourcesForTopic } from '@learnflow/agents';
+import {
+  buildStudentContext,
+  getOrchestrator,
+  makeSourcesFromLesson,
+} from '../orchestratorShared.js';
+import { db } from '../db.js';
 
 const router = Router();
 
@@ -306,7 +312,10 @@ Include 6 multiple_choice and 2 short_answer questions. For short_answer, omit o
   };
 }
 
-async function generateChatResponse(
+// NOTE: Previous iteration used OpenAI directly for general chat. Iter48 routes general chat
+// through Core Orchestrator to match WebSocket behavior.
+// Kept here for reference; currently unused.
+async function _generateChatResponse(
   openai: any,
   text: string,
   lessonId?: string,
@@ -448,16 +457,42 @@ router.post('/', async (req: Request, res: Response) => {
     return;
   }
 
-  // General chat — route through AI with lesson context
-  const historyMsgs = (parse.data.history || []) as Array<{ role: string; content: string }>;
-  const generated = await generateChatResponse(openai, input, lessonId, courseId, historyMsgs);
+  // General chat — route through Core Orchestrator (same as WebSocket)
+  const found = findLesson(lessonId);
+  const courseData = courseId ? courses.get(courseId) : found?.course || null;
+  const lesson = found?.lesson;
+
+  const orchestrator = await getOrchestrator();
+  const context = buildStudentContext(req.user!.sub);
+  (context as any).currentCourseId = courseData?.id;
+  (context as any).currentLessonId = lesson?.id;
+
+  const result = await orchestrator.processMessage(input, context);
+  const routedAgentName = result.agentResults?.[0]?.agentName || 'orchestrator';
+
+  // Best-effort usage persistence
+  try {
+    const tokens = Math.max(0, Math.round(result.totalTokensUsed || 0));
+    if (tokens > 0) {
+      db.addTokenUsage({
+        userId: req.user!.sub,
+        agentId: routedAgentName,
+        tokensUsed: tokens,
+        timestamp: new Date(),
+      });
+    }
+  } catch {
+    // ignore
+  }
+
   res.status(200).json({
     message_id: `msg-${Date.now()}`,
-    content: generated.content,
-    response: generated.response,
-    reply: generated.content,
-    actions: generated.actions,
-    sources: [],
+    agentName: routedAgentName,
+    content: result.text,
+    response: result.text,
+    reply: result.text,
+    actions: result.suggestedActions || [],
+    sources: lesson?.content ? makeSourcesFromLesson(lesson.content) : [],
   });
 });
 
