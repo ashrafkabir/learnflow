@@ -1,107 +1,102 @@
-# LearnFlow Improvement Queue — Iteration 45
+# LearnFlow Improvement Queue — Iteration 46
 
-**Iteration:** 45  
-**Status:** IN PROGRESS (Builder: tasks 1–2 DONE)  
-**Date:** 2026-03-19
+**Iteration:** 46  
+**Status:** READY FOR BUILDER  
+**Date:** 2026-03-20
 
 This queue is a **spec-vs-implementation gap list** (plus reliability fixes) prioritized by user impact + risk.
 
 ---
 
-## P0 — Breakages / Spec-critical gaps
+## P0 — Breakages / correctness (ship-stoppers)
 
-1. **Fix screenshot automation (iter45) so it produces fresh artifacts**
-   - Problem: `screenshot*.mjs` run did not yield new iter45 folders; had to copy iter38 artifacts to satisfy eval packaging.
-   - Likely causes: script expects specific folder naming; missing dependencies; hardcoded date folder; or Playwright/browser not available.
-   - Deliverable: `node screenshot.mjs --out ...` must create files in:
-     - `evals/screenshots/iter45-desktop/`
-     - `evals/screenshots/iter45-mobile/`
-     - `evals/screenshots/iter45-web/`
+1. **Fix PipelineDetail progress % bug (shows 0–10000%)**
+   - Where: `apps/client/src/screens/PipelineDetail.tsx`
+   - Current: `const progressPct = Math.round((state.progress ?? 0) * 100);` but API already stores `progress` as **0–100**.
+   - Impact: Users see nonsensical progress values; breaks trust.
+   - Fix: `Math.round(state.progress ?? 0)` and clamp to `[0, 100]`.
 
-2. **Install/add `ripgrep` (rg) to dev env OR remove dependency from docs/scripts**
-   - `rg` is not available on this host (`rg: command not found`).
-   - Impacts developer productivity and any scripted grep tasks.
+2. **Clamp all progress displays to never exceed 100%**
+   - Client:
+     - `CourseView.tsx` uses computed `pct` (should be clamped in case of duplicated completion events).
+     - `PipelineView.tsx` uses `state.progress` directly.
+   - Server:
+     - `apps/api/src/routes/courses.ts` emits `completion_percent` (float) and client rounds.
+   - Hypothesis for >100 bug: WS `progress.update` dispatches `COMPLETE_LESSON` every time, even if duplicate events fire; Set prevents duplicates in-memory, but UI may compute from mismatched lesson ids or repeated completes per course.
+   - Deliverable: hard clamp + add regression tests.
 
-3. **Onboarding Step “API Keys” should actually validate + persist keys (spec §11.1 /api/v1/keys)**
-   - Current: `OnboardingApiKeys` only stores the key in local React state; it **never calls** `/api/v1/keys` or `/validate`.
-   - Expected: optional validation, then secure save (encrypted at rest) via API.
-   - Also: allow choosing provider (OpenAI/Anthropic/Google) per spec copy.
+3. **“Start reading” CTA should deep-link to first available lesson, not just /courses/:id**
+   - Where: `apps/client/src/components/pipeline/SynthesisList.tsx` CTA navigates to `/courses/${courseId}`.
+   - Expected UX: “Start reading” opens the first completed/generated lesson (or first syllabus lesson) for immediate reading.
+   - Implement: choose first DONE lesson synthesis → `/courses/:id/lessons/:lessonId`; fallback: first lesson in course.
+   - Add: handle missing `courseId` or empty lessons gracefully.
 
-4. **Marketing website `/features` route returns 500**
-   - Observed in `learnflow-web.service` logs: `GET /features 500`.
-   - Spec §12 requires a working Features page with screenshots/animations.
+4. **Course deletion end-to-end (API + UI)**
+   - Current: no `DELETE /api/v1/courses/:id` route; UI “Delete” in CreatorDashboard is a toast-only stub.
+   - Implement API:
+     - Delete course from `courses` map + persisted db (`dbCourses`) and delete associated progress/notes/annotations/illustrations where applicable.
+     - Return 204 or 200.
+   - Implement UI:
+     - Add “Delete course” action in Dashboard/CourseView and CreatorDashboard.
+     - Confirm dialog + optimistic UI + error toast.
 
-5. **WebSocket `mindmap.update` payload mismatch vs spec §11.2**
-   - Spec: `{ nodes_added[], edges_added[] }`.
-   - Current server sends `{ courseId, suggestions, nodes_added: [], edges_added: [] }` to satisfy newer client.
-   - Fix: formalize **versioned payload** or align spec + client; document `suggestions[]` as an extension.
-
----
-
-## P1 — Major UX/product gaps
-
-6. **Implement Pro plan flow end-to-end (or remove Pro CTA until real)**
-   - UI: subscription screen says “Pro Coming Soon” modal; API implements mock subscription + IAP mock.
-   - Decide path:
-     - (A) keep mock but label clearly everywhere + don’t imply payment is live
-     - (B) integrate real payments (Stripe/IAP) and drive from UI.
-
-7. **Lesson delivery: enforce <1500 words / <10 min reading time in generator**
-   - Spec “LESSON DELIVERY RULES” require hard cap.
-   - Verify/implement in course-builder + content pipeline (truncate/split lessons, add word-count guardrails).
-
-8. **Source attributions: guarantee clickable links + robust citation parsing**
-   - UI supports “References” and inline citations; ensure generated lesson markdown always includes source blocks.
-   - Add pipeline validation: fail/prompt regeneration if <3 credible sources or missing URLs.
-
-9. **Behavioral adaptation not implemented (quiz score-driven difficulty + inactivity nudges)**
-   - Spec requires adaptation loop based on quiz performance and inactivity.
-   - Implement minimal MVP:
-     - store quiz results per lesson
-     - compute rolling accuracy
-     - adjust difficulty + suggest prerequisites
-     - Pro-only re-engagement notifications after >3 days.
-
-10. **Mindmap: “Go Deeper” / expansion should create real course content & attach under lesson**
-
-- Client supports suggested nodes and “Add to course”; server returns suggestions but doesn’t guarantee parent linkage beyond `parentLessonId` pass-through.
-- Ensure pipeline starts reliably, updates UI via `progress.update`, and suggested nodes become real lessons/modules.
+5. **Marketing site link integrity audit + fix missing routes**
+   - Found: footer includes `Changelog` linking to `/changelog` but no such route/screen.
+   - Found: footer buttons under “Resources/Company/Connect” are inert (no `onClick` / `href`).
+   - Deliverable: either implement routes (`/changelog`, `/privacy`, `/terms`, `/community`, etc.) or remove/disable links until available.
 
 ---
 
-## P2 — Reliability / Developer Experience
+## P1 — Major spec gaps / misleading claims
 
-11. **Unify marketplace routes and client base URL usage**
+6. **Marketing screenshots/real product imagery**
+   - Spec §12.1/12.2: Features page should include screenshots/animations.
+   - Current marketing pages are icon/gradient driven; no real screenshots in `apps/client/public/`.
+   - Deliverable: add real screenshots (from `evals/screenshots/`) into marketing pages, with responsive placement and alt text.
 
-- Client uses relative fetch for `/api/v1/marketplace/courses` but uses `apiBase()` for checkout.
-- Standardize to `apiBase()` everywhere to avoid CORS/proxy surprises.
+7. **Reconcile marketing stack mismatch (spec wants Next.js web; implementation uses React-router marketing + a separate Next app)**
+   - Current:
+     - `apps/client` serves marketing pages via React Router.
+     - `apps/web` exists as a Next.js app (port 3003) but is a separate marketing surface.
+   - Decide one:
+     - (A) Use `apps/web` as canonical marketing site and ensure it matches spec pages.
+     - (B) Remove/disable `apps/web` and keep `apps/client` marketing routes, updating spec.
 
-12. **Clarify auth/dev-mode behavior**
+8. **Fix misleading metric claims on marketing home**
+   - `Home.tsx` displays “50,000+ courses”, “12,000+ learners”, “4.9 rating”, “98% completion rate” without backing.
+   - Deliverable: remove, label as “demo”, or source from real analytics.
 
-- API `createApp({devMode})` uses devAuth; WS uses `token=dev` in non-prod.
-- Document this clearly (DEV_PORTS.md or README) so local usage is deterministic.
-
-13. **Add regression tests for onboarding + subscription + marketing routes**
-
-- Add API tests for `/api/v1/keys` + UI tests for onboarding saving behavior.
-- Add Next smoke test for all marketing pages (homepage/features/pricing/marketplace/docs/blog/about/download).
-
-14. **Improve error handling in client for agent failures / BYOAI exhaustion**
-
-- Spec requires user-friendly fallbacks without exposing raw errors.
-- Add consistent toast + remediation links (settings → API keys).
-
-15. **Analytics endpoints: validate parity with spec dashboard needs**
-
-- Spec expects learning analytics dashboard data; verify UI uses it and fields are present (streaks, mastery, time spent, etc.).
+9. **Auth flows verification & tightening**
+   - API provides: register/login/refresh + mock Google callback.
+   - Client: has dev auth bypass env var + onboarding guard.
+   - Deliverable: verify register/login works end-to-end with token storage, refresh, and logout; ensure dev bypass is gated and not accidentally on in prod builds.
 
 ---
 
-## Notes (evidence)
+## P2 — Quality / maintenance
 
-- Ports stable and occupied:
-  - 3000 (API)
-  - 3001 (Vite client)
-  - 3003 (Next marketing site)
-- Services running: `learnflow-api`, `learnflow-client`, `learnflow-web`.
-- `OnboardingApiKeys.tsx` does not call API; `ProfileSettings` does call `/api/v1/keys`.
+10. **Install `ripgrep` (rg) or update tooling docs**
+
+- Current: `rg` not available on host; slows down audits.
+- Deliverable: add dependency to dev image or ensure scripts don’t assume it.
+
+11. **Fix learnflow-web startup log noise (`ENOWORKSPACES`)**
+
+- `learnflow-web.service` logs `npm error ENOWORKSPACES` even though server becomes ready.
+- Deliverable: identify source (npm invocation inside next dev?) and eliminate noise to improve debugging.
+
+12. **Add automated checks for 3000/3001/3003 services and a single “health” dashboard**
+
+- Ensure systemd user services are always the only listeners on these ports.
+- Add a script that checks health endpoints + home pages and fails CI if broken.
+
+---
+
+## Notes / Evidence (Iteration 46)
+
+- Ports verified:
+  - API: `http://localhost:3000/health` → `{"status":"ok"}`
+  - Client: `http://localhost:3001/` → 200
+  - Web: `http://localhost:3003/` initially 500 due to missing `./522.js` (Next build artifact), fixed by restarting `learnflow-web.service`.
+- “Start reading” CTA exists only as `▶ Start reading ...` in `SynthesisList.tsx`.
+- No course delete route exists; only deletes for illustrations/annotations.
