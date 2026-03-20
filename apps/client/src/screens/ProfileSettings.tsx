@@ -102,7 +102,7 @@ export function ProfileSettings() {
             {state.subscription === 'free' ? (
               <Button
                 variant="secondary"
-                onClick={() => dispatch({ type: 'SET_SUBSCRIPTION', tier: 'pro' })}
+                onClick={() => nav('/pricing')}
                 className="bg-white text-purple-600 hover:bg-white/90 border-0 shadow-card"
               >
                 Upgrade to Pro
@@ -143,14 +143,33 @@ export function ProfileSettings() {
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
                   if (
                     confirm(
                       'Downgrade to Free? You will lose access to Pro features at the end of your billing period.',
                     )
                   ) {
-                    dispatch({ type: 'SET_SUBSCRIPTION', tier: 'free' });
-                    toast('Downgraded to Free plan', 'success');
+                    const token = localStorage.getItem('learnflow-token');
+                    if (!token) {
+                      toast('Please log in first', 'error');
+                      return;
+                    }
+                    try {
+                      const res = await fetch(`${apiBase()}/api/v1/subscription`, {
+                        method: 'POST',
+                        headers: {
+                          Authorization: `Bearer ${token}`,
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ action: 'downgrade', plan: 'free' }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data?.message || 'Failed');
+                      dispatch({ type: 'SET_SUBSCRIPTION', tier: 'free' });
+                      toast('Downgraded to Free plan', 'success');
+                    } catch {
+                      toast('Failed to downgrade', 'error');
+                    }
                   }
                 }}
               >
@@ -159,14 +178,33 @@ export function ProfileSettings() {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
                   if (
                     confirm(
                       'Cancel your subscription? You will lose access to Pro features at the end of your billing period.',
                     )
                   ) {
-                    dispatch({ type: 'SET_SUBSCRIPTION', tier: 'free' });
-                    toast('Subscription cancelled', 'success');
+                    const token = localStorage.getItem('learnflow-token');
+                    if (!token) {
+                      toast('Please log in first', 'error');
+                      return;
+                    }
+                    try {
+                      const res = await fetch(`${apiBase()}/api/v1/subscription`, {
+                        method: 'POST',
+                        headers: {
+                          Authorization: `Bearer ${token}`,
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ action: 'cancel' }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data?.message || 'Failed');
+                      dispatch({ type: 'SET_SUBSCRIPTION', tier: 'free' });
+                      toast('Subscription cancelled', 'success');
+                    } catch {
+                      toast('Failed to cancel subscription', 'error');
+                    }
                   }
                 }}
               >

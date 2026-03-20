@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { test, expect } from '@playwright/test';
 
-const SS = '/home/aifactory/onedrive-learnflow/evals/screenshots/quality';
+const SS = process.env.LEARNFLOW_E2E_OUT || 'learnflow/screenshots/quality';
 const API = '/api/v1';
 
 const TOPICS = [

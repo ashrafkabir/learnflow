@@ -13,6 +13,7 @@ import {
   IconBookmark,
   IconBook,
   IconBrainSpark,
+  IconGlobe,
   IconBulb,
   IconCheck,
   IconClipboard,
@@ -51,7 +52,7 @@ interface Annotation {
   startOffset: number;
   endOffset: number;
   note: string;
-  type: 'note' | 'explain' | 'example';
+  type: 'note' | 'explain' | 'example' | 'discover' | 'illustrate';
   createdAt: string;
 }
 
@@ -177,6 +178,16 @@ export function LessonReader() {
   const [activeAnnotation, setActiveAnnotation] = useState<string | null>(null);
   const [annotationNoteText, setAnnotationNoteText] = useState('');
   const [annotationLoading, setAnnotationLoading] = useState(false);
+
+  // Selection tool preview (Discover/Illustrate/Mark)
+  const [toolPreviewOpen, setToolPreviewOpen] = useState(false);
+  const [toolPreview, setToolPreview] = useState<any>(null);
+  const [toolPreviewLoading, setToolPreviewLoading] = useState(false);
+  const [toolSelectedText, setToolSelectedText] = useState<string>('');
+  const [toolSelectedOffsets, setToolSelectedOffsets] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const lesson = state.activeLesson;
@@ -411,8 +422,76 @@ export function LessonReader() {
     });
   }, []);
 
+  const runSelectionToolPreview = async (
+    tool: 'discover' | 'illustrate' | 'mark',
+    selectedText: string,
+    startOffset: number,
+    endOffset: number,
+  ) => {
+    if (!courseId || !lessonId) return;
+    setToolPreviewOpen(true);
+    setToolPreview(null);
+    setToolPreviewLoading(true);
+    setToolSelectedText(selectedText);
+    setToolSelectedOffsets({ start: startOffset, end: endOffset });
+    try {
+      const res = await fetch(
+        `/api/v1/courses/${courseId}/lessons/${lessonId}/selection-tools/preview`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tool, selectedText }),
+        },
+      );
+      const data = await res.json();
+      if (res.ok) {
+        setToolPreview(data);
+      } else {
+        setToolPreview({ tool, selectedText, error: data?.message || 'Failed' });
+      }
+    } catch (err: any) {
+      setToolPreview({ tool, selectedText, error: err?.message || 'Failed' });
+    } finally {
+      setToolPreviewLoading(false);
+    }
+  };
+
+  const attachPreviewAsAnnotation = async () => {
+    if (!toolPreview || !toolSelectedOffsets) return;
+    const tool = toolPreview.tool as 'discover' | 'illustrate' | 'mark';
+
+    if (tool === 'mark') {
+      // Mark adds bullets to takeaways (stored in lesson notes).
+      const bullets = toolPreview.preview?.bullets || [];
+      await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes/mark-takeaways`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bullets, selectedText: toolSelectedText }),
+      });
+      // Refresh notes so UI can reflect takeaways.
+      fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.note) setSavedNote(data.note);
+        })
+        .catch(() => {});
+    } else {
+      // Discover/Illustrate attach as an annotation note.
+      const note = toolPreview.preview?.note || '';
+      setAnnotationNoteText(note);
+      await createAnnotation(
+        tool,
+        toolSelectedText,
+        toolSelectedOffsets.start,
+        toolSelectedOffsets.end,
+      );
+    }
+
+    setToolPreviewOpen(false);
+  };
+
   const createAnnotation = async (
-    type: 'note' | 'explain' | 'example',
+    type: 'note' | 'explain' | 'example' | 'discover' | 'illustrate',
     selectedText: string,
     startOffset: number,
     endOffset: number,
@@ -421,7 +500,11 @@ export function LessonReader() {
     setAnnotationLoading(true);
     try {
       const body: any = { selectedText, startOffset, endOffset, type };
-      if (type === 'note') body.note = annotationNoteText || '';
+
+      // Selection tools can attach AI output as an annotation note.
+      if (type === 'note' || type === 'discover' || type === 'illustrate') {
+        body.note = annotationNoteText || '';
+      }
       const res = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/annotations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -707,6 +790,69 @@ export function LessonReader() {
 
           {/* Main Content */}
           <div ref={contentRef} onMouseUp={handleTextSelection} className="relative">
+            {/* Selection tool preview modal */}
+            {toolPreviewOpen && (
+              <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+                <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-modal p-5">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {toolPreview?.tool ? `Tool: ${toolPreview.tool}` : 'Tool'}
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                        “{toolSelectedText.slice(0, 140)}
+                        {toolSelectedText.length > 140 ? '…' : ''}”
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setToolPreviewOpen(false)}
+                      className="text-gray-500"
+                    >
+                      <IconClose className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {toolPreviewLoading ? (
+                    <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                      <IconSparkles className="w-4 h-4" />
+                      Working…
+                    </div>
+                  ) : toolPreview?.error ? (
+                    <div className="text-sm text-red-600">{toolPreview.error}</div>
+                  ) : toolPreview?.tool === 'mark' ? (
+                    <div>
+                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Proposed takeaways:
+                      </p>
+                      <ul className="list-disc pl-5 text-sm text-gray-800 dark:text-gray-200 space-y-1">
+                        {(toolPreview.preview?.bullets || []).map((b: string, idx: number) => (
+                          <li key={idx}>{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                      {toolPreview?.preview?.note || ''}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex items-center justify-end gap-2">
+                    <Button variant="secondary" onClick={() => setToolPreviewOpen(false)}>
+                      Discard
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={attachPreviewAsAnnotation}
+                      disabled={toolPreviewLoading}
+                    >
+                      Attach
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             {/* Floating toolbar */}
             {floatingToolbar && (
               <div
@@ -775,6 +921,69 @@ export function LessonReader() {
                   <span className="inline-flex items-center gap-2">
                     <IconBulb className="w-4 h-4" />
                     Example
+                  </span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    runSelectionToolPreview(
+                      'discover',
+                      floatingToolbar.text,
+                      floatingToolbar.startOffset,
+                      floatingToolbar.endOffset,
+                    )
+                  }
+                  disabled={annotationLoading}
+                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                  title="Discover related topics/resources"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <IconGlobe className="w-4 h-4" />
+                    Discover
+                  </span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    runSelectionToolPreview(
+                      'illustrate',
+                      floatingToolbar.text,
+                      floatingToolbar.startOffset,
+                      floatingToolbar.endOffset,
+                    )
+                  }
+                  disabled={annotationLoading}
+                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                  title="Illustrate this selection"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <IconPalette className="w-4 h-4" />
+                    Illustrate
+                  </span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    runSelectionToolPreview(
+                      'mark',
+                      floatingToolbar.text,
+                      floatingToolbar.startOffset,
+                      floatingToolbar.endOffset,
+                    )
+                  }
+                  disabled={annotationLoading}
+                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                  title="Add to key takeaways"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <IconBookmark className="w-4 h-4" />
+                    Mark
                   </span>
                 </Button>
                 {annotationLoading && (

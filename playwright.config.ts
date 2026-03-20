@@ -21,5 +21,6 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  outputDir: 'evals/screenshots',
+  // Canonical output location for all Playwright artifacts (repo-relative, CI-safe).
+  outputDir: 'learnflow/screenshots/playwright',
 });

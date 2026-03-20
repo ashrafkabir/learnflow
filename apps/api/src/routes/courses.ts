@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { emitToUser } from '../wsHub.js';
 import { z } from 'zod';
 import { crawlSourcesForTopic, type FirecrawlSource } from '@learnflow/agents';
-import { dbCourses, dbProgress, dbNotes, dbIllustrations, dbAnnotations } from '../db.js';
+import { dbCourses, dbProgress, dbNotes, dbIllustrations, dbAnnotations, dbEvents } from '../db.js';
 import { parseLessonSources } from '../utils/sources.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 
@@ -1129,6 +1129,18 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
   // NOTE: This is best-effort. If lesson content doesn't include a Sources section, sources may be empty.
   const sources = parseLessonSources(lesson.content);
 
+  // Record an event for analytics.
+  try {
+    dbEvents.add(req.user!.sub, {
+      type: 'lesson.opened',
+      courseId: course.id,
+      lessonId: lesson.id,
+      meta: {},
+    });
+  } catch {
+    // best effort
+  }
+
   res.status(200).json({ ...lesson, sources });
 });
 
@@ -1488,6 +1500,173 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
     console.error('[LearnFlow] Comparison failed:', err);
     res.status(500).json({ error: 'comparison_failed', message: err.message });
   }
+});
+
+// ── Selection Tools (Discover / Illustrate / Mark) ─────────────────────────
+
+// POST /api/v1/courses/:id/lessons/:lessonId/selection-tools/preview
+// Returns a preview payload for side tools without persisting anything.
+router.post(
+  '/:id/lessons/:lessonId/selection-tools/preview',
+  async (req: Request, res: Response) => {
+    const { tool, selectedText } = req.body as { tool?: string; selectedText?: string };
+    if (!tool || !selectedText || String(selectedText).trim().length < 3) {
+      res.status(400).json({ error: 'validation_error', message: 'tool + selectedText required' });
+      return;
+    }
+
+    const userId = req.user?.sub || 'anonymous';
+    const tier = req.user?.tier || 'free';
+
+    try {
+      if (tool === 'discover') {
+        // Use the existing web search provider (no paid key required).
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { searchSources } = require('@learnflow/agents');
+        const results = (await searchSources(String(selectedText))) as any[];
+        const trimmed = (results || []).slice(0, 5).map((r: any) => ({
+          title: r.title,
+          url: r.url,
+          source: (() => {
+            try {
+              return new URL(r.url).hostname;
+            } catch {
+              return r.source || '';
+            }
+          })(),
+          description: r.description,
+        }));
+
+        const note =
+          `Discover: related topics/resources\n\n` +
+          trimmed
+            .map(
+              (r: any, i: number) =>
+                `${i + 1}. ${r.title}\n${r.url}${r.description ? `\n${r.description}` : ''}`,
+            )
+            .join('\n\n');
+
+        res.status(200).json({
+          tool,
+          selectedText,
+          preview: { note, results: trimmed },
+        });
+        return;
+      }
+
+      if (tool === 'illustrate') {
+        const { client: openai } = getOpenAIForRequest({ userId, tier });
+        if (!openai) {
+          res
+            .status(400)
+            .json({ error: 'openai_unavailable', message: 'OpenAI API key not configured' });
+          return;
+        }
+
+        // 1) Simplified explanation
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful tutor. Explain simply in 2-4 bullets.',
+            },
+            { role: 'user', content: `Simplify this for a learner:\n\n"${selectedText}"` },
+          ],
+        });
+        const summary = completion.choices[0]?.message?.content || '';
+
+        // 2) Image (best-effort). This is "illustrate" even if it is generated.
+        let imageUrl: string | null = null;
+        try {
+          const imageResponse = await openai.images.generate({
+            model: 'dall-e-3',
+            prompt: `Educational illustration for this concept: ${selectedText}. Clean, professional, no text in image.`,
+            size: '1024x1024',
+            quality: 'standard',
+            n: 1,
+          });
+          imageUrl = imageResponse.data?.[0]?.url || null;
+        } catch {
+          imageUrl = null;
+        }
+
+        const note = `Illustrate\n\n${summary}${imageUrl ? `\n\nImage: ${imageUrl}` : ''}`;
+        res.status(200).json({ tool, selectedText, preview: { note, summary, imageUrl } });
+        return;
+      }
+
+      if (tool === 'mark') {
+        const { client: openai } = getOpenAIForRequest({ userId, tier });
+        let bullets: string[] = [];
+        if (openai) {
+          try {
+            const completion = await openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages: [
+                {
+                  role: 'system',
+                  content:
+                    'Extract 3-5 concise key takeaways as a JSON array of strings. Return ONLY JSON.',
+                },
+                { role: 'user', content: selectedText },
+              ],
+            });
+            const text = completion.choices[0]?.message?.content || '[]';
+            bullets = JSON.parse(text);
+          } catch {
+            bullets = [];
+          }
+        }
+        if (!bullets.length) {
+          bullets = String(selectedText)
+            .split(/[.\n]/)
+            .map((s) => s.trim())
+            .filter((s) => s.length > 8)
+            .slice(0, 5);
+        }
+
+        res.status(200).json({ tool, selectedText, preview: { bullets } });
+        return;
+      }
+
+      res.status(400).json({ error: 'validation_error', message: 'unknown tool' });
+    } catch (err: any) {
+      res.status(500).json({ error: 'tool_failed', message: err?.message || 'Failed' });
+    }
+  },
+);
+
+// POST /api/v1/courses/:id/lessons/:lessonId/notes/mark-takeaways
+// Appends takeaways to the user's notes for this lesson (so it can be shown in UI).
+router.post('/:id/lessons/:lessonId/notes/mark-takeaways', (req: Request, res: Response) => {
+  const userId = req.user?.sub || 'anonymous';
+  const lessonId = String(req.params.lessonId);
+  const { bullets, selectedText } = req.body as { bullets?: string[]; selectedText?: string };
+
+  const existing = dbNotes.get(lessonId, userId);
+  const content = existing?.content || {};
+
+  const extras: string[] = Array.isArray(content.keyTakeawaysExtras)
+    ? content.keyTakeawaysExtras
+    : [];
+
+  const toAdd = Array.isArray(bullets)
+    ? bullets
+    : String(selectedText || '')
+        .split(/[.\n]/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 8)
+        .slice(0, 5);
+
+  for (const b of toAdd) {
+    const clean = String(b).trim();
+    if (!clean) continue;
+    if (!extras.includes(clean)) extras.push(clean);
+  }
+
+  const note = dbNotes.save(lessonId, userId, { ...content, keyTakeawaysExtras: extras });
+  res.status(200).json({ note, keyTakeawaysExtras: extras });
 });
 
 // ── Annotations (text-anchored notes) ───────────────────────────────────────

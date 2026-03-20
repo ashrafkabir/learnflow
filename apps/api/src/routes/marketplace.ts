@@ -63,7 +63,7 @@ const marketplaceAgents: MarketplaceAgent[] = [
   },
 ];
 
-import { dbMarketplace } from '../db.js';
+// (activation is handled in marketplace-full router)
 
 const searchSchema = z.object({
   keyword: z.string().optional(),
@@ -117,25 +117,7 @@ router.get('/agents', (_req: Request, res: Response) => {
   res.status(200).json({ agents: marketplaceAgents });
 });
 
-// GET /api/v1/marketplace/agents/activated - list activated agent IDs for current user
-router.get('/agents/activated', (req: Request, res: Response) => {
-  const userId = req.user!.sub;
-  const activated = dbMarketplace.getActivatedAgents(userId);
-  res.status(200).json({ activatedAgentIds: activated });
-});
-
-// POST /api/v1/marketplace/agents/:id/activate - Activate agent
-router.post('/agents/:id/activate', (req: Request, res: Response) => {
-  const agent = marketplaceAgents.find((a) => a.id === req.params.id);
-  if (!agent) {
-    res.status(404).json({ error: 'not_found', message: 'Agent not found', code: 404 });
-    return;
-  }
-
-  const userId = req.user!.sub;
-  dbMarketplace.activateAgent(userId, agent.id);
-
-  res.status(200).json({ message: `Agent "${agent.name}" activated`, agentId: agent.id });
-});
+// NOTE: This router is mounted public. Agent activation + activated list live in the auth-protected
+// marketplace-full router (and persist to DB via dbMarketplace).
 
 export const marketplaceRouter = router;

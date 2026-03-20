@@ -95,6 +95,16 @@ sqlite.exec(`
     PRIMARY KEY (userId, lessonId)
   );
 
+  CREATE TABLE IF NOT EXISTS learning_events (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    type TEXT NOT NULL,
+    courseId TEXT,
+    lessonId TEXT,
+    meta TEXT NOT NULL DEFAULT '{}',
+    createdAt TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS api_keys (
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL,
@@ -242,6 +252,14 @@ const stmts = {
     `SELECT lessonId FROM progress WHERE userId = ? AND courseId = ?`,
   ),
   getAllProgressByUser: sqlite.prepare(`SELECT courseId, lessonId FROM progress WHERE userId = ?`),
+
+  // Learning events
+  insertLearningEvent: sqlite.prepare(
+    `INSERT INTO learning_events (id, userId, type, courseId, lessonId, meta, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ),
+  getLearningEventsByUser: sqlite.prepare(
+    `SELECT * FROM learning_events WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
+  ),
 
   // Pipelines
   insertPipeline: sqlite.prepare(
@@ -528,7 +546,14 @@ export const dbCourses = {
 
 export const dbProgress = {
   markComplete(userId: string, courseId: string, lessonId: string): void {
-    stmts.upsertProgress.run(userId, lessonId, courseId, new Date().toISOString());
+    const now = new Date().toISOString();
+    stmts.upsertProgress.run(userId, lessonId, courseId, now);
+    // Also record an event (used by analytics).
+    try {
+      dbEvents.add(userId, { type: 'lesson.completed', courseId, lessonId, meta: {} });
+    } catch {
+      // best effort
+    }
   },
 
   getCompletedLessons(userId: string, courseId: string): string[] {
@@ -550,6 +575,30 @@ export const dbProgress = {
       totalStudyMinutes: totalLessons * 5,
       currentStreak: Math.min(totalLessons, 30),
     };
+  },
+};
+
+// ── Learning events helpers ────────────────────────────────────────────────
+
+export const dbEvents = {
+  add(
+    userId: string,
+    evt: { type: string; courseId?: string; lessonId?: string; meta?: Record<string, unknown> },
+  ): void {
+    const now = new Date().toISOString();
+    stmts.insertLearningEvent.run(
+      `evt-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      userId,
+      evt.type,
+      evt.courseId || null,
+      evt.lessonId || null,
+      JSON.stringify(evt.meta || {}),
+      now,
+    );
+  },
+
+  list(userId: string, limit = 200): any[] {
+    return stmts.getLearningEventsByUser.all(userId, limit) as any[];
   },
 };
 

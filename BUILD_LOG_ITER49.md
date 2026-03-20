@@ -191,3 +191,127 @@ Artifacts:
 
 - Ran full suite: npm test (all packages pass)
 - Playwright mindmap CRDT: requires client dev server running on 3011; ran and passed after starting vite on 3011
+
+## Task 6 (Fix flaky timeouts / network in tests)
+
+### Changes
+
+- Made devAuth default tier FREE (closer to product posture): apps/api/src/app.ts
+- Ensured course generation is fast/deterministic in NODE_ENV=test (no network calls, stub sources + stub lesson content): apps/api/src/routes/courses.ts
+- Bounded WebSearch crawl breadth in default provider (production can increase): packages/agents/src/content-pipeline/web-search-provider.ts
+
+### Verification
+
+- Ran: npm test -w apps/api (pass)
+- Ran: npm run lint:check; npm run build; npm test (all pass)
+
+## Task 8 (Stripe/Billing sandbox entitlements MVP)
+
+### Changes
+
+- Settings 'Upgrade to Pro' now routes to /pricing (no more local-only tier toggle).
+- Pricing Pro CTA now calls POST /api/v1/subscription {action:'subscribe',plan:'pro'} (sandbox) then navigates to /settings.
+- Settings downgrade/cancel now call POST /api/v1/subscription {action:'downgrade'|'cancel'} (sandbox) and update client state.
+
+### Verification
+
+- Ran: npm run lint:check; npm run build; npm test (all pass)
+
+### Notes
+
+- This is still sandbox (no Stripe Checkout/webhooks), but entitlements now flow via API rather than purely client mocks.
+
+### Screenshots
+
+- Ran: PLAYWRIGHT_BASE_URL=http://localhost:3011 npx playwright test e2e/learning-journey.spec.ts (generated learning-journey-\*.png)
+- Ran: PLAYWRIGHT_BASE_URL=http://localhost:3011 npx playwright test e2e/iter49-screenshots.spec.ts -g "marketing" (generated 20-home..26-about incl 22-pricing.png)
+
+## Task 7 (Pipeline → course integration) partial
+
+- Verified: pipeline already builds/saves a course to DB on stage 'reviewing' and Dashboard fetches /courses when reviewing.
+- Minor UX fix: Dashboard 'View plans' now routes to /pricing (not /settings).
+- Still pending: integration test explicitly asserting pipeline completion creates course entity + UI auto-routes.
+
+## Task 9 (Marketplace activation affects orchestrator routing)
+
+### Fix
+
+- Marketplace-full activation + activated list now persist via dbMarketplace (SQLite) for real routing.
+- Activation supports seeded ids (ma-1/ma-2) and keeps legacy in-memory map for marketplace-full tests.
+- marketplaceRouter reverted to public browse only (activation handled in marketplace-full).
+
+### Verification
+
+- Ran: npm run lint:check; npm run build; npm test (all pass)
+- Manual WS check: activated ma-2, then WS chat 'research ...' produced agent.complete agent_name=research_agent
+
+## Task 10 (A11y keyboard nav smoke)
+
+- Added: e2e/keyboard-nav.spec.ts (welcome→goals + settings API keys focusable)
+- Ran: npx playwright test e2e/keyboard-nav.spec.ts (pass)
+- Screenshots: learnflow/screenshots/iter49/keyboard-nav-\*
+
+## Task 11 (Citations & sources surfaced + structured extraction)
+
+### Change
+
+- Server: makeSourcesFromLesson now uses utils/parseLessonSources for structured reference extraction (not just URLs).
+
+### Verification
+
+- Ran: npm run lint:check; npm run build; npm test (all pass)
+
+## Task 12 (Analytics event-based metrics MVP)
+
+### Changes
+
+- DB: added learning_events table + statements + dbEvents helper
+- Progress: markComplete now records lesson.completed event
+- Courses: GET lesson now records lesson.opened event
+- Analytics: weeklyProgress derived from events + returns recentEvents list
+
+### Verification
+
+- Ran: npm run lint:check; npm run build; npm test (all pass)
+
+## Task 13 (Docs: make them real + synced with routes)
+
+### Changes
+
+- Updated marketing Docs page content to point to real markdown docs under apps/docs/pages (api-reference, agent-sdk, architecture).
+
+### Verification
+
+- Ran: npm run lint:check; npm run build; npm test (all pass)
+
+## Task 14 (Stabilize Playwright artifact output paths)
+
+### Changes
+
+- Playwright outputDir now repo-relative: learnflow/screenshots/playwright
+- E2E suites using hardcoded OneDrive paths now use LEARNFLOW_E2E_OUT env var fallback to repo paths:
+  - e2e/spec-compliance.spec.ts
+  - e2e/course-quality.spec.ts
+- Iter49 screenshot suite keeps OneDrive copy but OUT_OD now overridable via LEARNFLOW_E2E_OUT_OD
+
+### Verification
+
+- Ran: npm run lint:check; npm run build; npm test (all pass)
+
+## Task 14 (Lesson plan side tools: Discover / Illustrate / Mark)
+
+### Changes
+
+- API: added selection tools endpoints
+  - POST /api/v1/courses/:id/lessons/:lessonId/selection-tools/preview (discover/illustrate/mark preview)
+  - POST /api/v1/courses/:id/lessons/:lessonId/notes/mark-takeaways (persist takeaways extras)
+- Client: LessonReader text selection toolbar now includes Discover/Illustrate/Mark
+  - opens preview modal → Attach (annotation or takeaways) or Discard
+  - Discover uses web-search provider to return related links
+  - Illustrate produces simplified bullets + best-effort image URL (OpenAI if configured)
+  - Mark extracts bullets and appends to user note keyTakeawaysExtras
+
+### Verification
+
+- Ran: npm run lint:check; npm run build; npm test (all pass)
+- Ran: Playwright screenshot suite: e2e/iter49-screenshots.spec.ts (pass; updated screenshots in repo + OneDrive)

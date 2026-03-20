@@ -103,6 +103,8 @@ export function createApp(options?: { devMode?: boolean }) {
   app.use('/api/v1/mindmap', protectedAuth, rateLimiter, mindmapRouter);
   // Marketplace
   // Keep public browse endpoints accessible without auth; protect creator/checkout flows.
+  // - marketplaceRouter provides public browse endpoints
+  // - marketplaceFullRouter provides creator/publish/checkout flows (and agent activation)
   app.use('/api/v1/marketplace', rateLimiter, marketplaceRouter);
   app.use('/api/v1/marketplace', protectedAuth, rateLimiter, marketplaceFullRouter);
   app.use('/api/v1/profile', protectedAuth, rateLimiter, profileRouter);

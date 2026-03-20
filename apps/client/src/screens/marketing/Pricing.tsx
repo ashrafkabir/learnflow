@@ -151,12 +151,33 @@ export function PricingPage() {
               <Button
                 variant={plan.highlight ? 'primary' : 'secondary'}
                 fullWidth
-                onClick={() => {
+                onClick={async () => {
                   const token = localStorage.getItem('learnflow-token');
-                  if (token) {
-                    nav(plan.highlight ? '/settings' : '/dashboard');
-                  } else {
+                  if (!token) {
                     nav('/register');
+                    return;
+                  }
+
+                  if (!plan.highlight) {
+                    nav('/dashboard');
+                    return;
+                  }
+
+                  // Pro: call API to subscribe (sandbox). Then route to settings.
+                  try {
+                    const res = await fetch('/api/v1/subscription', {
+                      method: 'POST',
+                      headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ action: 'subscribe', plan: 'pro' }),
+                    });
+                    if (!res.ok) throw new Error('subscribe_failed');
+                    nav('/settings');
+                  } catch {
+                    // Best-effort fallback: still take user to settings.
+                    nav('/settings');
                   }
                 }}
                 className="mb-6"

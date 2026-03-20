@@ -10,7 +10,7 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { test, expect } from '@playwright/test';
 
-const SS = '/home/aifactory/onedrive-learnflow/evals/screenshots/compliance';
+const SS = process.env.LEARNFLOW_E2E_OUT || 'learnflow/screenshots/compliance';
 const API = '/api/v1';
 const fs = require('fs');
 

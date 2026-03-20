@@ -104,17 +104,8 @@ export function makeSourcesFromLesson(lessonContent: string): Array<{
   year?: number;
   url: string;
 }> {
-  const refSection =
-    lessonContent.match(/## (?:References|Sources|Further Reading)[\s\S]*$/im)?.[0] || '';
-  const urls = Array.from(refSection.matchAll(/https?:\/\/\S+/g)).map((m) =>
-    m[0].replace(/[).,;]+$/, ''),
-  );
-  const unique = Array.from(new Set(urls)).slice(0, 5);
-  return unique.map((url, i) => ({
-    title: `Reference ${i + 1}`,
-    author: 'Source',
-    publication: '',
-    year: 2024,
-    url,
-  }));
+  // Use the shared structured parser (keeps schemas aligned across API surfaces).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { parseLessonSources } = require('./utils/sources.js');
+  return parseLessonSources(lessonContent);
 }

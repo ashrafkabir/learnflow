@@ -7,7 +7,8 @@ import { test, expect } from '@playwright/test';
  */
 
 const OUT_REPO = '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter49';
-const OUT_OD = '/home/aifactory/onedrive-learnflow/evals/screenshots/iter49';
+const OUT_OD =
+  process.env.LEARNFLOW_E2E_OUT_OD || '/home/aifactory/onedrive-learnflow/evals/screenshots/iter49';
 
 async function snap(page: any, name: string, fullPage = true) {
   await page.waitForTimeout(750);

@@ -63,7 +63,7 @@ export const agentSubmissions: Map<string, AgentSubmission> = new Map();
 export const paymentIntents: Map<string, PaymentIntent> = new Map();
 export const payoutRecords: Map<string, PayoutRecord> = new Map();
 export const enrollments: Map<string, Set<string>> = new Map(); // userId → courseIds
-export const activatedAgents: Map<string, Set<string>> = new Map(); // userId → agentIds
+export const activatedAgents: Map<string, Set<string>> = new Map(); // userId → agentIds (legacy, keep for tests)
 
 // ─── Quality Checker (S09-A08) ───
 
@@ -287,20 +287,27 @@ router.get('/agents', (_req: Request, res: Response) => {
 });
 
 // GET /api/v1/marketplace/agents/activated — list activated agent IDs for current user (client expects this)
-router.get('/agents/activated', (req: Request, res: Response) => {
+router.get('/agents/activated', async (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const ids = Array.from(activatedAgents.get(userId) || []);
+  // Prefer persistent DB activation state.
+  // Import via ESM dynamic import.
+  const mod = await import('../db.js');
+  const ids = mod.dbMarketplace.getActivatedAgents(userId);
   res.status(200).json({ activatedAgentIds: ids });
 });
 
 // POST /api/v1/marketplace/agents/:id/activate — activate agent (S09-A07)
-router.post('/agents/:id/activate', (req: Request, res: Response) => {
-  const agent = agentSubmissions.get(String(req.params.id));
-  if (!agent) {
-    res.status(404).json({ error: 'not_found', message: 'Agent not found', code: 404 });
-    return;
-  }
+router.post('/agents/:id/activate', async (req: Request, res: Response) => {
+  const agentId = String(req.params.id);
 
+  // Support both "full" submission ids (as-*) and seeded marketplace ids (ma-*).
+  const agent = agentSubmissions.get(agentId) || ({ id: agentId, name: agentId } as any);
+
+  // Persist activation.
+  const mod = await import('../db.js');
+  mod.dbMarketplace.activateAgent(req.user!.sub, agent.id);
+
+  // Keep legacy in-memory map for existing marketplace-full tests.
   if (!activatedAgents.has(req.user!.sub)) activatedAgents.set(req.user!.sub, new Set());
   activatedAgents.get(req.user!.sub)!.add(agent.id);
 

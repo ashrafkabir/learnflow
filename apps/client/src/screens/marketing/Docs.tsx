@@ -71,7 +71,12 @@ const SECTIONS = [
       {
         title: 'Creating Custom Agents',
         content:
-          'Coming soon — the Agent SDK will let you build and publish custom AI agents to the marketplace.',
+          'LearnFlow includes an Agent SDK (see docs repo) that defines routing, actions, and schemas. You can prototype custom agents locally and (in future) publish them to the marketplace.',
+      },
+      {
+        title: 'API + Agent SDK (MDX docs)',
+        content:
+          'The full developer docs live under apps/docs as Markdown pages: API reference, agent SDK guide, and architecture notes. See: /docs/pages/api-reference.md, /docs/pages/agent-sdk.md, /docs/pages/architecture.md.',
       },
     ],
   },
@@ -81,12 +86,12 @@ const SECTIONS = [
       {
         title: 'REST API',
         content:
-          'The LearnFlow REST API provides programmatic access to courses, lessons, notes, and user data. Full API documentation coming soon.',
+          'See apps/docs/pages/api-reference.md for endpoint-by-endpoint reference (auth, keys, courses, analytics, marketplace, subscription).',
       },
       {
         title: 'WebSocket Events',
         content:
-          'Real-time events for course generation progress, agent status, and collaboration features. Documentation coming soon.',
+          'The websocket surface includes /ws events like agent.spawned/agent.complete and pipeline stage updates. Documented partially in apps/docs/pages/architecture.md; expand as we stabilize schemas.',
       },
     ],
   },
