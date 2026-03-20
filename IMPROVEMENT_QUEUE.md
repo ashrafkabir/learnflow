@@ -1,118 +1,99 @@
-# LearnFlow Improvement Queue — Iteration 47
+# Improvement Queue — Iteration 48
 
-**Iteration:** 47  
-**Status:** IN PROGRESS  
-**Date:** 2026-03-20
+Status: **READY FOR BUILDER**
 
-## Hotfixes shipped in Iteration 47
+This queue is written after reviewing the full product spec and inspecting the current LearnFlow implementation (API + client + web marketing) and capturing Iter48 screenshots.
 
-- ✅ Fix API rate limiter keying to prefer user-subject over IP (prevents unexpected 429s in NAT/shared IP situations).
-- ✅ Add `Retry-After` + `retryAfterSeconds` to 429 responses.
-- ✅ Client surfaces actionable 429 message.
-- ✅ Add API regression test: burst create+delete does not 429.
-- ⚠️ Lesson click crash: not reproduced in this pass; capture stack trace if still occurring.
+## Top priorities (P0)
 
----
+1. **Implement real BYOAI key usage end-to-end (not global env-only)**
 
-# LearnFlow Improvement Queue — Iteration 46
+- **Spec:** BYOAI free tier; per-user API keys.
+- **Current:** API has `/api/v1/keys` endpoints, but most LLM calls (course generation, notes, illustrations, pipeline) use `process.env.OPENAI_API_KEY` via `getOpenAI()`.
+- **Build:** Persist per-user keys (already saved) and thread them into OpenAI client creation per request; enforce tier rules (BYOAI allowed on free, managed key only on Pro).
 
-**Iteration:** 46  
-**Status:** READY FOR BUILDER  
-**Date:** 2026-03-20
+2. **Replace mock Research Agent + citations with real retrieval**
 
-This queue is a **spec-vs-implementation gap list** (plus reliability fixes) prioritized by user impact + risk.
+- **Spec:** Real-time internet curation with attribution.
+- **Current:** `/api/v1/chat` agent=research returns hard-coded arXiv/DOI examples; not real.
+- **Build:** Use `searchTopicTrending` / `crawlSourcesForTopic` and return structured sources with titles/authors/urls and short summaries; remove fake URLs.
 
----
+3. **Unify chat routing: REST `/api/v1/chat` should use Core Orchestrator like WebSocket does**
 
-## P0 — Breakages / correctness (ship-stoppers)
+- **Spec:** Central Orchestrator spawns/routes specialized agents.
+- **Current:** WS uses `Orchestrator` + `AgentRegistry` (`wsOrchestrator.ts`) but REST `/chat` has its own routing + bespoke OpenAI prompt.
+- **Build:** Route REST chat through the same orchestrator path to ensure consistent behavior and telemetry.
 
-1. **Fix PipelineDetail progress % bug (shows 0–10000%)**
-   - Where: `apps/client/src/screens/PipelineDetail.tsx`
-   - Current: `const progressPct = Math.round((state.progress ?? 0) * 100);` but API already stores `progress` as **0–100**.
-   - Impact: Users see nonsensical progress values; breaks trust.
-   - Fix: `Math.round(state.progress ?? 0)` and clamp to `[0, 100]`.
+4. **Fix mindmap “CRDT collaborative editing” gap (currently only suggestions + local graph)**
 
-2. **Clamp all progress displays to never exceed 100%**
-   - Client:
-     - `CourseView.tsx` uses computed `pct` (should be clamped in case of duplicated completion events).
-     - `PipelineView.tsx` uses `state.progress` directly.
-   - Server:
-     - `apps/api/src/routes/courses.ts` emits `completion_percent` (float) and client rounds.
-   - Hypothesis for >100 bug: WS `progress.update` dispatches `COMPLETE_LESSON` every time, even if duplicate events fire; Set prevents duplicates in-memory, but UI may compute from mismatched lesson ids or repeated completes per course.
-   - Deliverable: hard clamp + add regression tests.
+- **Spec:** CRDT-based collaborative mindmap editing.
+- **Current:** Client renders a derived graph from courses/progress plus “suggestions” nodes; MindmapAgent supports CRDT ops but there is no persistence, no WS ops, no multi-user rooms.
+- **Build:** Add mindmap state store (SQLite initially), implement WS events for add/update/delete node/edge + merge operations, and persist per user/course.
 
-3. **“Start reading” CTA should deep-link to first available lesson, not just /courses/:id**
-   - Where: `apps/client/src/components/pipeline/SynthesisList.tsx` CTA navigates to `/courses/${courseId}`.
-   - Expected UX: “Start reading” opens the first completed/generated lesson (or first syllabus lesson) for immediate reading.
-   - Implement: choose first DONE lesson synthesis → `/courses/:id/lessons/:lessonId`; fallback: first lesson in course.
-   - Add: handle missing `courseId` or empty lessons gracefully.
+5. **Implement real subscription + billing status (Stripe) and gate Pro features**
 
-4. **Course deletion end-to-end (API + UI)**
-   - Current: no `DELETE /api/v1/courses/:id` route; UI “Delete” in CreatorDashboard is a toast-only stub.
-   - Implement API:
-     - Delete course from `courses` map + persisted db (`dbCourses`) and delete associated progress/notes/annotations/illustrations where applicable.
-     - Return 204 or 200.
-   - Implement UI:
-     - Add “Delete course” action in Dashboard/CourseView and CreatorDashboard.
-     - Confirm dialog + optimistic UI + error toast.
+- **Spec:** Pro subscription with managed infra, updates.
+- **Current:** `/api/v1/subscription` exists but is effectively a toggle; no real billing, no entitlements enforcement.
+- **Build:** Add Stripe integration (checkout + webhook), store `billingStatus`, enforce quotas/managed-key availability.
 
-5. **Marketing site link integrity audit + fix missing routes**
-   - Found: footer includes `Changelog` linking to `/changelog` but no such route/screen.
-   - Found: footer buttons under “Resources/Company/Connect” are inert (no `onClick` / `href`).
-   - Deliverable: either implement routes (`/changelog`, `/privacy`, `/terms`, `/community`, etc.) or remove/disable links until available.
+## High priorities (P1)
 
----
+6. **Pipeline: connect “Add Topic” pipeline outputs to actual course creation & UI state**
 
-## P1 — Major spec gaps / misleading claims
+- **Spec:** Conversational course creation with attributed learning paths; proactive updates.
+- **Current:** `/api/v1/pipeline` is robust SSE state machine, but course creation endpoint still uses static `TOPIC_CONTENT` templates (topic-matched) and doesn’t use pipeline module planning.
+- **Build:** Use pipeline’s `generateModulesForTopic()` and synthesis outputs to create course modules/lessons; show pipeline progress in UI.
 
-6. **Marketing screenshots/real product imagery**
-   - Spec §12.1/12.2: Features page should include screenshots/animations.
-   - Current marketing pages are icon/gradient driven; no real screenshots in `apps/client/public/`.
-   - Deliverable: add real screenshots (from `evals/screenshots/`) into marketing pages, with responsive placement and alt text.
+7. **Lesson word-count/reading-time spec compliance (bite-sized <10 minutes)**
 
-7. **Reconcile marketing stack mismatch (spec wants Next.js web; implementation uses React-router marketing + a separate Next app)**
-   - Current:
-     - `apps/client` serves marketing pages via React Router.
-     - `apps/web` exists as a Next.js app (port 3003) but is a separate marketing surface.
-   - Decide one:
-     - (A) Use `apps/web` as canonical marketing site and ensure it matches spec pages.
-     - (B) Remove/disable `apps/web` and keep `apps/client` marketing routes, updating spec.
+- **Spec:** Every lesson under 10 minutes.
+- **Current:** LLM lessons target 800–1200 words and estimatedTime is capped at 10, but fallback templates can be generic and word counts are not enforced by validator.
+- **Build:** Enforce word count bounds; re-summarize/trim automatically when over; compute accurate reading time.
 
-8. **Fix misleading metric claims on marketing home**
-   - `Home.tsx` displays “50,000+ courses”, “12,000+ learners”, “4.9 rating”, “98% completion rate” without backing.
-   - Deliverable: remove, label as “demo”, or source from real analytics.
+8. **Citations/sources parsing and display**
 
-9. **Auth flows verification & tightening**
-   - API provides: register/login/refresh + mock Google callback.
-   - Client: has dev auth bypass env var + onboarding guard.
-   - Deliverable: verify register/login works end-to-end with token storage, refresh, and logout; ensure dev bypass is gated and not accidentally on in prod builds.
+- **Spec:** “Curated with attribution.”
+- **Current:** Lesson generation includes a “Sources” section; API provides best-effort `parseLessonSources`, WS mindmap suggestions use web signals; but UI/source rendering consistency unclear.
+- **Build:** Standardize `sources[]` schema across lesson, chat answers, research results, and pipeline; render in UI with domain + publish year.
 
----
+9. **Next.js marketing site `/features` 500 error**
 
-## P2 — Quality / maintenance
+- **Current:** `learnflow-web` logs show GET `/features` → 500.
+- **Build:** Fix route component/import/data assumptions; add a basic e2e check in CI.
 
-10. **Install `ripgrep` (rg) or update tooling docs**
+10. **Security & auth hardening: dev WS token bypass**
 
-- Current: `rg` not available on host; slows down audits.
-- Deliverable: add dependency to dev image or ensure scripts don’t assume it.
+- **Spec:** production-grade auth.
+- **Current:** WS accepts `token=dev` when not production.
+- **Build:** Ensure dev bypass is only in dev profile; add env guard + audit log; never enable in staging/prod.
 
-11. **Fix learnflow-web startup log noise (`ENOWORKSPACES`)**
+## Medium priorities (P2)
 
-- `learnflow-web.service` logs `npm error ENOWORKSPACES` even though server becomes ready.
-- Deliverable: identify source (npm invocation inside next dev?) and eliminate noise to improve debugging.
+11. **Marketplace agents: activation → orchestrator routing**
 
-12. **Add automated checks for 3000/3001/3003 services and a single “health” dashboard**
+- **Spec:** Extensible agent marketplace.
+- **Current:** `wsOrchestrator` reads `preferredAgents` from `dbMarketplace.getActivatedAgents(userId)` but doesn’t actually condition registry/routing (only mentions in `agent.spawned` text).
+- **Build:** Implement: activated agents affect routing decisions and available actions; UI should show which agent answered.
 
-- Ensure systemd user services are always the only listeners on these ports.
-- Add a script that checks health endpoints + home pages and fails CI if broken.
+12. **Analytics: replace placeholders with real event-based metrics**
 
----
+- **Spec:** mastery, engagement, streaks, adaptive learning.
+- **Current:** `/api/v1/analytics` exists, but data sources appear lightweight.
+- **Build:** Event table (lesson opened, time-on-lesson, quiz attempts, chat usage); compute weekly progress and streaks.
 
-## Notes / Evidence (Iteration 46)
+13. **Collaboration/peer features are stubbed**
 
-- Ports verified:
-  - API: `http://localhost:3000/health` → `{"status":"ok"}`
-  - Client: `http://localhost:3001/` → 200
-  - Web: `http://localhost:3003/` initially 500 due to missing `./522.js` (Next build artifact), fixed by restarting `learnflow-web.service`.
-- “Start reading” CTA exists only as `▶ Start reading ...` in `SynthesisList.tsx`.
-- No course delete route exists; only deletes for illustrations/annotations.
+- **Spec:** peer collaboration agent and shared courses.
+- **Current:** CollaborationAgent exists but unclear feature surface.
+- **Build:** Define MVP: share course link, co-study session, shared notes; implement minimal flows.
+
+14. **Replace in-memory maps with consistent DB usage**
+
+- **Spec:** scalable persistence.
+- **Current:** courses runtime Map caches dbCourses; some endpoints use `courses` Map while others query SQLite.
+- **Build:** Use DB as source of truth; add repository layer; remove dual-read complexity.
+
+15. **Test coverage: add spec-driven integration tests beyond S07**
+
+- **Current:** API tests cover endpoint existence and WS streaming.
+- **Build:** Add tests for: per-user BYOAI, pipeline create→publish, mindmap suggestions accept→course module created, marketplace activation influences routing.
