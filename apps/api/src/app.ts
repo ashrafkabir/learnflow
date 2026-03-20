@@ -23,13 +23,17 @@ export function clearRateLimits(): void {
 }
 
 function rateLimiter(req: Request, res: Response, next: NextFunction): void {
+  // Prefer user-scoped limits over IP-scoped limits.
+  // Keying purely by IP is too coarse in real-world environments (NAT, office networks,
+  // mobile carriers) and can cause unrelated users/actions (e.g., course deletion) to hit 429.
   const ip = req.ip || 'unknown';
+  const userKey = req.user?.sub || ip;
   const tier = req.user?.tier || 'free';
   const limit = tier === 'pro' ? 500 : 100;
   const windowMs = 60_000;
 
   const now = Date.now();
-  const key = `${ip}:${tier}`;
+  const key = `${userKey}:${tier}`;
   let entry = rateLimitStore.get(key);
 
   if (!entry || now > entry.resetAt) {
@@ -40,10 +44,13 @@ function rateLimiter(req: Request, res: Response, next: NextFunction): void {
   entry.count++;
 
   if (entry.count > limit) {
+    const retryAfterSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
+    res.setHeader('Retry-After', String(retryAfterSeconds));
     res.status(429).json({
       error: 'rate_limit_exceeded',
-      message: `Rate limit of ${limit} requests per minute exceeded`,
+      message: `Rate limit of ${limit} requests per minute exceeded. Try again in ~${retryAfterSeconds}s.`,
       code: 429,
+      retryAfterSeconds,
     });
     return;
   }

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useReducer, useCallback, ReactNode } from 'react';
+import { toActionableHttpErrorMessage } from './httpErrors.js';
 
 // Types
 export interface Course {
@@ -260,7 +261,8 @@ function reducer(state: AppState, action: Action): AppState {
         if (answers[q.id] === q.correctAnswer) correct++;
         else gaps.push(q.question);
       });
-      const score = Math.round((correct / state.quiz.questions.length) * 100);
+      const scoreRaw = Math.round((correct / state.quiz.questions.length) * 100);
+      const score = Math.min(100, Math.max(0, scoreRaw));
       return { ...state, quiz: { ...state.quiz, answers, submitted: true, score, gaps } };
     }
     case 'SET_LOADING':
@@ -373,11 +375,37 @@ async function apiPost(path: string, body: unknown) {
           window.location.href = '/login';
         }
       }
-      throw new Error(err.message || `HTTP ${res.status}`);
+      throw new Error(toActionableHttpErrorMessage(res.status, err, res));
     }
     return res.json();
   } catch (err) {
     console.error('[LearnFlow] apiPost error:', err);
+    throw err;
+  }
+}
+
+async function apiDelete(path: string) {
+  await refreshTokenIfNeeded();
+  try {
+    const headers = getAuthHeaders();
+    const res = await fetch(`${apiBase()}${API}${path}`, { method: 'DELETE', headers });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Request failed' }));
+      if (res.status === 401) {
+        console.warn('[LearnFlow] 401 — unauthorized');
+        localStorage.removeItem('learnflow-token');
+        localStorage.removeItem('learnflow-refresh');
+        localStorage.removeItem('learnflow-user');
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
+      }
+      throw new Error(toActionableHttpErrorMessage(res.status, err, res));
+    }
+    // 204 No Content
+    return;
+  } catch (err) {
+    console.error('[LearnFlow] apiDelete error:', err);
     throw err;
   }
 }
@@ -389,7 +417,7 @@ export async function apiGet(path: string) {
     const res = await fetch(`${apiBase()}${API}${path}`, { headers });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'Request failed' }));
-      throw new Error(err.message || `HTTP ${res.status}`);
+      throw new Error(toActionableHttpErrorMessage(res.status, err, res));
     }
     return res.json();
   } catch (err) {
@@ -415,6 +443,7 @@ interface AppContextType {
     topic: string,
     opts?: { parentLessonId?: string },
   ) => Promise<{ course: Course; pipelineId?: string }>;
+  deleteCourse: (courseId: string) => Promise<void>;
   webSearch: (
     query: string,
     limit?: number,
@@ -555,6 +584,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'COMPLETE_LESSON', lessonId });
   }, []);
 
+  const deleteCourse = useCallback(
+    async (courseId: string) => {
+      dispatch({ type: 'SET_LOADING', key: 'deleteCourse', value: true });
+      try {
+        await apiDelete(`/courses/${courseId}`);
+        // Remove locally and clear active course if needed
+        const nextCourses = state.courses.filter((c) => c.id !== courseId);
+        dispatch({ type: 'SET_COURSES', courses: nextCourses });
+        if (state.activeCourse?.id === courseId) {
+          dispatch({ type: 'SET_ACTIVE_COURSE', course: null });
+          dispatch({ type: 'SET_ACTIVE_LESSON', lesson: null });
+        }
+      } finally {
+        dispatch({ type: 'SET_LOADING', key: 'deleteCourse', value: false });
+      }
+    },
+    [state.courses, state.activeCourse?.id],
+  );
+
   const searchResearch = useCallback(async (query: string) => {
     dispatch({ type: 'SET_LOADING', key: 'research', value: true });
     try {
@@ -638,6 +686,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     generateNotes,
     generateQuiz,
     completeLesson: completeLessonAction,
+    deleteCourse,
     searchResearch,
     addTopicToCourse,
     webSearch,
