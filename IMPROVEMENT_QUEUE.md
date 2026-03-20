@@ -1,3 +1,19 @@
+# LearnFlow Improvement Queue — Iteration 47
+
+**Iteration:** 47  
+**Status:** IN PROGRESS  
+**Date:** 2026-03-20
+
+## Hotfixes shipped in Iteration 47
+
+- ✅ Fix API rate limiter keying to prefer user-subject over IP (prevents unexpected 429s in NAT/shared IP situations).
+- ✅ Add `Retry-After` + `retryAfterSeconds` to 429 responses.
+- ✅ Client surfaces actionable 429 message.
+- ✅ Add API regression test: burst create+delete does not 429.
+- ⚠️ Lesson click crash: not reproduced in this pass; capture stack trace if still occurring.
+
+---
+
 # LearnFlow Improvement Queue — Iteration 46
 
 **Iteration:** 46  
