@@ -391,7 +391,7 @@ describe('Agent routing via /api/v1/chat', () => {
       .send({ message: 'find papers on quantum computing', agent: 'research' });
     expect(res.status).toBe(200);
     expect(res.body.agentName).toBe('Research Agent');
-    expect(Array.isArray(res.body.papers)).toBe(true);
+    expect(Array.isArray(res.body.sources)).toBe(true);
   });
 
   it('handles general chat without agent param', { timeout: 15000 }, async () => {

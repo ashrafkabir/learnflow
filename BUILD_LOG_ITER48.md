@@ -125,6 +125,26 @@ Example outputs:
 - Next.js marketing site running on 3003.
 - Observed server log: `/features` returns 500; needs fix.
 
+## 5) Work completed
+
+### P0-1 BYOAI per-user OpenAI keys
+
+- Added `apps/api/src/llm/openai.ts` with `getOpenAIForRequest({ userId, tier })`:
+  - Prefer user’s active stored OpenAI key (decrypted) if present.
+  - Allow managed `OPENAI_API_KEY` only for Pro tier.
+  - Return `null` when unavailable.
+- Updated API routes to use per-request OpenAI client (instead of global env-only `getOpenAI()`):
+  - `apps/api/src/routes/chat.ts`
+  - `apps/api/src/routes/courses.ts`
+  - `apps/api/src/routes/pipeline.ts`
+- Test safety: prevent outbound OpenAI calls in unit/integration tests even if `OPENAI_API_KEY` is set (force `openai=null` for lesson generation when `NODE_ENV=test`).
+
+### P0-2 Remove mock Research Agent results (REST)
+
+- Updated `/api/v1/chat` `agent=research` to return real web retrieval results via `crawlSourcesForTopic(input)`.
+- Removed hard-coded fake arXiv/DOI URLs.
+- Updated API tests to expect `sources[]` instead of `papers[]`.
+
 ## 5) Artifacts produced
 
 - `learnflow/IMPROVEMENT_QUEUE.md`

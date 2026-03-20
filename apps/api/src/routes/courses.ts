@@ -1,18 +1,12 @@
 import { Router, Request, Response } from 'express';
 import { emitToUser } from '../wsHub.js';
 import { z } from 'zod';
-import OpenAI from 'openai';
 import { crawlSourcesForTopic, type FirecrawlSource } from '@learnflow/agents';
 import { dbCourses, dbProgress, dbNotes, dbIllustrations, dbAnnotations } from '../db.js';
 import { parseLessonSources } from '../utils/sources.js';
+import { getOpenAIForRequest } from '../llm/openai.js';
 
 const router = Router();
-
-// OpenAI client for LLM-synthesized content (lazy to respect env changes in tests)
-function getOpenAI(): OpenAI | null {
-  if (!process.env.OPENAI_API_KEY) return null;
-  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-}
 
 // Course generation data — topic-specific content templates
 const TOPIC_CONTENT: Record<
@@ -757,6 +751,7 @@ export async function generateLessonContentWithLLM(
   lessonTitle: string,
   lessonDesc: string,
   crawledSources?: FirecrawlSource[],
+  llm?: { openai?: any } | null,
 ): Promise<string> {
   // Build source context from crawled content
   const sourceContext =
@@ -772,7 +767,7 @@ export async function generateLessonContentWithLLM(
 
   const sourceRefs = crawledSources && crawledSources.length > 0 ? crawledSources.slice(0, 4) : [];
 
-  const openai = getOpenAI();
+  const openai = (llm as any)?.openai || null;
   if (openai) {
     try {
       const completion = await openai.chat.completions.create({
@@ -981,6 +976,13 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   // Generate all lessons with LLM (parallel per module, sequential per lesson for rate limits)
+  const { client: openai } = getOpenAIForRequest({
+    userId: req.user!.sub,
+    tier: req.user!.tier,
+  });
+
+  // In tests, we should never hit the network even if OPENAI_API_KEY is set in the environment.
+  const effectiveOpenAi = process.env.NODE_ENV === 'test' ? null : openai;
   const _lessonStart = Date.now();
   const modules: Module[] = [];
   for (let mi = 0; mi < topicData.modules.length; mi++) {
@@ -992,6 +994,7 @@ router.post('/', async (req: Request, res: Response) => {
         les.title,
         les.description,
         crawledSources,
+        { openai: effectiveOpenAi },
       );
       const wordCount = content.split(/\s+/).filter((w) => w.length > 0).length;
       return {
@@ -1095,6 +1098,11 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
       sources = [];
     }
 
+    const { client: openai } = getOpenAIForRequest({
+      userId: req.user!.sub,
+      tier: req.user!.tier,
+    });
+
     const moduleIndex = course.modules.length;
     const moduleId = `${courseId}-m${moduleIndex}`;
     const moduleTitle = topic;
@@ -1106,6 +1114,7 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
       lessonTitle,
       `A focused, practical introduction to ${topic} for learners already following this course.`,
       sources,
+      { openai: process.env.NODE_ENV === 'test' ? null : openai },
     );
     const wordCount = content.split(/\s+/).filter((w) => w.length > 0).length;
 
@@ -1202,7 +1211,7 @@ router.post('/:id/lessons/:lessonId/notes', async (req: Request, res: Response) 
     }
   }
 
-  const openai = getOpenAI();
+  const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
   let noteContent: any = { format: format || 'custom', text: customContent || '' };
 
   if (format && format !== 'custom' && openai && lesson) {
@@ -1273,7 +1282,7 @@ router.post('/:id/lessons/:lessonId/notes/illustrate', async (req: Request, res:
   const lessonId = String(req.params.lessonId);
   const { description } = req.body;
 
-  const openai = getOpenAI();
+  const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
   if (!openai) {
     res.status(400).json({ error: 'openai_unavailable', message: 'OpenAI API key not configured' });
     return;
@@ -1328,7 +1337,8 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
   const lessonId = String(req.params.lessonId);
   const { sectionIndex, prompt } = req.body;
 
-  const openai = getOpenAI();
+  const userId = req.user?.sub || 'anonymous';
+  const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
   if (!openai) {
     res.status(400).json({ error: 'openai_unavailable' });
     return;
@@ -1368,7 +1378,8 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
   const courseId = String(req.params.id);
   const lessonId = String(req.params.lessonId);
 
-  const openai = getOpenAI();
+  const userId = req.user?.sub || 'anonymous';
+  const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
   if (!openai) {
     res.status(400).json({ error: 'openai_unavailable' });
     return;
@@ -1436,7 +1447,8 @@ router.post('/:id/lessons/:lessonId/annotations', async (req: Request, res: Resp
   let finalNote = note || '';
 
   if ((type === 'explain' || type === 'example') && selectedText) {
-    const openai = getOpenAI();
+    const userId = req.user?.sub || 'anonymous';
+    const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
     if (openai) {
       try {
         const prompt =

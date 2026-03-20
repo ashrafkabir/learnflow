@@ -6,17 +6,18 @@ This queue is written after reviewing the full product spec and inspecting the c
 
 ## Top priorities (P0)
 
-1. **Implement real BYOAI key usage end-to-end (not global env-only)**
+1. **Implement real BYOAI key usage end-to-end (not global env-only)** ✅
 
 - **Spec:** BYOAI free tier; per-user API keys.
-- **Current:** API has `/api/v1/keys` endpoints, but most LLM calls (course generation, notes, illustrations, pipeline) use `process.env.OPENAI_API_KEY` via `getOpenAI()`.
-- **Build:** Persist per-user keys (already saved) and thread them into OpenAI client creation per request; enforce tier rules (BYOAI allowed on free, managed key only on Pro).
+- **Fix:** Added per-request OpenAI client selection that prefers the user’s stored active `openai` key, falls back to managed env key only for Pro tier.
+- **Routes updated:** `/api/v1/chat`, `/api/v1/courses` (lesson gen, notes, illustrations, compare, selection explain/example), `/api/v1/pipeline`.
+- **Test safety:** In `NODE_ENV=test`, course lesson generation forces `openai=null` to prevent accidental outbound network calls even if `OPENAI_API_KEY` is set.
 
-2. **Replace mock Research Agent + citations with real retrieval**
+2. **Replace mock Research Agent + citations with real retrieval** ✅
 
 - **Spec:** Real-time internet curation with attribution.
-- **Current:** `/api/v1/chat` agent=research returns hard-coded arXiv/DOI examples; not real.
-- **Build:** Use `searchTopicTrending` / `crawlSourcesForTopic` and return structured sources with titles/authors/urls and short summaries; remove fake URLs.
+- **Fix:** `/api/v1/chat` with `agent=research` now returns real crawled sources via `crawlSourcesForTopic(input)` and a `sources[]` array with metadata (title/url/author/publishDate/domain/source).
+- **Removed:** hard-coded fake arXiv/DOI URLs.
 
 3. **Unify chat routing: REST `/api/v1/chat` should use Core Orchestrator like WebSocket does**
 

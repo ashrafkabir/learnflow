@@ -1,18 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuid } from 'uuid';
-import OpenAI from 'openai';
 import {
   crawlSourcesForTopic,
   searchForLesson,
   searchTopicTrending,
   type FirecrawlSource,
 } from '@learnflow/agents';
+import { getOpenAIForRequest } from '../llm/openai.js';
 
 const router = Router();
-
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -177,6 +173,7 @@ function getGenericModules(topic: string): TopicModule[] {
 async function generateModulesForTopic(
   topic: string,
   scrapedSources: FirecrawlSource[] = [],
+  openai: any = null,
 ): Promise<TopicModule[]> {
   if (!openai) return getGenericModules(topic);
 
@@ -521,8 +518,13 @@ async function runPipeline(pipelineId: string) {
   const sourceMode = 'real' as const; // web-search-provider always uses real web sources
   updatePipeline(p, { progress: 28, sourceMode });
 
+  const { client: openai } = getOpenAIForRequest({
+    userId: (p as any).userId || 'test-user-1',
+    tier: (p as any).tier || 'pro',
+  });
+
   // Generate INFORMED course plan using scraped sources
-  const modules = await generateModulesForTopic(topic, crawledSources);
+  const modules = await generateModulesForTopic(topic, crawledSources, openai);
   const totalLessons = modules.reduce((s, m) => s + m.lessons.length, 0);
 
   const llmTitle = (generateModulesForTopic as any)._lastTitle;
@@ -637,6 +639,7 @@ async function runPipeline(pipelineId: string) {
             les.title,
             les.description,
             lessonSources,
+            openai,
             minWordHint,
             temp,
           );
@@ -844,6 +847,7 @@ async function generateLesson(
   lessonTitle: string,
   lessonDesc: string,
   sources: FirecrawlSource[],
+  openai: any = null,
   extraInstruction: string = '',
   temperature: number = 0.7,
 ): Promise<string> {
@@ -1044,10 +1048,12 @@ router.post('/add-topic', (req: Request, res: Response) => {
 
   const pipelineId = uuid();
 
-  const state: PipelineState = {
+  const state: PipelineState & { userId?: string; tier?: string } = {
     id: pipelineId,
     courseId,
     topic: topic.trim(),
+    userId: req.user?.sub,
+    tier: req.user?.tier,
     stage: 'scraping',
     progress: 0,
     startedAt: new Date().toISOString(),
@@ -1085,10 +1091,12 @@ router.post('/', (req: Request, res: Response) => {
   const pipelineId = uuid();
   const courseId = `course-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-  const state: PipelineState = {
+  const state: PipelineState & { userId?: string; tier?: string } = {
     id: pipelineId,
     courseId,
     topic,
+    userId: req.user?.sub,
+    tier: req.user?.tier,
     stage: 'scraping',
     progress: 0,
     startedAt: new Date().toISOString(),
@@ -1239,6 +1247,7 @@ router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) =
     return;
   }
 
+  const { client: openai } = getOpenAIForRequest({ userId: req.user!.sub, tier: req.user!.tier });
   if (!openai) {
     res.status(500).json({ error: 'OpenAI not configured' });
     return;

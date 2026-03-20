@@ -1,11 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import OpenAI from 'openai';
 import { courses } from './courses.js';
-
-const openai = process.env.OPENAI_API_KEY
-  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  : null;
+import { getOpenAIForRequest } from '../llm/openai.js';
+import { crawlSourcesForTopic } from '@learnflow/agents';
 
 const router = Router();
 
@@ -36,7 +33,12 @@ function findLesson(lessonId?: string) {
   return null;
 }
 
-async function generateNotesResponse(text: string, lessonId?: string, format?: string) {
+async function generateNotesResponse(
+  openai: any,
+  text: string,
+  lessonId?: string,
+  format?: string,
+) {
   const found = findLesson(lessonId);
   const lessonTitle = found?.lesson.title || 'the topic';
   const lessonContent = found?.lesson.content || '';
@@ -92,7 +94,7 @@ Use markdown formatting. Be specific — reference actual concepts, examples, an
         });
         const content = completion.choices[0]?.message?.content || '';
         if (content.length > 100) {
-          const cueQuestions = content.match(/- .+\?/g)?.map((q) => q.slice(2)) || [];
+          const cueQuestions = content.match(/- .+\?/g)?.map((q: string) => q.slice(2)) || [];
           return {
             notes: {
               format: 'cornell',
@@ -163,7 +165,7 @@ Use markdown formatting. Be specific — reference actual concepts, examples, an
   };
 }
 
-async function generateQuizResponse(courseId?: string, _moduleId?: string) {
+async function generateQuizResponse(openai: any, courseId?: string, _moduleId?: string) {
   const course = courseId ? courses.get(courseId) : null;
   const mod = course?.modules?.[0];
   const topic = course?.topic || 'the subject';
@@ -305,6 +307,7 @@ Include 6 multiple_choice and 2 short_answer questions. For short_answer, omit o
 }
 
 async function generateChatResponse(
+  openai: any,
   text: string,
   lessonId?: string,
   courseId?: string,
@@ -398,9 +401,14 @@ router.post('/', async (req: Request, res: Response) => {
   const { text, message, agent, lessonId, courseId, moduleId, format } = parse.data;
   const input = text || message || '';
 
+  const { client: openai } = getOpenAIForRequest({
+    userId: req.user!.sub,
+    tier: req.user!.tier,
+  });
+
   // Handle specific agent requests
   if (agent === 'notes') {
-    const notesData = await generateNotesResponse(input, lessonId, format);
+    const notesData = await generateNotesResponse(openai, input, lessonId, format);
     res.status(200).json({
       message_id: `msg-${Date.now()}`,
       agentName: 'Notes Agent',
@@ -410,7 +418,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   if (agent === 'exam') {
-    const quizData = await generateQuizResponse(courseId, moduleId);
+    const quizData = await generateQuizResponse(openai, courseId, moduleId);
     res.status(200).json({
       message_id: `msg-${Date.now()}`,
       agentName: 'Exam Agent',
@@ -420,31 +428,29 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   if (agent === 'research') {
+    // MVP: real web retrieval with attribution via existing agent utilities.
+    // (No fake arXiv/DOI links.)
+    const sources = await crawlSourcesForTopic(input);
+
     res.status(200).json({
       message_id: `msg-${Date.now()}`,
       agentName: 'Research Agent',
       content: `Research results for "${input}"`,
-      papers: [
-        {
-          title: 'Advances in the Field',
-          authors: 'Wang et al.',
-          year: 2024,
-          url: 'https://arxiv.org/abs/2401.12345',
-        },
-        {
-          title: 'Practical Applications',
-          authors: 'Smith & Johnson',
-          year: 2024,
-          url: 'https://doi.org/10.1038/s42256-024-00001',
-        },
-      ],
+      sources: sources.map((s) => ({
+        title: s.title,
+        url: s.url,
+        author: s.author,
+        publishDate: s.publishDate,
+        source: s.source,
+        domain: s.domain,
+      })),
     });
     return;
   }
 
   // General chat — route through AI with lesson context
   const historyMsgs = (parse.data.history || []) as Array<{ role: string; content: string }>;
-  const generated = await generateChatResponse(input, lessonId, courseId, historyMsgs);
+  const generated = await generateChatResponse(openai, input, lessonId, courseId, historyMsgs);
   res.status(200).json({
     message_id: `msg-${Date.now()}`,
     content: generated.content,
