@@ -1,413 +1,477 @@
-# LearnFlow — Improvement Queue (Iteration 70)
+# LearnFlow — Improvement Queue (Iteration 71)
 
-Status: **DONE (iter70)**
+Status: **READY FOR BUILDER (iter71)**
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
 Date: 2026-03-23
 
-This queue is a **brutally honest spec-vs-implementation** gap list versus `LearnFlow_Product_Spec.md` (Sections **1–17**) compared to what is actually shipping in this repo **today**.
+This queue is a **brutally honest** spec-vs-implementation gap list versus `LearnFlow_Product_Spec.md` (Sections **1–17**), focused for Iteration 71 on closing **WS-07 (API Layer)** gaps, especially:
 
-Repo reality (what’s shipping): **React/Vite SPA client + Express API + SQLite + WebSocket chat + Yjs-backed mindmap (partial)**, plus a minimal Core Orchestrator (`packages/core`) with **keyword/regex intent routing** and a mix of deterministic + lightly LLM-wired behaviors.
+- Standard **error envelope + requestId** across **REST + WebSocket**
+- **Zod validation middleware** across `/api/v1`
+- **OpenAPI parity + lint**
+- **WS auth + rate limiting parity**
+- systemd service **log cleanup**
+- **WS contract tests**
+- **API reference docs stub**
+- **loadtest harness placeholder**
 
 ---
 
-## Evidence pack (what I ran/read in Iteration 70)
+## Reality check: Spec §§1–17 vs implementation (as of this planner run)
 
-### Spec read (FULL, sections 1–17)
+High-level: the repo is a working **React/Vite client + Express API + SQLite-ish in-memory/JSON persistence patterns + WebSocket chat + Yjs mindmap** MVP. It is **not** the spec’s envisioned multi-service, gRPC-internal, production-hardened architecture.
+
+Brutal truths (relevant to WS-07):
+
+- **REST error envelope exists** (`apps/api/src/errors.ts` → `{ error:{code,message,details?}, requestId, status? }`) and rate-limit errors use it.
+- **WS error envelope is implemented in server code**, but the **shared WS type contract is out of date**: `packages/shared/src/types/ws.ts` still defines `event:'error'` as `{ message: string }` (does not match actual emitted `{ error:{code,message,details?}, requestId, message_id? }`). This is a correctness gap.
+- **RequestId** is present for REST via middleware, and WS generates requestIds ad-hoc (`ws-<timestamp>`). There is **no single shared generator** across REST+WS.
+- **Zod validation is implemented route-by-route**, not as a uniform middleware. Many routes already safeParse, but consistency and shared helpers are missing.
+- **OpenAPI exists** (`apps/api/openapi.yaml`) but is **clearly incomplete** vs the implemented route set; it also does not mention error envelope/requestId. There is **no spec lint/validation step**.
+- **WS rate limiting parity**: REST is tiered rate limited in `app.ts`. WS message handling currently **does not** use the same limiter.
+- **systemd dev services** run, but logs show recurring noise:
+  - API service shows `EADDRINUSE` on port 3000 while the unit remains “active” (port is actually owned by an older `node` pid).
+  - Web service logs show `npm error ENOWORKSPACES` (“This command does not support workspaces.”) even though Next continues to become ready. This is log pollution and hides real failures.
+
+---
+
+## Iteration 71 — Prioritized tasks (10–15)
+
+### P0 — MUST DO (ship these first)
+
+#### 1) P0 — Standardize **ErrorEnvelope + requestId** across REST + WS (single source of truth)
+
+Acceptance criteria:
+
+- REST errors remain (or become) strictly:
+  - `{ error: { code: string, message: string, details?: any }, requestId: string }` (status may remain internal or included; but be consistent and documented).
+- WS `error` event uses the **same envelope** and includes `message_id` when tied to a client message.
+- A **single request id generator** is used by both REST middleware and WS error emission.
+
+Likely files:
+
+- `apps/api/src/errors.ts` (source-of-truth types/helpers)
+- `apps/api/src/websocket.ts` and `apps/api/src/wsOrchestrator.ts` (WS error emission)
+- `packages/shared/src/types/ws.ts` (fix contract)
+- `packages/shared/src/types/api.ts` (if a shared `ErrorEnvelope` type is introduced)
+
+Test plan:
+
+- Add/extend tests:
+  - REST: 400/401/404/429/500 return envelope + requestId.
+  - WS: invalid JSON → `error` event envelope includes requestId and code.
+- Run: `npm test`.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 2) P0 — Fix **shared WS contract types** to match server reality (breaking mismatch today)
+
+Acceptance criteria:
+
+- `packages/shared/src/types/ws.ts` defines `event:'error'` as:
+  - `{ event:'error', data: { error:{code,message,details?}, requestId, message_id? } }`
+- API uses these shared types (best-effort) or at least aligns payload structure.
+
+Likely files:
+
+- `packages/shared/src/types/ws.ts`
+- `apps/api/src/wsContract.ts` (re-export already exists)
+- Client WS handling (wherever it discriminates on `error` payload)
+
+Test plan:
+
+- Typecheck compilation: `npx tsc --noEmit`.
+- Add a contract unit test that imports shared type and asserts a sample payload is assignable.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 3) P0 — Introduce **Zod validation middleware helpers** and apply to all `/api/v1` routes
+
+Acceptance criteria:
+
+- A shared utility exists (example):
+  - `validateBody(schema)`, `validateQuery(schema)`, `validateParams(schema)`
+- All routes use the helpers (or a consistent pattern) and return:
+  - HTTP 400 with **standard error envelope** + flattened field errors.
+- No route silently accepts unknown/untyped payloads.
+
+Likely files:
+
+- `apps/api/src/validation.ts` (new)
+- `apps/api/src/routes/*.ts`, `apps/api/src/auth.ts`, `apps/api/src/keys.ts`, `apps/api/src/yjsRouter.ts`
+
+Test plan:
+
+- Add at least one regression test per major router:
+  - `POST /api/v1/courses` missing fields → 400 with validation error.
+  - `POST /api/v1/marketplace/...` invalid query/body → 400.
+- Run: `npm test`.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 4) P0 — **OpenAPI parity**: update spec to cover _implemented_ endpoints + schemas + error envelopes
+
+Acceptance criteria:
+
+- `apps/api/openapi.yaml` documents all implemented endpoints under `/api/v1` (not just auth/keys/chat/courses).
+- OpenAPI includes:
+  - `components.securitySchemes.bearerAuth`
+  - `components.schemas.ErrorEnvelope`
+  - error responses (`4xx/5xx`) reference `ErrorEnvelope` consistently
+  - major resource schemas: Course, Lesson, Notification, MarketplaceCourse, etc.
+- No obvious drift: endpoints present in server but missing in OpenAPI.
+
+Likely files:
+
+- `apps/api/openapi.yaml`
+- `apps/api/src/app.ts` (route inventory reference)
+
+Test plan:
+
+- Add a test that enumerates implemented route prefixes and asserts they appear in openapi (best-effort allowlist).
+- Run: `npm test`.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 5) P0 — Add **OpenAPI lint/validation** to CI (fail fast on invalid YAML/spec)
+
+Acceptance criteria:
+
+- New script exists (choose one):
+  - `npm run openapi:lint` using `@redocly/cli` or `swagger-cli`
+- CI/test pipeline runs it (at least locally as part of `npm test` or a new root script).
+
+Likely files:
+
+- `apps/api/package.json` (script)
+- root `package.json` (wire script)
+
+Test plan:
+
+- Run: `npm run openapi:lint` and ensure exit 0.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 6) P0 — Add **WS rate limiting** with tier parity (free/pro) + standard WS error on 429
+
+Acceptance criteria:
+
+- WS `message` events are rate limited per user tier similarly to REST limits.
+- When rate limited, WS emits `event:'error'` with:
+  - `error.code='rate_limit_exceeded'`
+  - includes `requestId`, and `message_id` of the message that was rejected.
+- Limiter logic is shared (or at least uses same configuration constants).
+
+Likely files:
+
+- `apps/api/src/app.ts` (extract shared limiter core)
+- `apps/api/src/wsOrchestrator.ts` (apply limiter)
+- `apps/api/src/websocket.ts` (if connection-level limits are added)
+
+Test plan:
+
+- Add a WS test that spams messages and asserts `rate_limit_exceeded` appears.
+- Run: `npm test`.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 7) P0 — systemd service **log cleanup + real health** (fix EADDRINUSE + ENOWORKSPACES noise)
+
+Acceptance criteria:
+
+- `systemctl --user status learnflow-api` shows a single listener on port 3000 owned by the unit.
+- `learnflow-web` no longer logs `ENOWORKSPACES` during normal start.
+- Provide a short doc note in-repo explaining why and how (so it doesn’t regress).
+
+Likely files:
+
+- `~/.config/systemd/user/learnflow-api.service`
+- `~/.config/systemd/user/learnflow-web.service`
+- `apps/web/package.json` and/or root scripts (where workspace-incompatible npm subcommands are used)
+- `DEV_PORTS.md` (append “common failure modes”)
+
+Test plan:
+
+- `systemctl --user restart learnflow-api learnflow-client learnflow-web`
+- `journalctl --user -u learnflow-api -n 80 --no-pager`
+- `journalctl --user -u learnflow-web -n 80 --no-pager`
+- `ss -ltnp | egrep ":3000|:3001|:3003"`
+
+Screenshot checklist:
+
+- None.
+
+---
+
+### P1 — SHOULD DO
+
+#### 8) P1 — WS **contract tests** for Spec §11.2 events (shape + minimum ordering)
+
+Acceptance criteria:
+
+- Tests validate that sending `event:'message'` yields:
+  - `response.start` then ≥1 `response.chunk` then `response.end`
+  - includes `agent.spawned` and ≥1 `agent.complete`
+- Tests validate payload fields match shared types.
+
+Likely files:
+
+- `apps/api/src/__tests__/api-layer.test.ts` (extend) or new `ws-contract.test.ts`
+- `packages/shared/src/types/ws.ts`
+
+Test plan:
+
+- Run: `npm test`.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 9) P1 — Add **REST+WS requestId propagation** policy (docs + headers)
+
+Acceptance criteria:
+
+- REST always sets `x-request-id` response header and accepts inbound `x-request-id`.
+- WS handshake or messages optionally accept a `requestId` in payload; if provided, server echoes it back in envelopes.
+- Documented behavior in API reference stub.
+
+Likely files:
+
+- `apps/api/src/errors.ts`
+- `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`
+- Docs (see Task 11)
+
+Test plan:
+
+- Add tests verifying header echo.
+- WS test with client-provided requestId.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 10) P1 — Add **auth error parity**: ensure 401/403 consistently use standard envelope
+
+Acceptance criteria:
+
+- All auth-related failures return the standard envelope (not ad-hoc JSON).
+- `requireTier('pro')` and other RBAC failures return `error.code` that’s stable/documented (e.g., `forbidden`, `insufficient_tier`).
+
+Likely files:
+
+- `apps/api/src/middleware.ts`
+- `apps/api/src/errors.ts`
+
+Test plan:
+
+- Extend auth/RBAC tests.
+- Run: `npm test`.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 11) P1 — Create **API Reference docs stub** (REST + WS) pointing at OpenAPI
+
+Acceptance criteria:
+
+- A docs page exists with:
+  - Base URLs (dev)
+  - Auth (JWT)
+  - Rate limits by tier (REST + WS)
+  - Error codes + envelope examples
+  - WS event list (Spec §11.2) + example transcript
+  - Link to `apps/api/openapi.yaml`
+
+Likely files:
+
+- `apps/docs` (preferred) or `apps/web` docs route
+
+Test plan:
+
+- `npm test` (if docs tests exist)
+- manual: open docs route and confirm renders.
+
+Screenshot checklist:
+
+- Add screenshot via harness if docs has a route (otherwise skip).
+
+---
+
+#### 12) P1 — Add **OpenAPI/implementation drift test** (route inventory smoke)
+
+Acceptance criteria:
+
+- A test fails if:
+  - a new router is added under `/api/v1/*` but OpenAPI is not updated.
+- Implementation approach can be best-effort allowlist of expected prefixes.
+
+Likely files:
+
+- `apps/api/src/__tests__/openapi-parity.test.ts` (new)
+- `apps/api/openapi.yaml`
+
+Test plan:
+
+- Run: `npm test`.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+### P2 — NICE TO HAVE (but valuable for WS-07 completeness)
+
+#### 13) P2 — Create **loadtest harness placeholder** (k6 or Artillery) for 1 REST + 1 WS scenario
+
+Acceptance criteria:
+
+- `npm run loadtest:smoke` exists and can:
+  - call `/health`
+  - call `/api/v1/chat` in dev/mock mode
+  - open `/ws` and send one message; verify at least `response.end`
+- Produces a short summary.
+
+Likely files:
+
+- `apps/api/loadtest/` (new)
+- `apps/api/package.json` scripts
+
+Test plan:
+
+- Run: `npm run loadtest:smoke`.
+
+Screenshot checklist:
+
+- None.
+
+---
+
+#### 14) P2 — Standardize **success envelope (optional)** without breaking clients
+
+Acceptance criteria:
+
+- Introduce `{ data, requestId }` for _new_ endpoints or behind a flag/header.
+- Existing client expectations continue to pass.
+
+Likely files:
+
+- `packages/shared/src/types/api.ts`
+- selected routes
+
+Test plan:
+
+- `npm test`
+
+Screenshot checklist:
+
+- Ensure screenshot harness still passes.
+
+---
+
+#### 15) P2 — WS backpressure/ordering note (document, don’t overbuild)
+
+Acceptance criteria:
+
+- Document known WS limitations (no delivery guarantees, naive chunking, etc.).
+- Add a small unit test for chunk sizing to prevent regression.
+
+Likely files:
+
+- Docs page (Task 11)
+- `apps/api/src/wsOrchestrator.ts`
+
+Test plan:
+
+- `npm test`
+
+Screenshot checklist:
+
+- None.
+
+---
+
+## Evidence pack (Iteration 71 planner run)
+
+### 1) Spec read (FULL, sections 1–17)
 
 - Read full spec file: `/home/aifactory/.openclaw/workspace/learnflow/LearnFlow_Product_Spec.md`
-  - Verified length: **1105 lines**
-  - Sections 1–17 present.
+  - Sections 1–17 verified present (ends at Appendix).
 
-### Code inspected (UI + API + Core + Agents)
+### 2) Code inspected (WS-07 focus)
 
-- API (Express):
-  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/app.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/chat.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/keys.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/profile.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/subscription.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/export.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/mindmap.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/marketplace-full.ts`
-- Core orchestrator:
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/core/src/orchestrator/orchestrator.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/core/src/orchestrator/intent-router.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/core/src/context/student-context.ts`
-- Agents:
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/course-builder/course-builder-agent.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/research-agent/research-agent.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/notes-agent/notes-agent.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/exam-agent/exam-agent.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/mindmap-agent/mindmap-agent.ts`
-  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/collaboration-agent/collaboration-agent.ts`
-  - Content pipeline pieces inspected (attribution/scoring/search):
-    - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/content-pipeline/*`
+- REST error envelope + requestId: `apps/api/src/errors.ts`, `apps/api/src/app.ts`
+- WS server + WS orchestrator: `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`
+- Shared WS types: `packages/shared/src/types/ws.ts`
+- OpenAPI: `apps/api/openapi.yaml`
 
-### App boot + screenshot harness
+### 3) System boot + screenshots
 
-- Ran harness from repo root:
-  - `node screenshot-all.mjs --outDir screenshots/iter70`
-- Screenshots captured: **27 PNGs** under:
-  - Workspace: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter70/run-1/`
-  - OneDrive mirror: `/home/aifactory/onedrive-learnflow/learnflow/learnflow/learnflow/screenshots/iter70/`
+Commands executed:
 
-Screens captured include (sample):
+- `systemctl --user restart learnflow-api learnflow-client learnflow-web || true`
+- `cd /home/aifactory/.openclaw/workspace/learnflow && SCREENSHOT_DIR=screenshots/iter71/planner-run node screenshot-all.mjs`
 
-- `landing-home.png`, marketing pages, auth login/register, onboarding 1–6, dashboard, conversation, mindmap, pipelines, settings, marketplaces, course view, lesson reader.
+Screenshots saved to:
+
+- Workspace: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter71/planner-run/`
+  - Includes: `app-dashboard.png`, `app-conversation.png`, `app-mindmap.png`, `course-view.png`, `lesson-reader.png`, etc.
+
+### 4) Verification commands (required)
+
+Commands executed:
+
+- `npm test` ✅ (Vitest/turbo) — **22 test files, 140 tests passed**
+- `npx tsc --noEmit` ✅
+- `npx eslint .` ✅
+- `npx prettier --check .` ✅
+
+### 5) Ops evidence (systemd / ports)
+
+- `systemctl --user status learnflow-api learnflow-client learnflow-web` shows:
+  - API: `EADDRINUSE` on port 3000 in logs
+  - Web: `npm error ENOWORKSPACES` noise
+- `ss -ltnp | egrep ":3000|:3001|:3003"` shows:
+  - 3000 is held by an older `node` pid (not the current unit pid)
 
 ---
 
-## Brutally honest spec → implementation gap (by spec section)
+## OneDrive sync (required)
 
-### §1–2 (Vision/positioning)
+This file and screenshots are mirrored by the planner step:
 
-- The product story is present (marketing pages exist; onboarding exists).
-- The **core differentiators are only partially true**:
-  - “Multi-agent architecture” is real in code shape (registry + orchestrator), but **execution is shallow** (keyword routing, limited DAG, limited agent sophistication).
-  - “Always attributed, internet-curated lessons” is **not reliably enforced** end-to-end.
-
-### §3 (System architecture)
-
-- Spec: gRPC, agent mesh, Postgres/Redis/S3/vector DB.
-- Repo: single Express API + SQLite + some WS/Yjs.
-- That’s acceptable for MVP, but it means:
-  - **No agent mesh / isolation**, no vector store, no scalable data plane.
-  - Many “enterprise-ready” claims in spec are not represented in shipping code.
-
-### §4 (Multi-agent architecture)
-
-- Orchestrator exists: `packages/core/src/orchestrator/orchestrator.ts`
-  - Has a minimal DAG planner; does a “primary + optional summarizer” pattern.
-  - Course builder additionally triggers mindmap extension.
-- Major gaps vs spec:
-  - Intent parsing is **routeIntent() keyword/regex** (not a planner that reasons about tools/capabilities).
-  - “Agent transparency” UX (spawned/complete events) is not at spec bar.
-  - “Update Agent (Pro)” is **missing**.
-
-### §4.4 (BYOAI key management)
-
-- **Implemented (MVP)**:
-  - `apps/api/src/routes/keys.ts` stores keys encrypted (AES wrapper) and exposes list with masked key and usageCount/lastUsed.
-  - Validates format-only at `/api/v1/keys/validate`.
-- Gaps:
-  - Provider routing is inconsistent across the stack; chat uses `apiKey` override to guess provider, but stored keys are not clearly used to select LLM provider per request.
-  - Validation is format-only (spec allows that), but there’s no “real call” validation option.
-  - “Keys never logged” needs a deliberate audit (not proven by tests).
-
-### §5 (Client screens)
-
-- Screens exist and are coherent.
-- Several are **demo-level**:
-  - Collaboration UI is explicitly “Mock / Coming soon” and uses hardcoded data (`apps/client/src/screens/Collaboration.tsx`).
-  - Course marketplace shows sample data if API returns empty (fallback), which is fine for dev but undermines truthfulness.
-  - Dashboard “daily lessons / mastery” does not appear fully backed by persisted behavioral tracking.
-
-### §6 (Content pipeline + attribution)
-
-- Content-pipeline modules exist in `packages/agents/src/content-pipeline/` (discovery/scoring/dedupe/attribution-tracker).
-- However, spec-level guarantees are not enforced:
-  - No hard gate ensuring every lesson includes sources.
-  - No licensing/robots compliance layer.
-  - No persistent attribution chain per lesson/module enforced in DB schemas.
-
-### §7 (Marketplace)
-
-- Backend route `marketplace-full.ts` implements qualityCheck + revenue split and persists some records via SQLite helpers.
-- Major truth gap:
-  - Checkout is **mocked as instant success** (`status: 'completed'`) — this must be labeled as mock in UI/API or replaced with Stripe test-mode.
-  - Reviews/ratings write-path is not clearly implemented end-to-end.
-
-### §8 (Subscription)
-
-- Subscription routes exist (`/api/v1/subscription`) with feature flags, but:
-  - It is effectively a **toggle** (set tier=pro/free) with **mock IAP receipt** validation.
-  - Enforcement across endpoints (quotas, export formats, mindmap node caps) is inconsistent.
-
-### §9 (Behavioral tracking + Student Context)
-
-- StudentContextObject type exists in core, but server context building is minimal:
-  - `apps/api/src/orchestratorShared.ts` fills many fields with defaults/empties.
-  - `/api/v1/profile/context` returns a context-like object, but several fields are placeholders.
-- The orchestrator is **not actually using** behavioral tracking to personalize outputs (spec expectation).
-
-### §10 (Orchestrator prompt)
-
-- Spec includes a large “system prompt”.
-- Repo has an orchestrator system prompt file, but the functional behavior (agents + citations + proactive adaptation) is not yet there.
-
-### §11 (API + WebSocket)
-
-- Many REST endpoints exist.
-- WebSocket event protocol described in spec is **not clearly implemented as spec** (agent.spawned, response.chunk, progress.update etc.).
-
-### §12–13 (Marketing + docs)
-
-- Marketing site pages exist (screenshots show them).
-- Docs truthfulness needs maintenance: avoid claiming features that are mock (payments, collaboration, proactive updates).
-
-### §15 (Testing)
-
-- Screenshot harness exists and is working (good!).
-- Need more integration tests for critical flows and “honesty” checks (e.g., never silently falling back to sample marketplace data without labeling it).
-
----
-
-## Improvement Queue (Iteration 70) — prioritized tasks (10–15)
-
-Each task has: priority, acceptance criteria, likely files, test plan, and screenshot checklist.
-
-### P0 — Payments honesty: Stripe test-mode OR explicit “Mock Checkout” UX + state machine
-
-**Problem:** `/api/v1/marketplace/checkout` returns `status: 'completed'` immediately (mock). This is trust-sensitive.
-
-- **Acceptance criteria**
-  - Choose one path (builder decision):
-    1. **Stripe test-mode**: create Checkout Session, handle webhook to mark payment completed, enroll only after webhook.
-    2. **Mock, but honest**: API returns `status: 'mock_completed'` (or similar), UI labels it “Mock checkout (dev)”, and no Stripe language exists anywhere.
-  - Enrollment is only granted after a confirmed terminal payment status.
-- **Likely files**
-  - `apps/api/src/routes/marketplace-full.ts`
-  - `apps/client/src/screens/marketplace/CourseMarketplace.tsx` (enroll flow)
-  - Any course detail screen (if exists) for purchase CTA
-- **Test plan**
-  - Integration: POST checkout -> verify enrollment only after success state.
-- **Screenshot checklist**
-  - `marketplace-courses.png` + (add) course detail purchase state screenshot.
-
-### P0 — Collaboration: replace hardcoded UI with minimal real backend (groups + messages)
-
-**Problem:** `Collaboration.tsx` is entirely mocked.
-
-- **Acceptance criteria**
-  - Add SQLite-backed endpoints:
-    - `GET /api/v1/collaboration/matches`
-    - `POST /api/v1/collaboration/groups`
-    - `GET /api/v1/collaboration/groups`
-    - `POST /api/v1/collaboration/groups/:id/messages`
-    - `GET /api/v1/collaboration/groups/:id/messages`
-  - UI shows real groups + message thread.
-- **Likely files**
-  - `apps/api/src/routes/` (new `collaboration.ts`)
-  - `apps/api/src/db.ts`
-  - `apps/client/src/screens/Collaboration.tsx`
-- **Test plan**
-  - Integration: create group -> send message -> reload -> messages persist.
-- **Screenshot checklist**
-  - `app-collaboration.png` shows a real thread, not mock “coming soon”.
-
-### P0 — Enforce “every lesson has sources” (attribution gate)
-
-**Problem:** Spec §6 requires consistent attribution; currently best-effort.
-
-- **Acceptance criteria**
-  - Lesson persistence includes `sources[]` (>=2) OR explicit `sourcesMissingReason` field.
-  - Course builder refuses to mark course “ready” unless attribution threshold met.
-  - Lesson reader always renders a Sources section (even if empty state).
-- **Likely files**
-  - `packages/agents/src/course-builder/*`
-  - `apps/api/src/routes/courses.ts`
-  - `apps/api/src/utils/sources.ts` (or wherever parsing lives)
-  - `apps/client/src/screens/LessonReader.tsx`
-- **Test plan**
-  - Integration: create course -> fetch lesson -> assert sources present.
-- **Screenshot checklist**
-  - `lesson-reader.png` clearly shows Sources UI populated.
-
-### P0 — BYOAI provider selection: saved keys drive actual LLM calls (OpenAI + Anthropic + Gemini)
-
-**Problem:** Keys vault exists, but provider routing looks inconsistent/opaque.
-
-- **Acceptance criteria**
-  - Deterministic provider selection order:
-    1. per-request `apiKey` override (if provided)
-    2. active saved key for selected provider
-    3. Pro managed key (env) if tier=pro
-  - Record usage with `{provider, agentName, tokensTotal}` for every LLM call.
-- **Likely files**
-  - `apps/api/src/routes/keys.ts`
-  - `apps/api/src/llm/*`
-  - `apps/api/src/routes/chat.ts` and WS orchestrator
-- **Test plan**
-  - Integration: save Anthropic key -> chat -> provider recorded as anthropic.
-- **Screenshot checklist**
-  - `app-settings.png` shows multiple keys and usage stats updating.
-
-### P1 — Marketplace: stop silent fallback to SAMPLE_COURSES (truthfulness + empty states)
-
-**Problem:** Client falls back to sample marketplace data if API returns empty; can mislead.
-
-- **Acceptance criteria**
-  - If API returns 0 courses, UI shows “No courses yet” and a CTA (publish/import), not sample data.
-  - Sample data only appears behind explicit dev flag.
-- **Likely files**
-  - `apps/client/src/screens/marketplace/CourseMarketplace.tsx`
-- **Test plan**
-  - E2E: with empty DB, marketplace shows empty state.
-- **Screenshot checklist**
-  - `marketplace-courses.png` reflects real state (empty or real courses).
-
-### P1 — Real course creation endpoint semantics (spec §11.1): POST /courses triggers course_builder and persists
-
-**Problem:** Spec expects POST /courses triggers course_builder; validate what actually happens and make it true.
-
-- **Acceptance criteria**
-  - `POST /api/v1/courses` uses Orchestrator/CourseBuilder and persists:
-    - course -> modules -> lessons
-    - per-lesson sources
-    - authorId/userId ownership
-  - `GET /api/v1/courses` returns only the user’s courses with progress.
-- **Likely files**
-  - `apps/api/src/routes/courses.ts`
-  - `packages/agents/src/course-builder/*`
-  - `apps/api/src/db.ts`
-- **Test plan**
-  - Integration: POST courses -> GET returns it -> GET lesson works.
-- **Screenshot checklist**
-  - `course-view.png`, `course-create-after-click.png`.
-
-### P1 — Student Context Object: persist & populate from real DB (not placeholders)
-
-**Problem:** `buildStudentContext()` fills many fields with empty defaults; personalization is not real.
-
-- **Acceptance criteria**
-  - Persist at least:
-    - enrolledCourseIds, completedLessonIds
-    - quizScores
-    - studyStreak + totalStudyMinutes
-    - preferredAgents (already exists)
-  - `/api/v1/profile/context` matches the runtime context.
-- **Likely files**
-  - `packages/core/src/context/student-context.ts`
-  - `apps/api/src/orchestratorShared.ts`
-  - `apps/api/src/db.ts` + progress tables
-- **Test plan**
-  - Integration: complete lesson -> profile/context updates.
-- **Screenshot checklist**
-  - `app-dashboard.png` shows real streak/progress numbers.
-
-### P1 — WebSocket event protocol: implement spec-ish events (response.start/chunk/end + agent.spawned/complete)
-
-**Problem:** Spec §11.2 expects streaming + agent transparency; current experience is mostly request/response.
-
-- **Acceptance criteria**
-  - WS sends:
-    - `response.start` with message_id/agent
-    - 1..N `response.chunk`
-    - `response.end` with actions/sources
-    - `agent.spawned`/`agent.complete` when DAG tasks run
-  - Client renders agent activity indicator based on these events.
-- **Likely files**
-  - `apps/api/src/wsOrchestrator.ts` (or WS handler)
-  - `apps/client/src/screens/Conversation.tsx`
-- **Test plan**
-  - E2E: message -> see indicator -> see streamed response.
-- **Screenshot checklist**
-  - `app-conversation.png` showing agent activity + rich response.
-
-### P1 — Export: align with subscription matrix (Free=Markdown only, Pro=PDF/SCORM)
-
-**Problem:** Spec §8 defines export gating; current export route returns json/md/zip for everyone.
-
-- **Acceptance criteria**
-  - Free tier: only `md/markdown`.
-  - Pro tier: allow `json`, `zip`, and (stub ok) `pdf`/`scorm` with explicit “coming soon” if not implemented.
-  - Error codes stable for upgrade CTA.
-- **Likely files**
-  - `apps/api/src/routes/export.ts`
-  - `apps/api/src/routes/subscription.ts` (feature flags)
-  - Client settings/export UI
-- **Test plan**
-  - Integration: free export zip -> 403 with code -> UI shows upgrade CTA.
-- **Screenshot checklist**
-  - `app-settings.png` shows export options and gating.
-
-### P2 — Mindmap: make it actually user-owned and durable (API-backed), not just visual
-
-**Problem:** Spec positions mindmap as core; current API returns dbMindmaps.get(userId), but UX/actionability is limited.
-
-- **Acceptance criteria**
-  - Mindmap nodes/edges persisted per user.
-  - “Suggest” nodes can be accepted -> adds nodes to graph.
-  - Node click drives next action (open lesson / build lesson / quiz).
-- **Likely files**
-  - `apps/api/src/routes/mindmap.ts`
-  - `apps/client/src/screens/MindmapExplorer.tsx`
-  - `apps/client/src/hooks/useMindmapYjs.ts` (if used)
-- **Test plan**
-  - E2E: accept suggestion -> reload -> node remains.
-- **Screenshot checklist**
-  - `app-mindmap.png` with accepted nodes.
-
-### P2 — Marketplace reviews/ratings: add write path + aggregates
-
-**Problem:** Ratings displayed, but review submission flow isn’t clearly real.
-
-- **Acceptance criteria**
-  - `POST /api/v1/marketplace/courses/:id/reviews` persists review.
-  - `GET /api/v1/marketplace/courses/:id` returns reviews and computed rating.
-- **Likely files**
-  - `apps/api/src/routes/marketplace-full.ts`
-  - `apps/api/src/db.ts`
-  - Client course detail screen
-- **Test plan**
-  - Integration: post review -> get detail reflects updated aggregates.
-- **Screenshot checklist**
-  - Course detail page showing reviews.
-
-### P2 — Update Agent (Pro): implement minimal scheduled topic monitor + notifications feed
-
-**Problem:** Spec’s Pro value prop depends on proactive updates. Currently missing.
-
-- **Acceptance criteria**
-  - Add `update_agent` with deterministic MVP (e.g., uses existing search pipeline) producing notifications.
-  - Only runs for Pro users.
-  - Notifications persisted and shown on dashboard.
-- **Likely files**
-  - `packages/agents/src/update-agent/*` (new)
-  - `apps/api/src/routes/daily.ts` or a jobs module
-  - `apps/client/src/screens/Dashboard.tsx`
-- **Test plan**
-  - Integration: set user tier=pro -> trigger job -> notification appears.
-- **Screenshot checklist**
-  - `app-dashboard.png` with update notification.
-
-### P2 — “Implemented vs Planned” doc to prevent spec drift
-
-**Problem:** Spec is far ahead of repo reality; truthfulness debt grows each iteration.
-
-- **Acceptance criteria**
-  - Add `docs/IMPLEMENTED_VS_SPEC.md` listing per spec section:
-    - implemented now
-    - partially implemented
-    - not implemented
-    - mock/demo-only
-- **Likely files**
-  - `docs/IMPLEMENTED_VS_SPEC.md` (new)
-- **Test plan**
-  - N/A (review doc)
-- **Screenshot checklist**
-  - N/A
-
----
-
-## Screenshot checklist (iter70)
-
-Quick review set (all stored in iter70 folder):
-
-- Marketing: `landing-home.png`, `marketing-features.png`, `marketing-pricing.png`, `marketing-download.png`, `marketing-docs.png`, `marketing-about.png`, `marketing-blog.png`
-- Auth: `auth-login.png`, `auth-register.png`
-- Onboarding: `onboarding-1-welcome.png` … `onboarding-6-first-course.png`
-- App: `app-dashboard.png`, `app-conversation.png`, `app-mindmap.png`, `app-settings.png`, `app-pipelines.png`, `pipeline-detail.png`, `app-collaboration.png`
-- Course: `course-view.png`, `lesson-reader.png`
-- Marketplace: `marketplace-courses.png`, `marketplace-agents.png`
-
----
-
-## OneDrive sync (iter70)
-
-- Screenshots mirrored to:
-  - `/home/aifactory/onedrive-learnflow/learnflow/learnflow/learnflow/screenshots/iter70/`
-- This file must be mirrored to:
-  - `/home/aifactory/onedrive-learnflow/learnflow/IMPROVEMENT_QUEUE.md`
+- `/home/aifactory/onedrive-learnflow/learnflow/IMPROVEMENT_QUEUE.md`
+- `/home/aifactory/onedrive-learnflow/learnflow/learnflow/learnflow/screenshots/iter71/planner-run/`

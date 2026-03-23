@@ -63,4 +63,11 @@ export type WsServerEvent =
       event: 'progress.update';
       data: { course_id: string | null; lesson_id: string | null; completion_percent: number };
     }
-  | { event: 'error'; data: { message: string } };
+  | {
+      event: 'error';
+      data: {
+        error: { code: string; message: string; details?: unknown };
+        requestId: string;
+        message_id?: string;
+      };
+    };
