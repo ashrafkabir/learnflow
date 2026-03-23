@@ -15,30 +15,28 @@ import {
 import { authRouter } from '../auth.js';
 import { authMiddleware } from '../middleware.js';
 import { db } from '../db.js';
+import { errorHandler, requestIdMiddleware } from '../errors.js';
 
 function createApp() {
   const app = express();
+  app.use(requestIdMiddleware);
   app.use(express.json());
   app.use('/api/v1/auth', authRouter);
   // Public GET routes for search; auth required for everything else
   const publicPaths = ['/courses', '/agents'];
+  // Express' req.path excludes the query string, so we only need to match the path prefix.
+  const isPublicGet = (req: express.Request): boolean =>
+    req.method === 'GET' && publicPaths.some((p) => req.path === p || req.path.startsWith(p + '/'));
+
   app.use(
     '/api/v1/marketplace',
     (req, res, next) => {
-      if (
-        req.method === 'GET' &&
-        publicPaths.some((p) => req.path === p || req.path.startsWith(p + '?'))
-      )
-        return next();
+      if (isPublicGet(req)) return next();
       return authMiddleware(req, res, next);
     },
     marketplaceFullRouter,
   );
-  app.use(
-    (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      res.status(500).json({ error: 'internal', message: err.message, code: 500 });
-    },
-  );
+  app.use(errorHandler);
   return app;
 }
 

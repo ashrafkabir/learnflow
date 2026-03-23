@@ -5,17 +5,15 @@ import { authRouter } from '../auth.js';
 import { authMiddleware } from '../middleware.js';
 import { collaborationRouter } from '../routes/collaboration.js';
 import { db } from '../db.js';
+import { errorHandler, requestIdMiddleware } from '../errors.js';
 
 function createApp() {
   const app = express();
+  app.use(requestIdMiddleware);
   app.use(express.json());
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/collaboration', authMiddleware, collaborationRouter);
-  app.use(
-    (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      res.status(500).json({ error: 'internal', message: err.message, code: 500 });
-    },
-  );
+  app.use(errorHandler);
   return app;
 }
 
