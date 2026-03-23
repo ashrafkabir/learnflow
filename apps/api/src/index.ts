@@ -1,6 +1,8 @@
 import 'dotenv/config';
 
 process.on('uncaughtException', (err) => {
+  // Avoid duplicate noisy fatal logs for expected dev restarts / port conflicts.
+  if ((err as any)?.code === 'EADDRINUSE') return;
   console.error('[FATAL] Uncaught Exception:', err);
 });
 process.on('unhandledRejection', (reason) => {
@@ -25,6 +27,26 @@ createWebSocketServer(server);
 const yjsServer = http.createServer();
 const yjsWss = new WebSocketServer({ server: yjsServer, path: '/yjs', perMessageDeflate: false });
 attachYjsMindmapServer(yjsWss as any);
+
+yjsServer.on('error', (err: any) => {
+  if (err?.code === 'EADDRINUSE') {
+    console.error(
+      `[LearnFlow] Yjs port ${config.yjsPort} already in use. Is another dev server running?`,
+    );
+    process.exit(1);
+  }
+  throw err;
+});
+
+server.on('error', (err: any) => {
+  if (err?.code === 'EADDRINUSE') {
+    console.error(
+      `[LearnFlow] API port ${config.port} already in use. Is another dev server running?`,
+    );
+    process.exit(1);
+  }
+  throw err;
+});
 
 yjsServer.listen(config.yjsPort, () => {
   console.log(`LearnFlow Yjs server running on port ${config.yjsPort}`);

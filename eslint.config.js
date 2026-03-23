@@ -33,6 +33,8 @@ export default tseslint.config(
       '**/*.js.map',
       '**/*.d.ts',
       '**/*.d.ts.map',
+      // allow a few CJS scripts used for dev/systemd wrappers
+      '**/*.cjs',
     ],
   },
 );

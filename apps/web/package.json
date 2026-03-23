@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev --port 3003",
+    "dev": "node ./scripts/next-dev.cjs",
     "lint": "echo 'skip web lint (configured at repo root)'",
     "test": "vitest run"
   },

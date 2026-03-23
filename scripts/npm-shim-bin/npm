@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# npm shim: avoid ENOWORKSPACES for `npm config` inside workspaces
+if [[ "$1" == "config" ]]; then
+  shift
+  exec /usr/bin/npm config "$@" --workspaces=false
+fi
+exec /usr/bin/npm "$@"
