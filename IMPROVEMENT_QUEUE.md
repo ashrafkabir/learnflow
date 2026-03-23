@@ -129,7 +129,7 @@ Screenshot checklist:
 
 #### 4) P0 — **OpenAPI parity**: update spec to cover _implemented_ endpoints + schemas + error envelopes
 
-Status: 🟡 **IN PROGRESS (builder run-4)** — OpenAPI lint wired (see P0-5); parity updates pending
+Status: ✅ **DONE (builder run-1)** — OpenAPI updated to document implemented endpoints + `ErrorEnvelope` + `x-request-id`
 
 Acceptance criteria:
 
@@ -184,6 +184,8 @@ Screenshot checklist:
 
 #### 6) P0 — Add **WS rate limiting** with tier parity (free/pro) + standard WS error on 429
 
+Status: ✅ **DONE (builder run-2)** — WS inbound messages now apply the shared tiered limiter and emit `rate_limit_exceeded`
+
 Acceptance criteria:
 
 - WS `message` events are rate limited per user tier similarly to REST limits.
@@ -210,6 +212,8 @@ Screenshot checklist:
 ---
 
 #### 7) P0 — systemd service **log cleanup + real health** (fix EADDRINUSE + ENOWORKSPACES noise)
+
+Status: ✅ **DONE (builder run-3)** — reduced ENOWORKSPACES spam for web; improved API EADDRINUSE messaging
 
 Acceptance criteria:
 
