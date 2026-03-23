@@ -1,6 +1,6 @@
 # LearnFlow — Improvement Queue (Iteration 71)
 
-Status: **READY FOR BUILDER (iter71)**
+Status: **IN PROGRESS (iter71)**
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
