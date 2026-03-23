@@ -403,13 +403,14 @@ async function runAddTopicPipeline(pipelineId: string) {
   // Generate content by calling shared generator in courses.ts through dynamic import.
   // Keeps the add-topic behavior consistent with the direct /courses/:id/add-topic path.
   const { generateLessonContentWithLLM } = await import('./courses.js');
-  const content = await generateLessonContentWithLLM(
+  const gen = await generateLessonContentWithLLM(
     topic,
     topic,
     `${topic}: Overview`,
     `A focused, practical introduction to ${topic} for learners already following this course.`,
     uniqueSources.slice(0, 8),
   );
+  const content = gen.markdown;
   const wc = content.split(/\s+/).filter((w: string) => w).length;
 
   syntheses[0].status = 'done';

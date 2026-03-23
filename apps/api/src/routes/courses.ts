@@ -20,6 +20,12 @@ import {
 } from '../db.js';
 import { parseLessonSources, type LessonSource } from '../utils/sources.js';
 import { enforceBiteSizedLesson } from '../utils/lessonSizing.js';
+import { lessonHasRequiredStructure } from '../utils/lessonStructure.js';
+import {
+  toStructuredLessonSources,
+  type StructuredLessonSource,
+} from '../utils/sourcesStructured.js';
+import { validateWorkedExampleQuality, type LessonDomain } from '../utils/lessonQuality.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
 import { validateBody } from '../validation.js';
@@ -38,7 +44,10 @@ export async function generateLessonContentWithLLM(
   lessonDesc: string,
   crawledSources?: FirecrawlSource[],
   llm?: { openai?: any } | null,
-): Promise<string> {
+): Promise<{ markdown: string; sources: StructuredLessonSource[] }> {
+  const accessedAt = new Date().toISOString();
+  const structuredSources = toStructuredLessonSources(crawledSources, { limit: 4, accessedAt });
+
   // Build source context from crawled content
   const sourceContext =
     crawledSources && crawledSources.length > 0
@@ -51,7 +60,7 @@ export async function generateLessonContentWithLLM(
           .join('\n\n')
       : '';
 
-  const sourceRefs = crawledSources && crawledSources.length > 0 ? crawledSources.slice(0, 4) : [];
+  const sourceRefs = structuredSources;
 
   const openai = (llm as any)?.openai || null;
   if (openai) {
@@ -67,11 +76,22 @@ export async function generateLessonContentWithLLM(
 
 Requirements:
 - The lesson must be bite-sized: target 500-900 words (<= ~10 minutes at 200 wpm)
-- Use specific examples, analogies, and code blocks where appropriate
-- Include inline citations like [1], [2] referencing the provided sources
-- Be specific and technical — avoid generic platitudes
-- Use markdown formatting with headers, bold, lists, and code blocks
-- Structure: Learning Objectives → Estimated Time → Core Content (2-3 subsections) → Key Takeaways → Sources → Next Steps`,
+- Use an e-learning narration cadence: explain clearly, avoid filler, favor concrete details.
+- Include inline citations like [1], [2] referencing the provided sources.
+- Be specific and technical — avoid generic platitudes.
+- Use markdown formatting with headers, bold, lists, and code blocks.
+- REQUIRED STRUCTURE (all headings must appear exactly):
+  - ## Learning Objectives
+  - ## Estimated Time
+  - ## Core Concepts
+  - ## Worked Example
+  - ## Recap
+  - ## Quick Check (include an explicit Answer Key)
+  - ## Sources
+  - ## Next Steps
+- Worked Example MUST be fully worked (show steps). For programming: include a runnable code block.
+- Quick Check MUST include 3-5 questions AND an Answer Key.
+- Do not invent sources. If you cannot support a claim with sources, mark it as an assumption.`,
           },
           {
             role: 'user',
@@ -83,8 +103,10 @@ ${sourceContext ? `Use these real sources as the basis for your content:\n\n${so
 
 Format the output as markdown starting with # ${lessonTitle}
 
-End with a ## Sources section listing:
-${sourceRefs.map((s, i) => `[${i + 1}] ${s.author || 'Unknown'}. "${s.title}". ${s.source || s.domain}, ${s.publishDate ? new Date(s.publishDate).getFullYear() : 2024}. ${s.url}`).join('\n') || '[1] Use your knowledge to cite relevant works.'}
+In the ## Sources section, list ONLY the provided sources (no extras), with this format:
+${sourceRefs.map((s, i) => `[${i + 1}] ${s.author || 'Unknown'}. "${s.title}". ${s.publication || 'Unknown'}, ${s.year || 2024}. ${s.url} (License: ${s.license || 'unknown'}; Accessed: ${s.accessedAt})`).join('\n') || 'No sources available.'}
+
+In ## Quick Check, include a "### Answer Key" subsection.
 
 Then a ## Next Steps section.`,
           },
@@ -92,7 +114,7 @@ Then a ## Next Steps section.`,
       });
       const content = completion.choices[0]?.message?.content;
       if (content && content.length > 200) {
-        return content;
+        return { markdown: content, sources: sourceRefs };
       }
     } catch (err) {
       console.warn('[LearnFlow] OpenAI lesson generation failed, using fallback:', err);
@@ -102,19 +124,12 @@ Then a ## Next Steps section.`,
   // Fallback: structured template.
   // IMPORTANT: never emit fake/example links. If we have no crawled sources, provide a minimal
   // "no sources" section instead of placeholder citations.
-  const sources =
-    sourceRefs.length > 0
-      ? sourceRefs.map((s) => ({
-          url: s.url,
-          author: s.author || 'Unknown',
-          publication: s.source || s.domain,
-          year: s.publishDate ? new Date(s.publishDate).getFullYear() : 2024,
-        }))
-      : [];
+  const sources = sourceRefs;
 
   const sel = sources.sort(() => Math.random() - 0.5).slice(0, 4);
 
-  return `# ${lessonTitle}
+  return {
+    markdown: `# ${lessonTitle}
 
 ## Learning Objectives
 
@@ -128,7 +143,7 @@ By the end of this lesson, you will be able to:
 
 **8 minutes** (~1200 words)
 
-## Core Content
+## Core Concepts
 
 ### Understanding ${lessonTitle}
 
@@ -148,6 +163,33 @@ ${lessonDesc}. This is a critical area within the broader field of ${topic}.
 2. **Research**: Academic institutions use these approaches for breakthrough discoveries
 3. **Industry**: Enterprises apply these techniques for competitive advantage
 
+## Worked Example
+
+Work through one concrete example end-to-end.
+
+### Example (fill in)
+
+1. Identify the goal and inputs.
+2. Apply the core concept(s) step-by-step.
+3. Show the intermediate outputs.
+4. Verify the result.
+
+## Recap
+
+- Summarize the key points in 3-5 bullets.
+
+## Quick Check
+
+1. Question 1
+2. Question 2
+3. Question 3
+
+### Answer Key
+
+1. Answer 1
+2. Answer 2
+3. Answer 3
+
 ## Key Takeaways
 
 1. ${lessonTitle} is foundational to understanding ${topic}
@@ -163,7 +205,7 @@ ${
     ? sel
         .map(
           (s, i) =>
-            `[${i + 1}] ${s.author}. "${lessonTitle}." ${s.publication}, ${s.year}. ${s.url}`,
+            `[${i + 1}] ${s.author || 'Unknown'}. "${s.title || lessonTitle}." ${s.publication || 'Unknown'}, ${s.year || 2024}. ${s.url} (License: ${s.license || 'unknown'}; Accessed: ${s.accessedAt})`,
         )
         .join('\n\n')
     : '_No external sources were available for this lesson generation run._'
@@ -171,7 +213,9 @@ ${
 
 ## Next Steps
 
-Continue with the next lesson in this module to deepen your understanding.`;
+Continue with the next lesson in this module to deepen your understanding.`,
+    sources: sourceRefs,
+  };
 }
 
 interface Lesson {
@@ -358,8 +402,14 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
   for (let mi = 0; mi < topicData.modules.length; mi++) {
     const mod = topicData.modules[mi];
     const lessonPromises = mod.lessons.map(async (les, li) => {
-      const content = fastTestMode
-        ? `# ${les.title}\n\n${les.description}\n\n(Generated in test fast mode)`
+      const gen = fastTestMode
+        ? {
+            markdown: `# ${les.title}\n\n${les.description}\n\n(Generated in test fast mode)\n\n## Learning Objectives\n\n- Understand the goal of this lesson\n\n## Estimated Time\n\n**1 minute**\n\n## Core Concepts\n\n- Core concept placeholder\n\n## Worked Example\n\n1. Step 1\n\n## Recap\n\n- Recap placeholder\n\n## Quick Check\n\n1. Q1\n\n### Answer Key\n\n1. A1\n\n## Sources\n\n_No external sources in test fast mode._\n\n## Next Steps\n\nContinue.`,
+            sources: toStructuredLessonSources(crawledSources, {
+              limit: 4,
+              accessedAt: new Date().toISOString(),
+            }),
+          }
         : await generateLessonContentWithLLM(
             topic,
             mod.title,
@@ -368,11 +418,33 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
             crawledSources,
             { openai: effectiveOpenAi },
           );
-      const enforced = enforceBiteSizedLesson(content, { maxMinutes: 10 });
+
+      const enforced = enforceBiteSizedLesson(gen.markdown, { maxMinutes: 10 });
       const contentFinal = enforced.content;
       const wordCount = enforced.sizing.wordCount;
       const estimatedMinutes = Math.min(10, enforced.sizing.estimatedMinutes);
-      const sources = parseLessonSources(contentFinal);
+
+      const structure = lessonHasRequiredStructure(contentFinal);
+      if (!structure.ok) {
+        console.warn('[LearnFlow] lesson structure missing headings:', structure.missing);
+      }
+
+      const domain = classifyTopicDomain(topic);
+      const lessonDomain: LessonDomain =
+        domain === 'programming' || domain === 'ai_prompting'
+          ? 'programming'
+          : domain === 'math' || domain === 'quantum_computing'
+            ? 'math_science'
+            : domain === 'policy_business'
+              ? 'business'
+              : 'general';
+
+      const quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
+      if (!quality.ok) {
+        console.warn('[LearnFlow] worked example quality failed:', quality.reasons);
+      }
+
+      const sources = gen.sources || [];
       const missingReason =
         sources.length >= 2 ? '' : 'attribution_gate: lesson has fewer than 2 resolvable sources';
       try {
@@ -562,7 +634,7 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
     const moduleTitle = topic;
     const lessonTitle = `${topic}: Overview`;
 
-    const content = await generateLessonContentWithLLM(
+    const gen = await generateLessonContentWithLLM(
       topic,
       moduleTitle,
       lessonTitle,
@@ -570,13 +642,13 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
       sources,
       { openai: process.env.NODE_ENV === 'test' ? null : openai },
     );
-    const enforced = enforceBiteSizedLesson(content, { maxMinutes: 10 });
+    const enforced = enforceBiteSizedLesson(gen.markdown, { maxMinutes: 10 });
     const contentFinal = enforced.content;
     const wordCount = enforced.sizing.wordCount;
     const estimatedMinutes = Math.min(10, enforced.sizing.estimatedMinutes);
 
     const lessonId = `${courseId}-m${moduleIndex}-l0`;
-    const newLessonSources = parseLessonSources(contentFinal);
+    const newLessonSources = gen.sources || [];
     const missingReason =
       newLessonSources.length >= 2
         ? ''
