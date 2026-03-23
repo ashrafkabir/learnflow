@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { sendError } from '../errors.js';
+import { validateBody } from '../validation.js';
 import { courses } from './courses.js';
 import {
   buildStudentContext,
@@ -139,19 +140,8 @@ function buildAgentPrompt(params: {
   return input;
 }
 
-router.post('/', async (req: Request, res: Response) => {
-  const parse = chatSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { text, message, agent, lessonId, courseId, moduleId, format, apiKey } = parse.data;
+router.post('/', validateBody(chatSchema), async (req: Request, res: Response) => {
+  const { text, message, agent, lessonId, courseId, moduleId, format, apiKey } = req.body;
   const input = text || message || '';
 
   // If a client supplies a one-off apiKey, perform basic sanity check.

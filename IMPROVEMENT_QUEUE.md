@@ -99,6 +99,8 @@ Screenshot checklist:
 
 #### 3) P0 — Introduce **Zod validation middleware helpers** and apply to all `/api/v1` routes
 
+Status: 🟡 **IN PROGRESS (builder run-2)** — added middleware helpers in `apps/api/src/validation.ts`; migrated `POST /api/v1/chat`
+
 Acceptance criteria:
 
 - A shared utility exists (example):
