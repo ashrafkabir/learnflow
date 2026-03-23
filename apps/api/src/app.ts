@@ -23,65 +23,33 @@ import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from
 import { errorHandler, notFoundHandler, requestIdMiddleware, sendError } from './errors.js';
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
+import { RATE_LIMITS, clearRateLimits, rateLimitKeyFromReq, takeRateLimit } from './rateLimit.js';
 
-// Simple in-memory rate limiter
-// Spec §11.1/WS-07 (MVP): tiered limits by user tier.
-// NOTE: these are best-effort in-memory limits (per-process).
-export const RATE_LIMITS = {
-  free: { perMinute: 100 },
-  pro: { perMinute: 500 },
-  // devMode keeps rate limiting enabled but raises limits to avoid flaky local/E2E runs
-  dev: { freePerMinute: 2000, proPerMinute: 5000 },
-} as const;
-
-const rateLimitStore: Map<string, { count: number; resetAt: number }> = new Map();
-
-export function clearRateLimits(): void {
-  rateLimitStore.clear();
-}
+export { RATE_LIMITS, clearRateLimits };
 
 function rateLimiter(req: Request, res: Response, next: NextFunction): void {
   // Prefer user-scoped limits over IP-scoped limits.
   // Keying purely by IP is too coarse in real-world environments (NAT, office networks,
   // mobile carriers) and can cause unrelated users/actions (e.g., course deletion) to hit 429.
   const ip = req.ip || 'unknown';
-  const userKey = req.user?.sub || ip;
-  const tier = req.user?.tier || 'free';
+  const userKey = rateLimitKeyFromReq({ ip, user: req.user });
+  const tier = (req.user?.tier || 'free') as 'free' | 'pro';
 
   // In local dev mode we keep rate limiting enabled (so we still exercise the behavior)
   // but raise limits to avoid flaky E2E runs that legitimately generate a lot of API traffic.
   const devMode = Boolean((req.app as any)?.locals?.devMode);
-  const limit = devMode
-    ? tier === 'pro'
-      ? RATE_LIMITS.dev.proPerMinute
-      : RATE_LIMITS.dev.freePerMinute
-    : tier === 'pro'
-      ? RATE_LIMITS.pro.perMinute
-      : RATE_LIMITS.free.perMinute;
-  const windowMs = 60_000;
 
-  const now = Date.now();
-  const key = `${userKey}:${tier}`;
-  let entry = rateLimitStore.get(key);
-
-  if (!entry || now > entry.resetAt) {
-    entry = { count: 0, resetAt: now + windowMs };
-    rateLimitStore.set(key, entry);
-  }
-
-  entry.count++;
-
-  if (entry.count > limit) {
-    const retryAfterSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
-    res.setHeader('Retry-After', String(retryAfterSeconds));
+  const take = takeRateLimit({ key: userKey, tier, devMode });
+  if (!take.ok) {
+    res.setHeader('Retry-After', String(take.retryAfterSeconds));
     sendError(res, req, {
       status: 429,
       code: 'rate_limit_exceeded',
-      message: `Rate limit of ${limit} requests per minute exceeded for ${tier} tier. Try again in ~${retryAfterSeconds}s.`,
+      message: `Rate limit of ${take.limit} requests per minute exceeded for ${tier} tier. Try again in ~${take.retryAfterSeconds}s.`,
       details: {
         tier,
-        limitPerMinute: limit,
-        retryAfterSeconds,
+        limitPerMinute: take.limit,
+        retryAfterSeconds: take.retryAfterSeconds,
       },
     });
     return;

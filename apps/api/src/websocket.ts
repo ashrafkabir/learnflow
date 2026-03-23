@@ -6,6 +6,7 @@ import type { AuthUser } from './middleware.js';
 import { URL } from 'url';
 import { registerSocket } from './wsHub.js';
 import { createRequestId } from './errors.js';
+import { rateLimitKeyFromReq, takeRateLimit } from './rateLimit.js';
 
 interface WsEvent {
   event: string;
@@ -47,6 +48,31 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
     registerSocket(user.sub, ws);
 
     ws.on('message', (raw: Buffer) => {
+      // WS-07 parity: Apply tiered rate limiting to inbound messages (best-effort).
+      const devMode = process.env.NODE_ENV !== 'production' && config.devMode;
+      const tier = (user as any)?.tier === 'pro' ? 'pro' : 'free';
+      const ip =
+        String((req.headers['x-forwarded-for'] as any) || '')
+          ?.split(',')?.[0]
+          ?.trim() ||
+        req.socket.remoteAddress ||
+        'unknown';
+      const key = rateLimitKeyFromReq({ ip, user });
+
+      const take = takeRateLimit({ key, tier, devMode });
+      if (!take.ok) {
+        sendWsError(ws, createRequestId(), {
+          code: 'rate_limit_exceeded',
+          message: `Rate limit of ${take.limit} requests per minute exceeded for ${tier} tier. Try again in ~${take.retryAfterSeconds}s.`,
+          details: {
+            tier,
+            limitPerMinute: take.limit,
+            retryAfterSeconds: take.retryAfterSeconds,
+          },
+        });
+        return;
+      }
+
       try {
         const msg = JSON.parse(raw.toString()) as WsEvent;
         void handleMessage(ws, user, msg);
