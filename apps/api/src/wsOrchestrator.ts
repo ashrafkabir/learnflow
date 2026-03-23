@@ -9,6 +9,7 @@ import {
   makeSourcesFromLesson,
 } from './orchestratorShared.js';
 import { db } from './db.js';
+import { createRequestId } from './errors.js';
 
 /**
  * Shared WS orchestrator.
@@ -163,7 +164,7 @@ export async function handleWsMessage(
     });
   } catch (err: any) {
     const message = err?.message || 'Orchestrator error';
-    sendWsError(ws, `ws-${Date.now()}`, {
+    sendWsError(ws, createRequestId(), {
       code: message === 'orchestrator_timeout' ? 'timeout' : 'orchestrator_error',
       message,
       message_id: messageId,

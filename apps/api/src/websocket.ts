@@ -5,6 +5,7 @@ import { config } from './config.js';
 import type { AuthUser } from './middleware.js';
 import { URL } from 'url';
 import { registerSocket } from './wsHub.js';
+import { createRequestId } from './errors.js';
 
 interface WsEvent {
   event: string;
@@ -50,7 +51,7 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
         const msg = JSON.parse(raw.toString()) as WsEvent;
         void handleMessage(ws, user, msg);
       } catch {
-        sendWsError(ws, `ws-${Date.now()}`, {
+        sendWsError(ws, createRequestId(), {
           code: 'invalid_json',
           message: 'Invalid JSON',
         });

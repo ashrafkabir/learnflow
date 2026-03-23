@@ -43,6 +43,8 @@ Brutal truths (relevant to WS-07):
 
 #### 1) P0 — Standardize **ErrorEnvelope + requestId** across REST + WS (single source of truth)
 
+Status: ✅ **DONE (builder run-1)** — WS requestIds now generated via `apps/api/src/errors.ts:createRequestId()` (shared with REST)
+
 Acceptance criteria:
 
 - REST errors remain (or become) strictly:
