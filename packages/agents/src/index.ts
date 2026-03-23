@@ -84,6 +84,11 @@ export {
   searchForLesson,
   searchTopicTrending,
 } from './content-pipeline/web-search-provider.js';
+
+export {
+  searchWikimediaCommonsImages,
+  type LicenseSafeImageCandidate,
+} from './content-pipeline/image-search-provider.js';
 export type {
   FirecrawlSource,
   FirecrawlConfig,

@@ -43,6 +43,11 @@ interface Illustration {
   prompt: string;
   imageUrl: string;
   createdAt: string;
+  provider?: string;
+  model?: string;
+  license?: string;
+  attributionText?: string;
+  sourcePageUrl?: string;
 }
 
 interface Annotation {
@@ -377,6 +382,9 @@ export function LessonReader() {
         body: JSON.stringify({
           sectionIndex: illustratePopover.sectionIndex,
           prompt: illustratePrompt,
+          // Use license-safe images in production by default.
+          // In test/offline environments, the API will degrade gracefully.
+          provider: 'wikimedia',
         }),
       });
       const data = await res.json();
@@ -830,6 +838,27 @@ export function LessonReader() {
                           {sectionIllustrations[0].prompt}
                         </div>
                       )}
+                      {(sectionIllustrations[0].attributionText ||
+                        sectionIllustrations[0].license ||
+                        sectionIllustrations[0].sourcePageUrl) && (
+                        <div className="px-4 pb-3 text-[11px] text-primary-100/80">
+                          {sectionIllustrations[0].attributionText ||
+                            `Image attribution: ${sectionIllustrations[0].license || 'unknown'}`}
+                          {sectionIllustrations[0].sourcePageUrl ? (
+                            <>
+                              {' '}
+                              <a
+                                className="underline"
+                                href={sectionIllustrations[0].sourcePageUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Source
+                              </a>
+                            </>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1187,17 +1216,38 @@ export function LessonReader() {
                                 alt={ill.prompt}
                                 className="w-full max-h-96 object-contain"
                               />
-                              <div className="flex items-center justify-between p-2">
-                                <p className="text-xs text-gray-500 italic">{ill.prompt}</p>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => deleteSectionIllustration(ill.id)}
-                                  className="text-red-400 hover:text-red-600"
-                                  title="Remove illustration"
-                                >
-                                  <IconX className="w-4 h-4" />
-                                </Button>
+                              <div className="p-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs text-gray-500 italic">{ill.prompt}</p>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => deleteSectionIllustration(ill.id)}
+                                    className="text-red-400 hover:text-red-600"
+                                    title="Remove illustration"
+                                  >
+                                    <IconX className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                                {(ill.attributionText || ill.license || ill.sourcePageUrl) && (
+                                  <div className="mt-1 text-[11px] text-gray-500">
+                                    {ill.attributionText ||
+                                      `Image attribution: ${ill.license || 'unknown'}`}
+                                    {ill.sourcePageUrl ? (
+                                      <>
+                                        {' '}
+                                        <a
+                                          className="underline"
+                                          href={ill.sourcePageUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                        >
+                                          Source
+                                        </a>
+                                      </>
+                                    ) : null}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}

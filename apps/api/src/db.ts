@@ -47,6 +47,33 @@ if (!isTest) {
     } catch {
       // If lesson_sources doesn't exist yet, CREATE TABLE below will handle it.
     }
+
+    // Iter72: illustrations gained attribution metadata
+    try {
+      if (!hasColumn('illustrations', 'provider')) {
+        sqlite.exec(
+          `ALTER TABLE illustrations ADD COLUMN provider TEXT NOT NULL DEFAULT 'unknown';`,
+        );
+      }
+      if (!hasColumn('illustrations', 'model')) {
+        sqlite.exec(`ALTER TABLE illustrations ADD COLUMN model TEXT NOT NULL DEFAULT 'unknown';`);
+      }
+      if (!hasColumn('illustrations', 'license')) {
+        sqlite.exec(
+          `ALTER TABLE illustrations ADD COLUMN license TEXT NOT NULL DEFAULT 'unknown';`,
+        );
+      }
+      if (!hasColumn('illustrations', 'attributionText')) {
+        sqlite.exec(
+          `ALTER TABLE illustrations ADD COLUMN attributionText TEXT NOT NULL DEFAULT '';`,
+        );
+      }
+      if (!hasColumn('illustrations', 'sourcePageUrl')) {
+        sqlite.exec(`ALTER TABLE illustrations ADD COLUMN sourcePageUrl TEXT NOT NULL DEFAULT '';`);
+      }
+    } catch {
+      // If illustrations doesn't exist yet, CREATE TABLE below will handle it.
+    }
   } catch {
     // If the users table doesn't exist yet, CREATE TABLE below will handle it.
   }
@@ -340,7 +367,12 @@ sqlite.exec(`
     sectionIndex INTEGER NOT NULL,
     prompt TEXT NOT NULL,
     imageUrl TEXT NOT NULL,
-    createdAt TEXT NOT NULL
+    createdAt TEXT NOT NULL,
+    provider TEXT NOT NULL DEFAULT 'unknown',
+    model TEXT NOT NULL DEFAULT 'unknown',
+    license TEXT NOT NULL DEFAULT 'unknown',
+    attributionText TEXT NOT NULL DEFAULT '',
+    sourcePageUrl TEXT NOT NULL DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_illustrations_lesson ON illustrations(lessonId);
 
@@ -581,7 +613,8 @@ const stmts = {
 
   // Illustrations
   insertIllustration: sqlite.prepare(
-    `INSERT INTO illustrations (id, lessonId, sectionIndex, prompt, imageUrl, createdAt) VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO illustrations (id, lessonId, sectionIndex, prompt, imageUrl, createdAt, provider, model, license, attributionText, sourcePageUrl)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   getIllustrationsByLesson: sqlite.prepare(
     `SELECT * FROM illustrations WHERE lessonId = ? ORDER BY sectionIndex, createdAt`,
@@ -1466,12 +1499,51 @@ export const dbIllustrations = {
     sectionIndex: number,
     prompt: string,
     imageUrl: string,
+    meta?: {
+      provider?: string;
+      model?: string;
+      license?: string;
+      attributionText?: string;
+      sourcePageUrl?: string;
+    },
     status?: 'ok' | 'openai_unavailable',
   ): any {
     const id = `ill-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     const createdAt = new Date().toISOString();
-    stmts.insertIllustration.run(id, lessonId, sectionIndex, prompt, imageUrl, createdAt);
-    return { id, lessonId, sectionIndex, prompt, imageUrl, status: status || 'ok', createdAt };
+    const provider = meta?.provider || 'unknown';
+    const model = meta?.model || 'unknown';
+    const license = meta?.license || 'unknown';
+    const attributionText = meta?.attributionText || '';
+    const sourcePageUrl = meta?.sourcePageUrl || '';
+
+    stmts.insertIllustration.run(
+      id,
+      lessonId,
+      sectionIndex,
+      prompt,
+      imageUrl,
+      createdAt,
+      provider,
+      model,
+      license,
+      attributionText,
+      sourcePageUrl,
+    );
+
+    return {
+      id,
+      lessonId,
+      sectionIndex,
+      prompt,
+      imageUrl,
+      status: status || 'ok',
+      createdAt,
+      provider,
+      model,
+      license,
+      attributionText,
+      sourcePageUrl,
+    };
   },
   delete(id: string): void {
     stmts.deleteIllustration.run(id);

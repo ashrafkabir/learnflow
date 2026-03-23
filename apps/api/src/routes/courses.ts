@@ -6,7 +6,9 @@ import {
   buildCourseOutline,
   classifyTopicDomain,
   quantumComputingRequiredModules,
+  searchWikimediaCommonsImages,
   type FirecrawlSource,
+  type LicenseSafeImageCandidate,
 } from '@learnflow/agents';
 import {
   dbCourses,
@@ -948,9 +950,41 @@ router.get('/:id/lessons/:lessonId/illustrations', (req: Request, res: Response)
 // POST /api/v1/courses/:id/lessons/:lessonId/illustrations
 router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Response) => {
   const lessonId = String(req.params.lessonId);
-  const { sectionIndex, prompt } = req.body;
+  const { sectionIndex, prompt, provider } = req.body;
 
   const userId = req.user?.sub || 'anonymous';
+  // Allow choosing a license-safe web image provider.
+  // Default: OpenAI generated image (existing behavior).
+  if (String(provider || '').toLowerCase() === 'wikimedia') {
+    try {
+      const images: LicenseSafeImageCandidate[] = await searchWikimediaCommonsImages(prompt, {
+        limit: 4,
+      });
+      const picked = images[0];
+      if (!picked?.url) {
+        sendError(res, req, {
+          status: 404,
+          code: 'no_images_found',
+          message: 'No license-safe images found for this prompt',
+        });
+        return;
+      }
+
+      const illustration = dbIllustrations.create(lessonId, sectionIndex ?? 0, prompt, picked.url, {
+        provider: 'wikimedia_commons',
+        model: 'search',
+        license: picked.license || 'unknown',
+        sourcePageUrl: picked.sourcePageUrl,
+        attributionText: `Image from Wikimedia Commons · License: ${picked.license || 'unknown'}${picked.author ? ` · Author: ${picked.author}` : ''} · Accessed: ${picked.accessedAt}`,
+      });
+      res.status(201).json({ illustration });
+      return;
+    } catch (err: any) {
+      console.warn('[LearnFlow] Wikimedia image search failed, falling back to OpenAI:', err);
+      // continue to OpenAI path
+    }
+  }
+
   const { client: openai } = getOpenAIForRequest({
     userId,
     tier: req.user?.tier || 'free',
@@ -964,6 +998,12 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
       sectionIndex ?? 0,
       prompt,
       '',
+      {
+        provider: 'openai',
+        model: 'dall-e-3',
+        license: 'generated',
+        attributionText: 'Generated image (OpenAI / dall-e-3)',
+      },
       'openai_unavailable',
     );
     res.status(201).json({ illustration, degraded: true });
@@ -987,7 +1027,12 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
       });
       return;
     }
-    const illustration = dbIllustrations.create(lessonId, sectionIndex ?? 0, prompt, imageUrl);
+    const illustration = dbIllustrations.create(lessonId, sectionIndex ?? 0, prompt, imageUrl, {
+      provider: 'openai',
+      model: 'dall-e-3',
+      license: 'generated',
+      attributionText: `Generated image (OpenAI / dall-e-3) · Prompt: ${prompt} · Created: ${new Date().toISOString()}`,
+    });
     res.status(201).json({ illustration });
   } catch (err: any) {
     console.error('[LearnFlow] Illustration generation failed:', err);
