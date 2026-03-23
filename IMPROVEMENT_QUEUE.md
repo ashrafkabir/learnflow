@@ -1,503 +1,377 @@
-# LearnFlow — Improvement Queue (Iteration 71)
+# LearnFlow — Improvement Queue (Iteration 72)
 
-Status: **DONE (iter71)**
+Status: **READY FOR BUILDER (iter72)**
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
 Date: 2026-03-23
 
-This queue is a **brutally honest** spec-vs-implementation gap list versus `LearnFlow_Product_Spec.md` (Sections **1–17**), focused for Iteration 71 on closing **WS-07 (API Layer)** gaps, especially:
+Focus for Iteration 72: **CONTENT QUALITY + TOPIC-ADAPTIVE COURSE STRUCTURE**
 
-- Standard **error envelope + requestId** across **REST + WebSocket**
-- **Zod validation middleware** across `/api/v1`
-- **OpenAPI parity + lint**
-- **WS auth + rate limiting parity**
-- systemd service **log cleanup**
-- **WS contract tests**
-- **API reference docs stub**
-- **loadtest harness placeholder**
+Non-goals (for this iteration): infra re-architecture, marketplace monetization, deep auth changes.
 
 ---
 
-## Reality check: Spec §§1–17 vs implementation (as of this planner run)
+## Brutally honest gap assessment (spec intent vs current implementation)
 
-High-level: the repo is a working **React/Vite client + Express API + SQLite-ish in-memory/JSON persistence patterns + WebSocket chat + Yjs mindmap** MVP. It is **not** the spec’s envisioned multi-service, gRPC-internal, production-hardened architecture.
+### 1) Outline generation logic (course structure)
 
-Brutal truths (relevant to WS-07):
+**What spec wants:** topic decomposition → concept hierarchy → syllabus with prerequisites; adaptive structure per domain; no “generic learning pattern” repetition.
 
-- **REST error envelope exists** (`apps/api/src/errors.ts` → `{ error:{code,message,details?}, requestId, status? }`) and rate-limit errors use it.
-- **WS error envelope is implemented in server code**, but the **shared WS type contract is out of date**: `packages/shared/src/types/ws.ts` still defines `event:'error'` as `{ message: string }` (does not match actual emitted `{ error:{code,message,details?}, requestId, message_id? }`). This is a correctness gap.
-- **RequestId** is present for REST via middleware, and WS generates requestIds ad-hoc (`ws-<timestamp>`). There is **no single shared generator** across REST+WS.
-- **Zod validation is implemented route-by-route**, not as a uniform middleware. Many routes already safeParse, but consistency and shared helpers are missing.
-- **OpenAPI exists** (`apps/api/openapi.yaml`) but is **clearly incomplete** vs the implemented route set; it also does not mention error envelope/requestId. There is **no spec lint/validation step**.
-- **WS rate limiting parity**: REST is tiered rate limited in `app.ts`. WS message handling currently **does not** use the same limiter.
-- **systemd dev services** run, but logs show recurring noise:
-  - API service shows `EADDRINUSE` on port 3000 while the unit remains “active” (port is actually owned by an older `node` pid).
-  - Web service logs show `npm error ENOWORKSPACES` (“This command does not support workspaces.”) even though Next continues to become ready. This is log pollution and hides real failures.
+**What code does today (reality):**
+
+- **Two competing outline systems exist:**
+  - `packages/agents/src/course-builder/topic-decomposer.ts` creates a **deterministic** concept tree with mostly generic “Introduction/Core/Advanced/Best Practices/Applications” unless the topic matches a small keyword list.
+  - `apps/api/src/routes/courses.ts` bypasses that and uses **hard-coded `TOPIC_CONTENT`** buckets (agentic ai / rust / prompt engineering / climate / quantum). Everything else is forced to one of those via `matchTopic()` (and the default fallback is **quantum**).
+
+**Why this is a problem:**
+
+- **Generic repetition is baked in** (same “Fundamentals/Advanced/Best Practices/Applications” scaffolding across topics).
+- The outline is not “topic adaptive” beyond a few curated topics.
+- The “fallback to quantum” is a content-quality footgun: many unrelated topics can silently become quantum-shaped.
+
+### 2) Lesson synthesis (narrated e-learning vs generic prose)
+
+**What spec wants:** <10 min lessons with a consistent e-learning cadence: **core concepts → worked examples → recap → quick checks**, plus objectives, takeaways, sources, next steps.
+
+**What code does today:**
+
+- LLM prompt in `apps/api/src/routes/courses.ts:generateLessonContentWithLLM()` asks for structure, but **doesn’t enforce**:
+  - presence/quality of **worked examples** (incl. “show your work” steps)
+  - **recap** quality (often generic)
+  - **quick check** correctness + answers
+  - “no filler” constraints (it only says “avoid generic platitudes”, but there’s no validation)
+- Fallback (no OpenAI) emits **very generic template content** with made-up sounding phrasing and weak specificity.
+
+### 3) Citations + image embedding (license-safe attribution)
+
+**Text sources (today):**
+
+- Lesson sources are parsed from markdown via `apps/api/src/utils/sources.ts` and persisted in `dbLessonSources`.
+- There is an “attribution gate” of **>=2 resolvable sources**, but:
+  - it’s based on **parsing**, not on a robust structured citation object produced at generation time.
+  - it does **not** capture **license** or **access timestamp** per source (spec §6.3 requires this).
+
+**Images (today):**
+
+- Images are generated via OpenAI Images (`dall-e-3`) and stored as remote URLs.
+- **No attribution object exists for images** (prompt-only), no license info, no “generated by” labeling, no provenance chain.
+
+### 4) UI rendering (embedded images + attribution)
+
+- `apps/client/src/screens/LessonReader.tsx` renders:
+  - text content + inline [n] citations + a references list
+  - per-section illustrations (if present)
+- It **does not** render a standardized **attribution panel** for images (or text sources beyond the references list), and there is no UX for “license-safe attribution”.
 
 ---
 
-## Iteration 71 — Prioritized tasks (10–15)
+## Iteration 72 — Prioritized tasks (CONTENT QUALITY / TOPIC-ADAPTIVE STRUCTURE)
 
-### P0 — MUST DO (ship these first)
+### P0 — MUST DO
 
-#### 1) P0 — Standardize **ErrorEnvelope + requestId** across REST + WS (single source of truth)
+#### 1) P0 — Replace `matchTopic()` fallback-to-quantum with safe, topic-preserving behavior
 
-Status: ✅ **DONE (builder run-1)** — WS requestIds now generated via `apps/api/src/errors.ts:createRequestId()` (shared with REST)
+Problem: `matchTopic()` defaults to `'quantum'` which corrupts structure for unrelated topics.
 
 Acceptance criteria:
 
-- REST errors remain (or become) strictly:
-  - `{ error: { code: string, message: string, details?: any }, requestId: string }` (status may remain internal or included; but be consistent and documented).
-- WS `error` event uses the **same envelope** and includes `message_id` when tied to a client message.
-- A **single request id generator** is used by both REST middleware and WS error emission.
+- For unknown topics, the system must **not** default to quantum.
+- Unknown topic must generate a **generic-but-topic-preserving** outline (topic string remains the driver, not a different domain template).
+- Add regression test: create course with topic “Italian cooking basics” and assert module titles contain “Italian”/“cooking” (not quantum terms).
 
 Likely files:
 
-- `apps/api/src/errors.ts` (source-of-truth types/helpers)
-- `apps/api/src/websocket.ts` and `apps/api/src/wsOrchestrator.ts` (WS error emission)
-- `packages/shared/src/types/ws.ts` (fix contract)
-- `packages/shared/src/types/api.ts` (if a shared `ErrorEnvelope` type is introduced)
-
-Test plan:
-
-- Add/extend tests:
-  - REST: 400/401/404/429/500 return envelope + requestId.
-  - WS: invalid JSON → `error` event envelope includes requestId and code.
-- Run: `npm test`.
-
-Screenshot checklist:
-
-- None.
+- `apps/api/src/routes/courses.ts`
+- tests under `apps/api/src/__tests__/`
 
 ---
 
-#### 2) P0 — Fix **shared WS contract types** to match server reality (breaking mismatch today)
+#### 2) P0 — Implement topic-adaptive outline generator (kill generic repetition)
 
-Status: ✅ **DONE (builder run-1)** — shared WS `error` event type aligned + contract d.ts test (`packages/shared/src/types/ws-contract.test-d.ts`)
+Replace hard-coded bucket outlines with a single pipeline:
+
+- Topic → domain classifier → outline “style profile” (e.g., programming vs math vs history vs business) → module skeleton → lesson titles/descriptions.
 
 Acceptance criteria:
 
-- `packages/shared/src/types/ws.ts` defines `event:'error'` as:
-  - `{ event:'error', data: { error:{code,message,details?}, requestId, message_id? } }`
-- API uses these shared types (best-effort) or at least aligns payload structure.
+- New outline generator produces **distinct structures** across at least 6 topics (see regression suite below).
+- Output must include:
+  - module `title`, `objective`
+  - lesson `title`, `description`
+  - ordering that reflects prerequisites (basic → advanced)
+- Remove/soft-deprecate `TOPIC_CONTENT` as the default path; keep only as optional curated overrides.
 
 Likely files:
 
-- `packages/shared/src/types/ws.ts`
-- `apps/api/src/wsContract.ts` (re-export already exists)
-- Client WS handling (wherever it discriminates on `error` payload)
+- `apps/api/src/routes/courses.ts` (course creation path)
+- new: `packages/agents/src/course-builder/domain-outline.ts` (or similar)
+- `packages/shared` types if needed
 
-Test plan:
+Tests:
 
-- Typecheck compilation: `npx tsc --noEmit`.
-- Add a contract unit test that imports shared type and asserts a sample payload is assignable.
+- Add unit tests for “outline diversity”:
+  - ensure module titles differ meaningfully by topic (not the same 6 generic patterns)
 
-Screenshot checklist:
+Screenshots:
 
-- None.
+- `course-create-after-click.png`
+- `course-view.png`
 
 ---
 
-#### 3) P0 — Introduce **Zod validation middleware helpers** and apply to all `/api/v1` routes
+#### 3) P0 — Quantum Computing course: enforce required reference structure
 
-Status: ✅ **DONE (builder run-3)** — migrated remaining `/api/v1` routes to `validateBody/validateQuery/validateParams` (plus `validateQueryFrom` for query aliases)
+Required structure:
+
+**Intro → Math Foundations → Qubits/Physics → Python → Qiskit → Teleportation → Bernstein–Vazirani → Deutsch → Grover → Shor → Next Steps**
 
 Acceptance criteria:
 
-- A shared utility exists (example):
-  - `validateBody(schema)`, `validateQuery(schema)`, `validateParams(schema)`
-- All routes use the helpers (or a consistent pattern) and return:
-  - HTTP 400 with **standard error envelope** + flattened field errors.
-- No route silently accepts unknown/untyped payloads.
+- Creating course with topic containing “quantum computing” yields modules in that order (exact or near-exact titles, but the sequence must match).
+- Each module has at least one lesson.
+- Add API test that asserts module order (strict array comparison of normalized titles).
 
 Likely files:
 
-- `apps/api/src/validation.ts` (new)
-- `apps/api/src/routes/*.ts`, `apps/api/src/auth.ts`, `apps/api/src/keys.ts`, `apps/api/src/yjsRouter.ts`
+- `apps/api/src/routes/courses.ts` (override profile for quantum)
+- new: `packages/agents/src/course-builder/domain-profiles/quantum.ts`
 
-Test plan:
+Screenshots:
 
-- Add at least one regression test per major router:
-  - `POST /api/v1/courses` missing fields → 400 with validation error.
-  - `POST /api/v1/marketplace/...` invalid query/body → 400.
-- Run: `npm test`.
-
-Screenshot checklist:
-
-- None.
+- `course-view.png` for a quantum course
 
 ---
 
-#### 4) P0 — **OpenAPI parity**: update spec to cover _implemented_ endpoints + schemas + error envelopes
+#### 4) P0 — Lesson synthesis v3: enforce narrated e-learning cadence + worked examples + recap + quick checks
 
-Status: ✅ **DONE (builder run-1)** — OpenAPI updated to document implemented endpoints + `ErrorEnvelope` + `x-request-id`
+Today’s lesson generation prompt requests structure but doesn’t enforce quality.
 
 Acceptance criteria:
 
-- `apps/api/openapi.yaml` documents all implemented endpoints under `/api/v1` (not just auth/keys/chat/courses).
-- OpenAPI includes:
-  - `components.securitySchemes.bearerAuth`
-  - `components.schemas.ErrorEnvelope`
-  - error responses (`4xx/5xx`) reference `ErrorEnvelope` consistently
-  - major resource schemas: Course, Lesson, Notification, MarketplaceCourse, etc.
-- No obvious drift: endpoints present in server but missing in OpenAPI.
+- Every generated lesson must include headings:
+  - `## Learning Objectives`
+  - `## Estimated Time`
+  - `## Core Concepts` (or `## Core Content`)
+  - `## Worked Example` (or `## Worked Examples`) **(mandatory)**
+  - `## Recap`
+  - `## Quick Check` (include **answers** or a revealable “Answer key”)
+  - `## Sources`
+  - `## Next Steps`
+- Add server-side validation that fails generation (or regenerates) if structure missing.
+- Add test: `lesson-structure-required.test.ts` that creates a course and asserts required headings exist.
 
 Likely files:
 
-- `apps/api/openapi.yaml`
-- `apps/api/src/app.ts` (route inventory reference)
+- `apps/api/src/routes/courses.ts:generateLessonContentWithLLM`
+- `apps/api/src/utils/lessonSizing.ts` (or new `lessonStructure.ts`)
 
-Test plan:
+Screenshots:
 
-- Add a test that enumerates implemented route prefixes and asserts they appear in openapi (best-effort allowlist).
-- Run: `npm test`.
-
-Screenshot checklist:
-
-- None.
+- `lesson-reader.png`
 
 ---
 
-#### 5) P0 — Add **OpenAPI lint/validation** to CI (fail fast on invalid YAML/spec)
+#### 5) P0 — Structured citations first: generate and store per-lesson source objects (not regex-parsed)
 
-Status: ✅ **DONE (builder run-4)** — added `apps/api/.redocly.yaml` + `npm run -w @learnflow/api openapi:lint`
-
-Acceptance criteria:
-
-- New script exists (choose one):
-  - `npm run openapi:lint` using `@redocly/cli` or `swagger-cli`
-- CI/test pipeline runs it (at least locally as part of `npm test` or a new root script).
-
-Likely files:
-
-- `apps/api/package.json` (script)
-- root `package.json` (wire script)
-
-Test plan:
-
-- Run: `npm run openapi:lint` and ensure exit 0.
-
-Screenshot checklist:
-
-- None.
-
----
-
-#### 6) P0 — Add **WS rate limiting** with tier parity (free/pro) + standard WS error on 429
-
-Status: ✅ **DONE (builder run-2)** — WS inbound messages now apply the shared tiered limiter and emit `rate_limit_exceeded`
+Problem: citations are extracted from markdown post-hoc; license/access timestamp missing.
 
 Acceptance criteria:
 
-- WS `message` events are rate limited per user tier similarly to REST limits.
-- When rate limited, WS emits `event:'error'` with:
-  - `error.code='rate_limit_exceeded'`
-  - includes `requestId`, and `message_id` of the message that was rejected.
-- Limiter logic is shared (or at least uses same configuration constants).
+- Lesson generation returns **(a)** markdown and **(b)** `sources[]` with fields:
+  - `url`, `title`, `author?`, `publication?`, `year?`, `license?`, `accessedAt` (ISO string)
+- DB persists those sources (not only derived from parsing).
+- API `GET /courses/:id/lessons/:lessonId` returns `sources[]` always from persisted structured data when available.
+- Add test ensuring `accessedAt` is present and parseable as ISO date.
 
 Likely files:
 
-- `apps/api/src/app.ts` (extract shared limiter core)
-- `apps/api/src/wsOrchestrator.ts` (apply limiter)
-- `apps/api/src/websocket.ts` (if connection-level limits are added)
-
-Test plan:
-
-- Add a WS test that spams messages and asserts `rate_limit_exceeded` appears.
-- Run: `npm test`.
-
-Screenshot checklist:
-
-- None.
-
----
-
-#### 7) P0 — systemd service **log cleanup + real health** (fix EADDRINUSE + ENOWORKSPACES noise)
-
-Status: ✅ **DONE (builder run-3)** — reduced ENOWORKSPACES spam for web; improved API EADDRINUSE messaging
-
-Acceptance criteria:
-
-- `systemctl --user status learnflow-api` shows a single listener on port 3000 owned by the unit.
-- `learnflow-web` no longer logs `ENOWORKSPACES` during normal start.
-- Provide a short doc note in-repo explaining why and how (so it doesn’t regress).
-
-Likely files:
-
-- `~/.config/systemd/user/learnflow-api.service`
-- `~/.config/systemd/user/learnflow-web.service`
-- `apps/web/package.json` and/or root scripts (where workspace-incompatible npm subcommands are used)
-- `DEV_PORTS.md` (append “common failure modes”)
-
-Test plan:
-
-- `systemctl --user restart learnflow-api learnflow-client learnflow-web`
-- `journalctl --user -u learnflow-api -n 80 --no-pager`
-- `journalctl --user -u learnflow-web -n 80 --no-pager`
-- `ss -ltnp | egrep ":3000|:3001|:3003"`
-
-Screenshot checklist:
-
-- None.
+- `apps/api/src/routes/courses.ts`
+- `apps/api/src/utils/sources.ts`
+- `apps/api/src/db.ts` + tables for sources metadata if needed
+- `packages/agents/src/content-pipeline/attribution-tracker.ts` (extend to include license/access)
 
 ---
 
 ### P1 — SHOULD DO
 
-#### 8) P1 — WS **contract tests** for Spec §11.2 events (shape + minimum ordering)
-
-Status: ✅ **DONE (builder run-7)** — added `ws-contract.test.ts` covering start/chunk/end ordering + invalid_json envelope
+#### 6) P1 — License-safe attribution: implement “source license resolution” (best-effort) + UI display
 
 Acceptance criteria:
 
-- Tests validate that sending `event:'message'` yields:
-  - `response.start` then ≥1 `response.chunk` then `response.end`
-  - includes `agent.spawned` and ≥1 `agent.complete`
-- Tests validate payload fields match shared types.
+- For each URL source, best-effort derive `license` from:
+  - known domains (e.g., Wikipedia CC BY-SA)
+  - page metadata hints (if available)
+  - fallback: `license: "unknown"` (explicit, not omitted)
+- UI references list shows for each source:
+  - title, domain, year
+  - **license** label (even if “unknown”)
+  - “accessed” date
 
 Likely files:
 
-- `apps/api/src/__tests__/api-layer.test.ts` (extend) or new `ws-contract.test.ts`
-- `packages/shared/src/types/ws.ts`
+- `packages/agents/src/content-pipeline/source-fetchers.ts` (add metadata extraction)
+- `apps/api/src/routes/courses.ts` (store)
+- `apps/client/src/screens/LessonReader.tsx` (render)
 
-Test plan:
+Screenshots:
 
-- Run: `npm test`.
-
-Screenshot checklist:
-
-- None.
+- `lesson-reader.png` showing license/access rows
 
 ---
 
-#### 9) P1 — Add **REST+WS requestId propagation** policy (docs + headers)
-
-Status: ✅ **DONE (builder run-5/8)** — WS now accepts `data.requestId` and echoes it; REST echoes inbound `x-request-id` (test added)
+#### 7) P1 — Image attribution objects + “Generated image” disclosure in UI
 
 Acceptance criteria:
 
-- REST always sets `x-request-id` response header and accepts inbound `x-request-id`.
-- WS handshake or messages optionally accept a `requestId` in payload; if provided, server echoes it back in envelopes.
-- Documented behavior in API reference stub.
+- Each illustration record includes:
+  - `provider` (e.g., `openai`)
+  - `model` (e.g., `dall-e-3`)
+  - `prompt`
+  - `createdAt`
+  - `license` (for generated: e.g., `"generated"` or provider ToS label)
+- Lesson UI renders a small attribution footer under each image:
+  - “Generated image (OpenAI / dall-e-3) · Prompt: … · Created: …”
 
 Likely files:
 
-- `apps/api/src/errors.ts`
-- `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`
-- Docs (see Task 11)
-
-Test plan:
-
-- Add tests verifying header echo.
-- WS test with client-provided requestId.
-
-Screenshot checklist:
-
-- None.
+- `apps/api/src/routes/courses.ts` (illustration endpoints)
+- `apps/api/src/db.ts` (illustrations schema)
+- `apps/client/src/screens/LessonReader.tsx`
 
 ---
 
-#### 10) P1 — Add **auth error parity**: ensure 401/403 consistently use standard envelope
-
-Status: ✅ **DONE (builder run-9)** — admin gate now emits standard envelope via `sendError`; tests assert `error.code` + `requestId` for 401/403
+#### 8) P1 — Domain diversity gate for sources (avoid 5 links from the same site)
 
 Acceptance criteria:
 
-- All auth-related failures return the standard envelope (not ad-hoc JSON).
-- `requireTier('pro')` and other RBAC failures return `error.code` that’s stable/documented (e.g., `forbidden`, `insufficient_tier`).
+- For each lesson, sources must satisfy:
+  - **min 2 sources**
+  - **min 2 distinct domains** (best-effort; unless topic is ultra-niche)
+- If gate fails, system automatically expands search and retries.
+- Add test: uses deterministic test sources with 1 domain; assert it triggers retry or marks `sourcesMissingReason: domain_diversity_failed`.
 
 Likely files:
 
-- `apps/api/src/middleware.ts`
-- `apps/api/src/errors.ts`
-
-Test plan:
-
-- Extend auth/RBAC tests.
-- Run: `npm test`.
-
-Screenshot checklist:
-
-- None.
+- `packages/agents/src/content-pipeline/web-search-provider.ts` (already exports `checkDomainDiversity`)
+- `apps/api/src/routes/courses.ts`
 
 ---
 
-#### 11) P1 — Create **API Reference docs stub** (REST + WS) pointing at OpenAPI
-
-Status: ✅ **DONE (builder run-9)** — added `apps/docs/pages/api-reference.md` covering base URLs, auth, requestId, rate limits, envelope, WS events
+#### 9) P1 — Worked-example quality: enforce “concrete artifacts” by domain
 
 Acceptance criteria:
 
-- A docs page exists with:
-  - Base URLs (dev)
-  - Auth (JWT)
-  - Rate limits by tier (REST + WS)
-  - Error codes + envelope examples
-  - WS event list (Spec §11.2) + example transcript
-  - Link to `apps/api/openapi.yaml`
+- Programming topics: at least one runnable code block (`python/`js/```rust etc.)
+- Math/science topics: at least one step-by-step derivation or numeric example
+- Business topics: at least one scenario + decision tradeoff table
+
+Implementation can be heuristic rules by domain profile.
 
 Likely files:
 
-- `apps/docs` (preferred) or `apps/web` docs route
-
-Test plan:
-
-- `npm test` (if docs tests exist)
-- manual: open docs route and confirm renders.
-
-Screenshot checklist:
-
-- Add screenshot via harness if docs has a route (otherwise skip).
+- new domain profiles under `packages/agents/src/course-builder/domain-profiles/*`
+- lesson validator under `apps/api/src/utils/lessonQuality.ts`
 
 ---
 
-#### 12) P1 — Add **OpenAPI/implementation drift test** (route inventory smoke)
+### P2 — NICE TO HAVE
+
+#### 10) P2 — Reduce template-y language in fallback mode (no OpenAI key)
 
 Acceptance criteria:
 
-- A test fails if:
-  - a new router is added under `/api/v1/*` but OpenAPI is not updated.
-- Implementation approach can be best-effort allowlist of expected prefixes.
+- Fallback lessons must still be structured and specific:
+  - use topic-specific vocabulary
+  - include at least one worked example
+  - do not claim citations that don’t exist
+- Add snapshot test for fallback content for 2 topics.
 
 Likely files:
 
-- `apps/api/src/__tests__/openapi-parity.test.ts` (new)
-- `apps/api/openapi.yaml`
-
-Test plan:
-
-- Run: `npm test`.
-
-Screenshot checklist:
-
-- None.
+- `apps/api/src/routes/courses.ts:generateLessonContentWithLLM`
 
 ---
 
-### P2 — NICE TO HAVE (but valuable for WS-07 completeness)
-
-#### 13) P2 — Create **loadtest harness placeholder** (k6 or Artillery) for 1 REST + 1 WS scenario
-
-Status: ✅ **DONE (builder run-6)** — added `apps/api/loadtest/smoke.mjs` + `npm run -w @learnflow/api loadtest:smoke`
+#### 11) P2 — Add “Attribution Drawer” component (text + images) with standardized formatting
 
 Acceptance criteria:
 
-- `npm run loadtest:smoke` exists and can:
-  - call `/health`
-  - call `/api/v1/chat` in dev/mock mode
-  - open `/ws` and send one message; verify at least `response.end`
-- Produces a short summary.
+- A reusable UI component that lists:
+  - text sources (with license + accessedAt)
+  - image provenance (generated/provider/model)
+- Accessible: keyboard navigable, clear headings.
 
 Likely files:
 
-- `apps/api/loadtest/` (new)
-- `apps/api/package.json` scripts
+- `apps/client/src/components/AttributionDrawer.tsx` (new)
+- `apps/client/src/screens/LessonReader.tsx` (integration)
 
-Test plan:
+Screenshots:
 
-- Run: `npm run loadtest:smoke`.
-
-Screenshot checklist:
-
-- None.
+- `lesson-reader.png` with drawer open
 
 ---
 
-#### 14) P2 — Standardize **success envelope (optional)** without breaking clients
+#### 12) P2 — Regression evaluation harness: multi-topic content-quality checks
 
-Status: ⚪ **DEFERRED (iter71)** — shared `SuccessEnvelope<T>` exists (`packages/shared/src/types/api.ts`) but no runtime flag applied to avoid breaking existing clients
+Add a lightweight eval suite that creates courses and asserts:
 
-Acceptance criteria:
+- outline is topic-adaptive (module titles vary)
+- lesson includes required headings
+- sources have license/accessedAt
+- quantum structure order is correct
 
-- Introduce `{ data, requestId }` for _new_ endpoints or behind a flag/header.
-- Existing client expectations continue to pass.
+Topics (minimum set):
+
+1. Rust programming (programming)
+2. Climate policy & carbon markets (policy/business)
+3. Prompt engineering (AI)
+4. Italian cooking basics (non-technical)
+5. Linear algebra (math)
+6. Quantum computing (quantum)
 
 Likely files:
 
-- `packages/shared/src/types/api.ts`
-- selected routes
-
-Test plan:
-
-- `npm test`
-
-Screenshot checklist:
-
-- Ensure screenshot harness still passes.
+- `apps/api/src/__tests__/content-quality-regression.test.ts`
+- optionally `evals/` scripts
 
 ---
 
-#### 15) P2 — WS backpressure/ordering note (document, don’t overbuild)
+## Evidence pack (Iteration 72 planner run)
 
-Acceptance criteria:
+### Spec read
 
-- Document known WS limitations (no delivery guarantees, naive chunking, etc.).
-- Add a small unit test for chunk sizing to prevent regression.
+- Read full spec: `/home/aifactory/.openclaw/workspace/learnflow/LearnFlow_Product_Spec.md`
 
-Likely files:
+### Code inspected (relevant)
 
-- Docs page (Task 11)
-- `apps/api/src/wsOrchestrator.ts`
+- Outline logic:
+  - `packages/agents/src/course-builder/topic-decomposer.ts`
+  - `packages/agents/src/course-builder/syllabus-generator.ts`
+  - `apps/api/src/routes/courses.ts` (`TOPIC_CONTENT` + `matchTopic()`)
+- Lesson synthesis:
+  - `apps/api/src/routes/courses.ts:generateLessonContentWithLLM()`
+- Citations:
+  - `apps/api/src/utils/sources.ts`
+  - client fallback: `apps/client/src/lib/sources.ts`
+- UI lesson rendering:
+  - `apps/client/src/screens/LessonReader.tsx` (citations + images, but no image attribution)
 
-Test plan:
-
-- `npm test`
-
-Screenshot checklist:
-
-- None.
-
----
-
-## Evidence pack (Iteration 71 planner run)
-
-### 1) Spec read (FULL, sections 1–17)
-
-- Read full spec file: `/home/aifactory/.openclaw/workspace/learnflow/LearnFlow_Product_Spec.md`
-  - Sections 1–17 verified present (ends at Appendix).
-
-### 2) Code inspected (WS-07 focus)
-
-- REST error envelope + requestId: `apps/api/src/errors.ts`, `apps/api/src/app.ts`
-- WS server + WS orchestrator: `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`
-- Shared WS types: `packages/shared/src/types/ws.ts`
-- OpenAPI: `apps/api/openapi.yaml`
-
-### 3) System boot + screenshots
+### Boot + screenshots
 
 Commands executed:
 
 - `systemctl --user restart learnflow-api learnflow-client learnflow-web || true`
-- `cd /home/aifactory/.openclaw/workspace/learnflow && SCREENSHOT_DIR=screenshots/iter71/planner-run node screenshot-all.mjs`
+- `cd /home/aifactory/.openclaw/workspace/learnflow && SCREENSHOT_DIR=screenshots/iter72/planner-run node screenshot-all.mjs`
 
 Screenshots saved to:
 
-- Workspace: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter71/planner-run/`
-  - Includes: `app-dashboard.png`, `app-conversation.png`, `app-mindmap.png`, `course-view.png`, `lesson-reader.png`, etc.
-
-### 4) Verification commands (required)
-
-Commands executed:
-
-- `npm test` ✅ (Vitest/turbo) — **22 test files, 140 tests passed**
-- `npx tsc --noEmit` ✅
-- `npx eslint .` ✅
-- `npx prettier --check .` ✅
-
-### 5) Ops evidence (systemd / ports)
-
-- `systemctl --user status learnflow-api learnflow-client learnflow-web` shows:
-  - API: `EADDRINUSE` on port 3000 in logs
-  - Web: `npm error ENOWORKSPACES` noise
-- `ss -ltnp | egrep ":3000|:3001|:3003"` shows:
-  - 3000 is held by an older `node` pid (not the current unit pid)
+- `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter72/planner-run/`
 
 ---
 
 ## OneDrive sync (required)
 
-This file and screenshots are mirrored by the planner step:
-
-- `/home/aifactory/onedrive-learnflow/learnflow/IMPROVEMENT_QUEUE.md`
-- `/home/aifactory/onedrive-learnflow/learnflow/learnflow/learnflow/screenshots/iter71/planner-run/`
+- Copy this queue to: `/home/aifactory/onedrive-learnflow/learnflow/IMPROVEMENT_QUEUE.md`
+- Copy screenshots to: `/home/aifactory/onedrive-learnflow/learnflow/learnflow/learnflow/screenshots/iter72/planner-run/`

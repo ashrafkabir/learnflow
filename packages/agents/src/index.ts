@@ -2,6 +2,16 @@
 export { CourseBuilderAgent } from './course-builder/course-builder-agent.js';
 export { decomposeTopic, countNodes } from './course-builder/topic-decomposer.js';
 export { generateSyllabus, isValidPrerequisiteOrder } from './course-builder/syllabus-generator.js';
+export {
+  buildCourseOutline,
+  classifyTopicDomain,
+  topicFingerprint,
+  type CourseOutline,
+  type OutlineDomain,
+  type OutlineModule,
+  type OutlineLesson,
+} from './course-builder/domain-outline.js';
+export { quantumComputingRequiredModules } from './course-builder/domain-profiles/quantum.js';
 
 // Content Pipeline
 export { discoverSources } from './content-pipeline/source-discovery.js';
