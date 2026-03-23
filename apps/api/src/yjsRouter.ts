@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 
 import { dbMindmaps } from './db.js';
+import { sendError } from './errors.js';
 
 const router = Router();
 
@@ -16,7 +17,11 @@ const getSchema = z.object({
 router.get('/mindmap', (req: Request, res: Response) => {
   const parse = getSchema.safeParse(req.query);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+    });
     return;
   }
   // User-owned room (matches yjsServer.ts)
