@@ -1,6 +1,6 @@
 # LearnFlow — Improvement Queue (Iteration 71)
 
-Status: **IN PROGRESS (iter71)**
+Status: **DONE (iter71)**
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
@@ -73,6 +73,8 @@ Screenshot checklist:
 ---
 
 #### 2) P0 — Fix **shared WS contract types** to match server reality (breaking mismatch today)
+
+Status: ✅ **DONE (builder run-1)** — shared WS `error` event type aligned + contract d.ts test (`packages/shared/src/types/ws-contract.test-d.ts`)
 
 Acceptance criteria:
 
@@ -298,6 +300,8 @@ Screenshot checklist:
 
 #### 10) P1 — Add **auth error parity**: ensure 401/403 consistently use standard envelope
 
+Status: ✅ **DONE (builder run-9)** — admin gate now emits standard envelope via `sendError`; tests assert `error.code` + `requestId` for 401/403
+
 Acceptance criteria:
 
 - All auth-related failures return the standard envelope (not ad-hoc JSON).
@@ -320,6 +324,8 @@ Screenshot checklist:
 ---
 
 #### 11) P1 — Create **API Reference docs stub** (REST + WS) pointing at OpenAPI
+
+Status: ✅ **DONE (builder run-9)** — added `apps/docs/pages/api-reference.md` covering base URLs, auth, requestId, rate limits, envelope, WS events
 
 Acceptance criteria:
 
@@ -399,6 +405,8 @@ Screenshot checklist:
 ---
 
 #### 14) P2 — Standardize **success envelope (optional)** without breaking clients
+
+Status: ⚪ **DEFERRED (iter71)** — shared `SuccessEnvelope<T>` exists (`packages/shared/src/types/api.ts`) but no runtime flag applied to avoid breaking existing clients
 
 Acceptance criteria:
 

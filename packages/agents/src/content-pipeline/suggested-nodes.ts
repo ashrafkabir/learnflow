@@ -144,11 +144,18 @@ export async function generateSuggestedMindmapNodes(
   const sources = await searchTopicTrending(trimmed);
 
   const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  const looksMissingOrPlaceholder =
+    !apiKey ||
+    apiKey.trim().length < 20 ||
+    apiKey.toLowerCase().includes('your_') ||
+    apiKey.toLowerCase().includes('placeholder') ||
+    apiKey.toLowerCase().includes('changeme');
+
+  if (looksMissingOrPlaceholder) {
     return { suggestions: heuristicAdjacentTopics(trimmed, sources).slice(0, max), sources };
   }
 
-  const openai = new OpenAI({ apiKey });
+  const openai = new OpenAI({ apiKey: apiKey.trim() });
   const evidence = sources.slice(0, 12).map((s) => ({
     title: s.title,
     url: s.url,

@@ -76,7 +76,14 @@ export function createOpenAIQueryGenerator(env = process.env): QueryGenerator {
     env.VITEST === 'true' ||
     env.VITEST_WORKER_ID !== undefined ||
     env.npm_lifecycle_event === 'test';
-  const apiKey = isTest ? undefined : env.OPENAI_API_KEY;
+  const rawKey = isTest ? undefined : env.OPENAI_API_KEY;
+  const looksMissingOrPlaceholder =
+    !rawKey ||
+    rawKey.trim().length < 20 ||
+    rawKey.toLowerCase().includes('your_') ||
+    rawKey.toLowerCase().includes('placeholder') ||
+    rawKey.toLowerCase().includes('changeme');
+  const apiKey = looksMissingOrPlaceholder ? undefined : rawKey.trim();
   const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
   return {

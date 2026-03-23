@@ -450,10 +450,17 @@ Sources (indexed; cite as [n]):
 \n${sourcePack}`;
 
   // 1) Try OpenAI
-  if (openaiKey) {
+  const openaiLooksMissingOrPlaceholder =
+    !openaiKey ||
+    openaiKey.trim().length < 20 ||
+    openaiKey.toLowerCase().includes('your_') ||
+    openaiKey.toLowerCase().includes('placeholder') ||
+    openaiKey.toLowerCase().includes('changeme');
+
+  if (openaiKey && !openaiLooksMissingOrPlaceholder) {
     try {
       const { default: OpenAI } = await import('openai');
-      const client = new OpenAI({ apiKey: openaiKey });
+      const client = new OpenAI({ apiKey: openaiKey.trim() });
 
       const resp = await client.chat.completions.create({
         model: 'gpt-4o-mini',

@@ -18,7 +18,7 @@ async function register(email: string) {
 }
 
 describe('Iter68: /api/v1/admin/search-config', () => {
-  it('blocks non-admin user', async () => {
+  it('blocks non-admin user with standard envelope', async () => {
     // register two users; second is not admin when ADMIN_EMAIL unset
     await register(`a-${Date.now()}@test.com`);
     const t2 = await register(`b-${Date.now()}@test.com`);
@@ -28,6 +28,8 @@ describe('Iter68: /api/v1/admin/search-config', () => {
       .set('Authorization', `Bearer ${t2}`);
 
     expect(res.status).toBe(403);
+    expect(res.body.error?.code).toBe('forbidden');
+    expect(typeof res.body.requestId).toBe('string');
   });
 
   it('allows first user as admin when ADMIN_EMAIL is unset', async () => {

@@ -7,10 +7,12 @@ import { createApp } from '../app.js';
  */
 
 describe('devAuth hardening', () => {
-  it('requires auth when devMode is not enabled', async () => {
+  it('requires auth when devMode is not enabled (standard envelope)', async () => {
     const app = createApp({ devMode: false });
     const res = await request(app).get('/api/v1/courses');
     expect(res.status).toBe(401);
+    expect(res.body.error?.code).toBe('unauthorized');
+    expect(typeof res.body.requestId).toBe('string');
   });
 
   it('allows access when devMode is enabled (devAuth)', async () => {

@@ -30,6 +30,10 @@ export default function DocsPage() {
         Developer documentation for LearnFlow (Next.js + App Router). This is an MVP docs surface;
         deeper MDX-based docs can be layered in later.
       </p>
+      <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.6, maxWidth: 820 }}>
+        API reference stub (repo): <code>apps/docs/pages/api-reference.md</code> • OpenAPI:{' '}
+        <code>apps/api/openapi.yaml</code>
+      </p>
 
       <div style={{ marginTop: 28, display: 'grid', gridTemplateColumns: '280px 1fr', gap: 20 }}>
         <aside
@@ -145,6 +149,7 @@ npm run dev
 
       <div style={{ marginTop: 22, color: '#6b7280', fontSize: 13 }}>
         Want deeper docs? Add MDX pages under <code>apps/web/src/app/docs</code> and link them here.
+        Canonical developer docs live under <code>apps/docs/pages</code>.
       </div>
     </div>
   );

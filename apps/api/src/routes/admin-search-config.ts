@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { requireAdmin } from '../lib/admin.js';
+import { sendError } from '../errors.js';
 import {
   getAdminSearchConfig,
   saveAdminSearchConfig,
@@ -13,7 +14,11 @@ const router = Router();
 router.get('/search-config', (req: Request, res: Response) => {
   const gate = requireAdmin(req);
   if (!gate.ok) {
-    res.status(gate.status).json(gate.body);
+    sendError(res, req, {
+      status: gate.status,
+      code: gate.body?.error?.code || (gate.status === 401 ? 'unauthorized' : 'forbidden'),
+      message: gate.body?.error?.message || 'Forbidden',
+    });
     return;
   }
   const cfg = getAdminSearchConfig();
@@ -27,7 +32,11 @@ router.put(
   (req: Request, res: Response) => {
     const gate = requireAdmin(req);
     if (!gate.ok) {
-      res.status(gate.status).json(gate.body);
+      sendError(res, req, {
+        status: gate.status,
+        code: gate.body?.error?.code || (gate.status === 401 ? 'unauthorized' : 'forbidden'),
+        message: gate.body?.error?.message || 'Forbidden',
+      });
       return;
     }
 

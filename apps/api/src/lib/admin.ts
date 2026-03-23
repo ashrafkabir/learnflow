@@ -52,6 +52,7 @@ export function requireAdmin(
       },
     };
   }
+
   if (!isAdmin(req)) {
     return {
       ok: false,
@@ -63,5 +64,6 @@ export function requireAdmin(
       },
     };
   }
+
   return { ok: true };
 }
