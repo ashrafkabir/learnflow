@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { dbCollaboration } from '../db.js';
 import { sendError } from '../errors.js';
+import { validateBody } from '../validation.js';
 
 export const collaborationRouter = Router();
 
@@ -21,48 +22,42 @@ collaborationRouter.get('/matches', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/collaboration/groups
-collaborationRouter.post('/groups', (req: Request, res: Response) => {
-  const schema = z.object({
-    name: z.string().min(1).max(60),
-    topic: z.string().min(0).max(120).optional(),
-    memberIds: z.array(z.string().min(1)).optional(),
-  });
-  const parse = schema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
+const createGroupSchema = z.object({
+  name: z.string().min(1).max(60),
+  topic: z.string().min(0).max(120).optional(),
+  memberIds: z.array(z.string().min(1)).optional(),
+});
 
-  const ownerId = req.user!.sub;
-  const id = `cg-${Date.now()}`;
-  const createdAt = new Date().toISOString();
-  const memberIds = Array.from(new Set([ownerId, ...(parse.data.memberIds || [])].filter(Boolean)));
+collaborationRouter.post(
+  '/groups',
+  validateBody(createGroupSchema),
+  (req: Request, res: Response) => {
+    const ownerId = req.user!.sub;
+    const id = `cg-${Date.now()}`;
+    const createdAt = new Date().toISOString();
+    const memberIds = Array.from(new Set([ownerId, ...(req.body.memberIds || [])].filter(Boolean)));
 
-  dbCollaboration.createGroup({
-    id,
-    name: parse.data.name,
-    topic: parse.data.topic || '',
-    ownerId,
-    memberIds,
-    createdAt,
-  });
-
-  res.status(201).json({
-    group: {
+    dbCollaboration.createGroup({
       id,
-      name: parse.data.name,
-      topic: parse.data.topic || '',
+      name: req.body.name,
+      topic: req.body.topic || '',
       ownerId,
       memberIds,
       createdAt,
-    },
-  });
-});
+    });
+
+    res.status(201).json({
+      group: {
+        id,
+        name: req.body.name,
+        topic: req.body.topic || '',
+        ownerId,
+        memberIds,
+        createdAt,
+      },
+    });
+  },
+);
 
 // GET /api/v1/collaboration/groups
 collaborationRouter.get('/groups', (req: Request, res: Response) => {
@@ -80,52 +75,46 @@ collaborationRouter.get('/groups', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/collaboration/groups/:id/messages
-collaborationRouter.post('/groups/:id/messages', (req: Request, res: Response) => {
-  const schema = z.object({ content: z.string().min(1).max(2000) });
-  const parse = schema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
+const createGroupMessageSchema = z.object({ content: z.string().min(1).max(2000) });
+
+collaborationRouter.post(
+  '/groups/:id/messages',
+  validateBody(createGroupMessageSchema),
+  (req: Request, res: Response) => {
+    const groupId = String(req.params.id);
+    const group = dbCollaboration.getGroupById(groupId);
+    if (!group) {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Group not found' });
+      return;
+    }
+
+    // basic authorization: must be a member
+    let memberIds: string[] = [];
+    try {
+      memberIds = JSON.parse((group as any).memberIds || '[]');
+    } catch {
+      memberIds = [];
+    }
+    if (!memberIds.includes(req.user!.sub)) {
+      sendError(res, req, { status: 403, code: 'forbidden', message: 'Not a group member' });
+      return;
+    }
+
+    const id = `cgm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const createdAt = new Date().toISOString();
+    dbCollaboration.addMessage({
+      id,
+      groupId,
+      userId: req.user!.sub,
+      content: req.body.content,
+      createdAt,
     });
-    return;
-  }
 
-  const groupId = String(req.params.id);
-  const group = dbCollaboration.getGroupById(groupId);
-  if (!group) {
-    sendError(res, req, { status: 404, code: 'not_found', message: 'Group not found' });
-    return;
-  }
-
-  // basic authorization: must be a member
-  let memberIds: string[] = [];
-  try {
-    memberIds = JSON.parse((group as any).memberIds || '[]');
-  } catch {
-    memberIds = [];
-  }
-  if (!memberIds.includes(req.user!.sub)) {
-    sendError(res, req, { status: 403, code: 'forbidden', message: 'Not a group member' });
-    return;
-  }
-
-  const id = `cgm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-  const createdAt = new Date().toISOString();
-  dbCollaboration.addMessage({
-    id,
-    groupId,
-    userId: req.user!.sub,
-    content: parse.data.content,
-    createdAt,
-  });
-
-  res.status(201).json({
-    message: { id, groupId, userId: req.user!.sub, content: parse.data.content, createdAt },
-  });
-});
+    res.status(201).json({
+      message: { id, groupId, userId: req.user!.sub, content: req.body.content, createdAt },
+    });
+  },
+);
 
 // GET /api/v1/collaboration/groups/:id/messages
 collaborationRouter.get('/groups/:id/messages', (req: Request, res: Response) => {

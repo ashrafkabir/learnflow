@@ -16,6 +16,7 @@ import { parseLessonSources, type LessonSource } from '../utils/sources.js';
 import { enforceBiteSizedLesson } from '../utils/lessonSizing.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
+import { validateBody } from '../validation.js';
 
 const router = Router();
 
@@ -957,19 +958,8 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 // POST /api/v1/courses - Create/generate a full course
-router.post('/', async (req: Request, res: Response) => {
-  const parse = createCourseSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { topic, depth = 'intermediate' } = parse.data;
+router.post('/', validateBody(createCourseSchema), async (req: Request, res: Response) => {
+  const { topic, depth = 'intermediate' } = req.body;
   const topicKey = matchTopic(topic);
   const topicData = TOPIC_CONTENT[topicKey] || TOPIC_CONTENT['quantum'];
 
@@ -1131,8 +1121,8 @@ router.post('/', async (req: Request, res: Response) => {
 
   const course: Course = {
     id: courseId,
-    title: parse.data.title || `Mastering ${topic}`,
-    description: parse.data.description || `A comprehensive ${depth}-level course on ${topic}`,
+    title: req.body.title || `Mastering ${topic}`,
+    description: req.body.description || `A comprehensive ${depth}-level course on ${topic}`,
     topic,
     depth,
     authorId: req.user?.sub || 'anonymous',
@@ -1689,19 +1679,9 @@ const selectionToolsPreviewSchema = z.object({
 // Returns a preview payload for side tools without persisting anything.
 router.post(
   '/:id/lessons/:lessonId/selection-tools/preview',
+  validateBody(selectionToolsPreviewSchema),
   async (req: Request, res: Response) => {
-    const parse = selectionToolsPreviewSchema.safeParse(req.body);
-    if (!parse.success) {
-      sendError(res, req, {
-        status: 400,
-        code: 'validation_error',
-        message: parse.error.message,
-        details: parse.error.flatten(),
-      });
-      return;
-    }
-
-    const { tool, selectedText } = parse.data;
+    const { tool, selectedText } = req.body;
 
     const userId = req.user?.sub || 'anonymous';
     const tier = req.user?.tier || 'free';

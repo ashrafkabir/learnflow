@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { sendError } from '../errors.js';
+import { validateQuery, validateBody } from '../validation.js';
 
 const router = Router();
 
@@ -74,20 +74,9 @@ const searchSchema = z.object({
 });
 
 // GET /api/v1/marketplace/courses - Browse course marketplace (public)
-router.get('/courses', (req: Request, res: Response) => {
-  const parse = searchSchema.safeParse(req.query);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
+router.get('/courses', validateQuery(searchSchema), (req: Request, res: Response) => {
   let results = [...marketplaceCourses];
-  const { keyword, topic, difficulty, maxPrice } = parse.data;
+  const { keyword, topic, difficulty, maxPrice } = req.query as any;
 
   if (keyword) {
     const kw = keyword.toLowerCase();
@@ -103,7 +92,15 @@ router.get('/courses', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/marketplace/courses - Publish a course to marketplace
-router.post('/courses', (req: Request, res: Response) => {
+const publishCourseSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  price: z.coerce.number().optional(),
+  category: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+router.post('/courses', validateBody(publishCourseSchema), (req: Request, res: Response) => {
   const { title, description: _description, price, category, tags: _tags } = req.body || {};
   const newCourse: MarketplaceCourse = {
     id: `mc-${Date.now()}`,

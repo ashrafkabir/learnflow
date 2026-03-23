@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { dbEvents } from '../db.js';
-import { sendError } from '../errors.js';
+import { validateBody } from '../validation.js';
 
 const router = Router();
 
@@ -13,21 +13,11 @@ const createEventSchema = z.object({
 });
 
 // POST /api/v1/events - Append a learning event (client-side telemetry)
-router.post('/', (req: Request, res: Response) => {
+router.post('/', validateBody(createEventSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const parse = createEventSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
 
   try {
-    const { type, courseId, lessonId, meta } = parse.data;
+    const { type, courseId, lessonId, meta } = req.body;
     dbEvents.add(userId, { type, courseId, lessonId, meta: meta || {} });
   } catch {
     // best-effort

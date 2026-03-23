@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { db, dbInvoices } from '../db.js';
 import { sendError } from '../errors.js';
+import { validateBody } from '../validation.js';
 
 const router = Router();
 
@@ -52,19 +53,8 @@ const subscriptionSchema = z.object({
 });
 
 // POST /api/v1/subscription — manage subscription
-router.post('/', (req: Request, res: Response) => {
-  const parse = subscriptionSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { action, plan: _plan } = parse.data;
+router.post('/', validateBody(subscriptionSchema), (req: Request, res: Response) => {
+  const { action, plan: _plan } = req.body;
   const userId = req.user!.sub;
   const user = db.findUserById(userId);
   if (!user) {
@@ -160,19 +150,8 @@ function validateIAPReceipt(
 }
 
 // POST /api/v1/subscription/iap — validate IAP receipt
-router.post('/iap', (req: Request, res: Response) => {
-  const parse = iapReceiptSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { platform, receipt, productId } = parse.data;
+router.post('/iap', validateBody(iapReceiptSchema), (req: Request, res: Response) => {
+  const { platform, receipt, productId } = req.body;
   const result = validateIAPReceipt(platform, receipt, productId);
 
   if (!result.valid) {

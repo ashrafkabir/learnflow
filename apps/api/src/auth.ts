@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { config } from './config.js';
 import { db, DbUser } from './db.js';
 import { sendError } from './errors.js';
+import { validateBody } from './validation.js';
 
 const router = Router();
 
@@ -36,19 +37,8 @@ function generateTokens(user: DbUser): { accessToken: string; refreshToken: stri
 }
 
 /** POST /api/v1/auth/register */
-router.post('/register', async (req: Request, res: Response) => {
-  const parse = registerSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { email, password, displayName } = parse.data;
+router.post('/register', validateBody(registerSchema), async (req: Request, res: Response) => {
+  const { email, password, displayName } = req.body;
 
   if (db.findUserByEmail(email)) {
     sendError(res, req, { status: 409, code: 'conflict', message: 'Email already registered' });
@@ -88,19 +78,8 @@ router.post('/register', async (req: Request, res: Response) => {
 });
 
 /** POST /api/v1/auth/login */
-router.post('/login', async (req: Request, res: Response) => {
-  const parse = loginSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { email, password } = parse.data;
+router.post('/login', validateBody(loginSchema), async (req: Request, res: Response) => {
+  const { email, password } = req.body;
   const user = db.findUserByEmail(email);
 
   if (!user) {

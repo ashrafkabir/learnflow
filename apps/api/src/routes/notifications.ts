@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db.js';
-import { sendError } from '../errors.js';
+import { validateBody, validateQuery } from '../validation.js';
 
 const router = Router();
 
@@ -10,20 +10,9 @@ const listSchema = z.object({
 });
 
 // GET /api/v1/notifications?limit=50
-router.get('/', (req: Request, res: Response) => {
-  const parse = listSchema.safeParse(req.query);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
+router.get('/', validateQuery(listSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const rows = db.listNotifications(userId, parse.data.limit);
+  const rows = db.listNotifications(userId, (req.query as any).limit);
   res.json({ notifications: rows });
 });
 
@@ -32,20 +21,9 @@ const markReadSchema = z.object({
 });
 
 // POST /api/v1/notifications/read { id }
-router.post('/read', (req: Request, res: Response) => {
-  const parse = markReadSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
+router.post('/read', validateBody(markReadSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  db.markNotificationRead(userId, parse.data.id);
+  db.markNotificationRead(userId, req.body.id);
   res.status(200).json({ ok: true });
 });
 
@@ -56,20 +34,9 @@ const generateSchema = z.object({
 
 // POST /api/v1/notifications/generate { topic }
 // Cron-friendly: generates a few lightweight notifications. MVP (no actual web crawling).
-router.post('/generate', (req: Request, res: Response) => {
-  const parse = generateSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
+router.post('/generate', validateBody(generateSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const topic = parse.data.topic.trim();
+  const topic = req.body.topic.trim();
   const now = new Date();
 
   const payloads = [
@@ -77,7 +44,7 @@ router.post('/generate', (req: Request, res: Response) => {
       id: `notif-${userId}-${now.getTime()}-0`,
       type: 'update',
       title: `New items to review: ${topic}`,
-      body: `MVP update feed generated for topic "${topic}"${parse.data.source ? ` (source: ${parse.data.source})` : ''}.`,
+      body: `MVP update feed generated for topic "${topic}"${req.body.source ? ` (source: ${req.body.source})` : ''}.`,
     },
     {
       id: `notif-${userId}-${now.getTime()}-1`,

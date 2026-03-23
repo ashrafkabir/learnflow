@@ -4,6 +4,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { sendError } from '../errors.js';
+import { validateBody, validateQuery } from '../validation.js';
 import {
   dbMarketplaceCourses,
   dbMarketplaceEnrollments,
@@ -154,89 +155,71 @@ const createReviewSchema = z.object({
 
 // POST /api/v1/marketplace/publish — publish a course (S09-A01)
 // POST /api/v1/marketplace/courses — publish a course (compat with client spec wording)
-router.post(['/publish', '/courses'], (req: Request, res: Response) => {
-  const parse = publishCourseSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
+router.post(
+  ['/publish', '/courses'],
+  validateBody(publishCourseSchema),
+  (req: Request, res: Response) => {
+    const data = req.body;
+    // Map client payloads (`lessonCount`, `attributionCount`, `readabilityScore`) if present; otherwise rely on defaults.
+    const lessonCount =
+      typeof (req.body as any)?.lessonCount === 'number'
+        ? (req.body as any).lessonCount
+        : data.lessonCount;
+    const attributionCount =
+      typeof (req.body as any)?.attributionCount === 'number'
+        ? (req.body as any).attributionCount
+        : data.attributionCount;
+    const readabilityScore =
+      typeof (req.body as any)?.readabilityScore === 'number'
+        ? (req.body as any).readabilityScore
+        : data.readabilityScore;
+
+    const qc = qualityCheck({
+      lessonCount,
+      attributionCount,
+      readabilityScore,
     });
-    return;
-  }
 
-  const data = parse.data;
-  // Map client payloads (`lessonCount`, `attributionCount`, `readabilityScore`) if present; otherwise rely on defaults.
-  const lessonCount =
-    typeof (req.body as any)?.lessonCount === 'number'
-      ? (req.body as any).lessonCount
-      : data.lessonCount;
-  const attributionCount =
-    typeof (req.body as any)?.attributionCount === 'number'
-      ? (req.body as any).attributionCount
-      : data.attributionCount;
-  const readabilityScore =
-    typeof (req.body as any)?.readabilityScore === 'number'
-      ? (req.body as any).readabilityScore
-      : data.readabilityScore;
+    const course: PublishedCourse = {
+      id: `pub-${Date.now()}`,
+      ...data,
+      creatorId: req.user!.sub,
+      status: qc.passed ? 'published' : 'review',
+      rating: 0,
+      enrollmentCount: 0,
+      revenue: 0,
+      publishedAt: qc.passed ? new Date().toISOString() : null,
+    };
 
-  const qc = qualityCheck({
-    lessonCount,
-    attributionCount,
-    readabilityScore,
-  });
+    publishedCourses.set(course.id, course);
 
-  const course: PublishedCourse = {
-    id: `pub-${Date.now()}`,
-    ...data,
-    creatorId: req.user!.sub,
-    status: qc.passed ? 'published' : 'review',
-    rating: 0,
-    enrollmentCount: 0,
-    revenue: 0,
-    publishedAt: qc.passed ? new Date().toISOString() : null,
-  };
+    // Persist published course
+    dbMarketplaceCourses.upsert({
+      id: course.id,
+      title: course.title,
+      topic: course.topic,
+      description: course.description,
+      difficulty: course.difficulty,
+      price: course.price,
+      creatorId: course.creatorId,
+      status: course.status,
+      lessonCount: course.lessonCount,
+      attributionCount: course.attributionCount,
+      readabilityScore: course.readabilityScore,
+      rating: course.rating,
+      enrollmentCount: course.enrollmentCount,
+      revenue: course.revenue,
+      publishedAt: course.publishedAt,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
 
-  publishedCourses.set(course.id, course);
-
-  // Persist published course
-  dbMarketplaceCourses.upsert({
-    id: course.id,
-    title: course.title,
-    topic: course.topic,
-    description: course.description,
-    difficulty: course.difficulty,
-    price: course.price,
-    creatorId: course.creatorId,
-    status: course.status,
-    lessonCount: course.lessonCount,
-    attributionCount: course.attributionCount,
-    readabilityScore: course.readabilityScore,
-    rating: course.rating,
-    enrollmentCount: course.enrollmentCount,
-    revenue: course.revenue,
-    publishedAt: course.publishedAt,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-
-  res.status(201).json({ course, qualityCheck: qc });
-});
+    res.status(201).json({ course, qualityCheck: qc });
+  },
+);
 
 // GET /api/v1/marketplace/courses — search courses (public)
-router.get('/courses', (req: Request, res: Response) => {
-  const parse = searchSchema.safeParse(req.query);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
+router.get('/courses', validateQuery(searchSchema), (req: Request, res: Response) => {
   let results: any[] = dbMarketplaceCourses.listPublished().map((c: any) => ({
     id: String(c.id),
     title: String(c.title),
@@ -254,7 +237,7 @@ router.get('/courses', (req: Request, res: Response) => {
     revenue: Number(c.revenue || 0),
     publishedAt: c.publishedAt || null,
   })) as any;
-  const { keyword, topic, difficulty, maxPrice } = parse.data;
+  const { keyword, topic, difficulty, maxPrice } = req.query as any;
 
   if (keyword) {
     const kw = keyword.toLowerCase();
@@ -301,58 +284,53 @@ router.get('/courses/:id', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/marketplace/courses/:id/reviews — create a review (Iter70)
-router.post('/courses/:id/reviews', (req: Request, res: Response) => {
-  const courseId = String(req.params.id);
-  const course = (publishedCourses.get(courseId) ||
-    (dbMarketplaceCourses.getById(courseId) as any)) as any;
-  if (!course || course.status !== 'published') {
-    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
-    return;
-  }
-
-  const parse = createReviewSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const review = {
-    id: `rev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    courseId,
-    userId: req.user!.sub,
-    rating: parse.data.rating,
-    text: String(parse.data.text || ''),
-    createdAt: new Date().toISOString(),
-  };
-
-  try {
-    dbMarketplace.addCourseReview(review);
-    const agg = dbMarketplace.getCourseReviewAgg(courseId);
-
-    // Update course aggregate rating in course table for fast listing.
-    const persisted = dbMarketplaceCourses.getById(courseId);
-    if (persisted) {
-      dbMarketplaceCourses.upsert({
-        ...persisted,
-        rating: Number(agg.avgRating || 0),
-        updatedAt: new Date().toISOString(),
-      } as any);
+router.post(
+  '/courses/:id/reviews',
+  validateBody(createReviewSchema),
+  (req: Request, res: Response) => {
+    const courseId = String(req.params.id);
+    const course = (publishedCourses.get(courseId) ||
+      (dbMarketplaceCourses.getById(courseId) as any)) as any;
+    if (!course || course.status !== 'published') {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
+      return;
     }
 
-    res.status(201).json({ review, aggregates: { rating: agg.avgRating, reviewCount: agg.count } });
-  } catch (err: any) {
-    sendError(res, req, {
-      status: 500,
-      code: 'server_error',
-      message: err?.message || 'Failed to save review',
-    });
-  }
-});
+    const review = {
+      id: `rev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      courseId,
+      userId: req.user!.sub,
+      rating: req.body.rating,
+      text: String(req.body.text || ''),
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      dbMarketplace.addCourseReview(review);
+      const agg = dbMarketplace.getCourseReviewAgg(courseId);
+
+      // Update course aggregate rating in course table for fast listing.
+      const persisted = dbMarketplaceCourses.getById(courseId);
+      if (persisted) {
+        dbMarketplaceCourses.upsert({
+          ...persisted,
+          rating: Number(agg.avgRating || 0),
+          updatedAt: new Date().toISOString(),
+        } as any);
+      }
+
+      res
+        .status(201)
+        .json({ review, aggregates: { rating: agg.avgRating, reviewCount: agg.count } });
+    } catch (err: any) {
+      sendError(res, req, {
+        status: 500,
+        code: 'server_error',
+        message: err?.message || 'Failed to save review',
+      });
+    }
+  },
+);
 
 // POST /api/v1/marketplace/checkout — Stripe checkout (S09-A02)
 // NOTE: MVP is in MOCK mode (no Stripe wiring). We still keep the state machine honest:
@@ -390,111 +368,94 @@ router.post('/checkout', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/marketplace/checkout/confirm — confirm payment (MOCK)
-router.post('/checkout/confirm', (req: Request, res: Response) => {
-  const schema = z.object({ paymentIntentId: z.string().min(1) });
-  const parse = schema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
+const confirmCheckoutSchema = z.object({ paymentIntentId: z.string().min(1) });
+
+router.post(
+  '/checkout/confirm',
+  validateBody(confirmCheckoutSchema),
+  (req: Request, res: Response) => {
+    const { paymentIntentId } = req.body;
+    const intent = paymentIntents.get(paymentIntentId);
+    if (!intent || intent.userId !== req.user!.sub) {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Payment intent not found' });
+      return;
+    }
+
+    const course = (publishedCourses.get(intent.courseId) ||
+      (dbMarketplaceCourses.getById(intent.courseId) as any)) as any;
+    if (!course) {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
+      return;
+    }
+
+    // Mock terminal state
+    intent.status = 'mock_completed';
+    paymentIntents.set(intent.id, intent);
+    dbMarketplacePayments.updateStatus(intent.id, intent.status);
+
+    // Process payout (S09-A03)
+    const split = calculateRevenueSplit(course.price, 'byoai');
+    const payout: PayoutRecord = {
+      id: `po-${Date.now()}`,
+      creatorId: course.creatorId,
+      courseId: intent.courseId,
+      amount: course.price,
+      creatorShare: split.creatorShare,
+      platformShare: split.platformShare,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+    payoutRecords.set(payout.id, payout);
+
+    // Enroll user
+    if (!enrollments.has(req.user!.sub)) enrollments.set(req.user!.sub, new Set());
+    enrollments.get(req.user!.sub)!.add(intent.courseId);
+    course.enrollmentCount++;
+    course.revenue += course.price;
+
+    // Persist payout + enrollment
+    dbMarketplacePayouts.insert({
+      id: payout.id,
+      creatorId: payout.creatorId,
+      courseId: payout.courseId,
+      amount: payout.amount,
+      creatorShare: payout.creatorShare,
+      platformShare: payout.platformShare,
+      status: payout.status,
+      createdAt: payout.createdAt,
     });
-    return;
-  }
+    dbMarketplaceEnrollments.enroll(req.user!.sub, intent.courseId);
 
-  const { paymentIntentId } = parse.data;
-  const intent = paymentIntents.get(paymentIntentId);
-  if (!intent || intent.userId !== req.user!.sub) {
-    sendError(res, req, { status: 404, code: 'not_found', message: 'Payment intent not found' });
-    return;
-  }
+    // Persist updated course aggregates
+    dbMarketplaceCourses.upsert({
+      id: course.id,
+      title: course.title,
+      topic: course.topic,
+      description: course.description,
+      difficulty: course.difficulty,
+      price: course.price,
+      creatorId: course.creatorId,
+      status: course.status,
+      lessonCount: course.lessonCount,
+      attributionCount: course.attributionCount,
+      readabilityScore: course.readabilityScore,
+      rating: course.rating,
+      enrollmentCount: course.enrollmentCount,
+      revenue: course.revenue,
+      publishedAt: course.publishedAt,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
 
-  const course = (publishedCourses.get(intent.courseId) ||
-    (dbMarketplaceCourses.getById(intent.courseId) as any)) as any;
-  if (!course) {
-    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
-    return;
-  }
-
-  // Mock terminal state
-  intent.status = 'mock_completed';
-  paymentIntents.set(intent.id, intent);
-  dbMarketplacePayments.updateStatus(intent.id, intent.status);
-
-  // Process payout (S09-A03)
-  const split = calculateRevenueSplit(course.price, 'byoai');
-  const payout: PayoutRecord = {
-    id: `po-${Date.now()}`,
-    creatorId: course.creatorId,
-    courseId: intent.courseId,
-    amount: course.price,
-    creatorShare: split.creatorShare,
-    platformShare: split.platformShare,
-    status: 'pending',
-    createdAt: new Date().toISOString(),
-  };
-  payoutRecords.set(payout.id, payout);
-
-  // Enroll user
-  if (!enrollments.has(req.user!.sub)) enrollments.set(req.user!.sub, new Set());
-  enrollments.get(req.user!.sub)!.add(intent.courseId);
-  course.enrollmentCount++;
-  course.revenue += course.price;
-
-  // Persist payout + enrollment
-  dbMarketplacePayouts.insert({
-    id: payout.id,
-    creatorId: payout.creatorId,
-    courseId: payout.courseId,
-    amount: payout.amount,
-    creatorShare: payout.creatorShare,
-    platformShare: payout.platformShare,
-    status: payout.status,
-    createdAt: payout.createdAt,
-  });
-  dbMarketplaceEnrollments.enroll(req.user!.sub, intent.courseId);
-
-  // Persist updated course aggregates
-  dbMarketplaceCourses.upsert({
-    id: course.id,
-    title: course.title,
-    topic: course.topic,
-    description: course.description,
-    difficulty: course.difficulty,
-    price: course.price,
-    creatorId: course.creatorId,
-    status: course.status,
-    lessonCount: course.lessonCount,
-    attributionCount: course.attributionCount,
-    readabilityScore: course.readabilityScore,
-    rating: course.rating,
-    enrollmentCount: course.enrollmentCount,
-    revenue: course.revenue,
-    publishedAt: course.publishedAt,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-
-  res.status(200).json({ paymentIntent: intent, payout, enrolled: true, mode: 'mock' });
-});
+    res.status(200).json({ paymentIntent: intent, payout, enrolled: true, mode: 'mock' });
+  },
+);
 
 // POST /api/v1/marketplace/agents/submit — submit agent (S09-A06)
-router.post('/agents/submit', (req: Request, res: Response) => {
-  const parse = submitAgentSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
+router.post('/agents/submit', validateBody(submitAgentSchema), (req: Request, res: Response) => {
   const submission: AgentSubmission = {
     id: `as-${Date.now()}`,
-    ...parse.data,
+    ...req.body,
     creatorId: req.user!.sub,
     status: 'pending',
     submittedAt: new Date().toISOString(),

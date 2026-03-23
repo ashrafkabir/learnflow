@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { encrypt } from './crypto.js';
 import { db, DbApiKey } from './db.js';
 import { sendError } from './errors.js';
+import { validateBody, validateParams } from './validation.js';
 
 const router = Router();
 
@@ -25,19 +26,8 @@ const deleteKeySchema = z.object({
 });
 
 /** POST /api/v1/keys — store an encrypted API key */
-router.post('/', (req: Request, res: Response) => {
-  const parse = addKeySchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { provider, apiKey, label } = parse.data;
+router.post('/', validateBody(addKeySchema), (req: Request, res: Response) => {
+  const { provider, apiKey, label } = req.body;
   const userId = req.user!.sub;
 
   const { encrypted, iv } = encrypt(apiKey);
@@ -122,19 +112,8 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 /** POST /api/v1/keys/validate — validate an API key format */
-router.post('/validate', (req: Request, res: Response) => {
-  const parse = validateKeySchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: 'provider and apiKey required',
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { provider, apiKey } = parse.data;
+router.post('/validate', validateBody(validateKeySchema), (req: Request, res: Response) => {
+  const { provider, apiKey } = req.body;
 
   // Format-only validation (no network call). Keep rules permissive to avoid rejecting valid keys.
   // If a provider changes key formats, this endpoint should err on "accept" and let real API calls fail.
@@ -151,7 +130,7 @@ router.post('/validate', (req: Request, res: Response) => {
     tavily: null,
   };
 
-  const pattern = patterns[provider];
+  const pattern = patterns[provider as (typeof PROVIDERS)[number]];
   if (pattern && !pattern.test(apiKey)) {
     sendError(res, req, {
       status: 400,
@@ -166,20 +145,9 @@ router.post('/validate', (req: Request, res: Response) => {
 });
 
 /** DELETE /api/v1/keys/:provider — delete a provider key */
-router.delete('/:provider', (req: Request, res: Response) => {
-  const parse = deleteKeySchema.safeParse({ provider: req.params.provider });
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: 'invalid provider',
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
+router.delete('/:provider', validateParams(deleteKeySchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const provider = parse.data.provider;
+  const provider = req.params.provider as (typeof PROVIDERS)[number];
 
   const keys = db.getKeysByUserId(userId);
   const matches = keys.filter((k) => k.provider === provider);

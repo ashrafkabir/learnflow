@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { dbMindmaps, dbMindmapSuggestions, dbCourses } from '../db.js';
 import { sendError } from '../errors.js';
+import { validateBody } from '../validation.js';
 
 const router = Router();
 
@@ -22,20 +23,9 @@ const acceptSchema = z.object({
 });
 
 // POST /api/v1/mindmap/suggest - Compute suggested expansion nodes for a course
-router.post('/suggest', (req: Request, res: Response) => {
+router.post('/suggest', validateBody(suggestSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const parse = suggestSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { courseId } = parse.data;
+  const { courseId } = req.body;
   const course = dbCourses.getById(courseId);
   if (!course) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
@@ -77,20 +67,9 @@ router.get('/suggestions', (req: Request, res: Response) => {
 });
 
 // POST /api/v1/mindmap/accept - Accept a suggestion (remove from suggestions list)
-router.post('/accept', (req: Request, res: Response) => {
+router.post('/accept', validateBody(acceptSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const parse = acceptSchema.safeParse(req.body);
-  if (!parse.success) {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: parse.error.message,
-      details: parse.error.flatten(),
-    });
-    return;
-  }
-
-  const { courseId, suggestionId } = parse.data;
+  const { courseId, suggestionId } = req.body;
   const row = dbMindmapSuggestions.get(userId, courseId);
   const current = Array.isArray(row?.suggestions) ? row!.suggestions : [];
   const next = current.filter((s: any) => String(s?.id) !== suggestionId);
