@@ -50,7 +50,10 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
         const msg = JSON.parse(raw.toString()) as WsEvent;
         void handleMessage(ws, user, msg);
       } catch {
-        sendEvent(ws, 'error', { message: 'Invalid JSON' });
+        sendWsError(ws, `ws-${Date.now()}`, {
+          code: 'invalid_json',
+          message: 'Invalid JSON',
+        });
       }
     });
 
@@ -64,6 +67,22 @@ function sendEvent(ws: WebSocket, event: string, data: unknown): void {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ event, data }));
   }
+}
+
+function sendWsError(
+  ws: WebSocket,
+  requestId: string,
+  params: { code: string; message: string; details?: unknown; message_id?: string },
+): void {
+  sendEvent(ws, 'error', {
+    error: {
+      code: params.code,
+      message: params.message,
+      ...(params.details !== undefined ? { details: params.details } : {}),
+    },
+    requestId,
+    ...(params.message_id ? { message_id: params.message_id } : {}),
+  });
 }
 
 async function handleMessage(ws: WebSocket, user: AuthUser, msg: WsEvent): Promise<void> {

@@ -27,6 +27,22 @@ function send(ws: WebSocket, event: string, data: unknown): void {
   safeSend(ws, { event, data });
 }
 
+function sendWsError(
+  ws: WebSocket,
+  requestId: string,
+  params: { code: string; message: string; details?: unknown; message_id?: string },
+): void {
+  send(ws, 'error', {
+    error: {
+      code: params.code,
+      message: params.message,
+      ...(params.details !== undefined ? { details: params.details } : {}),
+    },
+    requestId,
+    ...(params.message_id ? { message_id: params.message_id } : {}),
+  });
+}
+
 function findLesson(lessonId?: string) {
   if (!lessonId) return null;
   for (const course of courses.values()) {
@@ -146,7 +162,12 @@ export async function handleWsMessage(
       sources: lesson?.content ? makeSourcesFromLesson(lesson.content) : [],
     });
   } catch (err: any) {
-    send(ws, 'error', { message: err?.message || 'Orchestrator error' });
+    const message = err?.message || 'Orchestrator error';
+    sendWsError(ws, `ws-${Date.now()}`, {
+      code: message === 'orchestrator_timeout' ? 'timeout' : 'orchestrator_error',
+      message,
+      message_id: messageId,
+    });
     send(ws, 'response.end', {
       message_id: messageId,
       actions: mapActions(['Try Again']),
