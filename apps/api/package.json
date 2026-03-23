@@ -7,7 +7,8 @@
     "lint": "eslint src/",
     "test": "vitest run",
     "dev": "tsx watch src/index.ts",
-    "openapi:lint": "redocly lint openapi.yaml"
+    "openapi:lint": "redocly lint openapi.yaml",
+    "loadtest:smoke": "node loadtest/smoke.mjs"
   },
   "dependencies": {
     "@learnflow/agents": "*",
