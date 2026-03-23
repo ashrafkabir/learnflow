@@ -1,0 +1,15 @@
+extends:
+  - recommended
+rules:
+  # Local dev server is expected in this repo.
+  no-server-example.com: off
+  # We declare security per-operation (some public routes), so don't require it everywhere.
+  security-defined: off
+  # Keeping operationIds optional for now.
+  operation-operationId: off
+  # Our MVP docs may omit some 4xx responses.
+  operation-4xx-response: off
+  # Allow unused components while spec evolves.
+  no-unused-components: off
+  # License metadata is optional for MVP.
+  info-license: off

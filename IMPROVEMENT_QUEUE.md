@@ -129,6 +129,8 @@ Screenshot checklist:
 
 #### 4) P0 — **OpenAPI parity**: update spec to cover _implemented_ endpoints + schemas + error envelopes
 
+Status: 🟡 **IN PROGRESS (builder run-4)** — OpenAPI lint wired (see P0-5); parity updates pending
+
 Acceptance criteria:
 
 - `apps/api/openapi.yaml` documents all implemented endpoints under `/api/v1` (not just auth/keys/chat/courses).
@@ -156,6 +158,8 @@ Screenshot checklist:
 ---
 
 #### 5) P0 — Add **OpenAPI lint/validation** to CI (fail fast on invalid YAML/spec)
+
+Status: ✅ **DONE (builder run-4)** — added `apps/api/.redocly.yaml` + `npm run -w @learnflow/api openapi:lint`
 
 Acceptance criteria:
 
