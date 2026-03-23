@@ -67,7 +67,8 @@ export function useMindmapYjs(courseId: string | null) {
       const token = localStorage.getItem('learnflow-token') || (import.meta.env.DEV ? 'dev' : null);
       if (!token) return;
 
-      // y-websocket uses URL + room name. We pass courseId/token via params and use room = mindmap:<courseId>
+      // y-websocket uses URL + room name. Server keys by userId via token; the provider room
+      // name only needs to be consistent per course on this client.
       const url = `${wsBaseUrl()}?token=${encodeURIComponent(token)}&courseId=${encodeURIComponent(courseId)}`;
       provider = new WebsocketProvider(url, `mindmap:${courseId}`, doc);
 

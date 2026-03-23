@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, apiBase } from '../../context/AppContext.js';
+import { useApp, apiPost } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { useToast } from '../../components/Toast.js';
 
-type KeyProvider = 'openai' | 'anthropic' | 'google';
+type KeyProvider = 'openai' | 'anthropic' | 'google' | 'mistral' | 'groq' | 'ollama';
 
 export function OnboardingApiKeys() {
   const nav = useNavigate();
@@ -25,27 +25,16 @@ export function OnboardingApiKeys() {
   };
 
   const validateKey = async (): Promise<boolean> => {
-    const token = localStorage.getItem('learnflow-token');
-    if (!token) {
-      toast('Please log in first', 'error');
-      return false;
-    }
-
     setValidating(true);
     try {
-      const res = await fetch(`${apiBase()}/api/v1/keys/validate`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey: key.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast(data.message || 'Invalid API key', 'error');
-        return false;
-      }
+      await apiPost('/keys/validate', { provider, apiKey: key.trim() });
       return true;
-    } catch {
-      toast('Network error while validating', 'error');
+    } catch (err) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as any).message)
+          : 'Invalid API key';
+      toast(msg.includes('Invalid') ? msg : 'Invalid API key', 'error');
       return false;
     } finally {
       setValidating(false);
@@ -55,34 +44,19 @@ export function OnboardingApiKeys() {
   const saveKey = async () => {
     if (!canSave) return;
 
-    const token = localStorage.getItem('learnflow-token');
-    if (!token) {
-      toast('Please log in first', 'error');
-      return;
-    }
-
     // Optional validation: run basic provider format validation for a clearer UX.
     const ok = await validateKey();
     if (!ok) return;
 
     setSaving(true);
     try {
-      const res = await fetch(`${apiBase()}/api/v1/keys`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, apiKey: key.trim() }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast(data.message || 'Failed to save key', 'error');
-        return;
-      }
+      await apiPost('/keys', { provider, apiKey: key.trim() });
 
       toast('API key saved securely', 'success');
       setKey('');
       next();
     } catch {
-      toast('Network error while saving', 'error');
+      toast('Failed to save key', 'error');
     } finally {
       setSaving(false);
     }
@@ -109,8 +83,8 @@ export function OnboardingApiKeys() {
           Connect Your AI Provider
         </h1>
         <p className="text-gray-500 dark:text-gray-300 mb-8">
-          Bring your own API key from OpenAI, Anthropic, or Google. Your key is encrypted and never
-          shared.
+          Bring your own API key from OpenAI, Anthropic, Google, Mistral, Groq, or Ollama. Your key
+          is encrypted and never shared.
         </p>
 
         <div className="grid grid-cols-1 gap-4 mb-6">
@@ -126,6 +100,9 @@ export function OnboardingApiKeys() {
               <option value="openai">OpenAI</option>
               <option value="anthropic">Anthropic</option>
               <option value="google">Google</option>
+              <option value="mistral">Mistral</option>
+              <option value="groq">Groq</option>
+              <option value="ollama">Ollama (local)</option>
             </select>
           </label>
 
@@ -139,7 +116,17 @@ export function OnboardingApiKeys() {
               value={key}
               onChange={(e) => setKey(e.target.value)}
               placeholder={
-                provider === 'anthropic' ? 'sk-ant-...' : provider === 'google' ? 'AI...' : 'sk-...'
+                provider === 'anthropic'
+                  ? 'sk-ant-...'
+                  : provider === 'google'
+                    ? 'AI...'
+                    : provider === 'groq'
+                      ? 'gsk_...'
+                      : provider === 'ollama'
+                        ? 'optional (local)'
+                        : provider === 'mistral'
+                          ? 'mistral key...'
+                          : 'sk-...'
               }
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent"
             />

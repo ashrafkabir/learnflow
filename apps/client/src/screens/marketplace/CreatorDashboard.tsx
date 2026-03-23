@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
-import { apiBase } from '../../context/AppContext.js';
+import { apiGet, apiPost } from '../../context/AppContext.js';
 import { useToast } from '../../components/Toast.js';
 import {
   IconChart,
@@ -121,55 +121,51 @@ export function CreatorDashboard() {
     const loadDashboard = async () => {
       setLoading(true);
       try {
-        const token = localStorage.getItem('learnflow-token');
-        const res = await fetch(`${apiBase()}/api/v1/marketplace/creator/dashboard`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        const data = (await apiGet('/marketplace/creator/dashboard')) as CreatorDashboardPayload;
+
+        const courses: CreatorCourse[] = (data.courses || []).map((c) => ({
+          id: c.id,
+          title: c.title,
+          status:
+            c.status === 'published'
+              ? 'published'
+              : c.status === 'review'
+                ? 'under_review'
+                : c.status === 'draft'
+                  ? 'draft'
+                  : 'draft',
+          enrollments: c.enrollmentCount ?? 0,
+          rating: c.rating ?? 0,
+          revenue: c.revenue ?? 0,
+          created: (c.publishedAt || new Date().toISOString()).slice(0, 10),
+        }));
+
+        setCreatorCourses(courses.length ? courses : MOCK_COURSES);
+
+        // Derive high-level analytics from payload (keep mock chart series for now).
+        const avgRating = courses.length
+          ? courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length
+          : MOCK_ANALYTICS.avgRating;
+
+        setCreatorAnalytics({
+          ...MOCK_ANALYTICS,
+          enrollmentsThisMonth: data.totalEnrollments ?? MOCK_ANALYTICS.enrollmentsThisMonth,
+          avgRating: Math.round(avgRating * 10) / 10,
         });
-        if (res.ok) {
-          const data = (await res.json()) as CreatorDashboardPayload;
-          const courses: CreatorCourse[] = (data.courses || []).map((c) => ({
-            id: c.id,
-            title: c.title,
-            status:
-              c.status === 'published'
-                ? 'published'
-                : c.status === 'review'
-                  ? 'under_review'
-                  : c.status === 'draft'
-                    ? 'draft'
-                    : 'draft',
-            enrollments: c.enrollmentCount ?? 0,
-            rating: c.rating ?? 0,
-            revenue: c.revenue ?? 0,
-            created: (c.publishedAt || new Date().toISOString()).slice(0, 10),
-          }));
 
-          setCreatorCourses(courses.length ? courses : MOCK_COURSES);
-
-          // Derive high-level analytics from payload (keep mock chart series for now).
-          const avgRating = courses.length
-            ? courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length
-            : MOCK_ANALYTICS.avgRating;
-          setCreatorAnalytics({
-            ...MOCK_ANALYTICS,
-            enrollmentsThisMonth: data.totalEnrollments ?? MOCK_ANALYTICS.enrollmentsThisMonth,
-            avgRating: Math.round(avgRating * 10) / 10,
-          });
-
-          setCreatorEarnings({
-            ...MOCK_EARNINGS,
-            totalEarnings: data.totalEarnings ?? MOCK_EARNINGS.totalEarnings,
-            pendingPayout: (data.payouts || [])
-              .filter((p) => p.status === 'pending')
-              .reduce((sum, p) => sum + (p.creatorShare || 0), 0),
-            payoutHistory: (data.payouts || []).slice(0, 6).map((p) => ({
-              id: p.id,
-              date: p.createdAt.slice(0, 10),
-              amount: p.creatorShare,
-              status: p.status,
-            })),
-          });
-        }
+        setCreatorEarnings({
+          ...MOCK_EARNINGS,
+          totalEarnings: data.totalEarnings ?? MOCK_EARNINGS.totalEarnings,
+          pendingPayout: (data.payouts || [])
+            .filter((p) => p.status === 'pending')
+            .reduce((sum, p) => sum + (p.creatorShare || 0), 0),
+          payoutHistory: (data.payouts || []).slice(0, 6).map((p) => ({
+            id: p.id,
+            date: p.createdAt.slice(0, 10),
+            amount: p.creatorShare,
+            status: p.status,
+          })),
+        });
       } catch {
         // keep mocks
       } finally {
@@ -208,7 +204,6 @@ export function CreatorDashboard() {
       return;
     }
     try {
-      const token = localStorage.getItem('learnflow-token');
       const payload = {
         title: newCourse.title,
         description: newCourse.description,
@@ -221,43 +216,29 @@ export function CreatorDashboard() {
         readabilityScore: 0.7,
       };
 
-      const res = await fetch(`${apiBase()}/api/v1/marketplace/courses`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error('Publish failed');
+      await apiPost('/marketplace/courses', payload);
 
       toast('Course submitted for review!', 'success');
 
       // Refresh dashboard so table/metrics become data-driven.
-      const dash = await fetch(`${apiBase()}/api/v1/marketplace/creator/dashboard`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (dash.ok) {
-        const data = (await dash.json()) as CreatorDashboardPayload;
-        const courses: CreatorCourse[] = (data.courses || []).map((c) => ({
-          id: c.id,
-          title: c.title,
-          status:
-            c.status === 'published'
-              ? 'published'
-              : c.status === 'review'
-                ? 'under_review'
-                : c.status === 'draft'
-                  ? 'draft'
-                  : 'draft',
-          enrollments: c.enrollmentCount ?? 0,
-          rating: c.rating ?? 0,
-          revenue: c.revenue ?? 0,
-          created: (c.publishedAt || new Date().toISOString()).slice(0, 10),
-        }));
-        setCreatorCourses(courses.length ? courses : MOCK_COURSES);
-      }
+      const data = (await apiGet('/marketplace/creator/dashboard')) as CreatorDashboardPayload;
+      const courses: CreatorCourse[] = (data.courses || []).map((c) => ({
+        id: c.id,
+        title: c.title,
+        status:
+          c.status === 'published'
+            ? 'published'
+            : c.status === 'review'
+              ? 'under_review'
+              : c.status === 'draft'
+                ? 'draft'
+                : 'draft',
+        enrollments: c.enrollmentCount ?? 0,
+        rating: c.rating ?? 0,
+        revenue: c.revenue ?? 0,
+        created: (c.publishedAt || new Date().toISOString()).slice(0, 10),
+      }));
+      setCreatorCourses(courses.length ? courses : MOCK_COURSES);
 
       setShowPublishForm(false);
       setPublishStep(0);

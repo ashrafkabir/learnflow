@@ -24,8 +24,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 );
 
-/* Register service worker for offline support */
-if ('serviceWorker' in navigator) {
+/* Register service worker for offline support
+   Disable in E2E to avoid cached API responses breaking deterministic tests. */
+if ('serviceWorker' in navigator && !(window as any).__LEARNFLOW_E2E__) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });

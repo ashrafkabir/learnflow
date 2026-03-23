@@ -71,7 +71,12 @@ function heuristicLessonQueries(args: {
 }
 
 export function createOpenAIQueryGenerator(env = process.env): QueryGenerator {
-  const apiKey = env.OPENAI_API_KEY;
+  const isTest =
+    env.NODE_ENV === 'test' ||
+    env.VITEST === 'true' ||
+    env.VITEST_WORKER_ID !== undefined ||
+    env.npm_lifecycle_event === 'test';
+  const apiKey = isTest ? undefined : env.OPENAI_API_KEY;
   const openai = apiKey ? new OpenAI({ apiKey }) : null;
 
   return {

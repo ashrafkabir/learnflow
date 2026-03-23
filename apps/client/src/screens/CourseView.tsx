@@ -27,7 +27,7 @@ function estimateReadTime(lesson: { estimatedTime?: number; description?: string
 export function CourseView() {
   const { courseId } = useParams();
   const nav = useNavigate();
-  const { state, fetchCourse } = useApp();
+  const { state, fetchCourse, completeLesson } = useApp();
   const [expandedModule, setExpandedModule] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -430,15 +430,24 @@ export function CourseView() {
         <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 shadow-modal">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-around gap-2">
             <Button
-              variant="primary"
+              variant={state.completedLessons.has(selectedLesson.id) ? 'ghost' : 'primary'}
               size="sm"
-              onClick={() => {
-                /* mark complete logic */
+              onClick={async () => {
+                try {
+                  await completeLesson(selectedLesson.courseId, selectedLesson.id);
+                } catch {
+                  // best-effort; errors show via other UI surfaces
+                }
               }}
+              className={
+                state.completedLessons.has(selectedLesson.id)
+                  ? 'bg-success/10 text-success hover:bg-success/20'
+                  : ''
+              }
             >
               <span className="inline-flex items-center gap-2">
                 <IconCheck className="w-4 h-4" />
-                Mark Complete
+                {state.completedLessons.has(selectedLesson.id) ? 'Completed' : 'Mark Complete'}
               </span>
             </Button>
             <Button

@@ -20,7 +20,7 @@ import { dbMindmaps } from './db.js';
  * Minimal Yjs websocket server for mindmap collaboration.
  *
  * Iter49 Task 5 MVP:
- * - Room per course: `mindmap:<courseId>`
+ * - Room per course per user: `mindmap:<userId>:<courseId>`
  * - Auth: accept `token=dev` in non-production, otherwise JWT
  * - Persist Yjs doc state to SQLite (mindmaps.yjsState)
  */
@@ -170,7 +170,9 @@ export function handleYjsConnection(ws: WebSocket, req: IncomingMessage): void {
     return;
   }
 
-  const room = `mindmap:${courseId}`;
+  // User-owned room: keeps mindmaps private per user even when courseIds overlap.
+  // (MVP durability: persisted snapshot keyed by this room string.)
+  const room = `mindmap:${user.sub}:${courseId}`;
   const entry = getOrCreate(room);
   entry.conns.add(ws);
 

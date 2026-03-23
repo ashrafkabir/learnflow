@@ -36,6 +36,15 @@ function sleep(ms: number) {
 }
 
 export async function wikipediaSearch(query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    // Deterministic offline results for tests.
+    return Array.from({ length: Math.min(5, limit) }).map((_, i) => ({
+      url: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(query)}#${i}`,
+      title: `Wikipedia search result ${i + 1} for ${query}`,
+      description: `Deterministic test description for ${query}.`,
+    }));
+  }
+
   try {
     const url = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&srlimit=${limit}&format=json&origin=*`;
     await limiter.waitForDomain('en.wikipedia.org');
@@ -78,6 +87,14 @@ export async function wikipediaSummary(
 }
 
 export async function arxivSearch(query: string, maxResults = 5): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    return Array.from({ length: Math.min(5, maxResults) }).map((_, i) => ({
+      url: `https://arxiv.org/search/?query=${encodeURIComponent(query)}&searchtype=all&source=header#${i}`,
+      title: `arXiv search result ${i + 1} for ${query}`,
+      description: `Deterministic test abstract snippet for ${query}.`,
+    }));
+  }
+
   try {
     const url = `https://export.arxiv.org/api/query?search_query=all:${encodeURIComponent(query)}&start=0&max_results=${maxResults}`;
     await limiter.waitForDomain('export.arxiv.org');
@@ -111,6 +128,14 @@ export async function githubRepoSearch(
   query: string,
   maxResults = 5,
 ): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    return Array.from({ length: Math.min(5, maxResults) }).map((_, i) => ({
+      url: `https://github.com/search?q=${encodeURIComponent(query)}&type=repositories#${i}`,
+      title: `GitHub repo search result ${i + 1} for ${query}`,
+      description: `Deterministic test repo description for ${query}.`,
+    }));
+  }
+
   try {
     // Public GitHub search API. Unauthenticated is rate-limited; keep usage low.
     const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&per_page=${maxResults}`;
@@ -150,6 +175,20 @@ export async function scrapeWithReadability(
   const cached = scrapeCache.get(url);
   if (cached && Date.now() - cached.cachedAt < CACHE_TTL) {
     return { content: cached.content, title: cached.title };
+  }
+
+  // Deterministic/offline content for tests.
+  // The web-search provider is exercised in API tests; avoid live network in vitest.
+  if (IS_TEST) {
+    const domain = extractDomain(url);
+    const title = `Mock content for ${domain}`;
+    const content =
+      `This is deterministic test content for URL: ${url}. ` +
+      `It is long enough to pass minimum length checks and enables fast, offline pipelines. ` +
+      `Key points: overview, best practices, examples, pitfalls, and next steps.`;
+    const trimmed = content.slice(0, 6000);
+    scrapeCache.set(url, { content: trimmed, title, cachedAt: Date.now() });
+    return { content: trimmed, title };
   }
 
   const domain = extractDomain(url);
@@ -283,6 +322,14 @@ export function getScrapeCacheSize(): number {
 // ─── New Sources ─────────────────────────────────────────────────────────────
 
 export async function redditSearch(query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    return Array.from({ length: Math.min(5, limit) }).map((_, i) => ({
+      url: `https://old.reddit.com/search?q=${encodeURIComponent(query)}#${i}`,
+      title: `Reddit result ${i + 1} for ${query}`,
+      description: `Deterministic test post excerpt for ${query}.`,
+    }));
+  }
+
   try {
     const url = `https://old.reddit.com/search.json?q=${encodeURIComponent(query)}&sort=relevance&t=year&limit=${limit}`;
     await limiter.waitForDomain('old.reddit.com');
@@ -305,6 +352,14 @@ export async function redditSearch(query: string, limit = 5): Promise<FirecrawlS
 }
 
 export async function devtoSearch(query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    return Array.from({ length: Math.min(5, limit) }).map((_, i) => ({
+      url: `https://dev.to/search?q=${encodeURIComponent(query)}#${i}`,
+      title: `Dev.to result ${i + 1} for ${query}`,
+      description: `Deterministic test Dev.to excerpt for ${query}.`,
+    }));
+  }
+
   try {
     const url = `https://dev.to/api/articles?query=${encodeURIComponent(query)}&per_page=${limit}`;
     await limiter.waitForDomain('dev.to');
@@ -323,6 +378,14 @@ export async function devtoSearch(query: string, limit = 5): Promise<FirecrawlSe
 }
 
 export async function hackerNewsSearch(query: string, limit = 5): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    return Array.from({ length: Math.min(5, limit) }).map((_, i) => ({
+      url: `https://news.ycombinator.com/from?site=${encodeURIComponent(query)}#${i}`,
+      title: `HN result ${i + 1} for ${query}`,
+      description: `Deterministic test HN snippet for ${query}.`,
+    }));
+  }
+
   try {
     const url = `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=story&hitsPerPage=${limit}`;
     await limiter.waitForDomain('hn.algolia.com');
@@ -345,6 +408,14 @@ async function duckDuckGoSiteSearch(
   query: string,
   limit = 5,
 ): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    return Array.from({ length: Math.min(5, limit) }).map((_, i) => ({
+      url: `https://${site}/search?q=${encodeURIComponent(query)}#${i}`,
+      title: `${site} result ${i + 1} for ${query}`,
+      description: `Deterministic test search result for ${query} on ${site}.`,
+    }));
+  }
+
   try {
     const searchUrl = `https://html.duckduckgo.com/html/?q=site:${site}+${encodeURIComponent(query)}`;
     await limiter.waitForDomain('html.duckduckgo.com');
@@ -374,6 +445,14 @@ async function googleSiteSearch(
   query: string,
   limit = 5,
 ): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    return Array.from({ length: Math.min(5, limit) }).map((_, i) => ({
+      url: `https://${site}/search?q=${encodeURIComponent(query)}#${i}`,
+      title: `${site} result ${i + 1} for ${query}`,
+      description: `Deterministic test search result for ${query} on ${site}.`,
+    }));
+  }
+
   try {
     const searchUrl = `https://www.google.com/search?q=site:${site}+${encodeURIComponent(query)}&num=${limit}`;
     await limiter.waitForDomain('www.google.com');
@@ -497,5 +576,13 @@ export async function baiduScholarSearch(
   query: string,
   limit = 3,
 ): Promise<FirecrawlSearchResult[]> {
+  if (IS_TEST) {
+    return Array.from({ length: Math.min(5, limit) }).map((_, i) => ({
+      url: `https://scholar.google.com/scholar?q=${encodeURIComponent(query)}#${i}`,
+      title: `Scholar result ${i + 1} for ${query}`,
+      description: `Deterministic test scholar snippet for ${query}.`,
+    }));
+  }
+
   return duckDuckGoSiteSearch('scholar.google.com', query, limit);
 }

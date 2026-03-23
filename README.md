@@ -84,6 +84,16 @@ This project uses [Turborepo](https://turbo.build/) for monorepo management. Key
 - `npm run test` — Run all tests
 - `npm run dev` — Start development servers
 
+### Docs
+
+Developer docs live in `apps/docs/pages/*.md`.
+
+- Selection Tools (Discover / Illustrate / Mark): `apps/docs/pages/selection-tools.md`
+- API reference: `apps/docs/pages/api-reference.md`
+- Architecture notes: `apps/docs/pages/architecture.md`
+
+The marketing site exposes a lightweight docs landing page at `/docs` (apps/web), which should link back to these Markdown sources.
+
 ## License
 
 Private — All rights reserved.

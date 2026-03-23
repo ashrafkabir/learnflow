@@ -19,7 +19,8 @@ router.get('/mindmap', (req: Request, res: Response) => {
     res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
     return;
   }
-  const room = `mindmap:${parse.data.courseId}`;
+  // User-owned room (matches yjsServer.ts)
+  const room = `mindmap:${req.user!.sub}:${parse.data.courseId}`;
   const row = dbMindmaps.get(room);
   res.json({ room, yjsState: row.yjsState || null, updatedAt: row.updatedAt || null });
 });

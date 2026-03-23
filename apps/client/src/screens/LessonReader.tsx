@@ -139,7 +139,7 @@ export function LessonReader() {
   const [loading, setLoading] = useState(false);
   const [activePanel, setActivePanel] = useState<'none' | 'notes' | 'quiz'>('none');
   const [_notesFormat, _setNotesFormat] = useState<'cornell' | 'flashcard'>('cornell');
-  const [_savedNote, setSavedNote] = useState<any>(null);
+  const [savedNote, setSavedNote] = useState<any>(null);
   const [customNoteText, setCustomNoteText] = useState('');
   const [illustrationDesc, setIllustrationDesc] = useState('');
   const [illustrations, setIllustrations] = useState<
@@ -191,8 +191,20 @@ export function LessonReader() {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const lesson = state.activeLesson;
-  const lessonSuggestions =
-    (state.mindmapSuggestions?.[String(courseId || 'global')] as any[]) || [];
+  const lessonSuggestions = React.useMemo(
+    () => (state.mindmapSuggestions?.[String(courseId || 'global')] as any[]) || [],
+    [state.mindmapSuggestions, courseId],
+  );
+
+  const lessonMindmapSuggestions = React.useMemo(
+    () =>
+      lessonSuggestions.map((s: any) => ({
+        id: String(s.id || ''),
+        label: String(s.label || ''),
+        reason: s.reason ? String(s.reason) : undefined,
+      })),
+    [lessonSuggestions],
+  );
   const isComplete = lessonId ? state.completedLessons.has(lessonId) : false;
 
   // Prefer structured sources from the API; fall back to parsing markdown.
@@ -229,6 +241,35 @@ export function LessonReader() {
     onSwipeLeft: () => nextLesson && nav(`/courses/${courseId}/lessons/${nextLesson.id}`),
     onSwipeRight: () => prevLesson && nav(`/courses/${courseId}/lessons/${prevLesson.id}`),
   });
+
+  // Behavioral tracking: time-on-lesson
+  // - Emit lesson.view_start on mount (best-effort)
+  // - Emit lesson.view_end with durationMs on unmount / lesson change
+  useEffect(() => {
+    if (!courseId || !lessonId) return;
+
+    const startedAt = Date.now();
+    // Best-effort fire-and-forget
+    fetch('/api/v1/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'lesson.view_start', courseId, lessonId, meta: {} }),
+    }).catch(() => {});
+
+    return () => {
+      const durationMs = Math.max(0, Date.now() - startedAt);
+      fetch('/api/v1/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'lesson.view_end',
+          courseId,
+          lessonId,
+          meta: { durationMs },
+        }),
+      }).catch(() => {});
+    };
+  }, [courseId, lessonId]);
 
   useEffect(() => {
     if (courseId && lessonId) {
@@ -384,6 +425,37 @@ export function LessonReader() {
     }
   };
 
+  // E2E hook: allow Playwright to open selection tools deterministically without relying on DOM selection.
+  // This is gated behind a window flag set by tests.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const w = window as any;
+    if (!w.__LEARNFLOW_E2E__) return;
+    w.__learnflowE2E = {
+      setSelection: (
+        text: string,
+        startOffset = 0,
+        endOffset = Math.max(1, (text || '').length),
+      ) => {
+        setFloatingToolbar({ x: 220, y: 140, text, startOffset, endOffset });
+      },
+      openTool: (
+        tool: 'discover' | 'illustrate' | 'mark',
+        text: string,
+        startOffset = 0,
+        endOffset = Math.max(1, (text || '').length),
+      ) => {
+        setFloatingToolbar({ x: 220, y: 140, text, startOffset, endOffset });
+        // Immediately open the preview without relying on a DOM-driven mouseup event.
+        void runSelectionToolPreview(tool, text, startOffset, endOffset);
+      },
+      clearSelection: () => setFloatingToolbar(null),
+    };
+    return () => {
+      if (w.__learnflowE2E) delete w.__learnflowE2E;
+    };
+  }, []);
+
   const handleTextSelection = useCallback(() => {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.toString().trim()) {
@@ -469,12 +541,14 @@ export function LessonReader() {
         body: JSON.stringify({ bullets, selectedText: toolSelectedText }),
       });
       // Refresh notes so UI can reflect takeaways.
-      fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data?.note) setSavedNote(data.note);
-        })
-        .catch(() => {});
+      // IMPORTANT: await this refresh; otherwise E2E/UI can race and never render the new takeaways.
+      try {
+        const refreshed = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes`);
+        const data = refreshed.ok ? await refreshed.json() : null;
+        if (data?.note) setSavedNote(data.note);
+      } catch {
+        // ignore
+      }
     } else {
       // Discover/Illustrate attach as an annotation note.
       const note = toolPreview.preview?.note || '';
@@ -1355,6 +1429,7 @@ export function LessonReader() {
               <div
                 key={`take-${i}`}
                 className="bg-success/5 border border-success/20 rounded-2xl p-5"
+                data-testid="key-takeaways"
               >
                 <h2 className="text-sm font-semibold text-success mb-3 flex items-center gap-2">
                   <IconBulb className="w-4 h-4" />
@@ -1374,18 +1449,45 @@ export function LessonReader() {
                       </div>
                     ))}
                 </div>
+
+                {Array.isArray(savedNote?.content?.keyTakeawaysExtras) &&
+                savedNote.content.keyTakeawaysExtras.length > 0 ? (
+                  <div
+                    className="mt-4 pt-4 border-t border-success/20"
+                    data-testid="marked-takeaways"
+                  >
+                    <h3 className="text-xs font-semibold text-success/90 mb-2">
+                      Your marked takeaways
+                    </h3>
+                    <div className="space-y-2">
+                      {savedNote.content.keyTakeawaysExtras.map((b: string, j: number) => (
+                        <div
+                          key={`extra-${j}`}
+                          className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          <span className="text-success font-bold">•</span>
+                          <span>{String(b).trim()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             ))}
 
           {/* Sources / References */}
-          {sources.length > 0 && (
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <IconBook className="w-4 h-4" />
-                References
-              </h2>
-              <div className="space-y-3">
-                {sources.map((s: any) => (
+          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+              <IconBook className="w-4 h-4" />
+              References
+            </h2>
+            <div className="space-y-3">
+              {sources.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No sources were attached to this lesson yet.
+                </p>
+              ) : (
+                sources.map((s: any) => (
                   <div key={s.id} className="flex items-start gap-3 text-sm">
                     <span className="bg-accent/10 text-accent font-bold text-xs px-2 py-0.5 rounded-full flex-shrink-0">
                       [{s.id}]
@@ -1405,10 +1507,10 @@ export function LessonReader() {
                       </a>
                     </div>
                   </div>
-                ))}
-              </div>
+                ))
+              )}
             </div>
-          )}
+          </div>
 
           {/* Next Steps */}
           {sections.filter((s) => s.type === 'nextsteps').length > 0 ? (
@@ -1720,11 +1822,7 @@ export function LessonReader() {
         onClose={() => setLessonMindmapOpen(false)}
         lessonTitle={lesson?.title || 'Lesson'}
         lessonContent={lesson?.content || ''}
-        suggestions={lessonSuggestions.map((s: any) => ({
-          id: String(s.id || ''),
-          label: String(s.label || ''),
-          reason: s.reason ? String(s.reason) : undefined,
-        }))}
+        suggestions={lessonMindmapSuggestions}
       />
 
       {/* Bottom action bar */}

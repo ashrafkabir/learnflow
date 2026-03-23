@@ -13,7 +13,8 @@ router.get('/', (req: Request, res: Response) => {
   const stats = dbProgress.getUserStats(userId);
   const events = dbEvents.list(userId, 500);
 
-  // Basic event-based weekly progress (minutes are still estimated, but now derived from events).
+  // Event-based weekly progress.
+  // Prefer explicit time-on-lesson durations when present; fall back to completion estimates.
   const weeklyProgress = new Map<string, number>([
     ['Mon', 0],
     ['Tue', 0],
@@ -25,8 +26,21 @@ router.get('/', (req: Request, res: Response) => {
   ]);
 
   for (const e of events) {
+    const k = dayKey(new Date(e.createdAt));
+    if (e.type === 'lesson.view_end') {
+      try {
+        const meta = JSON.parse(e.meta || '{}') as any;
+        const ms = Number(meta?.durationMs || 0);
+        if (Number.isFinite(ms) && ms > 0) {
+          const minutes = Math.max(1, Math.round(ms / 60000));
+          weeklyProgress.set(k, (weeklyProgress.get(k) || 0) + minutes);
+          continue;
+        }
+      } catch {
+        // ignore meta parse
+      }
+    }
     if (e.type === 'lesson.completed') {
-      const k = dayKey(new Date(e.createdAt));
       weeklyProgress.set(k, (weeklyProgress.get(k) || 0) + 5);
     }
   }

@@ -74,7 +74,12 @@ export async function handleWsMessage(
   let routedAgentName = 'orchestrator';
 
   try {
-    const result = await orchestrator.processMessage(text, context);
+    const result = await Promise.race([
+      orchestrator.processMessage(text, context),
+      new Promise<any>((_resolve, reject) =>
+        setTimeout(() => reject(new Error('orchestrator_timeout')), 8000),
+      ),
+    ]);
     aggregatedText = result.text || '';
     suggestedActions = result.suggestedActions || [];
     routedAgentName = result.agentResults?.[0]?.agentName || routedAgentName;
@@ -86,25 +91,53 @@ export async function handleWsMessage(
       send(ws, 'response.chunk', { message_id: messageId, content_delta: chunk, type: 'text' });
     }
 
-    // Persist usage (approx): use orchestrator token accounting if available.
+    // Usage persistence (Iter67): per-agent + best-effort provider attribution.
     try {
-      const tokens = Math.max(0, Math.round(result.totalTokensUsed || 0));
-      if (tokens > 0) {
-        db.addTokenUsage({
-          userId: user.sub,
-          agentId: routedAgentName,
-          tokensUsed: tokens,
-          timestamp: new Date(),
-        });
-      }
+      // Our agents are mostly deterministic/offline today and may not report tokens.
+      // Still record a minimal usage record so Settings can show provider usage.
+      const tokensTotal = Math.max(1, Math.round(result.totalTokensUsed || 0) || 1);
+
+      // WS requests don't carry an explicit apiKey override today.
+      // Attribute provider as:
+      // 1) user's active saved key provider (best-effort)
+      // 2) otherwise unknown
+      const savedProviders = (db.getKeysByUserId(user.sub) || []).filter((k) => k.active);
+      const provider = (savedProviders[0]?.provider as any) || 'unknown';
+
+      db.addUsageRecord({
+        userId: user.sub,
+        agentName: routedAgentName,
+        provider,
+        tokensIn: 0,
+        tokensOut: 0,
+        tokensTotal,
+        createdAt: new Date(),
+      });
     } catch {
       // ignore usage persistence failures
     }
 
-    send(ws, 'agent.complete', {
-      agent_name: routedAgentName,
-      result_summary: `Completed via ${routedAgentName}`,
-    });
+    // Iter66: emit one agent.complete per executed agent (multi-agent orchestration trace).
+    const completedAgents = new Set<string>();
+    for (const ar of result.agentResults || []) {
+      if (!ar?.agentName) continue;
+      if (completedAgents.has(ar.agentName)) continue;
+      completedAgents.add(ar.agentName);
+
+      send(ws, 'agent.complete', {
+        agent_name: ar.agentName,
+        result_summary:
+          ar.status === 'success' ? `Completed via ${ar.agentName}` : `Error in ${ar.agentName}`,
+      });
+    }
+
+    // Fallback: if agentResults were empty for some reason, keep prior behavior.
+    if (completedAgents.size === 0) {
+      send(ws, 'agent.complete', {
+        agent_name: routedAgentName,
+        result_summary: `Completed via ${routedAgentName}`,
+      });
+    }
 
     send(ws, 'response.end', {
       message_id: messageId,

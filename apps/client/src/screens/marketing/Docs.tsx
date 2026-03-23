@@ -56,7 +56,7 @@ const SECTIONS = [
       {
         title: 'Collaboration',
         content:
-          'Find study partners by selecting interest tags. Create or join study groups around specific topics. Real-time shared mindmaps are coming soon.',
+          'Find study partners by selecting interest tags. Create or join study groups around specific topics. Real-time shared mindmaps are planned (not yet available in the current MVP).',
       },
     ],
   },
@@ -106,7 +106,7 @@ const SECTIONS = [
       {
         title: 'Earning Revenue',
         content:
-          'Pro creators earn revenue from paid course sales. Stripe integration for payouts coming soon.',
+          'Paid course checkout is currently a mock flow for MVP/testing. Stripe payouts/integration are planned for a future release.',
       },
       {
         title: 'Course Analytics',
@@ -151,7 +151,7 @@ const QUICK_START_STEPS = [
   {
     step: 2,
     title: 'Create an Account',
-    desc: 'Sign up with email or use Google/GitHub/Apple OAuth for one-click registration.',
+    desc: 'Sign up with email and password (OAuth providers are planned but not yet implemented).',
   },
   {
     step: 3,

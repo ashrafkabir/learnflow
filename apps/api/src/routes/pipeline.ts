@@ -6,6 +6,12 @@ import {
   searchTopicTrending,
   type FirecrawlSource,
 } from '@learnflow/agents';
+import {
+  buildCourseResearchFrame,
+  deriveFindingsFromSearch,
+} from '@learnflow/agents/dist/content-pipeline/research-frame.js';
+import { getAdminSearchConfig } from '../lib/search-config.js';
+import { makeStage1Log, makeStage2Log, makeLayerLog } from '../lib/search-run-log.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 
 const router = Router();
@@ -72,6 +78,12 @@ export interface PipelineState {
   // Stage data
   crawlThreads: CrawlThread[];
   sources?: PipelineSource[];
+  /**
+   * Search run documentation for course creation (Iter68):
+   * - stage 1: topic trending queries
+   * - stage 2: per-lesson queries
+   */
+  searchRuns?: any[];
   synthesisSummary?: string;
   organizedSources: number;
   deduplicatedCount: number;
@@ -465,52 +477,141 @@ async function runPipeline(pipelineId: string) {
     });
   }
 
+  // Load admin-configured search behavior (global)
+  const searchCfg = getAdminSearchConfig();
+
+  // Iter69 Phase 1: layered research (Market/Analyst, Academic, Practitioner)
+  const frame = buildCourseResearchFrame(topic);
+  const layerTemplates = searchCfg.layerTemplates;
+
+  const searchRuns: any[] = Array.isArray((p as any).searchRuns) ? (p as any).searchRuns : [];
+  const byLayer: Record<string, any[]> = {};
+
   try {
-    crawledSources = await searchTopicTrending(topic);
+    // Run each layer as a bounded batch and record findings.
+    for (const layer of frame.layers.filter((l) => l.id !== 'L4_filter')) {
+      const templatesUsed =
+        (layerTemplates && (layerTemplates as any)[layer.id]) ||
+        // fall back to the frame defaults (hard requirement list)
+        layer.queries.map((q) => `"${q.replaceAll(topic, '{courseTopic}')}"`);
 
-    // Persist the actual sources discovered so the UI can attribute what was used.
-    updatePipeline(p, {
-      sources: crawledSources.map((s) => ({
-        url: s.url,
+      const queries = (Array.isArray(templatesUsed) ? templatesUsed : [])
+        .map((t: string) =>
+          String(t || '')
+            .replaceAll('{courseTopic}', topic)
+            .trim(),
+        )
+        .filter(Boolean);
+
+      // Log the intended search runs
+      searchRuns.push(
+        makeLayerLog({
+          layerId: layer.id,
+          layerLabel: layer.label,
+          templatesUsed: Array.isArray(templatesUsed) ? templatesUsed : [],
+          queries,
+          perQueryLimit: searchCfg.perQueryLimit,
+          enabledSources: searchCfg.enabledSources,
+        }),
+      );
+
+      // Execute searches for this layer using the existing provider.
+      const perQueryLimit = Math.max(1, Math.min(10, searchCfg.perQueryLimit));
+      const maxLayerQueries = Math.max(1, Math.min(20, queries.length));
+      const capped = queries.slice(0, maxLayerQueries);
+
+      const layerSources: FirecrawlSource[] = [];
+      for (const q of capped) {
+        const batch = await searchTopicTrending(q, {
+          stage1Templates: [q],
+          enabledSources: searchCfg.enabledSources,
+          perQueryLimit,
+          maxStage1Queries: 1,
+        } as any);
+        layerSources.push(...batch);
+      }
+      byLayer[layer.id] = layerSources.map((s) => ({
         title: s.title,
-        domain: s.domain,
-        author: s.author,
-        publishDate: s.publishDate || undefined,
-        credibilityScore: s.credibilityScore,
-      })),
-    });
+        description: (s.content || '').slice(0, 240),
+        url: s.url,
+        source: s.source,
+      }));
 
-    for (let i = 0; i < threads.length; i++) {
-      threads[i].status = 'done';
-      const chunk = crawledSources.slice(i * 4, (i + 1) * 4);
-      threads[i].title = chunk.length > 0 ? `Found ${chunk.length} sources` : 'Completed';
-      threads[i].contentPreview = chunk
-        .map((s) => s.title)
-        .join(', ')
-        .slice(0, 100);
-      threads[i].wordCount = chunk.reduce((s, c) => s + c.wordCount, 0);
+      // Update last log with resultsCount (best effort)
+      const last = searchRuns[searchRuns.length - 1];
+      if (last && last.layerId === layer.id) last.resultsCount = layerSources.length;
+
+      // merge into global sources set
+      crawledSources.push(...layerSources);
     }
+
+    // Persist search runs
+    updatePipeline(p, { searchRuns });
+
+    // Deduplicate
+    crawledSources = crawledSources.filter(
+      (s, i, arr) => arr.findIndex((x) => x.url === s.url) === i,
+    );
+
+    // Phase 1 outputs
+    const findings = deriveFindingsFromSearch({ topic, byLayer });
+    (p as any).researchFindings = findings;
   } catch (err) {
-    console.warn('[Pipeline] Bulk research failed, falling back to crawlSourcesForTopic:', err);
+    console.warn('[Pipeline] Layered Phase 1 research failed, falling back to legacy stage1:', err);
+
+    // Legacy stage1 behavior (kept as fallback)
+    const stage1TemplatesUsed = searchCfg.stage1Templates;
+    const stage1Queries = stage1TemplatesUsed
+      .map((t) => t.replaceAll('{courseTopic}', topic))
+      .slice(0, searchCfg.maxStage1Queries);
+
+    searchRuns.push(
+      makeStage1Log({
+        templatesUsed: stage1TemplatesUsed,
+        queries: stage1Queries,
+        perQueryLimit: searchCfg.perQueryLimit,
+        enabledSources: searchCfg.enabledSources,
+      }),
+    );
+    updatePipeline(p, { searchRuns });
+
+    crawledSources = await searchTopicTrending(topic, {
+      stage1Templates: searchCfg.stage1Templates,
+      enabledSources: searchCfg.enabledSources,
+      perQueryLimit: searchCfg.perQueryLimit,
+      maxStage1Queries: searchCfg.maxStage1Queries,
+    } as any);
+  }
+
+  // Persist the actual sources discovered so the UI can attribute what was used.
+  updatePipeline(p, {
+    sources: crawledSources.map((s) => ({
+      url: s.url,
+      title: s.title,
+      domain: s.domain,
+      author: s.author,
+      publishDate: s.publishDate || undefined,
+      credibilityScore: s.credibilityScore,
+    })),
+  });
+
+  for (let i = 0; i < threads.length; i++) {
+    threads[i].status = 'done';
+    const chunk = crawledSources.slice(i * 4, (i + 1) * 4);
+    threads[i].title = chunk.length > 0 ? `Found ${chunk.length} sources` : 'Completed';
+    threads[i].contentPreview = chunk
+      .map((s) => s.title)
+      .join(', ')
+      .slice(0, 100);
+    threads[i].wordCount = chunk.reduce((s, c) => s + c.wordCount, 0);
+  }
+
+  // Extra resilience: if Phase 1 produced no sources, fall back to simple crawl.
+  if (crawledSources.length === 0) {
     try {
       crawledSources = await crawlSourcesForTopic(topic);
     } catch {
       /* will use empty sources */
-    }
-
-    updatePipeline(p, {
-      sources: crawledSources.map((s) => ({
-        url: s.url,
-        title: s.title,
-        domain: s.domain,
-        author: s.author,
-        publishDate: s.publishDate || undefined,
-        credibilityScore: s.credibilityScore,
-      })),
-    });
-
-    for (const t of threads) {
-      t.status = crawledSources.length > 0 ? 'done' : 'failed';
     }
   }
   updatePipeline(p, { crawlThreads: [...threads], progress: 25 });
@@ -604,11 +705,45 @@ async function runPipeline(pipelineId: string) {
         console.log(`[Pipeline] Scraping sources for lesson: "${les.title}"`);
         let lessonSources: FirecrawlSource[];
         try {
+          // Document Stage 2 searches (templates + resolved queries)
+          const stage2TemplatesUsed = searchCfg.stage2Templates;
+          const stage2Queries = stage2TemplatesUsed
+            .map((t) =>
+              t
+                .replaceAll('{courseTopic}', topic)
+                .replaceAll('{moduleTitle}', modules[mi].title)
+                .replaceAll('{lessonTitle}', les.title)
+                .replaceAll('{lessonDescription}', les.description),
+            )
+            .slice(0, searchCfg.maxStage2Queries);
+
+          const sr2: any[] = Array.isArray((p as any).searchRuns)
+            ? (p as any).searchRuns
+            : searchRuns;
+          sr2.push(
+            makeStage2Log({
+              templatesUsed: stage2TemplatesUsed,
+              queries: stage2Queries,
+              perQueryLimit: searchCfg.perQueryLimit,
+              enabledSources: searchCfg.enabledSources,
+              moduleTitle: modules[mi].title,
+              lessonTitle: les.title,
+            }),
+          );
+          updatePipeline(p, { searchRuns: sr2 });
+
           lessonSources = await searchForLesson(
             topic,
             modules[mi].title,
             les.title,
             les.description,
+            {
+              stage2Templates: searchCfg.stage2Templates,
+              enabledSources: searchCfg.enabledSources,
+              perQueryLimit: searchCfg.perQueryLimit,
+              maxStage2Queries: searchCfg.maxStage2Queries,
+              maxSourcesPerLesson: searchCfg.maxSourcesPerLesson,
+            } as any,
           );
         } catch (err) {
           console.warn(
@@ -755,7 +890,8 @@ async function runPipeline(pipelineId: string) {
     description: p.courseDescription!,
     topic,
     depth: 'intermediate',
-    authorId: 'pipeline',
+    // Pipeline-created courses must be owned by the authenticated user for limits/deletion/analytics.
+    authorId: (p as any).userId || 'pipeline',
     modules: builtModules,
     progress: {},
     createdAt: new Date().toISOString(),
@@ -1089,7 +1225,30 @@ router.post('/', (req: Request, res: Response) => {
   }
 
   const pipelineId = uuid();
-  const courseId = `course-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  // Deterministic course id for idempotency: one pipeline → one course.
+  // Prevents duplicate courses when a pipeline is retried or resumed.
+  const courseId = `course-${pipelineId}`;
+
+  // Enforce free-tier course limit server-side (pipelines create new courses).
+  const tier = req.user?.tier || 'free';
+  if (tier !== 'pro') {
+    const authorId = req.user?.sub;
+    if (authorId) {
+      const existingCount = dbCourses.getAll().filter((c: any) => c.authorId === authorId).length;
+      const FREE_LIMIT = 3;
+      if (existingCount >= FREE_LIMIT) {
+        res.status(402).json({
+          error: 'payment_required',
+          code: 402,
+          message: 'Free plan is limited to 3 courses. Upgrade to Pro for unlimited courses.',
+          tier,
+          limit: FREE_LIMIT,
+          count: existingCount,
+        });
+        return;
+      }
+    }
+  }
 
   const state: PipelineState & { userId?: string; tier?: string } = {
     id: pipelineId,
@@ -1247,7 +1406,11 @@ router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) =
     return;
   }
 
-  const { client: openai } = getOpenAIForRequest({ userId: req.user!.sub, tier: req.user!.tier });
+  const { client: openai } = getOpenAIForRequest({
+    userId: req.user!.sub,
+    tier: req.user!.tier,
+    apiKeyOverride: (req.body as any)?.apiKey,
+  });
   if (!openai) {
     res.status(500).json({ error: 'OpenAI not configured' });
     return;

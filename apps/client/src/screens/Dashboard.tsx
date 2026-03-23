@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp, apiGet } from '../context/AppContext.js';
 import { ProgressRing } from '../components/ProgressRing.js';
+import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { useStartPipeline, usePipelineList } from '../hooks/usePipeline.js';
 import { useTheme } from '../design-system/ThemeProvider.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
@@ -25,6 +26,7 @@ import {
   IconCelebrate,
   IconCalendar,
   IconClose,
+  IconTrash,
   IconFlame,
   IconMap,
   IconRocket,
@@ -33,9 +35,10 @@ import {
 
 export function Dashboard() {
   const nav = useNavigate();
-  const { state, dispatch } = useApp();
+  const { state, dispatch, deleteCourse } = useApp();
   const [newTopic, setNewTopic] = useState('');
   const [creating, setCreating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<null | { id: string; title: string }>(null);
   const [activePipelineId, setActivePipelineId] = useState<string | null>(null);
   const [weeklyData, setWeeklyData] = useState<Array<{ day: string; minutes: number }>>([]);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -146,29 +149,29 @@ export function Dashboard() {
 
   const { mode: themeMode, toggle: toggleDarkMode } = useTheme();
 
-  // Today's lessons
-  const todaysLessons: Array<{
-    courseId: string;
-    courseTitle: string;
-    lessonId: string;
-    lessonTitle: string;
-    estimatedTime: number;
-  }> = [];
-  for (const course of state.courses) {
-    for (const mod of course.modules) {
-      for (const lesson of mod.lessons) {
-        if (!state.completedLessons.has(lesson.id) && todaysLessons.length < 3) {
-          todaysLessons.push({
-            courseId: course.id,
-            courseTitle: course.title,
-            lessonId: lesson.id,
-            lessonTitle: lesson.title,
-            estimatedTime: lesson.estimatedTime,
-          });
-        }
+  // Today's lessons (API-driven)
+  const [todaysLessons, setTodaysLessons] = useState<
+    Array<{
+      courseId: string;
+      courseTitle: string;
+      lessonId: string;
+      lessonTitle: string;
+      estimatedTime: number;
+      reason?: string;
+    }>
+  >([]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await apiGet('/daily?limit=3');
+        if (Array.isArray(data?.lessons)) setTodaysLessons(data.lessons);
+      } catch {
+        // Fallback: keep empty and let other dashboard CTAs guide the user.
+        setTodaysLessons([]);
       }
-    }
-  }
+    })();
+  }, [state.courses.length, state.completedLessons.size]);
 
   return (
     <section
@@ -301,21 +304,21 @@ export function Dashboard() {
                 <p className="text-xs opacity-75 mt-1">days in a row</p>
               </div>
               <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-1">
-                <p className="text-sm text-gray-600 dark:text-gray-300">Courses</p>
+                <p className="text-sm text-gray-800/80 dark:text-gray-200">Courses</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-white">
                   {state.courses.length}
                 </p>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">active</p>
+                <p className="text-xs text-gray-800/80 dark:text-gray-200 mt-1">active</p>
               </div>
               <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-2">
-                <p className="text-sm text-gray-600 dark:text-gray-300">Completed</p>
+                <p className="text-sm text-gray-800/80 dark:text-gray-200">Completed</p>
                 <p className="text-3xl font-bold text-success">{state.completedLessons.size}</p>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">lessons</p>
+                <p className="text-xs text-gray-800/80 dark:text-gray-200 mt-1">lessons</p>
               </div>
               <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-3">
-                <p className="text-sm text-gray-600 dark:text-gray-300">Today</p>
+                <p className="text-sm text-gray-800/80 dark:text-gray-200">Today</p>
                 <p className="text-3xl font-bold text-accent">0/3</p>
-                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">daily goal</p>
+                <p className="text-xs text-gray-800/80 dark:text-gray-200 mt-1">daily goal</p>
               </div>
             </div>
 
@@ -330,7 +333,7 @@ export function Dashboard() {
                     {Math.min(state.completedLessons.size, 3)} due
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                <p className="text-sm text-gray-800/80 dark:text-gray-200 mb-3">
                   Spaced repetition keeps knowledge fresh. Review these lessons today.
                 </p>
                 <div className="space-y-2">
@@ -357,7 +360,7 @@ export function Dashboard() {
                             </span>
                             {l.title}
                           </span>
-                          <span className="text-gray-600 dark:text-gray-300 ml-2">
+                          <span className="text-gray-800/80 dark:text-gray-200 ml-2">
                             — Review due
                           </span>
                         </Button>
@@ -389,7 +392,7 @@ export function Dashboard() {
                             </div>
                           ))}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                        <p className="text-sm text-gray-800/80 dark:text-gray-200 mb-3">
                           No activity yet this week
                         </p>
                         {todaysLessons.length > 0 ? (
@@ -424,7 +427,7 @@ export function Dashboard() {
                     <div className="flex items-end gap-2 h-32">
                       {weeklyData.map((d) => (
                         <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                          <span className="text-[10px] text-gray-600 dark:text-gray-300">
+                          <span className="text-[10px] text-gray-800/80 dark:text-gray-200">
                             {d.minutes > 0 ? `${d.minutes}m` : ''}
                           </span>
                           <div
@@ -438,7 +441,7 @@ export function Dashboard() {
                               }}
                             />
                           </div>
-                          <span className="text-[10px] text-gray-600 dark:text-gray-300 font-medium">
+                          <span className="text-[10px] text-gray-800/80 dark:text-gray-200 font-medium">
                             {d.day}
                           </span>
                         </div>
@@ -472,8 +475,9 @@ export function Dashboard() {
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           {tl.lessonTitle}
                         </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-300 truncate">
+                        <p className="text-xs text-gray-800/80 dark:text-gray-200 truncate">
                           {tl.courseTitle} · {tl.estimatedTime} min
+                          {tl.reason ? ` · ${tl.reason}` : ''}
                         </p>
                       </div>
                       <span className="text-gray-300 dark:text-gray-600">→</span>
@@ -592,7 +596,7 @@ export function Dashboard() {
                           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {p.courseTitle || p.topic}
                           </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-300 capitalize">
+                          <p className="text-xs text-gray-800/80 dark:text-gray-200 capitalize">
                             {p.stage.replace('_', ' ')} · {p.progress}%
                           </p>
                         </div>
@@ -627,7 +631,7 @@ export function Dashboard() {
                 </h2>
               </div>
               {state.notifications.length === 0 && state.courses.length === 0 ? (
-                <p className="text-sm text-gray-600 dark:text-gray-300 text-center py-4">
+                <p className="text-sm text-gray-800/80 dark:text-gray-200 text-center py-4">
                   No notifications yet. Create a course to get started!
                 </p>
               ) : (
@@ -643,7 +647,9 @@ export function Dashboard() {
                           <IconSpark size={16} />
                         )}
                       </span>
-                      <span className="flex-1 text-gray-600 dark:text-gray-300">{n.message}</span>
+                      <span className="flex-1 text-gray-800/80 dark:text-gray-200">
+                        {n.message}
+                      </span>
                       <span className="text-xs text-gray-300">
                         {new Date(n.timestamp).toLocaleTimeString([], {
                           hour: '2-digit',
@@ -666,7 +672,7 @@ export function Dashboard() {
                       <span className="text-accent" aria-hidden>
                         <IconCourse size={16} />
                       </span>
-                      <span className="text-gray-600 dark:text-gray-300">
+                      <span className="text-gray-800/80 dark:text-gray-200">
                         You have {state.courses.length} active course
                         {state.courses.length !== 1 ? 's' : ''}. Keep up the momentum!
                       </span>
@@ -675,7 +681,7 @@ export function Dashboard() {
                   {state.completedLessons.size > 0 && (
                     <div className="flex items-center gap-3 p-2 text-sm">
                       <IconCelebrate size={16} className="text-green-500" decorative />
-                      <span className="text-gray-600 dark:text-gray-300">
+                      <span className="text-gray-800/80 dark:text-gray-200">
                         {state.completedLessons.size} lesson
                         {state.completedLessons.size !== 1 ? 's' : ''} completed. Great progress!
                       </span>
@@ -715,7 +721,7 @@ export function Dashboard() {
                   <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
                     Create your first course
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm max-w-md mx-auto mb-6">
+                  <p className="text-gray-800/80 dark:text-gray-200 text-sm max-w-md mx-auto mb-6">
                     Enter any topic above and our AI agents will research, organize, and build a
                     personalized course for you in minutes.
                   </p>
@@ -780,24 +786,32 @@ export function Dashboard() {
                         }}
                         className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card hover:shadow-card-hover p-5 cursor-pointer hover:border-accent dark:hover:border-accent transition-all group"
                       >
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between mb-3 gap-3">
                           <h3
                             className="text-base font-semibold text-gray-900 dark:text-white group-hover:text-accent transition-colors line-clamp-2 flex-1"
                             title={course.title}
                           >
                             {course.title}
                           </h3>
-                          <ProgressRing
-                            percent={pct}
-                            size={44}
-                            stroke={3}
-                            className="ml-3 flex-shrink-0"
-                          />
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              type="button"
+                              aria-label={`Delete course ${course.title}`}
+                              className="p-2 rounded-lg border border-gray-200 dark:border-gray-800 text-gray-500 hover:text-red-600 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget({ id: course.id, title: course.title });
+                              }}
+                            >
+                              <IconTrash size={16} className="text-current" decorative />
+                            </button>
+                            <ProgressRing percent={pct} size={44} stroke={3} className="ml-1" />
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4 line-clamp-2">
+                        <p className="text-sm text-gray-800/80 dark:text-gray-200 mb-4 line-clamp-2">
                           {course.description}
                         </p>
-                        <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-300">
+                        <div className="flex items-center justify-between text-xs text-gray-800/80 dark:text-gray-200">
                           <span>
                             {completed}/{totalLessons} lessons
                           </span>
@@ -957,6 +971,25 @@ export function Dashboard() {
           </>
         )}
       </main>
+      <ConfirmDialog
+        open={!!deleteTarget}
+        title="Delete course?"
+        description={
+          deleteTarget
+            ? `This will permanently delete “${deleteTarget.title}”. This cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          const target = deleteTarget;
+          setDeleteTarget(null);
+          await deleteCourse(target.id);
+        }}
+      />
     </section>
   );
 }

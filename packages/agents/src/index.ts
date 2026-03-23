@@ -14,10 +14,12 @@ export { parseRobotsTxt, isUrlAllowed } from './content-pipeline/robots-checker.
 export { ScraperRateLimiter } from './content-pipeline/rate-limiter.js';
 
 // Core Agents (S05)
+export { ExportAgent } from './export-agent/export-agent.js';
 export { NotesAgent } from './notes-agent/notes-agent.js';
 export { ResearchAgent } from './research-agent/research-agent.js';
 export { ExamAgent } from './exam-agent/exam-agent.js';
 export { SummarizerAgent } from './summarizer-agent/summarizer-agent.js';
+export { TutorAgent } from './tutor-agent/tutor-agent.js';
 
 // Collaboration & Mindmap (S06)
 export { CollaborationAgent } from './collaboration-agent/collaboration-agent.js';

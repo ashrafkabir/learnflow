@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, apiBase } from '../../context/AppContext.js';
+import { useApp, apiPost } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { IconX } from '../../components/icons/index.js';
@@ -37,14 +37,7 @@ export function OnboardingGoals() {
     dispatch({ type: 'SET_ONBOARDING_GOALS', goals });
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 1 });
     try {
-      const token = localStorage.getItem('learnflow-token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      await fetch(`${apiBase()}/api/v1/profile/goals`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ goals }),
-      });
+      await apiPost('/profile/goals', { goals });
     } catch {
       /* best effort */
     }

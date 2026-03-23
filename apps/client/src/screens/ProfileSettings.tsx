@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, apiBase } from '../context/AppContext.js';
+import { useApp, apiGet, apiPost, apiDelete } from '../context/AppContext.js';
 import { useToast } from '../components/Toast.js';
 import { useTheme } from '../design-system/ThemeProvider.js';
 import { Button } from '../components/Button.js';
+import { fetchUsageSummary, type UsageSummary } from '../lib/usage';
 import {
   IconBrainSpark,
   IconChart,
@@ -14,6 +15,7 @@ import {
   IconRefresh,
   IconRobot,
 } from '../components/icons/index.js';
+import { AdminSearchConfigPanel } from '../components/AdminSearchConfigPanel.js';
 
 export function ProfileSettings() {
   const nav = useNavigate();
@@ -34,16 +36,38 @@ export function ProfileSettings() {
       lastUsed?: string;
     }>
   >([]);
+
+  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [serverRole, setServerRole] = useState<string>('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const summary = await fetchUsageSummary(apiGet, 7);
+        setUsage(summary);
+      } catch {
+        // best-effort
+      }
+    })();
+  }, [apiGet]);
+
+  // Server-driven admin gating (Iter69): trust /profile/context rather than localStorage.
+  useEffect(() => {
+    (async () => {
+      try {
+        const ctx = await apiGet('/profile/context');
+        setServerRole(String(ctx?.role || ''));
+      } catch {
+        setServerRole('');
+      }
+    })();
+  }, []);
+
   const [keyProvider, setKeyProvider] = useState<string>('openai');
 
   // Fetch saved keys from server on mount
   React.useEffect(() => {
-    const token = localStorage.getItem('learnflow-token');
-    if (!token) return;
-    fetch(`${apiBase()}/api/v1/keys`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    })
-      .then((r) => (r.ok ? r.json() : null))
+    apiGet('/keys')
       .then((data) => {
         if (data?.keys) setSavedKeys(data.keys);
       })
@@ -127,7 +151,7 @@ export function ProfileSettings() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Subscription Management
             </h2>
-            <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+            <div className="flex items-center gap-3 text-sm text-gray-800/80 dark:text-gray-200">
               <span>
                 <span className="inline-flex items-center gap-2">
                   <IconChart className="w-4 h-4" />
@@ -149,22 +173,8 @@ export function ProfileSettings() {
                       'Downgrade to Free? You will lose access to Pro features at the end of your billing period.',
                     )
                   ) {
-                    const token = localStorage.getItem('learnflow-token');
-                    if (!token) {
-                      toast('Please log in first', 'error');
-                      return;
-                    }
                     try {
-                      const res = await fetch(`${apiBase()}/api/v1/subscription`, {
-                        method: 'POST',
-                        headers: {
-                          Authorization: `Bearer ${token}`,
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ action: 'downgrade', plan: 'free' }),
-                      });
-                      const data = await res.json();
-                      if (!res.ok) throw new Error(data?.message || 'Failed');
+                      await apiPost('/subscription', { action: 'downgrade', plan: 'free' });
                       dispatch({ type: 'SET_SUBSCRIPTION', tier: 'free' });
                       toast('Downgraded to Free plan', 'success');
                     } catch {
@@ -184,22 +194,8 @@ export function ProfileSettings() {
                       'Cancel your subscription? You will lose access to Pro features at the end of your billing period.',
                     )
                   ) {
-                    const token = localStorage.getItem('learnflow-token');
-                    if (!token) {
-                      toast('Please log in first', 'error');
-                      return;
-                    }
                     try {
-                      const res = await fetch(`${apiBase()}/api/v1/subscription`, {
-                        method: 'POST',
-                        headers: {
-                          Authorization: `Bearer ${token}`,
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ action: 'cancel' }),
-                      });
-                      const data = await res.json();
-                      if (!res.ok) throw new Error(data?.message || 'Failed');
+                      await apiPost('/subscription', { action: 'cancel' });
                       dispatch({ type: 'SET_SUBSCRIPTION', tier: 'free' });
                       toast('Subscription cancelled', 'success');
                     } catch {
@@ -234,10 +230,10 @@ export function ProfileSettings() {
                 key={f.label}
                 className={`flex items-center gap-3 p-3 rounded-xl ${f.pro ? 'bg-purple-50 dark:bg-purple-900/20' : 'bg-gray-50 dark:bg-gray-800'}`}
               >
-                <span className="text-gray-600 dark:text-gray-300">{f.icon}</span>
+                <span className="text-gray-800/80 dark:text-gray-200">{f.icon}</span>
                 <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{f.label}</span>
                 {f.pro ? (
-                  <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">
+                  <span className="text-xs bg-purple-700 text-white px-2 py-0.5 rounded-full font-bold">
                     PRO
                   </span>
                 ) : (
@@ -258,7 +254,7 @@ export function ProfileSettings() {
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Profile</h2>
             <div className="space-y-3">
               <label className="block">
-                <span className="text-sm text-gray-600 dark:text-gray-300">Name</span>
+                <span className="text-sm text-gray-800/80 dark:text-gray-200">Name</span>
                 <input
                   value={profile.name}
                   onChange={(e) => update({ name: e.target.value })}
@@ -266,7 +262,7 @@ export function ProfileSettings() {
                 />
               </label>
               <label className="block">
-                <span className="text-sm text-gray-600 dark:text-gray-300">Email</span>
+                <span className="text-sm text-gray-800/80 dark:text-gray-200">Email</span>
                 <input
                   value={profile.email}
                   onChange={(e) => update({ email: e.target.value })}
@@ -296,10 +292,51 @@ export function ProfileSettings() {
             </Button>
           </div>
 
+          {/* Usage */}
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-3 flex flex-col">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Usage (last 7 days)
+            </h2>
+            <div className="text-sm text-gray-800/80 dark:text-gray-200 flex items-center justify-between">
+              <span>Total tokens</span>
+              <span className="font-mono">{usage ? usage.totalTokens : 0}</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <div className="text-xs text-gray-500 dark:text-gray-300">Top agents</div>
+                <ul className="mt-2 space-y-1">
+                  {(usage?.topAgents || []).slice(0, 5).map((a) => (
+                    <li key={a.agentName} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-900 dark:text-white">{a.agentName}</span>
+                      <span className="font-mono text-gray-700 dark:text-gray-200">{a.total}</span>
+                    </li>
+                  ))}
+                  {(!usage || (usage.topAgents || []).length === 0) && (
+                    <li className="text-sm text-gray-500 dark:text-gray-300">No usage yet</li>
+                  )}
+                </ul>
+              </div>
+              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <div className="text-xs text-gray-500 dark:text-gray-300">Top providers</div>
+                <ul className="mt-2 space-y-1">
+                  {(usage?.topProviders || []).slice(0, 5).map((p) => (
+                    <li key={p.provider} className="flex items-center justify-between text-sm">
+                      <span className="text-gray-900 dark:text-white capitalize">{p.provider}</span>
+                      <span className="font-mono text-gray-700 dark:text-gray-200">{p.total}</span>
+                    </li>
+                  ))}
+                  {(!usage || (usage.topProviders || []).length === 0) && (
+                    <li className="text-sm text-gray-500 dark:text-gray-300">No usage yet</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+
           {/* API Keys */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4 flex flex-col">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">API Keys</h2>
-            <p className="text-xs text-gray-600 dark:text-gray-300">
+            <p className="text-xs text-gray-800/80 dark:text-gray-200">
               Keys are encrypted with AES-256 and stored on the server. We never store raw keys.
             </p>
 
@@ -313,7 +350,7 @@ export function ProfileSettings() {
                         <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
                           {k.provider}
                         </span>
-                        <span className="ml-2 text-xs text-gray-600 dark:text-gray-300 font-mono">
+                        <span className="ml-2 text-xs text-gray-800/80 dark:text-gray-200 font-mono">
                           {k.maskedKey}
                         </span>
                       </div>
@@ -321,10 +358,15 @@ export function ProfileSettings() {
                         variant="ghost"
                         size="sm"
                         onClick={async () => {
-                          setSavedKeys(savedKeys.filter((sk) => sk.id !== k.id));
-                          toast('Key removed', 'success');
+                          try {
+                            await apiDelete(`/keys/${k.provider}`);
+                            setSavedKeys(savedKeys.filter((sk) => sk.provider !== k.provider));
+                            toast('Key removed', 'success');
+                          } catch {
+                            toast('Failed to remove key', 'error');
+                          }
                         }}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-red-700 hover:text-red-800"
                       >
                         Remove
                       </Button>
@@ -358,7 +400,7 @@ export function ProfileSettings() {
             {/* Add new key */}
             <div className="space-y-3">
               <label className="block">
-                <span className="text-sm text-gray-600 dark:text-gray-300">Provider</span>
+                <span className="text-sm text-gray-800/80 dark:text-gray-200">Provider</span>
                 <select
                   value={keyProvider}
                   onChange={(e) => setKeyProvider(e.target.value)}
@@ -372,7 +414,7 @@ export function ProfileSettings() {
                 </select>
               </label>
               <label className="block">
-                <span className="text-sm text-gray-600 dark:text-gray-300">API Key</span>
+                <span className="text-sm text-gray-800/80 dark:text-gray-200">API Key</span>
                 <div className="flex gap-2 mt-1">
                   <input
                     type={showKey ? 'text' : 'password'}
@@ -397,40 +439,23 @@ export function ProfileSettings() {
               fullWidth
               onClick={async () => {
                 if (!apiKey.trim()) return;
-                const token = localStorage.getItem('learnflow-token');
-                if (!token) {
-                  toast('Please log in first', 'error');
-                  return;
-                }
                 try {
-                  const res = await fetch(`${apiBase()}/api/v1/keys`, {
-                    method: 'POST',
-                    headers: {
-                      Authorization: `Bearer ${token}`,
-                      'Content-Type': 'application/json',
+                  const data = await apiPost('/keys', { provider: keyProvider, apiKey });
+                  setSavedKeys([
+                    ...savedKeys,
+                    {
+                      id: data.id,
+                      provider: data.provider,
+                      maskedKey: data.maskedKey,
+                      label: data.label,
+                      usageCount: 0,
+                      lastUsed: undefined,
                     },
-                    body: JSON.stringify({ provider: keyProvider, apiKey }),
-                  });
-                  const data = await res.json();
-                  if (res.ok) {
-                    setSavedKeys([
-                      ...savedKeys,
-                      {
-                        id: data.id,
-                        provider: data.provider,
-                        maskedKey: data.maskedKey,
-                        label: data.label,
-                        usageCount: 0,
-                        lastUsed: undefined,
-                      },
-                    ]);
-                    setApiKey('');
-                    toast('API key saved securely', 'success');
-                  } else {
-                    toast(data.message || 'Failed to save key', 'error');
-                  }
+                  ]);
+                  setApiKey('');
+                  toast('API key saved securely', 'success');
                 } catch {
-                  toast('Network error', 'error');
+                  toast('Failed to save key', 'error');
                 }
               }}
               disabled={!apiKey.trim()}
@@ -450,7 +475,9 @@ export function ProfileSettings() {
               Learning Preferences
             </h2>
             <label className="block">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Daily Goal (minutes)</span>
+              <span className="text-sm text-gray-800/80 dark:text-gray-200">
+                Daily Goal (minutes)
+              </span>
               <input
                 type="number"
                 value={profile.dailyGoal}
@@ -461,7 +488,7 @@ export function ProfileSettings() {
               />
             </label>
             <label className="block">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Experience Level</span>
+              <span className="text-sm text-gray-800/80 dark:text-gray-200">Experience Level</span>
               <select
                 value={profile.experience}
                 onChange={(e) => update({ experience: e.target.value })}
@@ -484,6 +511,7 @@ export function ProfileSettings() {
                 onClick={toggleDarkMode}
                 className={`relative w-11 h-6 p-0 rounded-full transition-colors ${profile.darkMode ? 'bg-accent' : 'bg-gray-300 dark:bg-gray-600'}`}
                 role="switch"
+                aria-label="Toggle dark mode"
                 aria-checked={profile.darkMode}
               >
                 <span
@@ -498,6 +526,7 @@ export function ProfileSettings() {
                 onClick={toggleHighContrast}
                 className={`relative w-11 h-6 p-0 rounded-full transition-colors ${highContrast ? 'bg-accent' : 'bg-gray-300 dark:bg-gray-600'}`}
                 role="switch"
+                aria-label="Toggle high contrast"
                 aria-checked={highContrast}
               >
                 <span
@@ -519,13 +548,14 @@ export function ProfileSettings() {
                 { key: 'notifPeerCollab', label: 'Peer collaboration notification invites' },
               ].map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between pl-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
+                  <span className="text-sm text-gray-800/80 dark:text-gray-200">{label}</span>
                   <Button
                     variant="ghost"
                     onClick={() => update({ [key]: !(profile as any)[key] } as any)}
                     className={`relative w-11 h-6 p-0 rounded-full transition-colors ${(profile as any)[key] ? 'bg-accent' : 'bg-gray-300 dark:bg-gray-600'}`}
                     role="switch"
-                    aria-checked={(profile as any)[key]}
+                    aria-label={label}
+                    aria-checked={Boolean((profile as any)[key])}
                   >
                     <span
                       className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${(profile as any)[key] ? 'translate-x-5' : ''}`}
@@ -544,7 +574,7 @@ export function ProfileSettings() {
             Learning Goals &amp; Interests
           </h2>
           <label className="block">
-            <span className="text-sm text-gray-600 dark:text-gray-300">Primary Goal</span>
+            <span className="text-sm text-gray-800/80 dark:text-gray-200">Primary Goal</span>
             <input
               value={(profile as any).primaryGoal || ''}
               onChange={(e) => update({ primaryGoal: e.target.value } as any)}
@@ -553,7 +583,7 @@ export function ProfileSettings() {
             />
           </label>
           <label className="block">
-            <span className="text-sm text-gray-600 dark:text-gray-300">Secondary Goal</span>
+            <span className="text-sm text-gray-800/80 dark:text-gray-200">Secondary Goal</span>
             <input
               value={(profile as any).secondaryGoal || ''}
               onChange={(e) => update({ secondaryGoal: e.target.value } as any)}
@@ -562,7 +592,7 @@ export function ProfileSettings() {
             />
           </label>
           <label className="block">
-            <span className="text-sm text-gray-600 dark:text-gray-300">
+            <span className="text-sm text-gray-800/80 dark:text-gray-200">
               Interests (comma-separated)
             </span>
             <input
@@ -573,7 +603,7 @@ export function ProfileSettings() {
             />
           </label>
           <label className="block">
-            <span className="text-sm text-gray-600 dark:text-gray-300">Target Timeline</span>
+            <span className="text-sm text-gray-800/80 dark:text-gray-200">Target Timeline</span>
             <select
               value={(profile as any).targetTimeline || '3months'}
               onChange={(e) => update({ targetTimeline: e.target.value } as any)}
@@ -604,7 +634,7 @@ export function ProfileSettings() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-900 dark:text-white">Export as JSON</p>
-                <p className="text-xs text-gray-600 dark:text-gray-300">
+                <p className="text-xs text-gray-800/80 dark:text-gray-200">
                   Courses, progress, and settings
                 </p>
               </div>
@@ -635,7 +665,9 @@ export function ProfileSettings() {
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   Export as Markdown
                 </p>
-                <p className="text-xs text-gray-600 dark:text-gray-300">All courses as .md files</p>
+                <p className="text-xs text-gray-800/80 dark:text-gray-200">
+                  All courses as .md files
+                </p>
               </div>
               <Button
                 variant="secondary"
@@ -669,7 +701,7 @@ export function ProfileSettings() {
                 <p className="text-sm font-medium text-gray-900 dark:text-white">
                   Export All Data (ZIP)
                 </p>
-                <p className="text-xs text-gray-600 dark:text-gray-300">
+                <p className="text-xs text-gray-800/80 dark:text-gray-200">
                   Bundle JSON + Markdown + metadata into a ZIP archive
                 </p>
               </div>
@@ -731,7 +763,7 @@ export function ProfileSettings() {
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Export as {fmt}
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">{fmt} format export</p>
+                  <p className="text-xs text-gray-800/80 dark:text-gray-200">{fmt} format export</p>
                 </div>
                 <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">
                   PRO
@@ -741,10 +773,13 @@ export function ProfileSettings() {
           </div>
         </div>
 
+        {/* Admin (server-driven) */}
+        {serverRole === 'admin' ? <AdminSearchConfigPanel /> : null}
+
         {/* Privacy */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Privacy</h2>
-          <p className="text-xs text-gray-600 dark:text-gray-300">
+          <p className="text-xs text-gray-800/80 dark:text-gray-200">
             Per our privacy policy, here's what we track:
           </p>
           <div className="space-y-2 text-sm">
@@ -758,7 +793,7 @@ export function ProfileSettings() {
             ].map((item) => (
               <div
                 key={item.label}
-                className="flex items-center gap-2 text-gray-600 dark:text-gray-300"
+                className="flex items-center gap-2 text-gray-800/80 dark:text-gray-200"
               >
                 <span className={item.tracked ? 'text-blue-500' : 'text-gray-300'}>
                   {item.tracked ? '●' : '○'}
@@ -780,7 +815,7 @@ export function ProfileSettings() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-900 dark:text-white">Delete All Data</p>
-              <p className="text-xs text-gray-600 dark:text-gray-300">
+              <p className="text-xs text-gray-800/80 dark:text-gray-200">
                 Permanently delete all your data (GDPR)
               </p>
             </div>

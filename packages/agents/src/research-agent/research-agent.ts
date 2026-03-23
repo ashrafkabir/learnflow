@@ -18,6 +18,7 @@ export interface ResearchSummary {
   papers: Paper[];
   synthesis: string;
   keyFindings: string[];
+  isMock?: boolean;
 }
 
 export interface SemanticScholarApi {
@@ -42,14 +43,15 @@ export class ResearchAgent implements AgentInterface {
     const topic = (task.params.topic as string) || (task.params.input as string) || 'general';
 
     let papers: Paper[] = [];
+    const isMock = !this.api;
     if (this.api) {
       papers = await this.api.search(topic);
     } else {
-      // Mock papers for testing
+      // Mock papers for testing/dev
       papers = this.getMockPapers(topic);
     }
 
-    const summary = this.synthesize(topic, papers);
+    const summary = this.synthesize(topic, papers, isMock);
 
     return {
       agentName: this.name,
@@ -59,7 +61,7 @@ export class ResearchAgent implements AgentInterface {
         summary,
         papers,
       },
-      tokensUsed: 200,
+      tokensUsed: null,
     };
   }
 
@@ -86,7 +88,7 @@ export class ResearchAgent implements AgentInterface {
     ];
   }
 
-  synthesize(topic: string, papers: Paper[]): ResearchSummary {
+  synthesize(topic: string, papers: Paper[], isMock = false): ResearchSummary {
     const keyFindings = papers.map(
       (p) => `${p.authors[0]} (${p.year}): ${p.abstract.slice(0, 100)}...`,
     );
@@ -101,6 +103,7 @@ export class ResearchAgent implements AgentInterface {
       papers,
       synthesis,
       keyFindings,
+      isMock,
     };
   }
 }

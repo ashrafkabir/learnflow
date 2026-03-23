@@ -5,10 +5,12 @@ import {
   CollaborationAgent,
   CourseBuilderAgent,
   ExamAgent,
+  ExportAgent,
   MindmapAgent,
   NotesAgent,
   ResearchAgent,
   SummarizerAgent,
+  TutorAgent,
 } from '@learnflow/agents';
 
 export function buildStudentContext(userId: string): StudentContextObject {
@@ -77,8 +79,10 @@ export async function getOrchestrator(): Promise<Orchestrator> {
     new ExamAgent(),
     new ResearchAgent(),
     new SummarizerAgent(),
+    new TutorAgent(),
     new MindmapAgent(),
     new CollaborationAgent(),
+    new ExportAgent(),
   ];
 
   for (const a of agents) {

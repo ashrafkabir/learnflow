@@ -38,7 +38,7 @@ Before publishing, your course must pass quality checks:
 | BYOAI (user brings own key) | 85%           | 15%             |
 | Pro (managed keys)          | 80%           | 20%             |
 
-Payouts are processed monthly via Stripe.
+Payouts are **not yet** implemented in this MVP. Stripe payouts/integration are planned for a future release.
 
 ## Quality Guidelines
 

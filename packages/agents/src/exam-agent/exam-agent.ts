@@ -61,7 +61,7 @@ export class ExamAgent implements AgentInterface {
       agentName: this.name,
       status: 'success',
       data: { text, questions: data },
-      tokensUsed: 150,
+      tokensUsed: null,
     };
   }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiBase } from '../../context/AppContext.js';
+import { apiPost } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
 import { IconBag, IconStar } from '../../components/icons/index.js';
@@ -20,122 +20,6 @@ interface MarketplaceCourse {
 
 const CATEGORIES = ['All', 'Programming', 'Data Science', 'DevOps', 'Design', 'Business'];
 
-const SAMPLE_COURSES: MarketplaceCourse[] = [
-  {
-    id: 'mc-1',
-    title: 'Machine Learning Fundamentals',
-    description:
-      'A comprehensive introduction to ML concepts, algorithms, and practical applications.',
-    topic: 'data-science',
-    difficulty: 'beginner',
-    price: 0,
-    rating: 4.5,
-    enrollmentCount: 1200,
-    lessonCount: 12,
-  },
-  {
-    id: 'mc-2',
-    title: 'Advanced Python Patterns',
-    description: 'Master design patterns, metaprogramming, and advanced Python techniques.',
-    topic: 'programming',
-    difficulty: 'advanced',
-    price: 19.99,
-    rating: 4.8,
-    enrollmentCount: 800,
-    lessonCount: 15,
-  },
-  {
-    id: 'mc-3',
-    title: 'Kubernetes in Production',
-    description: 'Deploy, scale, and manage containerized applications in production environments.',
-    topic: 'devops',
-    difficulty: 'intermediate',
-    price: 14.99,
-    rating: 4.6,
-    enrollmentCount: 650,
-    lessonCount: 10,
-  },
-  {
-    id: 'mc-4',
-    title: 'Quantum Computing 101',
-    description: 'Explore the fundamentals of quantum computing, qubits, and quantum algorithms.',
-    topic: 'data-science',
-    difficulty: 'beginner',
-    price: 0,
-    rating: 4.3,
-    enrollmentCount: 420,
-    lessonCount: 8,
-  },
-  {
-    id: 'mc-5',
-    title: 'React & TypeScript Masterclass',
-    description: 'Build production-ready apps with React 19, TypeScript, and modern tooling.',
-    topic: 'programming',
-    difficulty: 'intermediate',
-    price: 24.99,
-    rating: 4.9,
-    enrollmentCount: 2100,
-    lessonCount: 20,
-  },
-  {
-    id: 'mc-6',
-    title: 'UI/UX Design Principles',
-    description: 'Learn design thinking, wireframing, prototyping, and user research methods.',
-    topic: 'design',
-    difficulty: 'beginner',
-    price: 0,
-    rating: 4.4,
-    enrollmentCount: 980,
-    lessonCount: 9,
-  },
-  {
-    id: 'mc-7',
-    title: 'AWS Solutions Architect',
-    description:
-      'Prepare for the AWS SA exam with hands-on labs covering EC2, S3, Lambda, and more.',
-    topic: 'devops',
-    difficulty: 'advanced',
-    price: 29.99,
-    rating: 4.7,
-    enrollmentCount: 1500,
-    lessonCount: 18,
-  },
-  {
-    id: 'mc-8',
-    title: 'Product Management Essentials',
-    description: 'From roadmaps to sprints — master the PM toolkit used at top tech companies.',
-    topic: 'business',
-    difficulty: 'beginner',
-    price: 9.99,
-    rating: 4.2,
-    enrollmentCount: 550,
-    lessonCount: 11,
-  },
-  {
-    id: 'mc-9',
-    title: 'Deep Learning with PyTorch',
-    description: 'Neural networks, CNNs, transformers, and GANs with practical PyTorch projects.',
-    topic: 'data-science',
-    difficulty: 'advanced',
-    price: 34.99,
-    rating: 4.8,
-    enrollmentCount: 870,
-    lessonCount: 16,
-  },
-  {
-    id: 'mc-10',
-    title: 'Figma for Developers',
-    description:
-      'Bridge the design-dev gap. Learn Figma auto-layout, tokens, and handoff workflows.',
-    topic: 'design',
-    difficulty: 'intermediate',
-    price: 0,
-    rating: 4.5,
-    enrollmentCount: 720,
-    lessonCount: 7,
-  },
-];
-
 /** Spec §7.1, §5.2.7 — Course Marketplace with API integration */
 export function CourseMarketplace() {
   const nav = useNavigate();
@@ -145,7 +29,7 @@ export function CourseMarketplace() {
   const [maxPrice, _setMaxPrice] = useState('');
   const [category, setCategory] = useState('All');
   const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'newest' | 'price'>('popular');
-  const [courses, setCourses] = useState<MarketplaceCourse[]>(SAMPLE_COURSES);
+  const [courses, setCourses] = useState<MarketplaceCourse[]>([]);
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState<string | null>(null);
 
@@ -164,11 +48,13 @@ export function CourseMarketplace() {
           if (data.courses?.length > 0) {
             setCourses(data.courses);
           } else {
-            setCourses(SAMPLE_COURSES);
+            // Do not silently fall back to sample data; show an honest empty state.
+            setCourses([]);
           }
         }
       } catch {
-        setCourses(SAMPLE_COURSES);
+        // Network failure: keep empty list and let UI show error/empty state.
+        setCourses([]);
       } finally {
         setLoading(false);
       }
@@ -199,13 +85,12 @@ export function CourseMarketplace() {
   const handleEnroll = async (course: MarketplaceCourse) => {
     setEnrolling(course.id);
     try {
-      const token = localStorage.getItem('learnflow-token');
-      if (course.price > 0 && token) {
-        await fetch(`${apiBase()}/api/v1/marketplace/checkout`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ courseId: course.id }),
-        });
+      if (course.price > 0) {
+        const start = await apiPost('/marketplace/checkout', { courseId: course.id });
+        const paymentIntentId = start?.paymentIntent?.id;
+        if (paymentIntentId) {
+          await apiPost('/marketplace/checkout/confirm', { paymentIntentId });
+        }
       }
       nav('/dashboard');
     } catch {
@@ -334,6 +219,17 @@ export function CourseMarketplace() {
         {loading && <SkeletonMarketplace />}
 
         {/* Course grid */}
+        {!loading && filtered.length === 0 && (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              No courses found
+            </h3>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
+              Try adjusting filters, or check back later.
+            </p>
+          </div>
+        )}
+
         <div
           data-component="course-catalog"
           aria-live="polite"

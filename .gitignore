@@ -25,3 +25,6 @@ learnflow/screenshots/
 screenshots/iter*/
 playwright-report/
 apps/client/.vite/
+
+# Root local data
+.data/

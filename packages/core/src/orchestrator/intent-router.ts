@@ -45,14 +45,31 @@ const INTENT_PATTERNS: Array<{
     taskType: 'summarize',
   },
   {
+    // Milestone / accomplishment messages should get a warm, encouraging response.
+    // Example: "I just completed my first module on quantum computing!"
+    patterns: [
+      /\b(i\s*)?(just\s*)?(completed|finished|passed|wrapped up|done with)\b/i,
+      /\b(first\s+module|first\s+lesson|first\s+course|milestone|achievement|achieved)\b/i,
+      /\b(i\s*got\s*through|i\s*made\s*it\s*through)\b/i,
+    ],
+    agent: 'summarizer_agent',
+    taskType: 'celebrate_milestone',
+  },
+  {
     patterns: [/\b(mindmap|knowledge graph|show.*map|see.*progress|visualize)\b/i],
     agent: 'mindmap_agent',
     taskType: 'update_mindmap',
   },
   {
-    patterns: [/\b(export|download|offline|pdf)\b/i],
+    patterns: [/\b(export|download|offline|pdf|markdown|scorm)\b/i],
     agent: 'export_agent',
     taskType: 'export',
+  },
+  {
+    // General Q&A / tutoring — keep this last so it doesn't steal more specific intents.
+    patterns: [/^\s*(what is|what are|why|how|explain|define|help me understand)\b/i, /\?\s*$/],
+    agent: 'tutor_agent',
+    taskType: 'tutor_qa',
   },
 ];
 

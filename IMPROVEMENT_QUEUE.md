@@ -1,267 +1,413 @@
-# Improvement Queue — Iteration 49
+# LearnFlow — Improvement Queue (Iteration 70)
 
-Status: **READY FOR PLANNER**
+Status: **DONE (iter70)**
 
-(Builder completed Iter49 tasks; next step is planner reassessment.)
+Owner: Builder  
+Planner: Ash (planner subagent)  
+Date: 2026-03-23
 
-> Update (2026-03-20): Completed remaining Tasks 13–14 and re-ran the full iter49 screenshot suite; overall status truly DONE. Task 7 remains partial (needs explicit integration test).
+This queue is a **brutally honest spec-vs-implementation** gap list versus `LearnFlow_Product_Spec.md` (Sections **1–17**) compared to what is actually shipping in this repo **today**.
 
-> Note (2026-03-20): Previous builder subagent runs timed out. I resumed manually in main session. Completed Tasks 5, 6, 8, 9, 10, 11, 12, 13, 14. Task 7 remains partial (needs explicit integration test).
-
-## What I verified (brutal truth)
-
-### Spec coverage
-
-- Read the full canonical spec: `learnflow/LearnFlow_Product_Spec.md` (ends at Appendix / “_End of Specification_”).
-
-### Ran the app + automated screenshots (Playwright)
-
-- Playwright config baseURL is `http://localhost:3001` (`playwright.config.ts`).
-- Ran targeted E2E/spec checks and captured artifacts:
-  - Marketing pages: PASS (all exist + content).
-  - Marketplace (courses + agents): PASS.
-  - Subscription endpoint + pricing surface: PASS.
-  - Settings spec test: FAIL because `/settings` redirected to **Login** in the test run (auth bypass didn’t apply or guard logic still blocks).
-  - Learning journey test suite: FAIL (onboarding + dashboard selectors/assumptions don’t match reality).
-
-### Screenshot artifacts captured (Iter49)
-
-- Repo: `learnflow/screenshots/iter49/*.png`
-- OneDrive: `/home/aifactory/onedrive-learnflow/evals/screenshots/iter49/*.png`
-  - Onboarding/core/marketing screens captured: `03-...` through `26-...`.
-  - Logged-out login/register capture failed only because the test expected `data-screen="login"` / `data-screen="register"` attributes that do not exist; the pages themselves render.
-
-## Biggest broken flows / gaps vs spec
-
-1. **Auth/onboarding gating is inconsistent for automation and likely for users.** The dev auth bypass is set in the systemd service (`VITE_DEV_AUTH_BYPASS=1`), but Playwright still hit the login screen for `/settings` in one run. That means either the env isn’t reliably present, or guard logic has edge cases.
-
-2. **End-to-end “create course from dashboard” is not currently verifiable via Playwright** because:
-   - `e2e/learning-journey.spec.ts` assumes specific selectors that don’t exist and assumes input is available without auth complications.
-   - The onboarding “Add” button is disabled until text is entered (correct), but the test clicks the first button on the page (which is usually disabled) and times out.
-
-3. **Several spec-heavy features remain “surface-only”**: mindmap CRDT collaboration (Yjs), Stripe billing enforcement, pipeline→course creation, marketplace activation influencing routing, analytics depth.
+Repo reality (what’s shipping): **React/Vite SPA client + Express API + SQLite + WebSocket chat + Yjs-backed mindmap (partial)**, plus a minimal Core Orchestrator (`packages/core`) with **keyword/regex intent routing** and a mix of deterministic + lightly LLM-wired behaviors.
 
 ---
 
-## Priority Queue (10–15 tasks)
+## Evidence pack (what I ran/read in Iteration 70)
 
-### P0 — Must fix next
+### Spec read (FULL, sections 1–17)
 
-1. ✅ **Make auth bypass + routing deterministic for local dev + Playwright**
+- Read full spec file: `/home/aifactory/.openclaw/workspace/learnflow/LearnFlow_Product_Spec.md`
+  - Verified length: **1105 lines**
+  - Sections 1–17 present.
 
-- **Problem:** `/settings` sometimes redirects to `/login` in tests despite `VITE_DEV_AUTH_BYPASS=1`. This blocks reliable e2e and hides UI behind auth.
-- **Acceptance criteria:**
-  - With `VITE_DEV_AUTH_BYPASS=1`, any route under `/dashboard|/conversation|/courses|/mindmap|/marketplace|/settings|/pipeline|/collaborate` is accessible without a token.
-  - With bypass OFF, those routes redirect to `/login` when no token.
-  - Add a Playwright test that asserts bypass behavior deterministically.
-- **Likely files:** `apps/client/src/App.tsx` (OnboardingGuard), env loading in client, systemd service docs.
-- **Test plan:** `npx playwright test e2e/iter49-screenshots.spec.ts -g "core"` plus a new `auth-guard.spec.ts`.
-- **Screenshot checklist:** dashboard, settings both with bypass on/off.
-- **Effort/risk:** M / Medium (auth gating bugs can be subtle).
+### Code inspected (UI + API + Core + Agents)
 
-2. ✅ **Fix E2E learning journey test to reflect actual UI + avoid false failures**
+- API (Express):
+  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/app.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/chat.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/keys.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/profile.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/subscription.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/export.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/mindmap.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/apps/api/src/routes/marketplace-full.ts`
+- Core orchestrator:
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/core/src/orchestrator/orchestrator.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/core/src/orchestrator/intent-router.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/core/src/context/student-context.ts`
+- Agents:
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/course-builder/course-builder-agent.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/research-agent/research-agent.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/notes-agent/notes-agent.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/exam-agent/exam-agent.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/mindmap-agent/mindmap-agent.ts`
+  - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/collaboration-agent/collaboration-agent.ts`
+  - Content pipeline pieces inspected (attribution/scoring/search):
+    - `/home/aifactory/.openclaw/workspace/learnflow/packages/agents/src/content-pipeline/*`
 
-- **Problem:** `e2e/learning-journey.spec.ts` clicks disabled buttons and asserts selectors that don’t exist.
-- **Acceptance criteria:**
-  - Onboarding test adds a goal via input then continues.
-  - Dashboard test uses stable `data-screen` and component selectors that exist.
-  - Test suite passes in local dev mode (no network calls required).
-- **Likely files:** `e2e/learning-journey.spec.ts`, add missing `data-component`/`data-screen` where appropriate.
-- **Test plan:** `npx playwright test e2e/learning-journey.spec.ts`.
-- **Screenshot checklist:** welcome/goals/topics/subscription/first-course/dashboard/course/lesson.
-- **Effort/risk:** S / Low.
+### App boot + screenshot harness
 
-3. ✅ **Add missing `data-screen` attributes for Login/Register (and any other key surfaces)**
+- Ran harness from repo root:
+  - `node screenshot-all.mjs --outDir screenshots/iter70`
+- Screenshots captured: **27 PNGs** under:
+  - Workspace: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter70/run-1/`
+  - OneDrive mirror: `/home/aifactory/onedrive-learnflow/learnflow/learnflow/learnflow/screenshots/iter70/`
 
-- **Problem:** Login/Register pages render but have no `data-screen` hooks, causing screenshot/E2E to be brittle.
-- **Acceptance criteria:**
-  - Login root element has `data-screen="login"`.
-  - Register root element has `data-screen="register"`.
-  - Update screenshot suite to capture `01-login`, `02-register`.
-- **Likely files:** `apps/client/src/screens/LoginScreen.tsx`, `apps/client/src/screens/RegisterScreen.tsx`.
-- **Test plan:** `npx playwright test e2e/iter49-screenshots.spec.ts -g "logged-out"`.
-- **Screenshot checklist:** `01-login.png`, `02-register.png` in both repo + OneDrive.
-- **Effort/risk:** XS / Low.
+Screens captured include (sample):
 
-4. ✅ **Unblock Settings spec test: stop redirect-to-login in `/settings` compliance run**
-
-- **Problem:** `e2e/spec-compliance.spec.ts` “Settings page has required sections” failed because it saw the login screen.
-- **Acceptance criteria:**
-  - `/settings` loads Settings UI in dev bypass mode.
-  - Spec compliance settings check passes (>= 3 of goals/keys/subscription/notifications/export/privacy).
-- **Likely files:** `apps/client/src/App.tsx`, `e2e/spec-compliance.spec.ts` (optionally add bypass initScript).
-- **Test plan:** `npx playwright test e2e/spec-compliance.spec.ts -g "Settings"`.
-- **Screenshot checklist:** settings full page.
-- **Effort/risk:** S / Low.
-
-### P1 — Next most valuable
-
-5. ✅ **Mindmap CRDT collaboration is still a spec gap: implement minimal real-time shared state (MVP)**
-
-- **What changed (Iter49):**
-  - API now runs a dedicated Yjs websocket server on port **3002** (`config.yjsPort`).
-  - Client connects to `ws(s)://localhost:3002/yjs` when on localhost.
-  - Playwright CRDT test passes (asserts shared Yjs doc state rather than canvas DOM).
-- **Acceptance criteria (met as MVP):**
-  - A mindmap “room” per course via `room = mindmap:<courseId>`.
-  - Shared CRDT state for custom nodes (id+label) replicated across clients.
-  - Verified sync with Playwright + a direct y-websocket provider smoke test.
-- **Files:** `apps/api/src/config.ts`, `apps/api/src/index.ts`, `apps/client/src/hooks/useMindmapYjs.ts`, `apps/client/src/screens/MindmapExplorer.tsx`, `e2e/mindmap-crdt.spec.ts`.
-- **Test plan:** `PLAYWRIGHT_BASE_URL=http://localhost:3011 npx playwright test e2e/mindmap-crdt.spec.ts`.
-- **Screenshot checklist:** `learnflow/screenshots/iter49/test-finished-*.png`.
-- **Effort/risk:** M / Medium (still lacks persisted doc + edges/positions).
-
-6. ✅ **Fix intermittent test timeouts + make `npm test` deterministic**
-
-- **What changed (Iter49 MVP):**
-  - API in `NODE_ENV=test` now generates deterministic **offline** sources and skips expensive lesson generation.
-  - Research agent in `NODE_ENV=test` returns deterministic sources.
-  - Dev auth default user tier switched to **free**.
-  - WebSearch crawl breadth reduced for speed when used.
-- **Acceptance criteria (met for API determinism + overall test stability; course create E2E still pending):**
-  - ✅ In test mode, `/api/v1/courses` does not make external calls and stays fast.
-  - ✅ Full monorepo test suite passes: `npm test`.
-  - ⚠️ Still need Playwright to click **Create Course** on Dashboard, wait for course card, then navigate into lesson reader.
-- **Files:** `apps/api/src/app.ts`, `apps/api/src/routes/courses.ts`, `apps/api/src/routes/chat.ts`, `packages/agents/src/content-pipeline/web-search-provider.ts`.
-- **Test plan:** `npm test`; `PLAYWRIGHT_BASE_URL=http://localhost:3011 npx playwright test e2e/learning-journey.spec.ts`.
-- **Screenshot checklist:** `learnflow/screenshots/iter49/learning-journey-*.png` + (pending) course view + lesson reader.
-- **Effort/risk:** M / Medium.
-
-7. 🟡 **Pipeline → course integration (spec WS-04 / WS-08 coherence)**
-
-- **What’s true in code today:**
-  - Pipeline already **builds + saves** a course object (`dbCourses.save(course)`) when it reaches stage `reviewing`.
-  - Dashboard observes `activePipelineState.stage === 'reviewing'` and refetches `/courses` to add the new course.
-- **Remaining gap:**
-  - No explicit integration test proving “pipeline completes → course exists → UI can route to it”.
-  - “Restart Pipeline”/“Pause” buttons are still toast-only.
-- **Acceptance criteria (partial):**
-  - ✅ Pipeline output converted into course entity.
-  - 🟡 UI shows pipeline progress; routing to created course happens when user clicks in PipelineView (not automatically).
-- **Files:** `apps/api/src/routes/pipeline.ts`, `apps/client/src/screens/Dashboard.tsx`, `apps/client/src/hooks/usePipeline.ts`.
-- **Test plan:** add API integration test: start pipeline → poll GET /pipeline/:id until reviewing → GET /courses/:courseId exists.
-- **Screenshot checklist:** already captured pipeline + resulting course in `learnflow/screenshots/iter49/`.
-- **Effort/risk:** S / Low (mostly testing + minor UX wiring).
-
-8. ✅ **Stripe billing: replace subscription toggle with real entitlements (sandbox MVP)**
-
-- **What changed (Iter49 MVP):**
-  - Upgrading/downgrading/cancelling now goes through the API `POST /api/v1/subscription` (sandbox), not just client state.
-  - Settings “Upgrade to Pro” now routes to `/pricing`.
-  - Pricing Pro CTA attempts API subscribe then routes to `/settings`.
-- **Acceptance criteria (met as sandbox MVP):**
-  - ✅ Billing state changes are server-authoritative (via subscription API).
-  - ⚠️ Stripe Checkout + webhook signature verification still not implemented.
-  - ✅ Tier flags returned from API can be used for enforcement.
-- **Files:** `apps/client/src/screens/ProfileSettings.tsx`, `apps/client/src/screens/marketing/Pricing.tsx`.
-- **Test plan:** `npm run lint:check; npm run build; npm test`.
-- **Screenshot checklist:** pricing/upgrade flow surface — captured via `learnflow/screenshots/iter49/22-pricing.png` and `15-settings.png`.
-- **Effort/risk:** S / Low (still needs Stripe integration).
-
-9. ✅ **Marketplace activation must affect orchestrator routing (not just UI)**
-
-- **What changed (Iter49):**
-  - `/api/v1/marketplace/agents/:id/activate` + `/agents/activated` now persist via `dbMarketplace` (SQLite) in `marketplace-full` routes.
-  - Activation supports seeded ids (ma-1/ma-2) in addition to submitted (as-\*) ids.
-- **Acceptance criteria (met):**
-  - ✅ Activating an agent influences routing via `context.preferredAgents` → `routeIntent()`.
-  - ✅ WS response identifies which agent completed via `agent.complete` with `agent_name`.
-- **Files:** `apps/api/src/routes/marketplace-full.ts`, `apps/api/src/app.ts`, `apps/api/src/routes/marketplace.ts`.
-- **Test plan:** `npm test` + manual WS smoke test (activate ma-2 then send "research ..." → `agent.complete.agent_name=research_agent`).
-- **Screenshot checklist:** marketplace activation UI (still pending screenshot proof).
-- **Effort/risk:** S / Low.
-
-### P2 — Quality + completeness
-
-10. ✅ **Harden accessibility baselines (WCAG hooks + keyboard nav smoke checks)**
-
-- **What changed (Iter49):**
-  - Added Playwright keyboard-nav smoke suite for onboarding + settings.
-- **Acceptance criteria (met):**
-  - ✅ Keyboard navigation reaches key CTAs (bounded tab loop).
-  - ✅ Settings page renders + API Keys section is reachable.
-- **Files:** `e2e/keyboard-nav.spec.ts`.
-- **Test plan:** `npx playwright test e2e/keyboard-nav.spec.ts`.
-- **Screenshot checklist:** `learnflow/screenshots/iter49/keyboard-nav-*`.
-- **Effort/risk:** S / Low.
-
-11. ✅ **Standardize and render `sources[]` everywhere**
-
-- **What changed (Iter49):**
-  - Server-side `makeSourcesFromLesson()` now uses the structured parser (`parseLessonSources`) so sources include better titles/URLs (not URL-only placeholders).
-- **Acceptance criteria (partial):**
-  - ✅ Common-ish `sources[]` schema across lesson/chat (improved). Research already returns `sources`.
-  - 🟡 Pipeline/course still may emit sources inconsistently; UI already renders sources in LessonReader + SourceDrawer.
-- **Files:** `apps/api/src/orchestratorShared.ts`, `apps/api/src/utils/sources.ts`.
-- **Test plan:** `npm test` (pass). Add UI snapshot or Playwright click-to-open later.
-- **Effort/risk:** S / Low.
-
-12. ✅ **Analytics: move from placeholder counts to event-based metrics (MVP)**
-
-- **What changed (Iter49):**
-  - Added `learning_events` table + `dbEvents` helper.
-  - Recorded `lesson.opened` on GET lesson and `lesson.completed` on completion.
-  - `/api/v1/analytics` now derives weeklyProgress from events and returns `recentEvents`.
-- **Acceptance criteria (met as MVP):**
-  - ✅ Persist events: lesson opened/completed.
-  - 🟡 Time-on-lesson + chat usage events still missing.
-  - ✅ Analytics returns progress derived from events.
-- **Files:** `apps/api/src/db.ts`, `apps/api/src/routes/courses.ts`, `apps/api/src/routes/analytics.ts`.
-- **Test plan:** `npm test` (pass).
-- **Effort/risk:** M / Low.
-
-13. ✅ **Docs page vs spec (developer docs + MDX)**
-
-- **What changed (Iter49):**
-  - Marketing `/docs` content now references real markdown pages under `apps/docs/pages/*` (API Reference, Agent SDK, Architecture).
-  - Added explicit “API + Agent SDK (MDX docs)” section in the UI.
-- **Acceptance criteria (met as MVP):**
-  - ✅ `/docs` includes “API + Agent SDK” section.
-  - ✅ At least one MDX/Markdown-backed page exists in repo (`apps/docs/pages/api-reference.md`, etc.).
-  - 🟡 Client still renders static strings; it does not render markdown content inline.
-- **Files:** `apps/client/src/screens/marketing/Docs.tsx`, `apps/docs/pages/*`.
-- **Test plan:** `npm test` already covers marketing route render.
-- **Effort/risk:** S / Low.
-
-14. ✅ **Lesson plan: add “side tools” for selected text (Discover / Illustrate / Mark)**
-
-- **What changed (Iter49):**
-  - API:
-    - `POST /api/v1/courses/:id/lessons/:lessonId/selection-tools/preview` for `discover|illustrate|mark` preview payload.
-    - `POST /api/v1/courses/:id/lessons/:lessonId/notes/mark-takeaways` to persist bullets into `note.content.keyTakeawaysExtras`.
-  - Client:
-    - LessonReader text-selection toolbar now includes **Discover**, **Illustrate**, **Mark**.
-    - Each opens a preview modal with **Attach** (persist) or **Discard**.
-    - Discover runs multi-source search and returns links/snippets.
-    - Illustrate generates a simplified summary + best-effort image URL (OpenAI if configured).
-    - Mark extracts bullets and appends to takeaways extras.
-- **Acceptance criteria (met as MVP):**
-  - ✅ Tools show on selection.
-  - ✅ Response can be attached (annotation or takeaways) or discarded.
-  - 🟡 Illustrate image is best-effort (requires OpenAI key); summary still attaches.
-  - 🟡 Key takeaways extras are persisted but not yet prominently rendered in UI.
-- **Files:** `apps/api/src/routes/courses.ts`, `apps/client/src/screens/LessonReader.tsx`.
-- **Test plan:** `npm test` + `npx playwright test e2e/iter49-screenshots.spec.ts`.
-- **Effort/risk:** M / Medium.
-
-15. ✅ **Stabilize test artifact output paths (repo vs OneDrive)**
-
-- **What changed (Iter49):**
-  - Playwright `outputDir` is now repo-relative: `learnflow/screenshots/playwright`.
-  - E2E suites with hardcoded OneDrive output now use env fallback:
-    - `LEARNFLOW_E2E_OUT` (defaults to repo `learnflow/screenshots/{quality|compliance}`)
-    - `LEARNFLOW_E2E_OUT_OD` (keeps optional OneDrive mirror for iter49 screenshots)
-- **Acceptance criteria (met):**
-  - ✅ Canonical repo-relative artifact paths exist for all suites.
-  - 🟡 OneDrive mirroring remains best-effort (requires OD path to exist).
-- **Files:** `playwright.config.ts`, `e2e/spec-compliance.spec.ts`, `e2e/course-quality.spec.ts`, `e2e/iter49-screenshots.spec.ts`.
-- **Test plan:** `npm test` (pass).
-- **Effort/risk:** S / Low.
+- `landing-home.png`, marketing pages, auth login/register, onboarding 1–6, dashboard, conversation, mindmap, pipelines, settings, marketplaces, course view, lesson reader.
 
 ---
 
-## Current artifact pointers (for Builder)
+## Brutally honest spec → implementation gap (by spec section)
 
-- Iter49 screenshots (repo): `learnflow/screenshots/iter49/`
-- Iter49 screenshots (OneDrive): `/home/aifactory/onedrive-learnflow/evals/screenshots/iter49/`
-- Compliance artifacts (OneDrive): `/home/aifactory/onedrive-learnflow/evals/screenshots/compliance/`
+### §1–2 (Vision/positioning)
+
+- The product story is present (marketing pages exist; onboarding exists).
+- The **core differentiators are only partially true**:
+  - “Multi-agent architecture” is real in code shape (registry + orchestrator), but **execution is shallow** (keyword routing, limited DAG, limited agent sophistication).
+  - “Always attributed, internet-curated lessons” is **not reliably enforced** end-to-end.
+
+### §3 (System architecture)
+
+- Spec: gRPC, agent mesh, Postgres/Redis/S3/vector DB.
+- Repo: single Express API + SQLite + some WS/Yjs.
+- That’s acceptable for MVP, but it means:
+  - **No agent mesh / isolation**, no vector store, no scalable data plane.
+  - Many “enterprise-ready” claims in spec are not represented in shipping code.
+
+### §4 (Multi-agent architecture)
+
+- Orchestrator exists: `packages/core/src/orchestrator/orchestrator.ts`
+  - Has a minimal DAG planner; does a “primary + optional summarizer” pattern.
+  - Course builder additionally triggers mindmap extension.
+- Major gaps vs spec:
+  - Intent parsing is **routeIntent() keyword/regex** (not a planner that reasons about tools/capabilities).
+  - “Agent transparency” UX (spawned/complete events) is not at spec bar.
+  - “Update Agent (Pro)” is **missing**.
+
+### §4.4 (BYOAI key management)
+
+- **Implemented (MVP)**:
+  - `apps/api/src/routes/keys.ts` stores keys encrypted (AES wrapper) and exposes list with masked key and usageCount/lastUsed.
+  - Validates format-only at `/api/v1/keys/validate`.
+- Gaps:
+  - Provider routing is inconsistent across the stack; chat uses `apiKey` override to guess provider, but stored keys are not clearly used to select LLM provider per request.
+  - Validation is format-only (spec allows that), but there’s no “real call” validation option.
+  - “Keys never logged” needs a deliberate audit (not proven by tests).
+
+### §5 (Client screens)
+
+- Screens exist and are coherent.
+- Several are **demo-level**:
+  - Collaboration UI is explicitly “Mock / Coming soon” and uses hardcoded data (`apps/client/src/screens/Collaboration.tsx`).
+  - Course marketplace shows sample data if API returns empty (fallback), which is fine for dev but undermines truthfulness.
+  - Dashboard “daily lessons / mastery” does not appear fully backed by persisted behavioral tracking.
+
+### §6 (Content pipeline + attribution)
+
+- Content-pipeline modules exist in `packages/agents/src/content-pipeline/` (discovery/scoring/dedupe/attribution-tracker).
+- However, spec-level guarantees are not enforced:
+  - No hard gate ensuring every lesson includes sources.
+  - No licensing/robots compliance layer.
+  - No persistent attribution chain per lesson/module enforced in DB schemas.
+
+### §7 (Marketplace)
+
+- Backend route `marketplace-full.ts` implements qualityCheck + revenue split and persists some records via SQLite helpers.
+- Major truth gap:
+  - Checkout is **mocked as instant success** (`status: 'completed'`) — this must be labeled as mock in UI/API or replaced with Stripe test-mode.
+  - Reviews/ratings write-path is not clearly implemented end-to-end.
+
+### §8 (Subscription)
+
+- Subscription routes exist (`/api/v1/subscription`) with feature flags, but:
+  - It is effectively a **toggle** (set tier=pro/free) with **mock IAP receipt** validation.
+  - Enforcement across endpoints (quotas, export formats, mindmap node caps) is inconsistent.
+
+### §9 (Behavioral tracking + Student Context)
+
+- StudentContextObject type exists in core, but server context building is minimal:
+  - `apps/api/src/orchestratorShared.ts` fills many fields with defaults/empties.
+  - `/api/v1/profile/context` returns a context-like object, but several fields are placeholders.
+- The orchestrator is **not actually using** behavioral tracking to personalize outputs (spec expectation).
+
+### §10 (Orchestrator prompt)
+
+- Spec includes a large “system prompt”.
+- Repo has an orchestrator system prompt file, but the functional behavior (agents + citations + proactive adaptation) is not yet there.
+
+### §11 (API + WebSocket)
+
+- Many REST endpoints exist.
+- WebSocket event protocol described in spec is **not clearly implemented as spec** (agent.spawned, response.chunk, progress.update etc.).
+
+### §12–13 (Marketing + docs)
+
+- Marketing site pages exist (screenshots show them).
+- Docs truthfulness needs maintenance: avoid claiming features that are mock (payments, collaboration, proactive updates).
+
+### §15 (Testing)
+
+- Screenshot harness exists and is working (good!).
+- Need more integration tests for critical flows and “honesty” checks (e.g., never silently falling back to sample marketplace data without labeling it).
+
+---
+
+## Improvement Queue (Iteration 70) — prioritized tasks (10–15)
+
+Each task has: priority, acceptance criteria, likely files, test plan, and screenshot checklist.
+
+### P0 — Payments honesty: Stripe test-mode OR explicit “Mock Checkout” UX + state machine
+
+**Problem:** `/api/v1/marketplace/checkout` returns `status: 'completed'` immediately (mock). This is trust-sensitive.
+
+- **Acceptance criteria**
+  - Choose one path (builder decision):
+    1. **Stripe test-mode**: create Checkout Session, handle webhook to mark payment completed, enroll only after webhook.
+    2. **Mock, but honest**: API returns `status: 'mock_completed'` (or similar), UI labels it “Mock checkout (dev)”, and no Stripe language exists anywhere.
+  - Enrollment is only granted after a confirmed terminal payment status.
+- **Likely files**
+  - `apps/api/src/routes/marketplace-full.ts`
+  - `apps/client/src/screens/marketplace/CourseMarketplace.tsx` (enroll flow)
+  - Any course detail screen (if exists) for purchase CTA
+- **Test plan**
+  - Integration: POST checkout -> verify enrollment only after success state.
+- **Screenshot checklist**
+  - `marketplace-courses.png` + (add) course detail purchase state screenshot.
+
+### P0 — Collaboration: replace hardcoded UI with minimal real backend (groups + messages)
+
+**Problem:** `Collaboration.tsx` is entirely mocked.
+
+- **Acceptance criteria**
+  - Add SQLite-backed endpoints:
+    - `GET /api/v1/collaboration/matches`
+    - `POST /api/v1/collaboration/groups`
+    - `GET /api/v1/collaboration/groups`
+    - `POST /api/v1/collaboration/groups/:id/messages`
+    - `GET /api/v1/collaboration/groups/:id/messages`
+  - UI shows real groups + message thread.
+- **Likely files**
+  - `apps/api/src/routes/` (new `collaboration.ts`)
+  - `apps/api/src/db.ts`
+  - `apps/client/src/screens/Collaboration.tsx`
+- **Test plan**
+  - Integration: create group -> send message -> reload -> messages persist.
+- **Screenshot checklist**
+  - `app-collaboration.png` shows a real thread, not mock “coming soon”.
+
+### P0 — Enforce “every lesson has sources” (attribution gate)
+
+**Problem:** Spec §6 requires consistent attribution; currently best-effort.
+
+- **Acceptance criteria**
+  - Lesson persistence includes `sources[]` (>=2) OR explicit `sourcesMissingReason` field.
+  - Course builder refuses to mark course “ready” unless attribution threshold met.
+  - Lesson reader always renders a Sources section (even if empty state).
+- **Likely files**
+  - `packages/agents/src/course-builder/*`
+  - `apps/api/src/routes/courses.ts`
+  - `apps/api/src/utils/sources.ts` (or wherever parsing lives)
+  - `apps/client/src/screens/LessonReader.tsx`
+- **Test plan**
+  - Integration: create course -> fetch lesson -> assert sources present.
+- **Screenshot checklist**
+  - `lesson-reader.png` clearly shows Sources UI populated.
+
+### P0 — BYOAI provider selection: saved keys drive actual LLM calls (OpenAI + Anthropic + Gemini)
+
+**Problem:** Keys vault exists, but provider routing looks inconsistent/opaque.
+
+- **Acceptance criteria**
+  - Deterministic provider selection order:
+    1. per-request `apiKey` override (if provided)
+    2. active saved key for selected provider
+    3. Pro managed key (env) if tier=pro
+  - Record usage with `{provider, agentName, tokensTotal}` for every LLM call.
+- **Likely files**
+  - `apps/api/src/routes/keys.ts`
+  - `apps/api/src/llm/*`
+  - `apps/api/src/routes/chat.ts` and WS orchestrator
+- **Test plan**
+  - Integration: save Anthropic key -> chat -> provider recorded as anthropic.
+- **Screenshot checklist**
+  - `app-settings.png` shows multiple keys and usage stats updating.
+
+### P1 — Marketplace: stop silent fallback to SAMPLE_COURSES (truthfulness + empty states)
+
+**Problem:** Client falls back to sample marketplace data if API returns empty; can mislead.
+
+- **Acceptance criteria**
+  - If API returns 0 courses, UI shows “No courses yet” and a CTA (publish/import), not sample data.
+  - Sample data only appears behind explicit dev flag.
+- **Likely files**
+  - `apps/client/src/screens/marketplace/CourseMarketplace.tsx`
+- **Test plan**
+  - E2E: with empty DB, marketplace shows empty state.
+- **Screenshot checklist**
+  - `marketplace-courses.png` reflects real state (empty or real courses).
+
+### P1 — Real course creation endpoint semantics (spec §11.1): POST /courses triggers course_builder and persists
+
+**Problem:** Spec expects POST /courses triggers course_builder; validate what actually happens and make it true.
+
+- **Acceptance criteria**
+  - `POST /api/v1/courses` uses Orchestrator/CourseBuilder and persists:
+    - course -> modules -> lessons
+    - per-lesson sources
+    - authorId/userId ownership
+  - `GET /api/v1/courses` returns only the user’s courses with progress.
+- **Likely files**
+  - `apps/api/src/routes/courses.ts`
+  - `packages/agents/src/course-builder/*`
+  - `apps/api/src/db.ts`
+- **Test plan**
+  - Integration: POST courses -> GET returns it -> GET lesson works.
+- **Screenshot checklist**
+  - `course-view.png`, `course-create-after-click.png`.
+
+### P1 — Student Context Object: persist & populate from real DB (not placeholders)
+
+**Problem:** `buildStudentContext()` fills many fields with empty defaults; personalization is not real.
+
+- **Acceptance criteria**
+  - Persist at least:
+    - enrolledCourseIds, completedLessonIds
+    - quizScores
+    - studyStreak + totalStudyMinutes
+    - preferredAgents (already exists)
+  - `/api/v1/profile/context` matches the runtime context.
+- **Likely files**
+  - `packages/core/src/context/student-context.ts`
+  - `apps/api/src/orchestratorShared.ts`
+  - `apps/api/src/db.ts` + progress tables
+- **Test plan**
+  - Integration: complete lesson -> profile/context updates.
+- **Screenshot checklist**
+  - `app-dashboard.png` shows real streak/progress numbers.
+
+### P1 — WebSocket event protocol: implement spec-ish events (response.start/chunk/end + agent.spawned/complete)
+
+**Problem:** Spec §11.2 expects streaming + agent transparency; current experience is mostly request/response.
+
+- **Acceptance criteria**
+  - WS sends:
+    - `response.start` with message_id/agent
+    - 1..N `response.chunk`
+    - `response.end` with actions/sources
+    - `agent.spawned`/`agent.complete` when DAG tasks run
+  - Client renders agent activity indicator based on these events.
+- **Likely files**
+  - `apps/api/src/wsOrchestrator.ts` (or WS handler)
+  - `apps/client/src/screens/Conversation.tsx`
+- **Test plan**
+  - E2E: message -> see indicator -> see streamed response.
+- **Screenshot checklist**
+  - `app-conversation.png` showing agent activity + rich response.
+
+### P1 — Export: align with subscription matrix (Free=Markdown only, Pro=PDF/SCORM)
+
+**Problem:** Spec §8 defines export gating; current export route returns json/md/zip for everyone.
+
+- **Acceptance criteria**
+  - Free tier: only `md/markdown`.
+  - Pro tier: allow `json`, `zip`, and (stub ok) `pdf`/`scorm` with explicit “coming soon” if not implemented.
+  - Error codes stable for upgrade CTA.
+- **Likely files**
+  - `apps/api/src/routes/export.ts`
+  - `apps/api/src/routes/subscription.ts` (feature flags)
+  - Client settings/export UI
+- **Test plan**
+  - Integration: free export zip -> 403 with code -> UI shows upgrade CTA.
+- **Screenshot checklist**
+  - `app-settings.png` shows export options and gating.
+
+### P2 — Mindmap: make it actually user-owned and durable (API-backed), not just visual
+
+**Problem:** Spec positions mindmap as core; current API returns dbMindmaps.get(userId), but UX/actionability is limited.
+
+- **Acceptance criteria**
+  - Mindmap nodes/edges persisted per user.
+  - “Suggest” nodes can be accepted -> adds nodes to graph.
+  - Node click drives next action (open lesson / build lesson / quiz).
+- **Likely files**
+  - `apps/api/src/routes/mindmap.ts`
+  - `apps/client/src/screens/MindmapExplorer.tsx`
+  - `apps/client/src/hooks/useMindmapYjs.ts` (if used)
+- **Test plan**
+  - E2E: accept suggestion -> reload -> node remains.
+- **Screenshot checklist**
+  - `app-mindmap.png` with accepted nodes.
+
+### P2 — Marketplace reviews/ratings: add write path + aggregates
+
+**Problem:** Ratings displayed, but review submission flow isn’t clearly real.
+
+- **Acceptance criteria**
+  - `POST /api/v1/marketplace/courses/:id/reviews` persists review.
+  - `GET /api/v1/marketplace/courses/:id` returns reviews and computed rating.
+- **Likely files**
+  - `apps/api/src/routes/marketplace-full.ts`
+  - `apps/api/src/db.ts`
+  - Client course detail screen
+- **Test plan**
+  - Integration: post review -> get detail reflects updated aggregates.
+- **Screenshot checklist**
+  - Course detail page showing reviews.
+
+### P2 — Update Agent (Pro): implement minimal scheduled topic monitor + notifications feed
+
+**Problem:** Spec’s Pro value prop depends on proactive updates. Currently missing.
+
+- **Acceptance criteria**
+  - Add `update_agent` with deterministic MVP (e.g., uses existing search pipeline) producing notifications.
+  - Only runs for Pro users.
+  - Notifications persisted and shown on dashboard.
+- **Likely files**
+  - `packages/agents/src/update-agent/*` (new)
+  - `apps/api/src/routes/daily.ts` or a jobs module
+  - `apps/client/src/screens/Dashboard.tsx`
+- **Test plan**
+  - Integration: set user tier=pro -> trigger job -> notification appears.
+- **Screenshot checklist**
+  - `app-dashboard.png` with update notification.
+
+### P2 — “Implemented vs Planned” doc to prevent spec drift
+
+**Problem:** Spec is far ahead of repo reality; truthfulness debt grows each iteration.
+
+- **Acceptance criteria**
+  - Add `docs/IMPLEMENTED_VS_SPEC.md` listing per spec section:
+    - implemented now
+    - partially implemented
+    - not implemented
+    - mock/demo-only
+- **Likely files**
+  - `docs/IMPLEMENTED_VS_SPEC.md` (new)
+- **Test plan**
+  - N/A (review doc)
+- **Screenshot checklist**
+  - N/A
+
+---
+
+## Screenshot checklist (iter70)
+
+Quick review set (all stored in iter70 folder):
+
+- Marketing: `landing-home.png`, `marketing-features.png`, `marketing-pricing.png`, `marketing-download.png`, `marketing-docs.png`, `marketing-about.png`, `marketing-blog.png`
+- Auth: `auth-login.png`, `auth-register.png`
+- Onboarding: `onboarding-1-welcome.png` … `onboarding-6-first-course.png`
+- App: `app-dashboard.png`, `app-conversation.png`, `app-mindmap.png`, `app-settings.png`, `app-pipelines.png`, `pipeline-detail.png`, `app-collaboration.png`
+- Course: `course-view.png`, `lesson-reader.png`
+- Marketplace: `marketplace-courses.png`, `marketplace-agents.png`
+
+---
+
+## OneDrive sync (iter70)
+
+- Screenshots mirrored to:
+  - `/home/aifactory/onedrive-learnflow/learnflow/learnflow/learnflow/screenshots/iter70/`
+- This file must be mirrored to:
+  - `/home/aifactory/onedrive-learnflow/learnflow/IMPROVEMENT_QUEUE.md`

@@ -23,6 +23,10 @@ export class Orchestrator {
   async processMessage(input: string, context: StudentContextObject): Promise<AggregatedResponse> {
     const intent = routeIntent(input, { preferredAgents: context.preferredAgents });
 
+    // Parse lightweight format hints embedded in input (used by REST adapter).
+    const fmtMatch = input.match(/\bformat\s*:\s*(cornell|flashcards?|zettelkasten)\b/i);
+    const requestedFormat = fmtMatch && fmtMatch[1] ? fmtMatch[1].toLowerCase() : undefined;
+
     if (!intent) {
       return {
         text: "I'm not sure I understand. Could you tell me more about what you'd like to learn or do? I can help you create courses, take notes, quiz yourself, or explore topics in depth.",
@@ -32,8 +36,8 @@ export class Orchestrator {
       };
     }
 
-    const agent = this.registry.get(intent.agentName);
-    if (!agent) {
+    const primaryAgent = this.registry.get(intent.agentName);
+    if (!primaryAgent) {
       return {
         text: `The ${intent.agentName} capability is temporarily unavailable. Let me try to help you another way.`,
         agentResults: [],
@@ -44,25 +48,112 @@ export class Orchestrator {
 
     const task: AgentMessageEnvelope['task'] = {
       type: intent.params.type as string,
-      params: { ...intent.params, input },
+      params: {
+        ...intent.params,
+        input,
+        ...(intent.agentName === 'notes_agent' && requestedFormat
+          ? { format: requestedFormat === 'flashcard' ? 'flashcards' : requestedFormat }
+          : {}),
+        // If the user explicitly requested a format in text, pass a best-effort format hint.
+        // This supports export_agent without requiring a separate UI flow.
+        ...(intent.agentName === 'export_agent'
+          ? {
+              format: /\bmarkdown\b/i.test(input)
+                ? 'markdown'
+                : /\bscorm\b/i.test(input)
+                  ? 'scorm'
+                  : /\bjson\b/i.test(input)
+                    ? 'json'
+                    : /\bpdf\b/i.test(input)
+                      ? 'pdf'
+                      : undefined,
+            }
+          : {}),
+      },
     };
 
-    const dagTask: DagTask = {
-      id: uuidv4(),
-      agentName: agent.name,
+    // Iter66: minimum viable multi-agent DAG.
+    // For high-value intents (course building / research), run a second independent agent in parallel
+    // to produce an executive summary. This proves the end-to-end multi-agent orchestration loop.
+    const dagTasks: DagTask[] = [];
+    const taskAgentById = new Map<string, string>();
+
+    const primaryTaskId = uuidv4();
+    dagTasks.push({
+      id: primaryTaskId,
+      agentName: primaryAgent.name,
       dependsOn: [],
-      execute: () => agent.process(context, task),
+      execute: () => primaryAgent.process(context, task),
+    });
+    taskAgentById.set(primaryTaskId, primaryAgent.name);
+
+    // Iter67: multi-agent orchestration beyond “primary + summarizer”.
+    // For course building, also extend the user mindmap based on the concept decomposition.
+    if (intent.agentName === 'course_builder') {
+      const mindmapAgent = this.registry.get('mindmap_agent');
+      if (mindmapAgent) {
+        const mindmapTaskId = uuidv4();
+        dagTasks.push({
+          id: mindmapTaskId,
+          agentName: mindmapAgent.name,
+          dependsOn: [primaryTaskId],
+          execute: async () => {
+            const primaryRes = await primaryAgent.process(context, task);
+            const subtopics =
+              (primaryRes as any)?.data?.conceptTree?.children
+                ?.map((c: any) => c?.label)
+                .filter(Boolean) || [];
+            return mindmapAgent.process(context, {
+              type: 'extend_graph',
+              params: { newConcepts: subtopics },
+            });
+          },
+        });
+        taskAgentById.set(mindmapTaskId, mindmapAgent.name);
+      }
+    }
+
+    const maybeAddSummarizer = (): void => {
+      const summarizer = this.registry.get('summarizer_agent');
+      if (!summarizer) return;
+
+      const summaryTaskId = uuidv4();
+      dagTasks.push({
+        id: summaryTaskId,
+        agentName: summarizer.name,
+        dependsOn: [],
+        execute: () =>
+          summarizer.process(context, {
+            type: 'summarize',
+            params: {
+              input,
+              purpose:
+                intent.agentName === 'course_builder'
+                  ? 'Create an executive summary for the requested course.'
+                  : intent.agentName === 'research_agent'
+                    ? 'Summarize key findings and recommended next steps.'
+                    : 'Provide a concise summary.',
+            },
+          }),
+      });
+      taskAgentById.set(summaryTaskId, summarizer.name);
     };
 
-    const results = await this.planner.execute([dagTask]);
+    if (intent.agentName === 'course_builder' || intent.agentName === 'research_agent') {
+      maybeAddSummarizer();
+    }
+
+    const results = await this.planner.execute(dagTasks);
     const agentResponses = results.map((r) => {
-      // r.result is the AgentResponse from the agent's process() method
+      const agentName = taskAgentById.get(r.taskId) || r.taskId;
       const agentResult = r.result as import('../agents/types.js').AgentResponse | null;
+
       if (agentResult && !r.error) {
         return agentResult;
       }
+
       return {
-        agentName: agent.name,
+        agentName,
         status: 'error' as const,
         data: r.error ?? 'Unknown error',
         tokensUsed: 0,

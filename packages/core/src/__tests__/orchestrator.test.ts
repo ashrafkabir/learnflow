@@ -331,6 +331,9 @@ describe('S03-A10: Response aggregator', () => {
     expect(result.text).toContain('course outline');
     expect(result.text).toContain('Notes have been created');
     expect(result.totalTokensUsed).toBe(300);
+    // Always return 3–4 suggested actions
+    expect(result.suggestedActions.length).toBeGreaterThanOrEqual(3);
+    expect(result.suggestedActions.length).toBeLessThanOrEqual(4);
   });
 
   it('handles errors gracefully', () => {
@@ -339,6 +342,8 @@ describe('S03-A10: Response aggregator', () => {
     ]);
 
     expect(result.text).toContain('temporarily unavailable');
+    expect(result.suggestedActions.length).toBeGreaterThanOrEqual(3);
+    expect(result.suggestedActions.length).toBeLessThanOrEqual(4);
   });
 });
 

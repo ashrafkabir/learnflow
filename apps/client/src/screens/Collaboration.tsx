@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SEO } from '../components/SEO.js';
 import { Button } from '../components/Button.js';
+import { apiGet, apiPost, useApp } from '../context/AppContext.js';
 import {
   IconBrainSpark,
   IconCourse,
@@ -32,93 +33,27 @@ const INTEREST_TAGS = [
   'Quantum Computing',
 ];
 
-const MOCK_GROUPS = [
-  {
-    id: '1',
-    name: 'Rust Systems Programmers',
-    members: 12,
-    topic: 'Rust & Systems Programming',
-    icon: <IconSettings className="w-6 h-6" />,
-    active: true,
-  },
-  {
-    id: '2',
-    name: 'ML Paper Reading Club',
-    members: 28,
-    topic: 'Machine Learning Research',
-    icon: <IconBrainSpark className="w-6 h-6" />,
-    active: true,
-  },
-  {
-    id: '3',
-    name: 'Full-Stack Builders',
-    members: 19,
-    topic: 'React + Node.js Projects',
-    icon: <IconCourse className="w-6 h-6" />,
-    active: false,
-  },
-];
+// Groups are now backed by API (Iter70). Keep UI-friendly icon selection local.
 
-const MOCK_PARTNERS = [
-  {
-    name: 'Alex K.',
-    avatar: 'a1',
-    topics: ['Rust', 'System Design'],
-    level: 'Intermediate',
-    online: true,
-  },
-  {
-    name: 'Maria S.',
-    avatar: 'a2',
-    topics: ['Machine Learning', 'Python'],
-    level: 'Advanced',
-    online: true,
-  },
-  {
-    name: 'Jordan T.',
-    avatar: 'a3',
-    topics: ['Web Development', 'DevOps'],
-    level: 'Beginner',
-    online: false,
-  },
-];
+// Partner matches are now returned by API (Iter70).
 
-const SHARED_NOTES = [
-  {
-    id: '1',
-    title: 'Rust Ownership Explained',
-    author: 'Alex K.',
-    shared: '2h ago',
-    collaborators: 3,
-  },
-  {
-    id: '2',
-    title: 'ML Pipeline Architecture',
-    author: 'Maria S.',
-    shared: '5h ago',
-    collaborators: 5,
-  },
-  {
-    id: '3',
-    title: 'React Server Components Guide',
-    author: 'You',
-    shared: '1d ago',
-    collaborators: 2,
-  },
-];
-
-const ACTIVE_COLLABORATORS = [
-  { name: 'Alex K.', avatar: 'a1', status: 'Studying Rust' },
-  { name: 'Maria S.', avatar: 'a2', status: 'Reading ML papers' },
-  { name: 'Jordan T.', avatar: 'a3', status: 'Offline' },
-];
+// Shared mindmaps/notes remain a placeholder in this iteration.
 
 export function Collaboration() {
+  const { dispatch } = useApp();
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Find Study Partners');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [groupTopic, setGroupTopic] = useState('');
+
+  const [matches, setMatches] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -126,13 +61,102 @@ export function Collaboration() {
     );
   };
 
-  const handleCreateGroup = (e: React.FormEvent) => {
-    e.preventDefault();
-    alert(`Group "${groupName}" created for topic "${groupTopic}"! (Mock)`);
-    setShowCreateGroup(false);
-    setGroupName('');
-    setGroupTopic('');
+  const notify = (message: string) => {
+    dispatch({
+      type: 'ADD_NOTIFICATION',
+      notification: {
+        id: `notif-${Date.now()}`,
+        type: 'system',
+        message,
+        timestamp: new Date().toISOString(),
+        read: false,
+      },
+    });
   };
+
+  const groupIcon = (topic: string) => {
+    const t = String(topic || '').toLowerCase();
+    if (t.includes('rust')) return <IconSettings className="w-6 h-6" />;
+    if (t.includes('ml') || t.includes('machine')) return <IconBrainSpark className="w-6 h-6" />;
+    if (t.includes('react') || t.includes('web')) return <IconCourse className="w-6 h-6" />;
+    return <IconPeople className="w-6 h-6" />;
+  };
+
+  const refreshGroups = async () => {
+    setLoadingGroups(true);
+    try {
+      const res = await apiGet('/collaboration/groups');
+      setGroups(res?.groups || []);
+      if (!selectedGroupId && (res?.groups || []).length > 0) {
+        setSelectedGroupId(res.groups[0].id);
+      }
+    } catch {
+      // errors already logged by apiGet
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
+  const refreshMessages = async (groupId: string) => {
+    setLoadingMessages(true);
+    try {
+      const res = await apiGet(`/collaboration/groups/${groupId}/messages`);
+      setMessages(res?.messages || []);
+    } catch {
+      // errors already logged
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
+
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await apiPost('/collaboration/groups', { name: groupName, topic: groupTopic });
+      notify(`Group "${res?.group?.name || groupName}" created.`);
+      setShowCreateGroup(false);
+      setGroupName('');
+      setGroupTopic('');
+      await refreshGroups();
+      if (res?.group?.id) {
+        setSelectedGroupId(res.group.id);
+        await refreshMessages(res.group.id);
+      }
+    } catch {
+      // silent
+    }
+  };
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedGroupId || !newMessage.trim()) return;
+    try {
+      await apiPost(`/collaboration/groups/${selectedGroupId}/messages`, {
+        content: newMessage.trim(),
+      });
+      setNewMessage('');
+      await refreshMessages(selectedGroupId);
+    } catch {
+      // silent
+    }
+  };
+
+  useEffect(() => {
+    // Load groups on entering the screen
+    void refreshGroups();
+    void apiGet('/collaboration/matches')
+      .then((res) => setMatches(res?.matches || []))
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (selectedGroupId) void refreshMessages(selectedGroupId);
+  }, [selectedGroupId]);
+
+  const selectedGroup = useMemo(
+    () => groups.find((g: any) => g.id === selectedGroupId) || null,
+    [groups, selectedGroupId],
+  );
 
   return (
     <section className="min-h-screen bg-bg dark:bg-bg-dark">
@@ -151,7 +175,8 @@ export function Collaboration() {
           <span className="inline-flex items-center">
             <IconRocket className="w-4 h-4" />
           </span>
-          Collaboration features are in active development. Early access coming soon!
+          Collaboration is live (MVP): groups + messages are persisted. Matching/shared mindmaps
+          remain in progress.
         </div>
 
         {/* Tabs */}
@@ -198,7 +223,11 @@ export function Collaboration() {
                 variant="primary"
                 size="sm"
                 disabled={selectedTags.length === 0}
-                onClick={() => alert('Matching you with partners... (Mock)')}
+                onClick={() =>
+                  notify(
+                    `Matching you with partners for: ${selectedTags.slice(0, 5).join(', ')} (Mock)`,
+                  )
+                }
               >
                 Find Partners ({selectedTags.length} topics selected)
               </Button>
@@ -210,42 +239,48 @@ export function Collaboration() {
                 Suggested Partners
               </h2>
               <div className="space-y-3">
-                {MOCK_PARTNERS.map((p) => (
-                  <div
-                    key={p.name}
-                    className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors"
-                  >
-                    <span className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                      <IconPeople className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-gray-900 dark:text-white">{p.name}</span>
-                        <span
-                          className={`w-2 h-2 rounded-full ${p.online ? 'bg-green-500' : 'bg-gray-400'}`}
-                        />
-                        <span className="text-xs text-gray-500">{p.level}</span>
-                      </div>
-                      <div className="flex gap-1 mt-1">
-                        {p.topics.map((t) => (
-                          <span
-                            key={t}
-                            className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
-                          >
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => alert(`Invite sent to ${p.name}! (Mock)`)}
+                {matches.length === 0 ? (
+                  <div className="text-sm text-gray-600 dark:text-gray-300">No matches yet.</div>
+                ) : (
+                  matches.map((p: any) => (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors"
                     >
-                      Connect
-                    </Button>
-                  </div>
-                ))}
+                      <span className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <IconPeople className="w-5 h-5 text-gray-600 dark:text-gray-200" />
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {p.displayName || p.name}
+                          </span>
+                          <span
+                            className={`w-2 h-2 rounded-full ${p.online ? 'bg-green-500' : 'bg-gray-400'}`}
+                          />
+                          <span className="text-xs text-gray-500">{p.level || 'Intermediate'}</span>
+                        </div>
+                        <div className="flex gap-1 mt-1">
+                          {(p.topics || []).slice(0, 3).map((t: string) => (
+                            <span
+                              key={t}
+                              className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => notify('Connect request sent.')}
+                      >
+                        Connect
+                      </Button>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
@@ -305,35 +340,92 @@ export function Collaboration() {
             )}
 
             <div className="space-y-3">
-              {MOCK_GROUPS.map((g) => (
-                <div
-                  key={g.id}
-                  className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-accent/30 transition-colors"
-                >
-                  <span className="text-accent">{g.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-900 dark:text-white">{g.name}</span>
-                      {g.active && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
-                          Active
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">
-                      {g.topic} · {g.members} members
-                    </p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => alert(`Joined ${g.name}! (Mock)`)}
-                  >
-                    Join
-                  </Button>
+              {loadingGroups ? (
+                <div className="text-sm text-gray-600 dark:text-gray-300">Loading groups…</div>
+              ) : groups.length === 0 ? (
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  No groups yet. Start one to collaborate.
                 </div>
-              ))}
+              ) : (
+                groups.map((g: any) => (
+                  <div
+                    key={g.id}
+                    className={`flex items-center gap-4 p-4 rounded-2xl border bg-white dark:bg-gray-900 transition-colors cursor-pointer ${
+                      selectedGroupId === g.id
+                        ? 'border-accent/60'
+                        : 'border-gray-100 dark:border-gray-800 hover:border-accent/30'
+                    }`}
+                    onClick={() => setSelectedGroupId(g.id)}
+                  >
+                    <span className="text-accent">{groupIcon(g.topic)}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-900 dark:text-white">
+                          {g.name}
+                        </span>
+                        {selectedGroupId === g.id && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-300">
+                        {g.topic} · {(g.memberIds || []).length} members
+                      </p>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedGroupId(g.id)}>
+                      Open
+                    </Button>
+                  </div>
+                ))
+              )}
             </div>
+
+            {/* Thread */}
+            {selectedGroup && (
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
+                  {selectedGroup.name}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                  {selectedGroup.topic}
+                </p>
+
+                <div className="space-y-2 mb-4 max-h-64 overflow-auto pr-1">
+                  {loadingMessages ? (
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                      Loading messages…
+                    </div>
+                  ) : messages.length === 0 ? (
+                    <div className="text-sm text-gray-600 dark:text-gray-300">No messages yet.</div>
+                  ) : (
+                    messages.map((m: any) => (
+                      <div
+                        key={m.id}
+                        className="p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
+                      >
+                        <div className="text-xs text-gray-500 mb-1">{m.userId}</div>
+                        <div className="text-sm text-gray-900 dark:text-white whitespace-pre-wrap">
+                          {m.content}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <form onSubmit={handleSendMessage} className="flex gap-2">
+                  <input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Write a message…"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                  <Button type="submit" variant="primary" size="sm" disabled={!newMessage.trim()}>
+                    Send
+                  </Button>
+                </form>
+              </div>
+            )}
           </div>
         )}
 
@@ -371,7 +463,11 @@ export function Collaboration() {
                   <IconDocument className="w-5 h-5 text-accent" />
                   Shared Notes
                 </h2>
-                <Button variant="primary" size="sm" onClick={() => alert('Share a note... (Mock)')}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => notify('Share a note... (Mock)')}
+                >
                   + Share Note
                 </Button>
               </div>
@@ -409,7 +505,7 @@ export function Collaboration() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => alert('Invite link copied! (Mock)')}
+                onClick={() => notify('Invite link copied! (Mock)')}
               >
                 Copy Invite Link
               </Button>

@@ -2,8 +2,9 @@
 import { chromium } from 'playwright';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3001';
-const DIR =
-  process.env.SCREENSHOT_DIR || `evals/screenshots/iter31-${new Date().toISOString().slice(0, 10)}`;
+const ITER = process.env.ITERATION || process.env.ITER || '61';
+const DATE = new Date().toISOString().slice(0, 10);
+const DIR = process.env.SCREENSHOT_DIR || `learnflow/screenshots/iter${ITER}-${DATE}`;
 
 const PUBLIC_PAGES = [
   ['/', 'landing-home'],

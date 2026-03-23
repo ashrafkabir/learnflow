@@ -72,8 +72,12 @@ const FEATURES = [
   {
     icon: <IconMarketplace className="w-6 h-6" />,
     title: 'Marketplace',
-    desc: 'Browse community-created courses, activate specialized agents, and share your own courses with the world.',
-    benefits: ['Course search & filter', 'Agent marketplace', 'One-click publish'],
+    desc: 'Browse community-created courses, activate specialized agents, and share your own courses with the world (marketplace publishing is MVP/mock).',
+    benefits: [
+      'Course search & filter',
+      'Agent marketplace',
+      'Shareable course pages (publish flow is MVP/mock)',
+    ],
   },
 ];
 

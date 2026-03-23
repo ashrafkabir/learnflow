@@ -54,6 +54,8 @@ export function LessonMindmap({
   const networkRef = React.useRef<{ destroy: () => void } | null>(null);
   const [loaded, setLoaded] = React.useState(!!Network);
 
+  const dataRef = React.useRef<{ nodes: any; edges: any } | null>(null);
+
   React.useEffect(() => {
     if (Network) {
       setLoaded(true);
@@ -65,20 +67,16 @@ export function LessonMindmap({
         DataSet = (mod as any).DataSet;
         setLoaded(true);
       })
-      .catch(() => {});
+      .catch((err) => {
+        // iOS/Safari can fail dynamic import in some edge cases; don't fail silently.
+        console.warn('[LessonMindmap] failed to load vis-network', err);
+      });
   }, []);
 
-  React.useEffect(() => {
-    if (!open || !loaded || !containerRef.current || !Network || !DataSet) return;
-
-    networkRef.current?.destroy();
-
+  const buildGraph = React.useCallback(() => {
     const headings = sectionHeadingsFromMarkdown(lessonContent);
     const nodes: Array<Record<string, unknown>> = [];
     const edges: Array<Record<string, unknown>> = [];
-
-    const DataSetCtor = DataSet as VisDataSetCtor;
-    const NetworkCtor = Network as VisNetworkCtor;
 
     let nodeId = 1;
     const rootId = nodeId++;
@@ -104,7 +102,6 @@ export function LessonMindmap({
       edges.push({ from: rootId, to: id, color: { color: '#94A3B8' } });
     }
 
-    // Suggested nodes (dashed)
     for (const s of suggestions.slice(0, 6)) {
       const id = nodeId++;
       nodes.push({
@@ -124,33 +121,80 @@ export function LessonMindmap({
       });
     }
 
-    const net = new NetworkCtor(
-      containerRef.current,
-      { nodes: new DataSetCtor(nodes), edges: new DataSetCtor(edges) },
-      {
-        layout: { hierarchical: false },
-        physics: {
-          enabled: true,
-          forceAtlas2Based: { gravitationalConstant: -25, springLength: 85 },
-          solver: 'forceAtlas2Based',
-          stabilization: { iterations: 60 },
+    return { nodes, edges };
+  }, [lessonTitle, lessonContent, suggestions]);
+
+  // Create the network once when opening; update datasets on subsequent renders.
+  React.useEffect(() => {
+    if (!open || !loaded || !containerRef.current || !Network || !DataSet) return;
+
+    const DataSetCtor = DataSet as VisDataSetCtor;
+    const NetworkCtor = Network as VisNetworkCtor;
+
+    if (!networkRef.current) {
+      const g = buildGraph();
+      const nodesDs = new DataSetCtor(g.nodes);
+      const edgesDs = new DataSetCtor(g.edges);
+      dataRef.current = { nodes: nodesDs, edges: edgesDs };
+
+      const net = new NetworkCtor(
+        containerRef.current,
+        { nodes: nodesDs, edges: edgesDs },
+        {
+          layout: { hierarchical: false },
+          physics: {
+            enabled: true,
+            forceAtlas2Based: { gravitationalConstant: -25, springLength: 85 },
+            solver: 'forceAtlas2Based',
+            stabilization: { iterations: 60 },
+          },
+          interaction: { hover: true, keyboard: { enabled: true } },
+          nodes: { borderWidth: 2, font: { size: 11, face: 'system-ui' } },
+          edges: { smooth: { type: 'continuous' } },
         },
-        interaction: { hover: true, keyboard: { enabled: true } },
-        nodes: { borderWidth: 2, font: { size: 11, face: 'system-ui' } },
-        edges: { smooth: { type: 'continuous' } },
-      },
-    );
+      );
 
-    networkRef.current = net as any;
-    net.on('click', () => {
-      // v1: read-only graph; acceptance for expand comes in Task 7.
-    });
+      networkRef.current = net as any;
 
-    return () => {
-      networkRef.current?.destroy();
-      networkRef.current = null;
-    };
-  }, [open, loaded, lessonTitle, lessonContent, suggestions]);
+      net.on('click', (params: any) => {
+        try {
+          const clickedNodeId = params?.nodes?.[0];
+          if (!clickedNodeId) return;
+          const label = String(
+            (dataRef.current?.nodes as any)?.get?.(clickedNodeId)?.label || '',
+          ).trim();
+          if (!label) return;
+          void navigator.clipboard?.writeText(label);
+        } catch {
+          // ignore
+        }
+      });
+
+      // iOS/Safari: layout can be 0px at first paint; fit on next frames.
+      requestAnimationFrame(() => requestAnimationFrame(() => (net as any).fit?.()));
+    } else {
+      const g = buildGraph();
+      const ds = dataRef.current;
+      // Best-effort DataSet updates
+      try {
+        ds?.nodes?.clear?.();
+        ds?.edges?.clear?.();
+        ds?.nodes?.add?.(g.nodes);
+        ds?.edges?.add?.(g.edges);
+      } catch {
+        // ignore
+      }
+      (networkRef.current as any)?.fit?.();
+    }
+  }, [open, loaded, buildGraph]);
+
+  // Destroy only when closing.
+  React.useEffect(() => {
+    if (open) return;
+    networkRef.current?.destroy();
+    networkRef.current = null;
+    dataRef.current = null;
+  }, [open]);
 
   if (!open) return null;
 
@@ -175,7 +219,8 @@ export function LessonMindmap({
 
         <div
           ref={containerRef}
-          className="flex-1 min-h-0"
+          className="flex-1 min-h-0 h-full"
+          style={{ minHeight: 320 }}
           tabIndex={0}
           role="img"
           aria-label="Lesson mindmap graph"

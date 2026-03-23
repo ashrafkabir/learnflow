@@ -42,7 +42,7 @@ export class CollaborationAgent implements AgentInterface {
           text: `Created study group "${group.name}" with ${group.memberIds.length} members.`,
           group,
         },
-        tokensUsed: 50,
+        tokensUsed: null,
       };
     }
 
@@ -55,7 +55,7 @@ export class CollaborationAgent implements AgentInterface {
         text: `Found ${matches.length} potential study partners based on your goals.`,
         matches,
       },
-      tokensUsed: 100,
+      tokensUsed: null,
     };
   }
 

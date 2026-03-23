@@ -12,11 +12,51 @@ import { App } from '../App.js';
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem('learnflow-token', 'test-token');
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ courses: [], agents: [], keys: [] }), {
+
+  // Provide route-specific API mocks so marketplace routes render reliably.
+  globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
+    const url = String(input);
+
+    if (url.includes('/api/v1/marketplace/creator/dashboard')) {
+      return new Response(
+        JSON.stringify({
+          courses: [],
+          totalEnrollments: 0,
+          totalEarnings: 0,
+          payouts: [],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (url.includes('/api/v1/marketplace/courses')) {
+      return new Response(JSON.stringify({ courses: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (url.includes('/api/v1/marketplace/checkout')) {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Default.
+    return new Response(JSON.stringify({ courses: [], agents: [], keys: [] }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    })) as typeof fetch;
+    });
+  }) as unknown as typeof fetch;
+
+  // Silence expected React unmount warning from explicit cleanup() usage in tests.
+  const originalError = console.error;
+  console.error = ((...args: any[]) => {
+    const msg = String(args?.[0] ?? '');
+    if (msg.includes('Attempted to synchronously unmount a root')) return;
+    originalError(...args);
+  }) as any;
 });
 
 afterEach(() => cleanup());

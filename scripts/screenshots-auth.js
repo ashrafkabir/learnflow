@@ -3,7 +3,7 @@ const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch();
   const BASE = 'http://127.0.0.1:3003';
-  const DIR = '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter12';
+  const DIR = '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter57';
 
   // Register via API
   const res = await fetch('http://127.0.0.1:3000/api/v1/auth/register', {

@@ -8,6 +8,14 @@ const __dirname = path.dirname(__filename);
 export default defineConfig({
   test: {
     exclude: ['**/node_modules/**', '**/e2e/**', '**/dist/**'],
+
+    // Default to node for backend/shared package tests.
+    environment: 'node',
+
+    // But run client (React Testing Library) tests in jsdom.
+    // This keeps root-level `npx vitest run` working across the monorepo.
+    environmentMatchGlobs: [['apps/client/src/**', 'jsdom']],
+
     // IMPORTANT: This config is used by workspaces that do not have their own vitest config.
     // `setupFiles` must be an absolute path; otherwise Vitest resolves it relative to the
     // current workspace root (e.g. apps/web), which makes it look for apps/web/vitest.setup.ts.

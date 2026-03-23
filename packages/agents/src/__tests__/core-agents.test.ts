@@ -3,6 +3,7 @@ import { NotesAgent } from '../notes-agent/notes-agent.js';
 import { ResearchAgent } from '../research-agent/research-agent.js';
 import { ExamAgent } from '../exam-agent/exam-agent.js';
 import { SummarizerAgent } from '../summarizer-agent/summarizer-agent.js';
+import { TutorAgent } from '../tutor-agent/tutor-agent.js';
 import type { AgentInterface, StudentContextObject } from '@learnflow/core';
 import { AgentRegistry, Orchestrator } from '@learnflow/core';
 import * as fs from 'fs';
@@ -303,6 +304,7 @@ describe('S05-A11: AgentInterface implementation', () => {
     new ResearchAgent(),
     new ExamAgent(),
     new SummarizerAgent(),
+    new TutorAgent(),
   ];
 
   for (const agent of agents) {
@@ -318,7 +320,13 @@ describe('S05-A11: AgentInterface implementation', () => {
 
 // S05-A12: All agents have manifest.json with required fields
 describe('S05-A12: Agent manifests', () => {
-  const agentDirs = ['notes-agent', 'research-agent', 'exam-agent', 'summarizer-agent'];
+  const agentDirs = [
+    'notes-agent',
+    'research-agent',
+    'exam-agent',
+    'summarizer-agent',
+    'tutor-agent',
+  ];
 
   for (const dir of agentDirs) {
     it(`${dir} has valid manifest.json`, () => {

@@ -14,7 +14,7 @@ import { createWebSocketServer } from './websocket.js';
 import { attachYjsMindmapServer } from './yjsServer.js';
 import { WebSocketServer } from 'ws';
 
-const app = createApp({ devMode: true });
+const app = createApp({ devMode: config.devMode });
 const server = http.createServer(app);
 
 createWebSocketServer(server);

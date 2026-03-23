@@ -2,8 +2,18 @@ import { Router, Request, Response } from 'express';
 import { emitToUser } from '../wsHub.js';
 import { z } from 'zod';
 import { crawlSourcesForTopic, type FirecrawlSource } from '@learnflow/agents';
-import { dbCourses, dbProgress, dbNotes, dbIllustrations, dbAnnotations, dbEvents } from '../db.js';
-import { parseLessonSources } from '../utils/sources.js';
+import {
+  dbCourses,
+  dbLessonSources,
+  dbProgress,
+  dbNotes,
+  dbIllustrations,
+  dbAnnotations,
+  dbEvents,
+  sqlite,
+} from '../db.js';
+import { parseLessonSources, type LessonSource } from '../utils/sources.js';
+import { enforceBiteSizedLesson } from '../utils/lessonSizing.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 
 const router = Router();
@@ -780,12 +790,12 @@ export async function generateLessonContentWithLLM(
             content: `You are an expert educational content writer. Write a comprehensive, engaging lesson for an online learning platform. 
 
 Requirements:
-- Write 800-1200 words of rich educational content
+- The lesson must be bite-sized: target 500-900 words (<= ~10 minutes at 200 wpm)
 - Use specific examples, analogies, and code blocks where appropriate
 - Include inline citations like [1], [2] referencing the provided sources
 - Be specific and technical — avoid generic platitudes
 - Use markdown formatting with headers, bold, lists, and code blocks
-- Structure: Learning Objectives → Estimated Time → Core Content (3-4 subsections) → Key Takeaways → Sources → Next Steps`,
+- Structure: Learning Objectives → Estimated Time → Core Content (2-3 subsections) → Key Takeaways → Sources → Next Steps`,
           },
           {
             role: 'user',
@@ -895,6 +905,7 @@ interface Lesson {
   content: string;
   estimatedTime: number;
   wordCount: number;
+  sources?: LessonSource[];
 }
 
 interface Module {
@@ -957,6 +968,28 @@ router.post('/', async (req: Request, res: Response) => {
   const topicData = TOPIC_CONTENT[topicKey] || TOPIC_CONTENT['quantum'];
 
   const courseId = `course-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+  // Enforce free-tier course limit server-side (client also guards, but server must be source of truth).
+  // NOTE: Marketplace/creator courses could be excluded in future; for now we cap total personal courses.
+  const tier = req.user?.tier || 'free';
+  if (tier !== 'pro') {
+    const authorId = req.user?.sub || 'anonymous';
+    const existingCount = Array.from(courses.values()).filter(
+      (c) => c.authorId === authorId,
+    ).length;
+    const FREE_LIMIT = 3;
+    if (existingCount >= FREE_LIMIT) {
+      res.status(402).json({
+        error: 'payment_required',
+        code: 402,
+        message: 'Free plan is limited to 3 courses. Upgrade to Pro for unlimited courses.',
+        tier,
+        limit: FREE_LIMIT,
+        count: existingCount,
+      });
+      return;
+    }
+  }
 
   // Task 1: Content sourcing — crawl real sources for this topic
   let crawledSources: FirecrawlSource[] = [];
@@ -1056,14 +1089,26 @@ router.post('/', async (req: Request, res: Response) => {
             crawledSources,
             { openai: effectiveOpenAi },
           );
-      const wordCount = content.split(/\s+/).filter((w) => w.length > 0).length;
+      const enforced = enforceBiteSizedLesson(content, { maxMinutes: 10 });
+      const contentFinal = enforced.content;
+      const wordCount = enforced.sizing.wordCount;
+      const estimatedMinutes = Math.min(10, enforced.sizing.estimatedMinutes);
+      const sources = parseLessonSources(contentFinal);
+      const missingReason =
+        sources.length >= 2 ? '' : 'attribution_gate: lesson has fewer than 2 resolvable sources';
+      try {
+        dbLessonSources.save(`${courseId}-m${mi}-l${li}`, courseId, sources, missingReason);
+      } catch {
+        // best effort
+      }
       return {
         id: `${courseId}-m${mi}-l${li}`,
         title: les.title,
         description: les.description,
-        content,
-        estimatedTime: Math.min(10, Math.ceil(wordCount / 200)),
+        content: contentFinal,
+        estimatedTime: estimatedMinutes,
         wordCount,
+        sources,
       };
     });
     const lessons: Lesson[] = await Promise.all(lessonPromises);
@@ -1093,7 +1138,51 @@ router.post('/', async (req: Request, res: Response) => {
   console.log(
     `[LearnFlow] Lesson generation took ${Date.now() - _lessonStart}ms for ${topicData.modules.length} modules`,
   );
-  res.status(201).json(course);
+  // Attribution gate: course is only "ready" when every lesson has >= 2 resolvable sources.
+  const lessonsAll = course.modules.flatMap((m) => m.lessons);
+  const lessonsMissing = lessonsAll.filter((l) => (l.sources?.length || 0) < 2);
+
+  const attributionReady = lessonsMissing.length === 0;
+
+  res.status(201).json({
+    ...course,
+    attributionReady,
+    attributionIssues: attributionReady
+      ? []
+      : lessonsMissing.map((l) => ({
+          lessonId: l.id,
+          title: l.title,
+          sourceCount: l.sources?.length || 0,
+          missingReason: 'attribution_gate: lesson has fewer than 2 resolvable sources',
+        })),
+  });
+});
+
+// DELETE /api/v1/courses/:id - Delete a course (and cascade related rows)
+router.delete('/:id', (req: Request, res: Response) => {
+  const courseId = String(req.params.id);
+  const existing = courses.get(courseId) || dbCourses.getById(courseId);
+  if (!existing) {
+    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    return;
+  }
+
+  // Remove from runtime cache
+  courses.delete(courseId);
+
+  // Best-effort cleanup of non-FK tables that reference courseId.
+  // - lessons table cascades via FK from courses
+  // - progress table does NOT have FK; delete explicit.
+  try {
+    sqlite.prepare('DELETE FROM progress WHERE courseId = ?').run(courseId);
+  } catch {
+    // best effort
+  }
+
+  // Remove the course row (lessons cascade)
+  dbCourses.delete(courseId);
+
+  res.status(204).end();
 });
 
 // GET /api/v1/courses/:id - Get course detail
@@ -1127,7 +1216,21 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
 
   // Provide structured sources when possible; client can fall back to parsing markdown.
   // NOTE: This is best-effort. If lesson content doesn't include a Sources section, sources may be empty.
-  const sources = parseLessonSources(lesson.content);
+  const persisted = (() => {
+    try {
+      return dbLessonSources.get(lesson.id) as { sources: LessonSource[]; missingReason?: string };
+    } catch {
+      return { sources: [] as LessonSource[], missingReason: '' };
+    }
+  })();
+
+  const sources =
+    (persisted?.sources?.length || 0) > 0 ? persisted.sources : parseLessonSources(lesson.content);
+
+  const sourcesMissingReason =
+    sources.length >= 2
+      ? ''
+      : persisted?.missingReason || 'attribution_gate: sources missing from lesson';
 
   // Record an event for analytics.
   try {
@@ -1141,7 +1244,7 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
     // best effort
   }
 
-  res.status(200).json({ ...lesson, sources });
+  res.status(200).json({ ...lesson, sources, sourcesMissingReason });
 });
 
 // POST /api/v1/courses/:id/add-topic - Add a new topic as a module+lesson to an existing course
@@ -1188,15 +1291,29 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
       sources,
       { openai: process.env.NODE_ENV === 'test' ? null : openai },
     );
-    const wordCount = content.split(/\s+/).filter((w) => w.length > 0).length;
+    const enforced = enforceBiteSizedLesson(content, { maxMinutes: 10 });
+    const contentFinal = enforced.content;
+    const wordCount = enforced.sizing.wordCount;
+    const estimatedMinutes = Math.min(10, enforced.sizing.estimatedMinutes);
 
     const lessonId = `${courseId}-m${moduleIndex}-l0`;
+    const newLessonSources = parseLessonSources(contentFinal);
+    const missingReason =
+      newLessonSources.length >= 2
+        ? ''
+        : 'attribution_gate: lesson has fewer than 2 resolvable sources';
+    try {
+      dbLessonSources.save(lessonId, course.id, newLessonSources, missingReason);
+    } catch {
+      // best effort
+    }
+
     const newLesson: any = {
       id: lessonId,
       title: lessonTitle,
       description: `Add-on topic: ${topic}`,
-      content,
-      estimatedTime: Math.min(12, Math.max(6, Math.ceil(wordCount / 200))),
+      content: contentFinal,
+      estimatedTime: estimatedMinutes,
       wordCount,
     };
 
@@ -1283,7 +1400,11 @@ router.post('/:id/lessons/:lessonId/notes', async (req: Request, res: Response) 
     }
   }
 
-  const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
+  const { client: openai } = getOpenAIForRequest({
+    userId,
+    tier: req.user?.tier || 'free',
+    apiKeyOverride: (req.body as any)?.apiKey,
+  });
   let noteContent: any = { format: format || 'custom', text: customContent || '' };
 
   if (format && format !== 'custom' && openai && lesson) {
@@ -1354,7 +1475,11 @@ router.post('/:id/lessons/:lessonId/notes/illustrate', async (req: Request, res:
   const lessonId = String(req.params.lessonId);
   const { description } = req.body;
 
-  const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
+  const { client: openai } = getOpenAIForRequest({
+    userId,
+    tier: req.user?.tier || 'free',
+    apiKeyOverride: (req.body as any)?.apiKey,
+  });
   if (!openai) {
     res.status(400).json({ error: 'openai_unavailable', message: 'OpenAI API key not configured' });
     return;
@@ -1410,9 +1535,22 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
   const { sectionIndex, prompt } = req.body;
 
   const userId = req.user?.sub || 'anonymous';
-  const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
+  const { client: openai } = getOpenAIForRequest({
+    userId,
+    tier: req.user?.tier || 'free',
+    apiKeyOverride: (req.body as any)?.apiKey,
+  });
   if (!openai) {
-    res.status(400).json({ error: 'openai_unavailable' });
+    // Graceful degradation when no OpenAI key configured: still create a record
+    // so the client can attach a summary/note even without an image.
+    const illustration = dbIllustrations.create(
+      lessonId,
+      sectionIndex ?? 0,
+      prompt,
+      '',
+      'openai_unavailable',
+    );
+    res.status(201).json({ illustration, degraded: true });
     return;
   }
 
@@ -1451,7 +1589,11 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
   const lessonId = String(req.params.lessonId);
 
   const userId = req.user?.sub || 'anonymous';
-  const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
+  const { client: openai } = getOpenAIForRequest({
+    userId,
+    tier: req.user?.tier || 'free',
+    apiKeyOverride: (req.body as any)?.apiKey,
+  });
   if (!openai) {
     res.status(400).json({ error: 'openai_unavailable' });
     return;
@@ -1504,16 +1646,27 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
 
 // ── Selection Tools (Discover / Illustrate / Mark) ─────────────────────────
 
+const selectionToolsPreviewSchema = z.object({
+  tool: z.enum(['discover', 'illustrate', 'mark']),
+  selectedText: z
+    .string()
+    .min(3)
+    .max(5000, 'selectedText too long (max 5000 chars)')
+    .transform((s) => s.trim()),
+});
+
 // POST /api/v1/courses/:id/lessons/:lessonId/selection-tools/preview
 // Returns a preview payload for side tools without persisting anything.
 router.post(
   '/:id/lessons/:lessonId/selection-tools/preview',
   async (req: Request, res: Response) => {
-    const { tool, selectedText } = req.body as { tool?: string; selectedText?: string };
-    if (!tool || !selectedText || String(selectedText).trim().length < 3) {
-      res.status(400).json({ error: 'validation_error', message: 'tool + selectedText required' });
+    const parse = selectionToolsPreviewSchema.safeParse(req.body);
+    if (!parse.success) {
+      res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
       return;
     }
+
+    const { tool, selectedText } = parse.data;
 
     const userId = req.user?.sub || 'anonymous';
     const tier = req.user?.tier || 'free';
@@ -1555,11 +1708,23 @@ router.post(
       }
 
       if (tool === 'illustrate') {
-        const { client: openai } = getOpenAIForRequest({ userId, tier });
-        if (!openai) {
-          res
-            .status(400)
-            .json({ error: 'openai_unavailable', message: 'OpenAI API key not configured' });
+        const { client: openai } = getOpenAIForRequest({
+          userId,
+          tier,
+          apiKeyOverride: (req.body as any)?.apiKey,
+        });
+
+        // Graceful degradation: allow text-only illustrate even without a configured OpenAI key.
+        // In test mode we must be deterministic and avoid network.
+        if (!openai || process.env.NODE_ENV === 'test') {
+          const summary =
+            `- Key idea: ${String(selectedText).slice(0, 140)}${String(selectedText).length > 140 ? '…' : ''}\n` +
+            `- Try restating it in your own words\n` +
+            `- If you add an OpenAI key, LearnFlow can generate an image for this concept`;
+          const note =
+            `Illustrate (text-only)\n\n${summary}\n\n` +
+            `Note: OpenAI key not configured; image generation is disabled.`;
+          res.status(200).json({ tool, selectedText, preview: { note, summary, imageUrl: null } });
           return;
         }
 
@@ -1576,7 +1741,7 @@ router.post(
         });
         const summary = completion.choices[0]?.message?.content || '';
 
-        // 2) Image (best-effort). This is "illustrate" even if it is generated.
+        // 2) Image (best-effort).
         let imageUrl: string | null = null;
         try {
           const imageResponse = await openai.images.generate({
@@ -1597,7 +1762,11 @@ router.post(
       }
 
       if (tool === 'mark') {
-        const { client: openai } = getOpenAIForRequest({ userId, tier });
+        const { client: openai } = getOpenAIForRequest({
+          userId,
+          tier,
+          apiKeyOverride: (req.body as any)?.apiKey,
+        });
         let bullets: string[] = [];
         if (openai) {
           try {
@@ -1687,7 +1856,11 @@ router.post('/:id/lessons/:lessonId/annotations', async (req: Request, res: Resp
 
   if ((type === 'explain' || type === 'example') && selectedText) {
     const userId = req.user?.sub || 'anonymous';
-    const { client: openai } = getOpenAIForRequest({ userId, tier: req.user?.tier || 'free' });
+    const { client: openai } = getOpenAIForRequest({
+      userId,
+      tier: req.user?.tier || 'free',
+      apiKeyOverride: (req.body as any)?.apiKey,
+    });
     if (openai) {
       try {
         const prompt =

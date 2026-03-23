@@ -334,6 +334,7 @@ function getContextChips(content: string): QuickChip[] {
       { label: 'Review Answers', message: 'Review my quiz answers and explain mistakes' },
       { label: 'Try Again', message: 'Generate a new quiz on the same topic' },
       { label: 'Take Notes', message: 'Take detailed notes on what I got wrong' },
+      { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
     ];
   if (lower.includes('notes') || lower.includes('cornell') || lower.includes('flashcard'))
     return [
@@ -387,21 +388,30 @@ export function Conversation() {
         case 'agent.spawned':
           setActiveAgent(evt.data?.agent_name?.toLowerCase()?.split(' ')[0] || 'orchestrator');
           break;
+        case 'response.start':
+          // Reset streaming buffer for a new assistant message
+          setStreamingContent('');
+          dispatch({ type: 'SET_LOADING', key: 'chat', value: true });
+          break;
         case 'response.chunk':
           setStreamingContent((prev) => prev + (evt.data?.content_delta || ''));
           break;
         case 'response.end': {
-          if (streamingContent) {
-            dispatch({
-              type: 'ADD_CHAT_MESSAGE',
-              message: {
-                id: evt.data?.message_id || `msg-${Date.now()}-ws`,
-                role: 'assistant',
-                content: streamingContent,
-                timestamp: new Date().toISOString(),
-              },
-            });
-          }
+          // Use functional update to avoid stale closure on streamingContent
+          setStreamingContent((prev) => {
+            if (prev) {
+              dispatch({
+                type: 'ADD_CHAT_MESSAGE',
+                message: {
+                  id: evt.data?.message_id || `msg-${Date.now()}-ws`,
+                  role: 'assistant',
+                  content: prev,
+                  timestamp: new Date().toISOString(),
+                },
+              });
+            }
+            return '';
+          });
           if (evt.data?.sources?.length) {
             setDrawerSources(
               evt.data.sources.map((s: any, i: number) => ({
@@ -415,7 +425,6 @@ export function Conversation() {
             );
           }
           setWsActions(Array.isArray(evt.data?.actions) ? evt.data.actions : []);
-          setStreamingContent('');
           setActiveAgent(null);
           dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
           break;

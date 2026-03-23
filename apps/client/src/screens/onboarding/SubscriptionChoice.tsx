@@ -23,12 +23,12 @@ const PLANS = [
     features: [
       'Unlimited courses',
       'Priority AI agents',
-      'Managed API keys',
+      'Managed API keys (when available)',
       'Update Agent',
       'Advanced analytics',
       'Priority support',
     ],
-    cta: 'Start Pro Trial',
+    cta: 'Start Pro',
     highlight: true,
   },
 ];

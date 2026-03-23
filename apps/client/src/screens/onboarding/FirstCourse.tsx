@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, apiBase } from '../../context/AppContext.js';
+import { useApp, apiPost } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { Confetti } from '../../components/Confetti.js';
@@ -36,13 +36,7 @@ export function FirstCourse() {
     // Best-effort: if it fails (offline), localStorage still prevents re-show in this browser.
     (async () => {
       try {
-        const token = localStorage.getItem('learnflow-token');
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        await fetch(`${apiBase()}/api/v1/profile/onboarding/complete`, {
-          method: 'POST',
-          headers,
-        });
+        await apiPost('/profile/onboarding/complete', {});
       } catch {
         /* ignore */
       }

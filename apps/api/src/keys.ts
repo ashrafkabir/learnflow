@@ -6,10 +6,21 @@ import { db, DbApiKey } from './db.js';
 
 const router = Router();
 
+const PROVIDERS = ['openai', 'anthropic', 'google', 'mistral', 'groq', 'ollama', 'tavily'] as const;
+
 const addKeySchema = z.object({
-  provider: z.enum(['openai', 'anthropic', 'google', 'mistral', 'groq', 'ollama']),
+  provider: z.enum(PROVIDERS),
   apiKey: z.string().min(1),
   label: z.string().optional(),
+});
+
+const validateKeySchema = z.object({
+  provider: z.enum(PROVIDERS),
+  apiKey: z.string().min(1),
+});
+
+const deleteKeySchema = z.object({
+  provider: z.enum(PROVIDERS),
 });
 
 /** POST /api/v1/keys — store an encrypted API key */
@@ -41,11 +52,22 @@ router.post('/', (req: Request, res: Response) => {
 
   db.addApiKey(keyRecord);
 
+  const maskedPrefix =
+    provider === 'anthropic'
+      ? 'sk-ant-...'
+      : provider === 'groq'
+        ? 'gsk_...'
+        : provider === 'google'
+          ? 'AI...'
+          : provider === 'tavily'
+            ? 'tvly_...'
+            : 'sk-...';
+
   res.status(201).json({
     id: keyRecord.id,
     provider: keyRecord.provider,
     label: keyRecord.label,
-    maskedKey: `sk-...${lastFour}`,
+    maskedKey: `${maskedPrefix}${lastFour}`,
     active: keyRecord.active,
     createdAt: keyRecord.createdAt,
   });
@@ -56,58 +78,106 @@ router.get('/', (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const keys = db.getKeysByUserId(userId);
 
-  const masked = keys.map((k) => ({
-    id: k.id,
-    provider: k.provider,
-    label: k.label,
-    maskedKey: `sk-...${k.lastFour}`,
-    active: k.active,
-    createdAt: k.createdAt,
-    // Best-effort usage tracking: sum tokens recorded under agent ids that typically use this provider.
-    // This keeps the UI credible without implementing full provider attribution yet.
-    usageCount:
-      db.getTokenUsageByAgent(userId, 'course_builder') +
-      db.getTokenUsageByAgent(userId, 'notes_agent') +
-      db.getTokenUsageByAgent(userId, 'exam_agent') +
-      db.getTokenUsageByAgent(userId, 'research_agent') +
-      db.getTokenUsageByAgent(userId, 'summarizer_agent') +
-      db.getTokenUsageByAgent(userId, 'mindmap_agent') +
-      db.getTokenUsageByAgent(userId, 'collaboration_agent'),
-    lastUsed: undefined,
-  }));
+  const sinceMonth = new Date();
+  sinceMonth.setDate(1);
+  sinceMonth.setHours(0, 0, 0, 0);
+
+  const usageCounts = db.getUsageCountByProviderSince(userId, sinceMonth);
+  const lastUsedByProvider = db.getLastUsedByProvider(userId);
+
+  const masked = keys.map((k) => {
+    const maskedPrefix =
+      k.provider === 'anthropic'
+        ? 'sk-ant-...'
+        : k.provider === 'groq'
+          ? 'gsk_...'
+          : k.provider === 'google'
+            ? 'AI...'
+            : k.provider === 'tavily'
+              ? 'tvly_...'
+              : 'sk-...';
+
+    const usageCount = usageCounts.find((r) => r.provider === k.provider)?.count || 0;
+    const lastUsed = lastUsedByProvider.find((r) => r.provider === k.provider)?.lastUsed;
+
+    return {
+      id: k.id,
+      provider: k.provider,
+      label: k.label,
+      maskedKey: `${maskedPrefix}${k.lastFour}`,
+      active: k.active,
+      createdAt: k.createdAt,
+      usageCount,
+      lastUsed: lastUsed ? lastUsed.toISOString() : undefined,
+    };
+  });
 
   res.status(200).json({ keys: masked });
 });
 
 /** POST /api/v1/keys/validate — validate an API key format */
 router.post('/validate', (req: Request, res: Response) => {
-  const { provider, apiKey } = req.body;
-
-  if (!provider || !apiKey) {
-    res
-      .status(400)
-      .json({ error: 'validation_error', message: 'provider and apiKey required', code: 400 });
+  const parse = validateKeySchema.safeParse(req.body);
+  if (!parse.success) {
+    res.status(400).json({
+      error: 'validation_error',
+      message: 'provider and apiKey required',
+      code: 400,
+    });
     return;
   }
 
-  // Basic format validation per provider
-  const patterns: Record<string, RegExp> = {
-    openai: /^sk-[a-zA-Z0-9_-]{20,}$/,
-    anthropic: /^sk-ant-[a-zA-Z0-9_-]{20,}$/,
-    google: /^AI[a-zA-Z0-9_-]{20,}$/,
-    mistral: /^[a-zA-Z0-9]{20,}$/,
-    groq: /^gsk_[a-zA-Z0-9]{20,}$/,
+  const { provider, apiKey } = parse.data;
+
+  // Format-only validation (no network call). Keep rules permissive to avoid rejecting valid keys.
+  // If a provider changes key formats, this endpoint should err on "accept" and let real API calls fail.
+  const patterns: Record<(typeof PROVIDERS)[number], RegExp | null> = {
+    openai: /^sk-[A-Za-z0-9_-]{20,}$/,
+    anthropic: /^sk-ant-[A-Za-z0-9_-]{20,}$/,
+    google: /^(AI|AIza)[A-Za-z0-9_-]{20,}$/,
+    // Mistral keys are typically long random strings; accept common token chars with reasonable length.
+    mistral: /^[A-Za-z0-9_-]{20,}$/,
+    groq: /^gsk_[A-Za-z0-9_-]{20,}$/,
+    // Ollama is local; accept any non-empty string as "key" (often unused).
+    ollama: null,
+    // Tavily keys are opaque; accept any non-empty string.
+    tavily: null,
   };
 
   const pattern = patterns[provider];
   if (pattern && !pattern.test(apiKey)) {
-    res
-      .status(400)
-      .json({ error: 'invalid_key', message: `Invalid ${provider} API key format`, code: 400 });
+    res.status(400).json({
+      error: 'invalid_key',
+      message: `Invalid ${provider} API key format`,
+      code: 400,
+      reason: 'format',
+    });
     return;
   }
 
   res.status(200).json({ valid: true });
+});
+
+/** DELETE /api/v1/keys/:provider — delete a provider key */
+router.delete('/:provider', (req: Request, res: Response) => {
+  const parse = deleteKeySchema.safeParse({ provider: req.params.provider });
+  if (!parse.success) {
+    res.status(400).json({ error: 'validation_error', message: 'invalid provider', code: 400 });
+    return;
+  }
+
+  const userId = req.user!.sub;
+  const provider = parse.data.provider;
+
+  const keys = db.getKeysByUserId(userId);
+  const matches = keys.filter((k) => k.provider === provider);
+  if (matches.length === 0) {
+    res.status(404).json({ error: 'not_found', message: 'Key not found', code: 404 });
+    return;
+  }
+
+  for (const k of matches) db.deleteApiKey(k.id);
+  res.status(204).send();
 });
 
 export const keysRouter = router;

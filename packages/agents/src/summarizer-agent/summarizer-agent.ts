@@ -22,7 +22,28 @@ export class SummarizerAgent implements AgentInterface {
     _context: StudentContextObject,
     task: { type: string; params: Record<string, unknown> },
   ): Promise<AgentResponse> {
-    const content = (task.params.content as string) || (task.params.input as string) || '';
+    const input = (task.params.input as string) || '';
+
+    // Lightweight non-LLM behaviors for MVP compliance.
+    if (task.type === 'celebrate_milestone') {
+      const topic = input
+        .replace(/^\s*(i\s*)?(just\s*)?(completed|finished|passed|wrapped up|done with)\s+/i, '')
+        .trim();
+      const suffix = topic ? ` on ${topic.replace(/[!.?]+$/g, '')}` : '';
+      const text = `Congratulations${suffix}! That’s a real milestone — great job sticking with it. Want to tell me what felt most challenging, or what you’d like to tackle next?`;
+
+      return {
+        agentName: this.name,
+        status: 'success',
+        data: {
+          text,
+          milestone: { raw: input },
+        },
+        tokensUsed: null,
+      };
+    }
+
+    const content = (task.params.content as string) || input || '';
     const maxWords = (task.params.maxWords as number) || 500;
 
     const summary = this.summarize(content, maxWords);
@@ -34,7 +55,7 @@ export class SummarizerAgent implements AgentInterface {
         text: summary.summary,
         summary,
       },
-      tokensUsed: 100,
+      tokensUsed: null,
     };
   }
 

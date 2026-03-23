@@ -1,42 +1,62 @@
-# LearnFlow Build Progress
+# PROGRESS
 
-**Overall**: 14/14 sprints complete | 100%
-**Current Sprint**: DONE
-**Last Updated**: 2026-03-16T23:52:00Z
-**Total Iterations**: 0
+## Production posture checklist
+
+This repo contains both **spec-compliance** and **extra-spec** features. Use this checklist to distinguish what’s _dev-friendly_ vs what’s _production-ready_.
+
+### 1) Authentication & sessions
+
+- [ ] **Passwords**: hashing algorithm + parameters documented (e.g., bcrypt cost) and verified.
+- [ ] **JWT/session expiry**: reasonable TTLs; refresh strategy documented.
+- [ ] **CSRF**: if cookies are used, CSRF strategy is implemented.
+- [ ] **Rate limiting** on auth endpoints (login/register/forgot password).
+
+### 2) Billing / payments
+
+- [ ] Marketplace checkout is **idempotent** (retry-safe).
+- [ ] Webhooks are verified (signature verification, replay protection).
+- [ ] Payment provider secrets are stored securely (env/secret manager).
+
+### 3) LLM / BYOAI posture
+
+- [x] Missing-key graceful degradation exists for selection-tools illustrate preview.
+- [ ] Key validation is provider-specific and does not leak key material in logs.
+- [ ] Strict timeouts + retries for LLM calls.
+- [ ] Content safety policy: disallowed content + user warnings.
+
+### 4) Deterministic test-mode behavior
+
+- [x] Test mode avoids network calls for selection-tools illustrate.
+- [x] Test mode avoids OpenAI trending-queries generator.
+- [ ] All content-pipeline fetchers have deterministic fixtures for tests.
+
+### 5) API request validation & payload limits
+
+- [x] Selection-tools preview validates tool enum and caps selectedText at 5000 chars.
+- [ ] Global JSON body size limits configured at Express level.
+- [ ] Consistent error envelope across API endpoints.
+
+### 6) Logging & privacy
+
+- [ ] No secrets in logs (tokens, API keys, raw auth headers).
+- [ ] PII redaction rules defined.
+- [ ] Structured logs (request id / user id / route).
+
+### 7) Reliability
+
+- [ ] Timeouts for upstream requests (crawl, LLM, etc.).
+- [ ] Circuit breaker / backoff for flaky providers.
+- [ ] Background job isolation for long tasks.
+
+### 8) Security hardening
+
+- [ ] CORS is locked down for production.
+- [ ] Helmet (or equivalent) enabled.
+- [ ] Dependency audit cadence documented.
 
 ---
 
-| Sprint | Workstream                | Status   | Score | Iterations | Completed            |
-| ------ | ------------------------- | -------- | ----- | ---------- | -------------------- |
-| S01    | Project Scaffolding       | Complete | 1.0   | 0          | 2026-03-16T16:52:00Z |
-| S02    | Auth & Key Management     | Complete | 1.0   | 0          | 2026-03-16T17:00:00Z |
-| S03    | Orchestrator Agent        | Complete | 1.0   | 0          | 2026-03-16T17:09:00Z |
-| S04    | Course Builder & Pipeline | Complete | 1.0   | 0          | 2026-03-16T17:14:00Z |
-| S05    | Core Agents               | Complete | 1.0   | 0          | 2026-03-16T17:18:00Z |
-| S06    | Collaboration & Mindmap   | Complete | 1.0   | 0          | 2026-03-16T17:21:00Z |
-| S07    | API Layer                 | Complete | 1.0   | 0          | 2026-03-16T18:20:00Z |
-| S08    | Client Application        | Complete | 1.0   | 0          | 2026-03-16T18:30:00Z |
-| S09    | Marketplace               | Complete | 1.0   | 0          | 2026-03-16T18:34:00Z |
-| S10    | Subscription & Billing    | Complete | 1.0   | 0          | 2026-03-16T23:34:00Z |
-| S11    | Marketing Website         | Complete | 1.0   | 0          | 2026-03-16T23:38:00Z |
-| S12    | Documentation             | Complete | 1.0   | 0          | 2026-03-16T23:41:00Z |
-| S13    | Testing & QA              | Complete | 1.0   | 0          | 2026-03-16T23:48:00Z |
-| S14    | Deployment & Launch       | Complete | 1.0   | 0          | 2026-03-16T23:52:00Z |
+## Status notes
 
----
-
-## Test Results (Real Execution)
-
-- **vitest**: 262/262 tests pass across 16 test files
-- **tsc --noEmit**: 0 errors
-- **eslint .**: 0 errors
-- **Coverage**: ~82% statement coverage
-
-## What Was Built (S10-S14)
-
-- **S10**: Update Agent, IAP receipt validation, subscription security, feature flags
-- **S11**: Next.js 14 marketing site (hero, features, pricing, download, blog, SEO, sitemap)
-- **S12**: 7 documentation pages (getting-started, user-guide, agent-sdk, api-reference, creator-guide, privacy, architecture)
-- **S13**: Comprehensive QA tests, agent regression tests, Playwright E2E config
-- **S14**: Dockerfile, K8s manifests, Grafana dashboard, CDN config, build scripts, launch blog post
+- Spec compliance suite (Playwright) is treated as the primary end-to-end contract.
+- Extra-spec features (Selection Tools) are documented in `apps/docs/pages/selection-tools.md`.

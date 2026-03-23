@@ -128,8 +128,16 @@ describe('S09-A02: Stripe checkout', () => {
       .send({ courseId });
     expect(res.status).toBe(200);
     expect(res.body.paymentIntent.amount).toBe(29.99);
-    expect(res.body.paymentIntent.status).toBe('completed');
-    expect(res.body.enrolled).toBe(true);
+    expect(res.body.paymentIntent.status).toBe('created');
+    expect(res.body.enrolled).toBe(false);
+
+    const confirm = await request(app)
+      .post('/api/v1/marketplace/checkout/confirm')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ paymentIntentId: res.body.paymentIntent.id });
+    expect(confirm.status).toBe(200);
+    expect(confirm.body.paymentIntent.status).toBe('mock_completed');
+    expect(confirm.body.enrolled).toBe(true);
   });
 });
 
@@ -150,10 +158,15 @@ describe('S09-A03: Payout record', () => {
         readabilityScore: 0.8,
       });
 
-    await request(app)
+    const start = await request(app)
       .post('/api/v1/marketplace/checkout')
       .set('Authorization', `Bearer ${token}`)
       .send({ courseId: pub.body.course.id });
+
+    await request(app)
+      .post('/api/v1/marketplace/checkout/confirm')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ paymentIntentId: start.body.paymentIntent.id });
 
     expect(payoutRecords.size).toBe(1);
     const payout = Array.from(payoutRecords.values())[0];
@@ -319,10 +332,15 @@ describe('S09-A10: Creator dashboard', () => {
         readabilityScore: 0.75,
       });
 
-    await request(app)
+    const start = await request(app)
       .post('/api/v1/marketplace/checkout')
       .set('Authorization', `Bearer ${token}`)
       .send({ courseId: pub.body.course.id });
+
+    await request(app)
+      .post('/api/v1/marketplace/checkout/confirm')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ paymentIntentId: start.body.paymentIntent.id });
 
     const res = await request(app)
       .get('/api/v1/marketplace/creator/dashboard')
@@ -363,10 +381,16 @@ describe('S09-A12: Full marketplace flow', () => {
       .post('/api/v1/marketplace/checkout')
       .set('Authorization', `Bearer ${token}`)
       .send({ courseId });
-    expect(checkout.body.enrolled).toBe(true);
+    expect(checkout.body.enrolled).toBe(false);
+
+    const confirm = await request(app)
+      .post('/api/v1/marketplace/checkout/confirm')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ paymentIntentId: checkout.body.paymentIntent.id });
+    expect(confirm.body.enrolled).toBe(true);
 
     // Verify enrollment
-    const userEnrollments = enrollments.get(checkout.body.paymentIntent.userId);
+    const userEnrollments = enrollments.get(confirm.body.paymentIntent.userId);
     expect(userEnrollments?.has(courseId)).toBe(true);
   });
 });

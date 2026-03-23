@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
+import { apiPost } from '../../context/AppContext.js';
 import { motion } from 'framer-motion';
 import { IconCheck, IconShield, IconX } from '../../components/icons/index.js';
 
@@ -28,7 +29,7 @@ const PLANS = [
     ],
     missing: [
       'Priority AI agents',
-      'Managed API keys',
+      'Managed API keys (when available)',
       'Update Agent',
       'Advanced analytics',
       'Priority support',
@@ -54,7 +55,7 @@ const PLANS = [
       'Data export',
     ],
     missing: [],
-    cta: 'Start Pro Trial',
+    cta: 'Start Pro',
     highlight: true,
   },
 ];
@@ -62,7 +63,7 @@ const PLANS = [
 const FAQ = [
   {
     q: 'Can I use my own API keys?',
-    a: "Yes! Bring your own OpenAI, Anthropic, or Google API keys. They're encrypted and never shared. Pro users get managed keys included.",
+    a: "Yes! Bring your own OpenAI, Anthropic, or Google API keys. They're encrypted and never shared. Pro users may have access to managed keys when available on this deployment.",
   },
   {
     q: 'What happens when I hit the course limit?',
@@ -165,18 +166,13 @@ export function PricingPage() {
 
                   // Pro: call API to subscribe (sandbox). Then route to settings.
                   try {
-                    const res = await fetch('/api/v1/subscription', {
-                      method: 'POST',
-                      headers: {
-                        Authorization: `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                      },
-                      body: JSON.stringify({ action: 'subscribe', plan: 'pro' }),
-                    });
-                    if (!res.ok) throw new Error('subscribe_failed');
+                    await apiPost('/subscription', { action: 'upgrade', plan: 'pro' });
+                    // Server is source of truth; localStorage is only a cache.
+                    // We optimistically set it to avoid UI flicker, but the app should re-hydrate from GET /subscription.
+                    localStorage.setItem('learnflow-subscription', 'pro');
                     nav('/settings');
                   } catch {
-                    // Best-effort fallback: still take user to settings.
+                    // If upgrade fails, do NOT set local subscription state.
                     nav('/settings');
                   }
                 }}

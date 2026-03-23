@@ -64,6 +64,7 @@ import {
   clearScrapeCache,
   getScrapeCacheSize,
 } from './source-fetchers.js';
+import { tavilySearch } from './tavily-provider.js';
 
 // Alias cache controls for existing tests/exports.
 export function clearSourceCache(): void {
@@ -74,6 +75,8 @@ export function getSourceCacheSize(): number {
 }
 
 function sleep(ms: number) {
+  // Keep tests fast and deterministic.
+  if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) return Promise.resolve();
   return new Promise((r) => setTimeout(r, ms));
 }
 
@@ -111,32 +114,80 @@ function toSourcesFromSearchResults(
   });
 }
 
+export type WebSearchSourceId =
+  | 'wikipedia'
+  | 'arxiv'
+  | 'github'
+  | 'reddit'
+  | 'medium'
+  | 'substack'
+  | 'quora'
+  | 'thenewstack'
+  | 'devto'
+  | 'hackernews'
+  | 'stackoverflow'
+  | 'freecodecamp'
+  | 'towardsdatascience'
+  | 'digitalocean'
+  | 'mdn'
+  | 'smashingmag'
+  | 'coursera'
+  | 'baiduscholar'
+  | 'tavily';
+
+export type WebSearchConfig = {
+  /** which providers are enabled */
+  enabledSources?: Partial<Record<WebSearchSourceId, boolean>>;
+  /** per-query limit cap */
+  perQueryLimit?: number;
+  /** stage-level caps */
+  maxStage1Queries?: number;
+  maxStage2Queries?: number;
+  /** stage template overrides */
+  stage1Templates?: string[];
+  stage2Templates?: string[];
+  /** cap returned sources per lesson */
+  maxSourcesPerLesson?: number;
+};
+
+function isEnabled(
+  id: WebSearchSourceId,
+  enabledSources: Partial<Record<WebSearchSourceId, boolean>> | undefined,
+): boolean {
+  return enabledSources ? enabledSources[id] !== false : true;
+}
+
 async function multiSourceSearch(
   query: string,
   perSourceLimit = 5,
+  enabledSources?: Partial<Record<WebSearchSourceId, boolean>>,
 ): Promise<FirecrawlSearchResult[]> {
   const half = Math.max(3, Math.floor(perSourceLimit / 2));
-  const results = await Promise.all([
-    wikipediaSearch(query, perSourceLimit),
-    arxivSearch(query, half),
-    githubRepoSearch(query, half),
-    redditSearch(query, 3),
-    mediumSearch(query, 3),
-    substackSearch(query, 3),
-    quoraSearch(query, 2),
-    theNewStackSearch(query, 3),
-    devtoSearch(query, 3),
-    hackerNewsSearch(query, 3),
-    stackOverflowSearch(query, 3),
-    freeCodeCampSearch(query, 3),
-    towardsDataScienceSearch(query, 2),
-    digitalOceanSearch(query, 2),
-    mdnSearch(query, 2),
-    smashingMagSearch(query, 2),
-    courseraSearch(query, 2),
-    baiduScholarSearch(query, 2),
-  ]);
+  const tasks: Array<Promise<FirecrawlSearchResult[]>> = [];
 
+  if (isEnabled('wikipedia', enabledSources)) tasks.push(wikipediaSearch(query, perSourceLimit));
+  if (isEnabled('arxiv', enabledSources)) tasks.push(arxivSearch(query, half));
+  if (isEnabled('github', enabledSources)) tasks.push(githubRepoSearch(query, half));
+  if (isEnabled('reddit', enabledSources)) tasks.push(redditSearch(query, 3));
+  if (isEnabled('medium', enabledSources)) tasks.push(mediumSearch(query, 3));
+  if (isEnabled('substack', enabledSources)) tasks.push(substackSearch(query, 3));
+  if (isEnabled('quora', enabledSources)) tasks.push(quoraSearch(query, 2));
+  if (isEnabled('thenewstack', enabledSources)) tasks.push(theNewStackSearch(query, 3));
+  if (isEnabled('devto', enabledSources)) tasks.push(devtoSearch(query, 3));
+  if (isEnabled('hackernews', enabledSources)) tasks.push(hackerNewsSearch(query, 3));
+  if (isEnabled('stackoverflow', enabledSources)) tasks.push(stackOverflowSearch(query, 3));
+  if (isEnabled('freecodecamp', enabledSources)) tasks.push(freeCodeCampSearch(query, 3));
+  if (isEnabled('towardsdatascience', enabledSources))
+    tasks.push(towardsDataScienceSearch(query, 2));
+  if (isEnabled('digitalocean', enabledSources)) tasks.push(digitalOceanSearch(query, 2));
+  if (isEnabled('mdn', enabledSources)) tasks.push(mdnSearch(query, 2));
+  if (isEnabled('smashingmag', enabledSources)) tasks.push(smashingMagSearch(query, 2));
+  if (isEnabled('coursera', enabledSources)) tasks.push(courseraSearch(query, 2));
+  if (isEnabled('baiduscholar', enabledSources)) tasks.push(baiduScholarSearch(query, 2));
+  if (isEnabled('tavily', enabledSources))
+    tasks.push(tavilySearch(query, { maxResults: perSourceLimit }));
+
+  const results = await Promise.all(tasks);
   return uniqueByUrl(results.flat());
 }
 
@@ -150,7 +201,7 @@ export async function searchSources(
   topic: string,
   _config: Partial<FirecrawlConfig> = {},
 ): Promise<FirecrawlSearchResult[]> {
-  const results = await multiSourceSearch(topic, 6);
+  const results = await multiSourceSearch(topic, 6, (_config as any)?.enabledSources);
   return results.slice(0, 12);
 }
 
@@ -188,7 +239,7 @@ export async function crawlSourcesForTopic(
   // Keep this bounded for API tests (avoid >60s end-to-end).
   // In production, we can increase breadth/depth.
   for (const q of queries.slice(0, 2)) {
-    const batch = await multiSourceSearch(q, 4);
+    const batch = await multiSourceSearch(q, 4, (_config as any)?.enabledSources);
     results.push(...batch);
     await sleep(80);
   }
@@ -213,14 +264,29 @@ export async function searchTopicTrending(
   console.log(`[WebSearch] Stage 1: Bulk research for "${topic}"`);
 
   const qg = createOpenAIQueryGenerator();
-  const queries = await qg.generateTrendingQueries(topic);
-  console.log('[WebSearch] Generated trending queries:', queries);
+  const cfg = _config as any as WebSearchConfig;
+
+  const templateQueries = Array.isArray(cfg?.stage1Templates)
+    ? cfg.stage1Templates
+        .map((t) => String(t || '').trim())
+        .filter(Boolean)
+        .map((t) => t.replaceAll('{courseTopic}', topic))
+    : [];
+
+  const generated = await qg.generateTrendingQueries(topic);
+  const queries = Array.from(
+    new Set([...templateQueries, ...generated].map((q) => q.trim())),
+  ).filter(Boolean);
+
+  const maxStage1Queries = Math.max(1, Math.min(20, cfg?.maxStage1Queries ?? 10));
+  const finalQueries = queries.slice(0, maxStage1Queries);
+  console.log('[WebSearch] Generated trending queries:', finalQueries);
 
   const allResults: FirecrawlSearchResult[] = [];
-  const perQueryLimit = 5;
+  const perQueryLimit = Math.max(1, Math.min(10, cfg?.perQueryLimit ?? 5));
 
-  for (const q of queries) {
-    const res = await multiSourceSearch(q, perQueryLimit);
+  for (const q of finalQueries) {
+    const res = await multiSourceSearch(q, perQueryLimit, cfg?.enabledSources);
     console.log(`[WebSearch] Query "${q}" -> ${res.length} results`);
     allResults.push(...res);
     await sleep(150);
@@ -277,12 +343,32 @@ export async function searchForLesson(
   console.log(`[WebSearch] Stage 2: Scraping for lesson "${lessonTitle}"`);
 
   const qg = createOpenAIQueryGenerator();
-  const queries = await qg.generateLessonQueries({
+  const cfg = _config as any as WebSearchConfig;
+
+  const stage2Templates = Array.isArray(cfg?.stage2Templates) ? cfg.stage2Templates : [];
+  const templated = stage2Templates
+    .map((t) => String(t || '').trim())
+    .filter(Boolean)
+    .map((t) =>
+      t
+        .replaceAll('{courseTopic}', courseTopic)
+        .replaceAll('{moduleTitle}', moduleTitle)
+        .replaceAll('{lessonTitle}', lessonTitle)
+        .replaceAll('{lessonDescription}', lessonDescription),
+    );
+
+  const generated = await qg.generateLessonQueries({
     topic: courseTopic,
     moduleTitle,
     lessonTitle,
     lessonDescription,
   });
+
+  const maxStage2Queries = Math.max(1, Math.min(20, cfg?.maxStage2Queries ?? 6));
+  const queries = Array.from(new Set([...templated, ...generated].map((q) => q.trim())))
+    .filter(Boolean)
+    .slice(0, maxStage2Queries);
+
   console.log(`[WebSearch] Generated lesson queries for "${lessonTitle}":`, queries);
 
   // Add Wikipedia summary first if available
@@ -306,8 +392,9 @@ export async function searchForLesson(
 
   // Search multi-source for each query
   const results: FirecrawlSearchResult[] = [];
+  const perQueryLimit = Math.max(1, Math.min(10, cfg?.perQueryLimit ?? 5));
   for (const q of queries) {
-    const res = await multiSourceSearch(q, 5);
+    const res = await multiSourceSearch(q, perQueryLimit, cfg?.enabledSources);
     console.log(`[WebSearch] Lesson query "${q}" -> ${res.length} results`);
     results.push(...res);
     await sleep(120);
@@ -321,7 +408,11 @@ export async function searchForLesson(
     .slice(0, 10)
     .map((r) => ({ url: r.url, title: r.title }));
 
-  const scraped = await fetchAndScoreSources(urls, `${lessonTitle} ${courseTopic}`, 6);
+  const scraped = await fetchAndScoreSources(
+    urls,
+    `${lessonTitle} ${courseTopic}`,
+    Math.max(1, Math.min(12, cfg?.maxSourcesPerLesson ?? 6)),
+  );
 
   // Merge
   const merged = uniqueByUrl([...lessonSources, ...scraped]);
@@ -336,5 +427,6 @@ export async function searchForLesson(
   console.log(
     `[WebSearch] Lesson "${lessonTitle}" — scraped sources: ${scraped.length}, total: ${merged.length}`,
   );
-  return merged.slice(0, 6);
+  const maxSourcesPerLesson = Math.max(1, Math.min(12, cfg?.maxSourcesPerLesson ?? 6));
+  return merged.slice(0, maxSourcesPerLesson);
 }

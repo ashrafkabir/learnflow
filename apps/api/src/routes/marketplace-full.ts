@@ -3,6 +3,14 @@
  */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import {
+  dbMarketplaceCourses,
+  dbMarketplaceEnrollments,
+  dbMarketplacePayouts,
+  dbMarketplacePayments,
+  dbMarketplaceAgentSubmissions,
+  dbMarketplace,
+} from '../db.js';
 
 const router = Router();
 
@@ -41,7 +49,7 @@ interface PaymentIntent {
   courseId: string;
   userId: string;
   amount: number;
-  status: 'created' | 'completed' | 'failed';
+  status: 'created' | 'mock_completed' | 'completed' | 'failed';
   createdAt: string;
 }
 
@@ -136,6 +144,11 @@ const searchSchema = z.object({
   maxPrice: z.coerce.number().optional(),
 });
 
+const createReviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  text: z.string().max(2000).optional().default(''),
+});
+
 // ─── Routes ───
 
 // POST /api/v1/marketplace/publish — publish a course (S09-A01)
@@ -181,6 +194,27 @@ router.post(['/publish', '/courses'], (req: Request, res: Response) => {
 
   publishedCourses.set(course.id, course);
 
+  // Persist published course
+  dbMarketplaceCourses.upsert({
+    id: course.id,
+    title: course.title,
+    topic: course.topic,
+    description: course.description,
+    difficulty: course.difficulty,
+    price: course.price,
+    creatorId: course.creatorId,
+    status: course.status,
+    lessonCount: course.lessonCount,
+    attributionCount: course.attributionCount,
+    readabilityScore: course.readabilityScore,
+    rating: course.rating,
+    enrollmentCount: course.enrollmentCount,
+    revenue: course.revenue,
+    publishedAt: course.publishedAt,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
   res.status(201).json({ course, qualityCheck: qc });
 });
 
@@ -192,36 +226,124 @@ router.get('/courses', (req: Request, res: Response) => {
     return;
   }
 
-  let results = Array.from(publishedCourses.values()).filter((c) => c.status === 'published');
+  let results: any[] = dbMarketplaceCourses.listPublished().map((c: any) => ({
+    id: String(c.id),
+    title: String(c.title),
+    topic: String(c.topic),
+    description: String(c.description),
+    difficulty: String(c.difficulty),
+    price: Number(c.price || 0),
+    creatorId: String(c.creatorId),
+    status: (String(c.status) as any) || 'published',
+    lessonCount: Number(c.lessonCount || 0),
+    attributionCount: Number(c.attributionCount || 0),
+    readabilityScore: Number(c.readabilityScore || 0.7),
+    rating: Number(c.rating || 0),
+    enrollmentCount: Number(c.enrollmentCount || 0),
+    revenue: Number(c.revenue || 0),
+    publishedAt: c.publishedAt || null,
+  })) as any;
   const { keyword, topic, difficulty, maxPrice } = parse.data;
 
   if (keyword) {
     const kw = keyword.toLowerCase();
     results = results.filter(
-      (c) => c.title.toLowerCase().includes(kw) || c.topic.toLowerCase().includes(kw),
+      (c: any) => c.title.toLowerCase().includes(kw) || c.topic.toLowerCase().includes(kw),
     );
   }
-  if (topic) results = results.filter((c) => c.topic === topic);
-  if (difficulty) results = results.filter((c) => c.difficulty === difficulty);
-  if (maxPrice !== undefined) results = results.filter((c) => c.price <= maxPrice);
+  if (topic) results = results.filter((c: any) => c.topic === topic);
+  if (difficulty) results = results.filter((c: any) => c.difficulty === difficulty);
+  if (maxPrice !== undefined) results = results.filter((c: any) => c.price <= maxPrice);
 
   res.status(200).json({ courses: results });
 });
 
 // GET /api/v1/marketplace/courses/:id — course detail (client expects this)
 router.get('/courses/:id', (req: Request, res: Response) => {
-  const course = publishedCourses.get(String(req.params.id));
+  const course = (publishedCourses.get(String(req.params.id)) ||
+    (dbMarketplaceCourses.getById(String(req.params.id)) as any)) as any;
   if (!course || course.status !== 'published') {
     res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
     return;
   }
+
+  // Attach review aggregates + recent reviews
+  try {
+    const agg = dbMarketplace.getCourseReviewAgg(String(course.id));
+    const reviews = dbMarketplace.listCourseReviews(String(course.id), 20).map((r) => ({
+      author: String(r.userId),
+      rating: Number(r.rating || 0),
+      text: String(r.text || ''),
+      date: String(r.createdAt).slice(0, 10),
+    }));
+
+    const rating = Number(agg.avgRating || 0);
+    const reviewCount = Number(agg.count || 0);
+
+    res.status(200).json({ course: { ...course, rating, reviewCount, reviews } });
+    return;
+  } catch {
+    // Fall through to base course payload
+  }
+
   res.status(200).json({ course });
 });
 
+// POST /api/v1/marketplace/courses/:id/reviews — create a review (Iter70)
+router.post('/courses/:id/reviews', (req: Request, res: Response) => {
+  const courseId = String(req.params.id);
+  const course = (publishedCourses.get(courseId) ||
+    (dbMarketplaceCourses.getById(courseId) as any)) as any;
+  if (!course || course.status !== 'published') {
+    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    return;
+  }
+
+  const parse = createReviewSchema.safeParse(req.body);
+  if (!parse.success) {
+    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    return;
+  }
+
+  const review = {
+    id: `rev-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    courseId,
+    userId: req.user!.sub,
+    rating: parse.data.rating,
+    text: String(parse.data.text || ''),
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    dbMarketplace.addCourseReview(review);
+    const agg = dbMarketplace.getCourseReviewAgg(courseId);
+
+    // Update course aggregate rating in course table for fast listing.
+    const persisted = dbMarketplaceCourses.getById(courseId);
+    if (persisted) {
+      dbMarketplaceCourses.upsert({
+        ...persisted,
+        rating: Number(agg.avgRating || 0),
+        updatedAt: new Date().toISOString(),
+      } as any);
+    }
+
+    res.status(201).json({ review, aggregates: { rating: agg.avgRating, reviewCount: agg.count } });
+  } catch (err: any) {
+    res
+      .status(500)
+      .json({ error: 'server_error', message: err?.message || 'Failed to save review', code: 500 });
+  }
+});
+
 // POST /api/v1/marketplace/checkout — Stripe checkout (S09-A02)
+// NOTE: MVP is in MOCK mode (no Stripe wiring). We still keep the state machine honest:
+// - Return a non-terminal mock status.
+// - Enrollment only occurs after explicit confirmation step.
 router.post('/checkout', (req: Request, res: Response) => {
   const { courseId } = req.body;
-  const course = publishedCourses.get(courseId);
+  const course = (publishedCourses.get(courseId) ||
+    (dbMarketplaceCourses.getById(courseId) as any)) as any;
   if (!course) {
     res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
     return;
@@ -232,17 +354,57 @@ router.post('/checkout', (req: Request, res: Response) => {
     courseId,
     userId: req.user!.sub,
     amount: course.price,
-    status: 'completed', // Mock: instant success
+    status: 'created',
     createdAt: new Date().toISOString(),
   };
   paymentIntents.set(intent.id, intent);
+
+  dbMarketplacePayments.insertIntent({
+    id: intent.id,
+    userId: intent.userId,
+    courseId: intent.courseId,
+    amount: intent.amount,
+    status: intent.status,
+    createdAt: intent.createdAt,
+  });
+
+  res.status(200).json({ paymentIntent: intent, enrolled: false, mode: 'mock' });
+});
+
+// POST /api/v1/marketplace/checkout/confirm — confirm payment (MOCK)
+router.post('/checkout/confirm', (req: Request, res: Response) => {
+  const schema = z.object({ paymentIntentId: z.string().min(1) });
+  const parse = schema.safeParse(req.body);
+  if (!parse.success) {
+    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    return;
+  }
+
+  const { paymentIntentId } = parse.data;
+  const intent = paymentIntents.get(paymentIntentId);
+  if (!intent || intent.userId !== req.user!.sub) {
+    res.status(404).json({ error: 'not_found', message: 'Payment intent not found', code: 404 });
+    return;
+  }
+
+  const course = (publishedCourses.get(intent.courseId) ||
+    (dbMarketplaceCourses.getById(intent.courseId) as any)) as any;
+  if (!course) {
+    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    return;
+  }
+
+  // Mock terminal state
+  intent.status = 'mock_completed';
+  paymentIntents.set(intent.id, intent);
+  dbMarketplacePayments.updateStatus(intent.id, intent.status);
 
   // Process payout (S09-A03)
   const split = calculateRevenueSplit(course.price, 'byoai');
   const payout: PayoutRecord = {
     id: `po-${Date.now()}`,
     creatorId: course.creatorId,
-    courseId,
+    courseId: intent.courseId,
     amount: course.price,
     creatorShare: split.creatorShare,
     platformShare: split.platformShare,
@@ -253,11 +415,45 @@ router.post('/checkout', (req: Request, res: Response) => {
 
   // Enroll user
   if (!enrollments.has(req.user!.sub)) enrollments.set(req.user!.sub, new Set());
-  enrollments.get(req.user!.sub)!.add(courseId);
+  enrollments.get(req.user!.sub)!.add(intent.courseId);
   course.enrollmentCount++;
   course.revenue += course.price;
 
-  res.status(200).json({ paymentIntent: intent, payout, enrolled: true });
+  // Persist payout + enrollment
+  dbMarketplacePayouts.insert({
+    id: payout.id,
+    creatorId: payout.creatorId,
+    courseId: payout.courseId,
+    amount: payout.amount,
+    creatorShare: payout.creatorShare,
+    platformShare: payout.platformShare,
+    status: payout.status,
+    createdAt: payout.createdAt,
+  });
+  dbMarketplaceEnrollments.enroll(req.user!.sub, intent.courseId);
+
+  // Persist updated course aggregates
+  dbMarketplaceCourses.upsert({
+    id: course.id,
+    title: course.title,
+    topic: course.topic,
+    description: course.description,
+    difficulty: course.difficulty,
+    price: course.price,
+    creatorId: course.creatorId,
+    status: course.status,
+    lessonCount: course.lessonCount,
+    attributionCount: course.attributionCount,
+    readabilityScore: course.readabilityScore,
+    rating: course.rating,
+    enrollmentCount: course.enrollmentCount,
+    revenue: course.revenue,
+    publishedAt: course.publishedAt,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  res.status(200).json({ paymentIntent: intent, payout, enrolled: true, mode: 'mock' });
 });
 
 // POST /api/v1/marketplace/agents/submit — submit agent (S09-A06)
@@ -277,12 +473,33 @@ router.post('/agents/submit', (req: Request, res: Response) => {
   };
   agentSubmissions.set(submission.id, submission);
 
+  // Persist submission
+  dbMarketplaceAgentSubmissions.upsert({
+    id: submission.id,
+    name: submission.name,
+    description: submission.description,
+    manifest: submission.manifest,
+    creatorId: submission.creatorId,
+    status: submission.status,
+    submittedAt: submission.submittedAt,
+  });
+
   res.status(201).json({ submission });
 });
 
 // GET /api/v1/marketplace/agents — list agents (public)
 router.get('/agents', (_req: Request, res: Response) => {
-  const agents = Array.from(agentSubmissions.values()).filter((a) => a.status === 'approved');
+  const persisted = dbMarketplaceAgentSubmissions.listApproved();
+  const inMem = Array.from(agentSubmissions.values()).filter((a) => a.status === 'approved');
+  const agents = [...persisted, ...inMem].map((a) => ({
+    id: a.id,
+    name: a.name,
+    description: a.description,
+    manifest: (a as any).manifest,
+    creatorId: (a as any).creatorId,
+    status: (a as any).status,
+    submittedAt: (a as any).submittedAt,
+  }));
   res.status(200).json({ agents });
 });
 
@@ -316,14 +533,39 @@ router.post('/agents/:id/activate', async (req: Request, res: Response) => {
 
 // GET /api/v1/marketplace/creator/dashboard — creator analytics (S09-A10)
 router.get('/creator/dashboard', (req: Request, res: Response) => {
-  const creatorCourses = Array.from(publishedCourses.values()).filter(
-    (c) => c.creatorId === req.user!.sub,
+  const persisted = dbMarketplaceCourses.listByCreator(req.user!.sub).map((c) => ({
+    id: String(c.id),
+    title: String(c.title),
+    topic: String(c.topic),
+    description: String(c.description),
+    difficulty: String(c.difficulty) as any,
+    price: Number(c.price || 0),
+    creatorId: String(c.creatorId),
+    status: (String(c.status) as any) || 'published',
+    lessonCount: Number(c.lessonCount || 0),
+    attributionCount: Number(c.attributionCount || 0),
+    readabilityScore: Number(c.readabilityScore || 0.7),
+    rating: Number(c.rating || 0),
+    enrollmentCount: Number(c.enrollmentCount || 0),
+    revenue: Number(c.revenue || 0),
+    publishedAt: c.publishedAt || null,
+  }));
+
+  const inMem = Array.from(publishedCourses.values()).filter((c) => c.creatorId === req.user!.sub);
+
+  const mergedById = new Map<string, any>();
+  for (const c of [...persisted, ...inMem]) mergedById.set(String(c.id), c);
+  const creatorCourses = Array.from(mergedById.values());
+
+  const creatorPayouts = [
+    ...dbMarketplacePayouts.listByCreator(req.user!.sub),
+    ...Array.from(payoutRecords.values()).filter((p) => p.creatorId === req.user!.sub),
+  ];
+  const totalEarnings = creatorPayouts.reduce((sum, p) => sum + (Number(p.creatorShare) || 0), 0);
+  const totalEnrollments = creatorCourses.reduce(
+    (sum, c) => sum + (Number(c.enrollmentCount) || 0),
+    0,
   );
-  const creatorPayouts = Array.from(payoutRecords.values()).filter(
-    (p) => p.creatorId === req.user!.sub,
-  );
-  const totalEarnings = creatorPayouts.reduce((sum, p) => sum + p.creatorShare, 0);
-  const totalEnrollments = creatorCourses.reduce((sum, c) => sum + c.enrollmentCount, 0);
 
   res.status(200).json({
     courses: creatorCourses,

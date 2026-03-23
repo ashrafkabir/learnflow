@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiBase } from '../../context/AppContext.js';
+import { apiPost } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
 import { IconChat, IconCourse, IconPeople, IconStar } from '../../components/icons/index.js';
@@ -171,6 +171,9 @@ export function CourseDetail() {
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [expandedModules, setExpandedModules] = useState<Set<number>>(new Set([0]));
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [reviewText, setReviewText] = useState<string>('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -205,19 +208,37 @@ export function CourseDetail() {
     if (!course) return;
     setEnrolling(true);
     try {
-      const token = localStorage.getItem('learnflow-token');
-      if (token) {
-        await fetch(`${apiBase()}/api/v1/marketplace/checkout`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ courseId: course.id }),
-        });
+      const start = await apiPost('/marketplace/checkout', { courseId: course.id });
+      const paymentIntentId = start?.paymentIntent?.id;
+      if (paymentIntentId) {
+        await apiPost('/marketplace/checkout/confirm', { paymentIntentId });
       }
       nav('/dashboard');
     } catch {
       // silent
     } finally {
       setEnrolling(false);
+    }
+  };
+
+  const submitReview = async () => {
+    if (!course) return;
+    setReviewSubmitting(true);
+    try {
+      await apiPost(`/marketplace/courses/${course.id}/reviews`, {
+        rating: reviewRating,
+        text: reviewText,
+      });
+      const res = await fetch(`/api/v1/marketplace/courses/${course.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCourse(data.course || getFallbackDetail(course.id));
+      }
+      setReviewText('');
+    } catch {
+      // silent MVP
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -239,6 +260,7 @@ export function CourseDetail() {
       data-screen="course-detail"
       className="min-h-screen bg-gray-50 dark:bg-gray-950"
     >
+      {/* NOTE: Marketplace checkout is currently in MOCK mode (instant success) for MVP/testing. */}
       {/* Header */}
       <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
@@ -295,6 +317,11 @@ export function CourseDetail() {
 
           {/* Price + Enroll */}
           <div className="flex items-center gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            {course.price > 0 && (
+              <span className="text-[11px] px-2 py-1 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40">
+                Mock checkout (no real payment)
+              </span>
+            )}
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               {course.price === 0 ? 'Free' : `$${course.price}`}
             </span>
@@ -364,12 +391,60 @@ export function CourseDetail() {
         )}
 
         {/* Reviews */}
-        {course.reviews && course.reviews.length > 0 && (
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-card">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 inline-flex items-center gap-2">
-              <IconChat className="w-5 h-5 text-accent" />
-              Reviews
-            </h2>
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-card">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 inline-flex items-center gap-2">
+            <IconChat className="w-5 h-5 text-accent" />
+            Reviews
+          </h2>
+
+          {/* Write a review (MVP) */}
+          <div className="border border-gray-100 dark:border-gray-800 rounded-xl p-4 mb-5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                Leave a review
+              </span>
+              <span className="text-xs text-gray-500">(requires login)</span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <label className="text-xs text-gray-600 dark:text-gray-300" htmlFor="rating">
+                Rating
+              </label>
+              <select
+                id="rating"
+                value={reviewRating}
+                onChange={(e) => setReviewRating(Number(e.target.value))}
+                className="text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              >
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-yellow-500 inline-flex items-center gap-1">
+                <IconStar className="w-3.5 h-3.5" />
+                <span>{reviewRating}</span>
+              </span>
+            </div>
+            <textarea
+              value={reviewText}
+              onChange={(e) => setReviewText(e.target.value)}
+              placeholder="What did you like? What could be improved?"
+              className="w-full min-h-[84px] text-sm border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            />
+            <div className="flex justify-end mt-2">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={submitReview}
+                disabled={reviewSubmitting}
+              >
+                {reviewSubmitting ? 'Submitting…' : 'Submit review'}
+              </Button>
+            </div>
+          </div>
+
+          {course.reviews && course.reviews.length > 0 ? (
             <div className="space-y-4">
               {course.reviews.map((r, idx) => (
                 <div
@@ -393,8 +468,10 @@ export function CourseDetail() {
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <p className="text-sm text-gray-500 dark:text-gray-300">No reviews yet.</p>
+          )}
+        </div>
       </div>
     </section>
   );

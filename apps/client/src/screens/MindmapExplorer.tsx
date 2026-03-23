@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, apiGet } from '../context/AppContext.js';
+import { useApp, apiGet, apiPost } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
 import { IconMap, IconMaximize, IconZoomIn, IconZoomOut } from '../components/icons/index.js';
 import { useMindmapYjs } from '../hooks/useMindmapYjs.js';
@@ -54,8 +54,8 @@ export function MindmapExplorer() {
   const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
   const mindmapRef = useRef<HTMLDivElement | null>(null);
   // Yjs-backed shared mindmap state (room per course)
-  // Deterministic room for CRDT MVP (first course if available, otherwise a fixed dev course)
-  const activeCourseId = state.courses?.[0]?.id || 'dev-course';
+  // Tie mindmap room to the user's current context when possible.
+  const activeCourseId = state.activeCourse?.id || state.courses?.[0]?.id || 'dev-course';
   const { nodes: yNodes } = useMindmapYjs(activeCourseId);
 
   // Dev/test hook: expose the shared Yjs nodes array for Playwright assertions.
@@ -112,7 +112,35 @@ export function MindmapExplorer() {
             }),
           );
           const valid = fullCourses.filter(Boolean);
-          if (valid.length > 0) dispatch({ type: 'SET_COURSES', courses: valid });
+          if (valid.length > 0) {
+            dispatch({ type: 'SET_COURSES', courses: valid as any });
+
+            // Best-effort: request persisted mindmap suggestions for the active course.
+            // This makes suggested nodes “real” (server-backed) rather than only localStorage.
+            const firstCourseId = (valid as any[])[0]?.id as string | undefined;
+            if (firstCourseId) {
+              try {
+                // Trigger suggestion generation if none exists.
+                await apiPost('/mindmap/suggest', { courseId: firstCourseId });
+              } catch {
+                // ignore
+              }
+              try {
+                const s = await apiGet(
+                  `/mindmap/suggestions?courseId=${encodeURIComponent(firstCourseId)}`,
+                );
+                if (s?.suggestions) {
+                  dispatch({
+                    type: 'SET_MINDMAP_SUGGESTIONS',
+                    courseId: firstCourseId,
+                    suggestions: s.suggestions,
+                  });
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }
         }
       } catch {
         /* ignore */
@@ -257,6 +285,7 @@ export function MindmapExplorer() {
         _suggested: true,
         _suggestedTopicId: s.id,
         _suggestedLabel: s.label,
+        _parentLessonId: (s as any).parentLessonId,
       });
       const attachFrom =
         parentLessonId && lessonIdToNodeId.get(parentLessonId)
@@ -400,7 +429,8 @@ export function MindmapExplorer() {
             setPanelPos({ x: 16, y: 16 });
           }
 
-          setSuggestedAction({ label, topicId, reason });
+          const parentLessonId = (clickedNode as any)._parentLessonId as string | undefined;
+          setSuggestedAction({ label, topicId, reason, parentLessonId });
           setSearchOpen(false);
           setSearchResults([]);
           return;
@@ -619,18 +649,36 @@ export function MindmapExplorer() {
                             // ignore
                           }
 
-                          // Remove suggestion from local suggestions for that course
+                          // Persist acceptance: remove suggestion from server and local cache
                           const cid = String(updatedCourse.id || courseId || 'global');
-                          const current = state.mindmapSuggestions?.[cid] || [];
-                          const next = current.filter(
-                            (s) =>
-                              s.id !== suggestedAction.topicId && s.label !== suggestedAction.label,
-                          );
-                          dispatch({
-                            type: 'SET_MINDMAP_SUGGESTIONS',
-                            courseId: cid,
-                            suggestions: next,
-                          });
+                          try {
+                            if (suggestedAction.topicId) {
+                              const serverRow = await apiPost('/mindmap/accept', {
+                                courseId: cid,
+                                suggestionId: suggestedAction.topicId,
+                              });
+                              if (serverRow?.suggestions) {
+                                dispatch({
+                                  type: 'SET_MINDMAP_SUGGESTIONS',
+                                  courseId: cid,
+                                  suggestions: serverRow.suggestions,
+                                });
+                              }
+                            }
+                          } catch {
+                            // Fallback: remove locally even if server accept fails
+                            const current = state.mindmapSuggestions?.[cid] || [];
+                            const next = current.filter(
+                              (s) =>
+                                s.id !== suggestedAction.topicId &&
+                                s.label !== suggestedAction.label,
+                            );
+                            dispatch({
+                              type: 'SET_MINDMAP_SUGGESTIONS',
+                              courseId: cid,
+                              suggestions: next,
+                            });
+                          }
 
                           dispatch({
                             type: 'ADD_NOTIFICATION',

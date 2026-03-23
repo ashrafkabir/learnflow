@@ -20,9 +20,9 @@ describe('Course deletion rate limiting regression', () => {
       // Use an invalid token on purpose: devAuth will ignore it but also skip injecting the default pro user.
       const asFree = (r: any) => r.set('Authorization', 'Bearer invalid-test-token');
 
-      // Create a handful of courses
+      // Create a handful of courses within free-tier limit
       const ids: string[] = [];
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 3; i++) {
         const res = await asFree(request(app).post('/api/v1/courses')).send({
           topic: `Burst ${i}`,
         });
@@ -31,7 +31,7 @@ describe('Course deletion rate limiting regression', () => {
       }
 
       // Delete them in a tight loop — should not hit 429 within 100 req/min.
-      // (10 creates + 10 deletes = 20 requests)
+      // (3 creates + 3 deletes = 6 requests)
       for (const id of ids) {
         const del = await asFree(request(app).delete(`/api/v1/courses/${id}`));
         expect(del.status).not.toBe(429);

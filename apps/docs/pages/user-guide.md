@@ -1,5 +1,15 @@
 # User Guide
 
+## Selection tools (Discover / Illustrate / Mark)
+
+When reading a lesson, you can select text to open quick tools:
+
+- **Discover**: get quick context and related concepts
+- **Illustrate**: simplified explanation (and an image if BYOAI is configured)
+- **Mark**: save a key takeaway
+
+See: `Selection Tools (Discover / Illustrate / Mark)`.
+
 ## Overview
 
 LearnFlow is an AI-powered learning platform with six specialized agents that work together to create personalized educational experiences.

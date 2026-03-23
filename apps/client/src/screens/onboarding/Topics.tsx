@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, apiBase } from '../../context/AppContext.js';
+import { useApp, apiPost } from '../../context/AppContext.js';
 import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import {
@@ -74,14 +74,7 @@ export function OnboardingTopics() {
     dispatch({ type: 'SET_ONBOARDING_TOPICS', topics: selected });
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 2 });
     try {
-      const token = localStorage.getItem('learnflow-token');
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      await fetch(`${apiBase()}/api/v1/profile/goals`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ topics: selected }),
-      });
+      await apiPost('/profile/goals', { topics: selected });
     } catch {
       /* best effort */
     }

@@ -42,5 +42,9 @@ export interface AgentResponse {
   agentName: string;
   status: 'success' | 'error';
   data: unknown;
-  tokensUsed?: number;
+  /**
+   * tokensUsed is optional and may be null when the response did not come from an LLM call.
+   * (e.g., deterministic/offline/mock agent behavior).
+   */
+  tokensUsed?: number | null;
 }

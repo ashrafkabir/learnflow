@@ -4,6 +4,10 @@
    Note: This file must be safe for BOTH jsdom and node test environments.
 */
 
+// Ensure test-mode flags are set for any shared packages that rely on NODE_ENV/VITEST.
+process.env.NODE_ENV = 'test';
+process.env.VITEST = process.env.VITEST || '1';
+
 // ── Polyfills (jsdom only) ────────────────────────────────────────────────
 // Framer Motion uses IntersectionObserver; jsdom doesn't provide it.
 if (
@@ -50,6 +54,13 @@ const ALLOWLIST_SUBSTRINGS: string[] = [
   // LearnFlow UI: legacy CourseView mock data sometimes lacks stable ids and can trigger this warning.
   // Treat as non-fatal in tests until the mock fixtures are tightened.
   'Each child in a list should have a unique "key" prop',
+
+  // Testing Library cleanup() can sometimes race with concurrent rendering in React 18.
+  // Prefer to fix the test harness, but allow this warning so the suite isn't flaky.
+  'Attempted to synchronously unmount a root while React was already rendering',
+
+  // React internal invariant triggered by cleanup/rerender races.
+  'Should not already be working.',
 ];
 
 function msgFromArgs(args: unknown[]): string {

@@ -1,13 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { db, dbProgress } from '../db.js';
+import { isAdmin } from '../lib/admin.js';
 
 const router = Router();
 
 // GET /api/v1/profile/context - Get full Student Context Object
 router.get('/context', (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const role = req.user!.role;
   const tier = req.user!.tier;
+
+  // Server-driven admin role (do not rely on client localStorage)
+  const role = isAdmin(req) ? 'admin' : req.user!.role;
 
   const user = db.findUserById(userId);
   const stats = dbProgress.getUserStats(userId);

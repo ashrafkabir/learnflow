@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { apiBase } from '../context/AppContext.js';
+import { apiPost } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
 import {
   IconApple,
@@ -24,22 +24,13 @@ export function RegisterScreen() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase()}/api/v1/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, displayName }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || 'Registration failed');
-        return;
-      }
+      const data = await apiPost('/auth/register', { email, password, displayName });
       localStorage.setItem('learnflow-token', data.accessToken);
       localStorage.setItem('learnflow-refresh', data.refreshToken);
       localStorage.setItem('learnflow-user', JSON.stringify(data.user));
       nav(data?.user?.onboardingCompletedAt ? '/dashboard' : '/onboarding/welcome');
     } catch {
-      setError('Network error. Please try again.');
+      setError('Registration failed');
     } finally {
       setLoading(false);
     }
@@ -56,7 +47,7 @@ export function RegisterScreen() {
             <IconBrainSpark size={26} className="text-accent" title="LearnFlow" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create your account</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+          <p className="text-sm text-gray-800/80 dark:text-gray-200 mt-1">
             Start learning with LearnFlow
           </p>
         </div>
@@ -76,6 +67,7 @@ export function RegisterScreen() {
               Name
             </label>
             <input
+              name="name"
               type="text"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
@@ -90,6 +82,7 @@ export function RegisterScreen() {
               Email
             </label>
             <input
+              name="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -105,6 +98,7 @@ export function RegisterScreen() {
             </label>
             <div className="relative">
               <input
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -122,9 +116,9 @@ export function RegisterScreen() {
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
-                  <IconEyeOff size={18} className="text-gray-600 dark:text-gray-300" />
+                  <IconEyeOff size={18} className="text-gray-800/80 dark:text-gray-200" />
                 ) : (
-                  <IconEye size={18} className="text-gray-600 dark:text-gray-300" />
+                  <IconEye size={18} className="text-gray-800/80 dark:text-gray-200" />
                 )}
               </Button>
             </div>
@@ -137,7 +131,7 @@ export function RegisterScreen() {
           {/* Social OAuth divider */}
           <div className="flex items-center gap-3 my-2">
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-            <span className="text-xs text-gray-500 dark:text-gray-300">or continue with</span>
+            <span className="text-xs text-gray-700/80 dark:text-gray-200">or continue with</span>
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
           </div>
 
@@ -147,7 +141,11 @@ export function RegisterScreen() {
               type="button"
               variant="secondary"
               fullWidth
-              onClick={() => alert('Google OAuth coming soon')}
+              onClick={() =>
+                alert(
+                  'Social login is not yet available in this MVP. Use email + password for now.',
+                )
+              }
               className="flex items-center justify-center gap-2"
             >
               <span
@@ -160,7 +158,11 @@ export function RegisterScreen() {
               type="button"
               variant="secondary"
               fullWidth
-              onClick={() => alert('GitHub OAuth coming soon')}
+              onClick={() =>
+                alert(
+                  'Social login is not yet available in this MVP. Use email + password for now.',
+                )
+              }
               className="flex items-center justify-center gap-2"
             >
               <IconGitHub size={18} className="text-gray-800 dark:text-gray-100" title="GitHub" />
@@ -170,7 +172,11 @@ export function RegisterScreen() {
               type="button"
               variant="secondary"
               fullWidth
-              onClick={() => alert('Apple OAuth coming soon')}
+              onClick={() =>
+                alert(
+                  'Social login is not yet available in this MVP. Use email + password for now.',
+                )
+              }
               className="flex items-center justify-center gap-2"
             >
               <IconApple size={18} className="text-gray-800 dark:text-gray-100" title="Apple" />
@@ -179,7 +185,7 @@ export function RegisterScreen() {
           </div>
         </form>
 
-        <p className="text-center text-sm text-gray-600 dark:text-gray-300 mt-3">
+        <p className="text-center text-sm text-gray-800/80 dark:text-gray-200 mt-3">
           Already have an account?{' '}
           <Link to="/login" className="text-accent font-medium hover:underline">
             Sign in

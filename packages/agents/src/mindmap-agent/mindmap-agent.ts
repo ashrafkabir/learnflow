@@ -58,7 +58,7 @@ export class MindmapAgent implements AgentInterface {
           mindmap: updatedMap,
           nodesAdded: newConcepts.length,
         },
-        tokensUsed: 75,
+        tokensUsed: null,
       };
     }
 
@@ -69,7 +69,7 @@ export class MindmapAgent implements AgentInterface {
         agentName: this.name,
         status: 'success',
         data: { text: 'Mindmap exported as SVG.', svg },
-        tokensUsed: 50,
+        tokensUsed: null,
       };
     }
 
@@ -80,7 +80,7 @@ export class MindmapAgent implements AgentInterface {
         text: `Your knowledge graph has ${currentMap.nodes.length} concepts.`,
         mindmap: currentMap,
       },
-      tokensUsed: 50,
+      tokensUsed: null,
     };
   }
 

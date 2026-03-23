@@ -60,7 +60,7 @@ export class NotesAgent implements AgentInterface {
       agentName: this.name,
       status: 'success',
       data: { text, notes: data, format },
-      tokensUsed: 100,
+      tokensUsed: null,
     };
   }
 

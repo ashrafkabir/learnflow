@@ -5,6 +5,7 @@ const sections = [
       { label: 'Quickstart', href: '#quickstart' },
       { label: 'WebSocket protocol', href: '#ws' },
       { label: 'BYOAI keys', href: '#keys' },
+      { label: 'Docs sources (repo)', href: '#sources' },
     ],
   },
   {
@@ -14,6 +15,10 @@ const sections = [
       { label: 'Auth', href: '#auth' },
       { label: 'Courses', href: '#courses' },
     ],
+  },
+  {
+    title: 'Extra-spec',
+    items: [{ label: 'Selection tools', href: '#selection-tools' }],
   },
 ];
 
@@ -90,6 +95,33 @@ npm run dev
           <p>
             Users can store encrypted provider keys via <code>POST /api/v1/keys</code>. Keys are
             encrypted at rest and never returned in plaintext.
+          </p>
+
+          <h2 id="sources">Docs sources (repo)</h2>
+          <p>
+            The full developer docs live as Markdown pages under <code>apps/docs/pages</code>. If
+            you are reading this on the marketing site, these are the canonical sources.
+          </p>
+          <ul>
+            <li>
+              <code>apps/docs/pages/getting-started.md</code>
+            </li>
+            <li>
+              <code>apps/docs/pages/api-reference.md</code>
+            </li>
+            <li>
+              <code>apps/docs/pages/architecture.md</code>
+            </li>
+            <li>
+              <code>apps/docs/pages/selection-tools.md</code>
+            </li>
+          </ul>
+
+          <h2 id="selection-tools">Selection tools (extra-spec)</h2>
+          <p>
+            LearnFlow supports selection tools inside the lesson reader:
+            <strong> Discover</strong>, <strong>Illustrate</strong>, and <strong>Mark</strong>. See
+            the repo doc: <code>apps/docs/pages/selection-tools.md</code>.
           </p>
 
           <h2 id="rest">REST endpoints</h2>

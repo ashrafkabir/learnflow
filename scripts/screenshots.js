@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
   const BASE = 'http://127.0.0.1:3003';
-  const DIR = '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter12';
+  const DIR = '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter57';
 
   const routes = [
     ['landing', '/'],

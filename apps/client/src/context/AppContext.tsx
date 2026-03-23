@@ -1,5 +1,14 @@
-import React, { createContext, useContext, useReducer, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useCallback,
+  ReactNode,
+  useEffect,
+} from 'react';
 import { toActionableHttpErrorMessage } from './httpErrors.js';
+import { useToast } from '../components/Toast.js';
+import { loadStudentContext, saveStudentContext } from '../lib/studentContext.js';
 
 // Types
 export interface Course {
@@ -144,6 +153,7 @@ type Action =
   | { type: 'SET_SUBSCRIPTION'; tier: SubscriptionTier }
   | { type: 'ADD_NOTIFICATION'; notification: Notification }
   | { type: 'DISMISS_NOTIFICATION'; id: string }
+  | { type: 'SET_NOTIFICATIONS'; notifications: Notification[] }
   | {
       type: 'SET_MINDMAP_SUGGESTIONS';
       courseId: string;
@@ -156,32 +166,49 @@ type Action =
       totalLessonsCompleted: number;
     };
 
+const safeLocalStorageGet = (key: string): string | null => {
+  try {
+    if (typeof localStorage === 'undefined') return null;
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const safeLocalStorageGetJson = <T,>(key: string, fallback: T): T => {
+  try {
+    const raw = safeLocalStorageGet(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+};
+
+const initialStudentContext = loadStudentContext();
+
 const initialState: AppState = {
   onboarding: {
-    completed: localStorage.getItem('learnflow-onboarding-complete') === 'true',
+    completed:
+      safeLocalStorageGet('learnflow-onboarding-complete') === 'true' ||
+      Boolean(initialStudentContext?.onboardingCompletedAt),
     step: 0,
-    goals: [],
-    topics: [],
-    experience: '',
+    goals: initialStudentContext?.goals || [],
+    topics: initialStudentContext?.topics || [],
+    experience: initialStudentContext?.experience || '',
   },
   courses: [],
   activeCourse: null,
   activeLesson: null,
-  chat: (() => {
-    try {
-      return JSON.parse(localStorage.getItem('learnflow-chat') || '[]');
-    } catch {
-      return [];
-    }
-  })(),
+  chat: safeLocalStorageGetJson('learnflow-chat', [] as any),
   notes: null,
   quiz: null,
   profile: {
     name: '',
     email: '',
-    goals: [],
-    topics: [],
-    experience: 'beginner',
+    goals: initialStudentContext?.goals || [],
+    topics: initialStudentContext?.topics || [],
+    experience: initialStudentContext?.experience || 'beginner',
     dailyGoal: 30,
     darkMode: false,
     notifications: true,
@@ -189,29 +216,53 @@ const initialState: AppState = {
   loading: {},
   streak: 0,
   completedLessons: new Set(),
-  subscription: (localStorage.getItem('learnflow-subscription') as SubscriptionTier) || 'free',
-  notifications: JSON.parse(localStorage.getItem('learnflow-notifications') || '[]'),
-  mindmapSuggestions: (() => {
-    try {
-      return JSON.parse(localStorage.getItem('learnflow-mindmap-suggestions') || '{}');
-    } catch {
-      return {};
-    }
-  })(),
+  subscription: (safeLocalStorageGet('learnflow-subscription') as SubscriptionTier) || 'free',
+  notifications: safeLocalStorageGetJson('learnflow-notifications', [] as any),
+  mindmapSuggestions: safeLocalStorageGetJson('learnflow-mindmap-suggestions', {} as any),
 };
 
 function reducer(state: AppState, action: Action): AppState {
   switch (action.type) {
     case 'SET_ONBOARDING_STEP':
       return { ...state, onboarding: { ...state.onboarding, step: action.step } };
-    case 'SET_ONBOARDING_GOALS':
-      return { ...state, onboarding: { ...state.onboarding, goals: action.goals } };
-    case 'SET_ONBOARDING_TOPICS':
-      return { ...state, onboarding: { ...state.onboarding, topics: action.topics } };
-    case 'SET_ONBOARDING_EXPERIENCE':
-      return { ...state, onboarding: { ...state.onboarding, experience: action.experience } };
+    case 'SET_ONBOARDING_GOALS': {
+      const next = { ...state, onboarding: { ...state.onboarding, goals: action.goals } };
+      saveStudentContext({
+        goals: next.onboarding.goals,
+        topics: next.onboarding.topics,
+        experience: next.onboarding.experience || 'beginner',
+        onboardingCompletedAt: initialStudentContext?.onboardingCompletedAt || null,
+      });
+      return next;
+    }
+    case 'SET_ONBOARDING_TOPICS': {
+      const next = { ...state, onboarding: { ...state.onboarding, topics: action.topics } };
+      saveStudentContext({
+        goals: next.onboarding.goals,
+        topics: next.onboarding.topics,
+        experience: next.onboarding.experience || 'beginner',
+        onboardingCompletedAt: initialStudentContext?.onboardingCompletedAt || null,
+      });
+      return next;
+    }
+    case 'SET_ONBOARDING_EXPERIENCE': {
+      const next = { ...state, onboarding: { ...state.onboarding, experience: action.experience } };
+      saveStudentContext({
+        goals: next.onboarding.goals,
+        topics: next.onboarding.topics,
+        experience: next.onboarding.experience || 'beginner',
+        onboardingCompletedAt: initialStudentContext?.onboardingCompletedAt || null,
+      });
+      return next;
+    }
     case 'COMPLETE_ONBOARDING':
       localStorage.setItem('learnflow-onboarding-complete', 'true');
+      saveStudentContext({
+        goals: state.onboarding.goals,
+        topics: state.onboarding.topics,
+        experience: state.onboarding.experience || 'beginner',
+        onboardingCompletedAt: new Date().toISOString(),
+      });
       return { ...state, onboarding: { ...state.onboarding, completed: true } };
     case 'SET_COURSES': {
       // Deduplicate by ID
@@ -269,8 +320,21 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, loading: { ...state.loading, [action.key]: action.value } };
     case 'COMPLETE_LESSON':
       return { ...state, completedLessons: new Set([...state.completedLessons, action.lessonId]) };
-    case 'UPDATE_PROFILE':
-      return { ...state, profile: { ...state.profile, ...action.profile } };
+    case 'UPDATE_PROFILE': {
+      const nextProfile = { ...state.profile, ...action.profile };
+      // Keep a durable Student Context Object for UX continuity (best-effort).
+      // Server remains source of truth when authenticated.
+      saveStudentContext({
+        goals: nextProfile.goals || [],
+        topics: nextProfile.topics || [],
+        experience: nextProfile.experience || 'beginner',
+        onboardingCompletedAt:
+          safeLocalStorageGet('learnflow-onboarding-complete') === 'true'
+            ? new Date().toISOString()
+            : initialStudentContext?.onboardingCompletedAt || null,
+      });
+      return { ...state, profile: nextProfile };
+    }
     case 'SET_SUBSCRIPTION':
       localStorage.setItem('learnflow-subscription', action.tier);
       return { ...state, subscription: action.tier };
@@ -283,6 +347,15 @@ function reducer(state: AppState, action: Action): AppState {
       const notifs2 = state.notifications.filter((n) => n.id !== action.id);
       localStorage.setItem('learnflow-notifications', JSON.stringify(notifs2));
       return { ...state, notifications: notifs2 };
+    }
+    case 'SET_NOTIFICATIONS': {
+      const notifs = (action.notifications || []).slice(0, 50);
+      try {
+        localStorage.setItem('learnflow-notifications', JSON.stringify(notifs));
+      } catch {
+        /* ignore */
+      }
+      return { ...state, notifications: notifs };
     }
     case 'SET_MINDMAP_SUGGESTIONS': {
       const next = {
@@ -338,7 +411,7 @@ async function refreshTokenIfNeeded(): Promise<void> {
   }
 }
 
-function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('learnflow-token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -346,17 +419,18 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 export function apiBase(): string {
-  if (
-    typeof window !== 'undefined' &&
-    window.location?.origin &&
-    window.location.origin !== 'null'
-  ) {
-    return '';
-  }
+  // When running in the browser, prefer same-origin requests.
+  // In development / tests (Node), default to the local API.
+  if (typeof window !== 'undefined') return '';
+
+  // Allow explicit override for E2E/CI.
+  const envBase = process.env.PLAYWRIGHT_BASE_URL || process.env.VITE_API_BASE_URL;
+  if (envBase) return envBase.replace(/\/$/, '');
+
   return 'http://localhost:3002';
 }
 
-async function apiPost(path: string, body: unknown) {
+export async function apiPost(path: string, body: unknown) {
   await refreshTokenIfNeeded();
   try {
     const res = await fetch(`${apiBase()}${API}${path}`, {
@@ -364,6 +438,30 @@ async function apiPost(path: string, body: unknown) {
       headers: getAuthHeaders(),
       body: JSON.stringify(body),
     });
+
+    // Subscription hydration immediate unlock:
+    // if a subscription upgrade succeeds, re-fetch the tier so the UI unlocks instantly.
+    // This keeps server as source of truth while avoiding page reloads.
+    if (res.ok && path.startsWith('/subscription')) {
+      try {
+        const sub = await fetch(`${apiBase()}${API}/subscription`, {
+          method: 'GET',
+          headers: getAuthHeaders(),
+        }).then((r) => r.json());
+        if (sub?.tier) {
+          localStorage.setItem('learnflow-subscription', sub.tier);
+          // Notify the already-mounted AppProvider to update state immediately.
+          // (Storage events don't fire in the same tab.)
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('learnflow:subscription', { detail: { tier: sub.tier } }),
+            );
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'Request failed' }));
       if (res.status === 401) {
@@ -384,7 +482,7 @@ async function apiPost(path: string, body: unknown) {
   }
 }
 
-async function apiDelete(path: string) {
+export async function apiDelete(path: string) {
   await refreshTokenIfNeeded();
   try {
     const headers = getAuthHeaders();
@@ -457,6 +555,86 @@ const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
+  const { toast } = useToast();
+
+  // Hydrate Student Context + subscription state from server so it remains the source of truth
+  // (not localStorage). Best-effort: only runs when authenticated.
+  useEffect(() => {
+    const token = localStorage.getItem('learnflow-token');
+    if (!token) return;
+
+    const onSub = (ev: Event) => {
+      try {
+        const tier = (ev as CustomEvent).detail?.tier as SubscriptionTier | undefined;
+        if (tier) dispatch({ type: 'SET_SUBSCRIPTION', tier });
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener('learnflow:subscription', onSub as any);
+
+    (async () => {
+      // Student context hydration (goals/topics/experience + role/tier)
+      try {
+        const ctx = await apiGet('/profile/context');
+        if (ctx) {
+          dispatch({
+            type: 'UPDATE_PROFILE',
+            profile: {
+              goals: Array.isArray(ctx.goals) ? ctx.goals : [],
+              topics: Array.isArray(ctx.topics) ? ctx.topics : [],
+              experience: ctx.experience || 'beginner',
+            },
+          });
+          if (typeof ctx.subscriptionTier === 'string') {
+            dispatch({ type: 'SET_SUBSCRIPTION', tier: ctx.subscriptionTier as SubscriptionTier });
+          }
+          // Persist full context (best-effort) for offline continuity.
+          try {
+            saveStudentContext({
+              ...(loadStudentContext() || { goals: [], topics: [], experience: 'beginner' }),
+              ...ctx,
+            });
+          } catch {
+            /* ignore */
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // Subscription hydration
+      try {
+        const sub = await apiGet('/subscription');
+        if (sub?.tier) {
+          dispatch({ type: 'SET_SUBSCRIPTION', tier: sub.tier });
+        }
+      } catch {
+        // ignore
+      }
+
+      // Pro Update Agent: hydrate durable notifications feed (best-effort)
+      try {
+        const n = await apiGet('/notifications?limit=50');
+        if (Array.isArray(n?.notifications)) {
+          const mapped = n.notifications.map((row: any) => ({
+            id: String(row.id),
+            type: (row.type as any) || 'system',
+            message: String(row.title || row.body || ''),
+            timestamp: row.createdAt || new Date().toISOString(),
+            read: Boolean(row.readAt),
+          }));
+          dispatch({ type: 'SET_NOTIFICATIONS', notifications: mapped });
+        }
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      window.removeEventListener('learnflow:subscription', onSub as any);
+    };
+  }, []);
 
   const createCourse = useCallback(async (topic: string): Promise<Course> => {
     dispatch({ type: 'SET_LOADING', key: 'createCourse', value: true });
@@ -521,11 +699,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
           timestamp: new Date().toISOString(),
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', message: assistantMsg });
-      } catch {
+      } catch (err: any) {
+        const msg = String(err?.message || 'Sorry, something went wrong. Please try again.');
+        if (/rate limit/i.test(msg) || /429/.test(msg)) {
+          toast(msg, 'warning', 5000);
+        } else {
+          toast('Request failed. Please try again.', 'error');
+        }
+
         const errMsg: ChatMessage = {
           id: `msg-${Date.now()}-err`,
           role: 'assistant',
-          content: 'Sorry, something went wrong. Please try again.',
+          content: msg,
           timestamp: new Date().toISOString(),
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', message: errMsg });
@@ -533,7 +718,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
       }
     },
-    [state.activeCourse, state.activeLesson],
+    [state.activeCourse, state.activeLesson, state.chat, toast],
   );
 
   const generateNotes = useCallback(async (lessonId: string, format: string): Promise<Notes> => {

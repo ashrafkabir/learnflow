@@ -47,12 +47,14 @@ describe('CourseMarketplace screen', () => {
     );
   });
 
-  it('shows course titles', async () => {
+  it('shows course titles (from API when available)', async () => {
+    // Marketplace no longer falls back to hardcoded sample data.
+    // This test just asserts we render an empty state or course cards.
     renderAt('/marketplace');
     await waitFor(
       () => {
         const text = document.body.textContent || '';
-        expect(text.match(/machine learning|python|kubernetes|react/i)).toBeTruthy();
+        expect(text.match(/no courses found|course marketplace/i)).toBeTruthy();
       },
       { timeout: 5000 },
     );
@@ -69,18 +71,46 @@ describe('CourseMarketplace screen', () => {
     );
   });
 
-  it('shows Free label for free courses', async () => {
+  it('shows empty state when API returns no courses', async () => {
     renderAt('/marketplace');
     await waitFor(
       () => {
         const text = document.body.textContent || '';
-        expect(text.match(/free/i)).toBeTruthy();
+        expect(text.match(/no courses found/i)).toBeTruthy();
       },
       { timeout: 5000 },
     );
   });
 
-  it('shows enroll buttons', async () => {
+  it('shows enroll buttons when courses exist', async () => {
+    globalThis.fetch = (async (input: any) => {
+      const url = String(input);
+      if (url.includes('/api/v1/marketplace/courses')) {
+        return new Response(
+          JSON.stringify({
+            courses: [
+              {
+                id: 'mc-1',
+                title: 'Test Course',
+                description: 'desc',
+                topic: 'programming',
+                difficulty: 'beginner',
+                price: 0,
+                rating: 4.8,
+                enrollmentCount: 10,
+                lessonCount: 3,
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as typeof fetch;
+
     renderAt('/marketplace');
     await waitFor(
       () => {

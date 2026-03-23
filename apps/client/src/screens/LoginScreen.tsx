@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { apiBase } from '../context/AppContext.js';
+import { apiPost } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
 import {
   IconApple,
@@ -23,16 +23,7 @@ export function LoginScreen() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch(`${apiBase()}/api/v1/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || 'Login failed');
-        return;
-      }
+      const data = await apiPost('/auth/login', { email, password });
       localStorage.setItem('learnflow-token', data.accessToken);
       localStorage.setItem('learnflow-refresh', data.refreshToken);
       localStorage.setItem('learnflow-user', JSON.stringify(data.user));
@@ -40,7 +31,7 @@ export function LoginScreen() {
       if (data?.user && !data.user.onboardingCompletedAt) nav('/onboarding/welcome');
       else nav('/dashboard');
     } catch {
-      setError('Network error. Please try again.');
+      setError('Login failed');
     } finally {
       setLoading(false);
     }
@@ -57,7 +48,7 @@ export function LoginScreen() {
             <IconBrainSpark size={26} className="text-accent" title="LearnFlow" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Welcome back</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">Sign in to LearnFlow</p>
+          <p className="text-sm text-gray-800/80 dark:text-gray-200 mt-1">Sign in to LearnFlow</p>
         </div>
 
         <form
@@ -106,9 +97,9 @@ export function LoginScreen() {
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
-                  <IconEyeOff size={18} className="text-gray-600 dark:text-gray-300" />
+                  <IconEyeOff size={18} className="text-gray-800/80 dark:text-gray-200" />
                 ) : (
-                  <IconEye size={18} className="text-gray-600 dark:text-gray-300" />
+                  <IconEye size={18} className="text-gray-800/80 dark:text-gray-200" />
                 )}
               </Button>
             </div>
@@ -118,7 +109,7 @@ export function LoginScreen() {
             <button
               type="button"
               onClick={() => alert('Password reset email sent! Check your inbox.')}
-              className="text-xs text-accent hover:underline"
+              className="text-xs text-accent-dark hover:underline"
             >
               Forgot password?
             </button>
@@ -131,7 +122,7 @@ export function LoginScreen() {
           {/* Social OAuth divider */}
           <div className="flex items-center gap-3 my-2">
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-            <span className="text-xs text-gray-500 dark:text-gray-300">or continue with</span>
+            <span className="text-xs text-gray-700/80 dark:text-gray-200">or continue with</span>
             <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
           </div>
 
@@ -141,7 +132,11 @@ export function LoginScreen() {
               type="button"
               variant="secondary"
               fullWidth
-              onClick={() => alert('Google OAuth coming soon')}
+              onClick={() =>
+                alert(
+                  'Social login is not yet available in this MVP. Use email + password for now.',
+                )
+              }
               className="flex items-center justify-center gap-2"
             >
               <span
@@ -154,7 +149,11 @@ export function LoginScreen() {
               type="button"
               variant="secondary"
               fullWidth
-              onClick={() => alert('GitHub OAuth coming soon')}
+              onClick={() =>
+                alert(
+                  'Social login is not yet available in this MVP. Use email + password for now.',
+                )
+              }
               className="flex items-center justify-center gap-2"
             >
               <IconGitHub size={18} className="text-gray-800 dark:text-gray-100" title="GitHub" />
@@ -164,7 +163,11 @@ export function LoginScreen() {
               type="button"
               variant="secondary"
               fullWidth
-              onClick={() => alert('Apple OAuth coming soon')}
+              onClick={() =>
+                alert(
+                  'Social login is not yet available in this MVP. Use email + password for now.',
+                )
+              }
               className="flex items-center justify-center gap-2"
             >
               <IconApple size={18} className="text-gray-800 dark:text-gray-100" title="Apple" />
@@ -173,7 +176,7 @@ export function LoginScreen() {
           </div>
         </form>
 
-        <p className="text-center text-sm text-gray-600 dark:text-gray-300 mt-3">
+        <p className="text-center text-sm text-gray-800/80 dark:text-gray-200 mt-3">
           Don't have an account?{' '}
           <Link to="/register" className="text-accent font-medium hover:underline">
             Sign up
@@ -181,8 +184,8 @@ export function LoginScreen() {
         </p>
 
         {import.meta.env.DEV && (
-          <p className="text-center text-sm text-gray-500 dark:text-gray-300 mt-2">
-            <Link to="/dashboard" className="hover:underline opacity-50">
+          <p className="text-center text-sm text-gray-700/80 dark:text-gray-200 mt-2">
+            <Link to="/dashboard" className="hover:underline text-accent-dark">
               Skip (dev mode) →
             </Link>
           </p>
