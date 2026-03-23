@@ -37,42 +37,8 @@ const router = Router();
 // topic -> fingerprint/classification -> domain profile -> outline modules.
 // (Hard-coded TOPIC_CONTENT templates are deprecated and removed from the default path.)
 
-export async function generateLessonContentWithLLM(
-  topic: string,
-  moduleTitle: string,
-  lessonTitle: string,
-  lessonDesc: string,
-  crawledSources?: FirecrawlSource[],
-  llm?: { openai?: any } | null,
-): Promise<{ markdown: string; sources: StructuredLessonSource[] }> {
-  const accessedAt = new Date().toISOString();
-  const structuredSources = toStructuredLessonSources(crawledSources, { limit: 4, accessedAt });
-
-  // Build source context from crawled content
-  const sourceContext =
-    crawledSources && crawledSources.length > 0
-      ? crawledSources
-          .slice(0, 4)
-          .map(
-            (s, i) =>
-              `[Source ${i + 1}] "${s.title}" by ${s.author || 'Unknown'} (${s.domain})\nURL: ${s.url}\nContent excerpt: ${(s.content || '').slice(0, 1500)}`,
-          )
-          .join('\n\n')
-      : '';
-
-  const sourceRefs = structuredSources;
-
-  const openai = (llm as any)?.openai || null;
-  if (openai) {
-    try {
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
-        temperature: 0.7,
-        max_tokens: 3000,
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert educational content writer. Write a comprehensive, engaging lesson for an online learning platform. 
+function buildLessonSystemPrompt(): string {
+  return `You are an expert educational content writer. Write a comprehensive, engaging lesson for an online learning platform. 
 
 Requirements:
 - The lesson must be bite-sized: target 500-900 words (<= ~10 minutes at 200 wpm)
@@ -91,24 +57,109 @@ Requirements:
   - ## Next Steps
 - Worked Example MUST be fully worked (show steps). For programming: include a runnable code block.
 - Quick Check MUST include 3-5 questions AND an Answer Key.
-- Do not invent sources. If you cannot support a claim with sources, mark it as an assumption.`,
-          },
-          {
-            role: 'user',
-            content: `Write a lesson titled "${lessonTitle}" for the module "${moduleTitle}" in a course on "${topic}".
+- Do not invent sources. If you cannot support a claim with sources, mark it as an assumption.`;
+}
+
+function buildSourceContextForPrompt(crawledSources?: FirecrawlSource[]): string {
+  if (!crawledSources || crawledSources.length === 0) return '';
+  return crawledSources
+    .slice(0, 4)
+    .map((s, i) => {
+      const title = s.title || 'Untitled';
+      const author = s.author || 'Unknown';
+      const domain = s.domain || s.source || 'unknown';
+      const url = s.url || '';
+      const excerpt = (s.content || '').slice(0, 1500);
+      return `[Source ${i + 1}] "${title}" by ${author} (${domain})\nURL: ${url}\nContent excerpt: ${excerpt}`;
+    })
+    .join('\n\n');
+}
+
+function formatSourcesForPrompt(sourceRefs: StructuredLessonSource[]): string {
+  if (!sourceRefs || sourceRefs.length === 0) return 'No sources available.';
+  return sourceRefs
+    .map((s, i) => {
+      const author = s.author || 'Unknown';
+      const title = s.title || 'Untitled';
+      const publication = s.publication || 'Unknown';
+      const year = s.year || 2024;
+      const url = s.url || '';
+      const license = s.license || 'unknown';
+      const accessedAt = s.accessedAt || new Date().toISOString();
+      return `[${i + 1}] ${author}. "${title}". ${publication}, ${year}. ${url} (License: ${license}; Accessed: ${accessedAt})`;
+    })
+    .join('\n');
+}
+
+function buildLessonUserPrompt(args: {
+  topic: string;
+  moduleTitle: string;
+  lessonTitle: string;
+  lessonDesc: string;
+  sourceContext: string;
+  sourcesSectionTemplate: string;
+}): string {
+  const { topic, moduleTitle, lessonTitle, lessonDesc, sourceContext, sourcesSectionTemplate } =
+    args;
+
+  const basis = sourceContext
+    ? `Use these real sources as the basis for your content:\n\n${sourceContext}`
+    : 'Write based on your knowledge of the topic.';
+
+  return `Write a lesson titled "${lessonTitle}" for the module "${moduleTitle}" in a course on "${topic}".
 
 Lesson description: ${lessonDesc}
 
-${sourceContext ? `Use these real sources as the basis for your content:\n\n${sourceContext}` : 'Write based on your knowledge of the topic.'}
+${basis}
 
 Format the output as markdown starting with # ${lessonTitle}
 
 In the ## Sources section, list ONLY the provided sources (no extras), with this format:
-${sourceRefs.map((s, i) => `[${i + 1}] ${s.author || 'Unknown'}. "${s.title}". ${s.publication || 'Unknown'}, ${s.year || 2024}. ${s.url} (License: ${s.license || 'unknown'}; Accessed: ${s.accessedAt})`).join('\n') || 'No sources available.'}
+${sourcesSectionTemplate}
 
 In ## Quick Check, include a "### Answer Key" subsection.
 
-Then a ## Next Steps section.`,
+Then a ## Next Steps section.`;
+}
+
+export async function generateLessonContentWithLLM(
+  topic: string,
+  moduleTitle: string,
+  lessonTitle: string,
+  lessonDesc: string,
+  crawledSources?: FirecrawlSource[],
+  llm?: { openai?: any } | null,
+): Promise<{ markdown: string; sources: StructuredLessonSource[] }> {
+  const accessedAt = new Date().toISOString();
+  const structuredSources = toStructuredLessonSources(crawledSources, { limit: 4, accessedAt });
+
+  const sourceRefs = structuredSources;
+  const sourceContext = buildSourceContextForPrompt(crawledSources);
+  const sourcesSectionTemplate = formatSourcesForPrompt(sourceRefs);
+  const userPrompt = buildLessonUserPrompt({
+    topic,
+    moduleTitle,
+    lessonTitle,
+    lessonDesc,
+    sourceContext,
+    sourcesSectionTemplate,
+  });
+
+  const openai = (llm as any)?.openai || null;
+  if (openai) {
+    try {
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        max_tokens: 3000,
+        messages: [
+          {
+            role: 'system',
+            content: buildLessonSystemPrompt(),
+          },
+          {
+            role: 'user',
+            content: userPrompt,
           },
         ],
       });
