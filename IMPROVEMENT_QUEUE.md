@@ -245,6 +245,8 @@ Screenshot checklist:
 
 #### 8) P1 — WS **contract tests** for Spec §11.2 events (shape + minimum ordering)
 
+Status: ✅ **DONE (builder run-7)** — added `ws-contract.test.ts` covering start/chunk/end ordering + invalid_json envelope
+
 Acceptance criteria:
 
 - Tests validate that sending `event:'message'` yields:
@@ -268,6 +270,8 @@ Screenshot checklist:
 ---
 
 #### 9) P1 — Add **REST+WS requestId propagation** policy (docs + headers)
+
+Status: ✅ **DONE (builder run-5/8)** — WS now accepts `data.requestId` and echoes it; REST echoes inbound `x-request-id` (test added)
 
 Acceptance criteria:
 
@@ -368,6 +372,8 @@ Screenshot checklist:
 ### P2 — NICE TO HAVE (but valuable for WS-07 completeness)
 
 #### 13) P2 — Create **loadtest harness placeholder** (k6 or Artillery) for 1 REST + 1 WS scenario
+
+Status: ✅ **DONE (builder run-6)** — added `apps/api/loadtest/smoke.mjs` + `npm run -w @learnflow/api loadtest:smoke`
 
 Acceptance criteria:
 
