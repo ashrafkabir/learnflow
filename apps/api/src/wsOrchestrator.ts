@@ -64,6 +64,9 @@ export async function handleWsMessage(
 
   const messageId = `msg-${Date.now()}`;
   const text: string = msg?.data?.text || '';
+  const clientRequestId: string | undefined = msg?.data?.requestId;
+  const requestId = (clientRequestId && String(clientRequestId).trim()) || createRequestId();
+
   const lessonId: string | undefined = msg?.data?.lessonId;
   const courseId: string | undefined = msg?.data?.courseId;
 
@@ -164,7 +167,7 @@ export async function handleWsMessage(
     });
   } catch (err: any) {
     const message = err?.message || 'Orchestrator error';
-    sendWsError(ws, createRequestId(), {
+    sendWsError(ws, requestId, {
       code: message === 'orchestrator_timeout' ? 'timeout' : 'orchestrator_error',
       message,
       message_id: messageId,

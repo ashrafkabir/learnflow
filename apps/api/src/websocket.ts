@@ -59,9 +59,24 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
         'unknown';
       const key = rateLimitKeyFromReq({ ip, user });
 
+      // Parse first so we can respect a client-provided requestId for correlation.
+      let msg: WsEvent | null = null;
+      try {
+        msg = JSON.parse(raw.toString()) as WsEvent;
+      } catch {
+        sendWsError(ws, createRequestId(), {
+          code: 'invalid_json',
+          message: 'Invalid JSON',
+        });
+        return;
+      }
+
+      const clientRequestId = (msg as any)?.data?.requestId;
+      const requestId = (clientRequestId && String(clientRequestId).trim()) || createRequestId();
+
       const take = takeRateLimit({ key, tier, devMode });
       if (!take.ok) {
-        sendWsError(ws, createRequestId(), {
+        sendWsError(ws, requestId, {
           code: 'rate_limit_exceeded',
           message: `Rate limit of ${take.limit} requests per minute exceeded for ${tier} tier. Try again in ~${take.retryAfterSeconds}s.`,
           details: {
@@ -69,19 +84,12 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
             limitPerMinute: take.limit,
             retryAfterSeconds: take.retryAfterSeconds,
           },
+          message_id: (msg as any)?.data?.message_id,
         });
         return;
       }
 
-      try {
-        const msg = JSON.parse(raw.toString()) as WsEvent;
-        void handleMessage(ws, user, msg);
-      } catch {
-        sendWsError(ws, createRequestId(), {
-          code: 'invalid_json',
-          message: 'Invalid JSON',
-        });
-      }
+      void handleMessage(ws, user, msg);
     });
 
     sendEvent(ws, 'connected', { userId: user.sub });

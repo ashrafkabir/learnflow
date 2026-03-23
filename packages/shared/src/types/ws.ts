@@ -11,6 +11,9 @@ export type WsClientMessage = {
     text: string;
     attachments?: string[];
     context_overrides?: Record<string, unknown>;
+    // Optional client-provided request correlation id. If provided, server will echo
+    // it in error envelopes for this message.
+    requestId?: string;
     // Non-spec additions used for better context routing:
     courseId?: string;
     lessonId?: string;
