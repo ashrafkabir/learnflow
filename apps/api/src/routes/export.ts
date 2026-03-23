@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import JSZip from 'jszip';
 import { dbCourses, db, dbNotes } from '../db.js';
+import { sendError } from '../errors.js';
 
 const router = Router();
 
@@ -61,12 +62,14 @@ router.get('/', async (req: Request, res: Response) => {
 
   // Subscription matrix enforcement (Iter70): Free = Markdown only.
   if (tier !== 'pro') {
-    res.status(403).json({
-      error: 'upgrade_required',
-      code: 403,
+    sendError(res, req, {
+      status: 403,
+      code: 'upgrade_required',
       message: 'Export format requires Pro. Free tier supports Markdown export only.',
-      allowedFormats: ['md', 'markdown'],
-      requestedFormat: format,
+      details: {
+        allowedFormats: ['md', 'markdown'],
+        requestedFormat: format,
+      },
     });
     return;
   }
@@ -89,11 +92,11 @@ router.get('/', async (req: Request, res: Response) => {
 
   if (format === 'pdf' || format === 'scorm') {
     // Stub allowed for Pro while implementation lands.
-    res.status(501).json({
-      error: 'not_implemented',
-      code: 501,
+    sendError(res, req, {
+      status: 501,
+      code: 'not_implemented',
       message: `${format.toUpperCase()} export is coming soon for Pro users.`,
-      requestedFormat: format,
+      details: { requestedFormat: format },
     });
     return;
   }

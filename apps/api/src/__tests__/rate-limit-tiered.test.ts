@@ -37,11 +37,12 @@ describe('Tiered rate limiting', () => {
         }
       }
       expect(free429).toBeTruthy();
-      expect(free429.body?.error).toBe('rate_limit_exceeded');
-      expect(free429.body?.code).toBe(429);
-      expect(free429.body?.tier).toBe('free');
-      expect(free429.body?.limitPerMinute).toBe(RATE_LIMITS.free.perMinute);
-      expect(typeof free429.body?.retryAfterSeconds).toBe('number');
+      expect(free429.body?.error?.code).toBe('rate_limit_exceeded');
+      expect(free429.body?.status).toBe(429);
+      expect(free429.body?.error?.details?.tier).toBe('free');
+      expect(free429.body?.error?.details?.limitPerMinute).toBe(RATE_LIMITS.free.perMinute);
+      expect(typeof free429.body?.error?.details?.retryAfterSeconds).toBe('number');
+      expect(typeof free429.body?.requestId).toBe('string');
 
       // Pro user should still be allowed beyond free cap (within pro cap)
       let proFirst429At: number | null = null;

@@ -75,7 +75,7 @@ describe('S07-A02: Request validation with Zod', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ description: 'Missing title' }); // Missing required title
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('validation_error');
+    expect(res.body.error?.code).toBe('validation_error');
   });
 
   it('returns 400 for invalid chat message', async () => {
@@ -155,11 +155,11 @@ describe('S07-A09: Auth required', () => {
 
 // S07-A10: Error responses follow consistent format
 describe('S07-A10: Consistent error format', () => {
-  it('errors have error, message, code fields', async () => {
+  it('errors have error.code, error.message, requestId', async () => {
     const res = await request(app).get('/api/v1/courses'); // No auth
-    expect(res.body.error).toBeDefined();
-    expect(res.body.message).toBeDefined();
-    expect(res.body.code).toBeDefined();
+    expect(res.body.error?.code).toBeDefined();
+    expect(res.body.error?.message).toBeDefined();
+    expect(res.body.requestId).toBeDefined();
   });
 });
 

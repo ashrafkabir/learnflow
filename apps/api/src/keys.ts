@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { encrypt } from './crypto.js';
 import { db, DbApiKey } from './db.js';
+import { sendError } from './errors.js';
 
 const router = Router();
 
@@ -27,7 +28,12 @@ const deleteKeySchema = z.object({
 router.post('/', (req: Request, res: Response) => {
   const parse = addKeySchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -119,10 +125,11 @@ router.get('/', (req: Request, res: Response) => {
 router.post('/validate', (req: Request, res: Response) => {
   const parse = validateKeySchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({
-      error: 'validation_error',
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
       message: 'provider and apiKey required',
-      code: 400,
+      details: parse.error.flatten(),
     });
     return;
   }
@@ -146,11 +153,11 @@ router.post('/validate', (req: Request, res: Response) => {
 
   const pattern = patterns[provider];
   if (pattern && !pattern.test(apiKey)) {
-    res.status(400).json({
-      error: 'invalid_key',
+    sendError(res, req, {
+      status: 400,
+      code: 'invalid_key',
       message: `Invalid ${provider} API key format`,
-      code: 400,
-      reason: 'format',
+      details: { reason: 'format' },
     });
     return;
   }
@@ -162,7 +169,12 @@ router.post('/validate', (req: Request, res: Response) => {
 router.delete('/:provider', (req: Request, res: Response) => {
   const parse = deleteKeySchema.safeParse({ provider: req.params.provider });
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: 'invalid provider', code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: 'invalid provider',
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -172,7 +184,7 @@ router.delete('/:provider', (req: Request, res: Response) => {
   const keys = db.getKeysByUserId(userId);
   const matches = keys.filter((k) => k.provider === provider);
   if (matches.length === 0) {
-    res.status(404).json({ error: 'not_found', message: 'Key not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Key not found' });
     return;
   }
 

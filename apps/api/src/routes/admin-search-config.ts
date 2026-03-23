@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { requireAdmin } from '../lib/admin.js';
+import { sendError } from '../errors.js';
 import {
   getAdminSearchConfig,
   saveAdminSearchConfig,
@@ -29,7 +30,12 @@ router.put('/search-config', (req: Request, res: Response) => {
 
   const parse = adminSearchConfigSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 

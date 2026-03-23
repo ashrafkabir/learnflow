@@ -15,6 +15,7 @@ import {
 import { parseLessonSources, type LessonSource } from '../utils/sources.js';
 import { enforceBiteSizedLesson } from '../utils/lessonSizing.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
+import { sendError } from '../errors.js';
 
 const router = Router();
 
@@ -959,7 +960,12 @@ router.get('/', (_req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   const parse = createCourseSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -979,13 +985,15 @@ router.post('/', async (req: Request, res: Response) => {
     ).length;
     const FREE_LIMIT = 3;
     if (existingCount >= FREE_LIMIT) {
-      res.status(402).json({
-        error: 'payment_required',
-        code: 402,
+      sendError(res, req, {
+        status: 402,
+        code: 'payment_required',
         message: 'Free plan is limited to 3 courses. Upgrade to Pro for unlimited courses.',
-        tier,
-        limit: FREE_LIMIT,
-        count: existingCount,
+        details: {
+          tier,
+          limit: FREE_LIMIT,
+          count: existingCount,
+        },
       });
       return;
     }
@@ -1163,7 +1171,7 @@ router.delete('/:id', (req: Request, res: Response) => {
   const courseId = String(req.params.id);
   const existing = courses.get(courseId) || dbCourses.getById(courseId);
   if (!existing) {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
 
@@ -1189,7 +1197,7 @@ router.delete('/:id', (req: Request, res: Response) => {
 router.get('/:id', (req: Request, res: Response) => {
   const course = courses.get(String(req.params.id));
   if (!course) {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
   const userId = req.user?.sub || 'anonymous';
@@ -1201,7 +1209,7 @@ router.get('/:id', (req: Request, res: Response) => {
 router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
   const course = courses.get(String(req.params.id));
   if (!course) {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
   let lesson: Lesson | undefined;
@@ -1210,7 +1218,7 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
     if (lesson) break;
   }
   if (!lesson) {
-    res.status(404).json({ error: 'not_found', message: 'Lesson not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Lesson not found' });
     return;
   }
 
@@ -1252,7 +1260,7 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
   const courseId = String(req.params.id);
   const course = courses.get(courseId);
   if (!course) {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
 
@@ -1261,7 +1269,7 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
   // parentLessonId is optional for future lesson-level insertion; v1 ignores it server-side.
   void parentLessonId;
   if (!topic) {
-    res.status(400).json({ error: 'validation_error', message: 'topic is required', code: 400 });
+    sendError(res, req, { status: 400, code: 'validation_error', message: 'topic is required' });
     return;
   }
 
@@ -1330,7 +1338,11 @@ router.post('/:id/add-topic', async (req: Request, res: Response) => {
 
     res.status(201).json({ course, module: newModule, lesson: newLesson });
   } catch (err: any) {
-    res.status(500).json({ error: 'add_topic_failed', message: err?.message || 'Failed' });
+    sendError(res, req, {
+      status: 500,
+      code: 'add_topic_failed',
+      message: err?.message || 'Failed',
+    });
   }
 });
 
@@ -1481,7 +1493,11 @@ router.post('/:id/lessons/:lessonId/notes/illustrate', async (req: Request, res:
     apiKeyOverride: (req.body as any)?.apiKey,
   });
   if (!openai) {
-    res.status(400).json({ error: 'openai_unavailable', message: 'OpenAI API key not configured' });
+    sendError(res, req, {
+      status: 400,
+      code: 'openai_unavailable',
+      message: 'OpenAI API key not configured',
+    });
     return;
   }
 
@@ -1496,7 +1512,11 @@ router.post('/:id/lessons/:lessonId/notes/illustrate', async (req: Request, res:
 
     const imageUrl = imageResponse.data?.[0]?.url;
     if (!imageUrl) {
-      res.status(500).json({ error: 'generation_failed', message: 'No image generated' });
+      sendError(res, req, {
+        status: 500,
+        code: 'generation_failed',
+        message: 'No image generated',
+      });
       return;
     }
 
@@ -1514,9 +1534,11 @@ router.post('/:id/lessons/:lessonId/notes/illustrate', async (req: Request, res:
     res.status(200).json({ illustration: { url: imageUrl, description } });
   } catch (err: any) {
     console.error('[LearnFlow] DALL-E generation failed:', err);
-    res
-      .status(500)
-      .json({ error: 'generation_failed', message: err.message || 'Image generation failed' });
+    sendError(res, req, {
+      status: 500,
+      code: 'generation_failed',
+      message: err.message || 'Image generation failed',
+    });
   }
 });
 
@@ -1564,14 +1586,18 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
     });
     const imageUrl = imageResponse.data?.[0]?.url;
     if (!imageUrl) {
-      res.status(500).json({ error: 'generation_failed' });
+      sendError(res, req, {
+        status: 500,
+        code: 'generation_failed',
+        message: 'No image generated',
+      });
       return;
     }
     const illustration = dbIllustrations.create(lessonId, sectionIndex ?? 0, prompt, imageUrl);
     res.status(201).json({ illustration });
   } catch (err: any) {
     console.error('[LearnFlow] Illustration generation failed:', err);
-    res.status(500).json({ error: 'generation_failed', message: err.message });
+    sendError(res, req, { status: 500, code: 'generation_failed', message: err.message });
   }
 });
 
@@ -1595,7 +1621,11 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
     apiKeyOverride: (req.body as any)?.apiKey,
   });
   if (!openai) {
-    res.status(400).json({ error: 'openai_unavailable' });
+    sendError(res, req, {
+      status: 400,
+      code: 'openai_unavailable',
+      message: 'OpenAI API key not configured',
+    });
     return;
   }
 
@@ -1615,7 +1645,7 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
   if (lessonRow?.content) lessonContent = lessonRow.content;
 
   if (!lessonContent) {
-    res.status(404).json({ error: 'lesson_not_found' });
+    sendError(res, req, { status: 404, code: 'lesson_not_found', message: 'Lesson not found' });
     return;
   }
 
@@ -1640,7 +1670,7 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
     res.json({ comparison });
   } catch (err: any) {
     console.error('[LearnFlow] Comparison failed:', err);
-    res.status(500).json({ error: 'comparison_failed', message: err.message });
+    sendError(res, req, { status: 500, code: 'comparison_failed', message: err.message });
   }
 });
 
@@ -1662,7 +1692,12 @@ router.post(
   async (req: Request, res: Response) => {
     const parse = selectionToolsPreviewSchema.safeParse(req.body);
     if (!parse.success) {
-      res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+      sendError(res, req, {
+        status: 400,
+        code: 'validation_error',
+        message: parse.error.message,
+        details: parse.error.flatten(),
+      });
       return;
     }
 
@@ -1799,9 +1834,9 @@ router.post(
         return;
       }
 
-      res.status(400).json({ error: 'validation_error', message: 'unknown tool' });
+      sendError(res, req, { status: 400, code: 'validation_error', message: 'unknown tool' });
     } catch (err: any) {
-      res.status(500).json({ error: 'tool_failed', message: err?.message || 'Failed' });
+      sendError(res, req, { status: 500, code: 'tool_failed', message: err?.message || 'Failed' });
     }
   },
 );

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 
 import { db, dbInvoices } from '../db.js';
+import { sendError } from '../errors.js';
 
 const router = Router();
 
@@ -54,7 +55,12 @@ const subscriptionSchema = z.object({
 router.post('/', (req: Request, res: Response) => {
   const parse = subscriptionSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -62,7 +68,7 @@ router.post('/', (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const user = db.findUserById(userId);
   if (!user) {
-    res.status(404).json({ error: 'not_found', message: 'User not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'User not found' });
     return;
   }
 
@@ -157,7 +163,12 @@ function validateIAPReceipt(
 router.post('/iap', (req: Request, res: Response) => {
   const parse = iapReceiptSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -165,9 +176,11 @@ router.post('/iap', (req: Request, res: Response) => {
   const result = validateIAPReceipt(platform, receipt, productId);
 
   if (!result.valid) {
-    res
-      .status(400)
-      .json({ error: 'invalid_receipt', message: 'IAP receipt validation failed', code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'invalid_receipt',
+      message: 'IAP receipt validation failed',
+    });
     return;
   }
 

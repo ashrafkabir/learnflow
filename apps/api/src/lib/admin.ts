@@ -39,18 +39,28 @@ export function isAdmin(req: Request): boolean {
 export function requireAdmin(
   req: Request,
 ): { ok: true } | { ok: false; status: number; body: any } {
+  const requestId = (req as any).requestId;
+
   if (!req.user) {
     return {
       ok: false,
       status: 401,
-      body: { error: 'unauthorized', message: 'Not authenticated', code: 401 },
+      body: {
+        error: { code: 'unauthorized', message: 'Not authenticated' },
+        requestId,
+        status: 401,
+      },
     };
   }
   if (!isAdmin(req)) {
     return {
       ok: false,
       status: 403,
-      body: { error: 'forbidden', message: 'Admin access required', code: 403 },
+      body: {
+        error: { code: 'forbidden', message: 'Admin access required' },
+        requestId,
+        status: 403,
+      },
     };
   }
   return { ok: true };

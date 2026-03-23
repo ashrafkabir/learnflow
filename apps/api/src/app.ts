@@ -20,6 +20,7 @@ import { notificationsRouter } from './routes/notifications.js';
 import { yjsRouter } from './yjsRouter.js';
 import { adminSearchConfigRouter } from './routes/admin-search-config.js';
 import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from './middleware.js';
+import { errorHandler, notFoundHandler, requestIdMiddleware, sendError } from './errors.js';
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
 
@@ -73,13 +74,15 @@ function rateLimiter(req: Request, res: Response, next: NextFunction): void {
   if (entry.count > limit) {
     const retryAfterSeconds = Math.max(1, Math.ceil((entry.resetAt - now) / 1000));
     res.setHeader('Retry-After', String(retryAfterSeconds));
-    res.status(429).json({
-      error: 'rate_limit_exceeded',
+    sendError(res, req, {
+      status: 429,
+      code: 'rate_limit_exceeded',
       message: `Rate limit of ${limit} requests per minute exceeded for ${tier} tier. Try again in ~${retryAfterSeconds}s.`,
-      code: 429,
-      tier,
-      limitPerMinute: limit,
-      retryAfterSeconds,
+      details: {
+        tier,
+        limitPerMinute: limit,
+        retryAfterSeconds,
+      },
     });
     return;
   }
@@ -91,6 +94,7 @@ export function createApp(options?: { devMode?: boolean }) {
   const app = express();
   app.locals.devMode = Boolean(options?.devMode);
 
+  app.use(requestIdMiddleware);
   app.use(express.json());
   app.use(tokenUsageMiddleware);
 
@@ -168,14 +172,9 @@ export function createApp(options?: { devMode?: boolean }) {
     res.status(200).json({ status: 'ok' });
   });
 
-  // Error handler — consistent format
-  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-    res.status(500).json({
-      error: 'internal_error',
-      message: err.message || 'Internal server error',
-      code: 500,
-    });
-  });
+  // 404 + error handler — standard envelope
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
   return app;
 }

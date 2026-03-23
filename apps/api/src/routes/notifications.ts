@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db.js';
+import { sendError } from '../errors.js';
 
 const router = Router();
 
@@ -12,7 +13,12 @@ const listSchema = z.object({
 router.get('/', (req: Request, res: Response) => {
   const parse = listSchema.safeParse(req.query);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -29,7 +35,12 @@ const markReadSchema = z.object({
 router.post('/read', (req: Request, res: Response) => {
   const parse = markReadSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -48,7 +59,12 @@ const generateSchema = z.object({
 router.post('/generate', (req: Request, res: Response) => {
   const parse = generateSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 

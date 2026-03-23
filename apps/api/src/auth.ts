@@ -5,6 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { config } from './config.js';
 import { db, DbUser } from './db.js';
+import { sendError } from './errors.js';
 
 const router = Router();
 
@@ -38,14 +39,19 @@ function generateTokens(user: DbUser): { accessToken: string; refreshToken: stri
 router.post('/register', async (req: Request, res: Response) => {
   const parse = registerSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
   const { email, password, displayName } = parse.data;
 
   if (db.findUserByEmail(email)) {
-    res.status(409).json({ error: 'conflict', message: 'Email already registered', code: 409 });
+    sendError(res, req, { status: 409, code: 'conflict', message: 'Email already registered' });
     return;
   }
 
@@ -85,7 +91,12 @@ router.post('/register', async (req: Request, res: Response) => {
 router.post('/login', async (req: Request, res: Response) => {
   const parse = loginSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -93,13 +104,13 @@ router.post('/login', async (req: Request, res: Response) => {
   const user = db.findUserByEmail(email);
 
   if (!user) {
-    res.status(401).json({ error: 'unauthorized', message: 'Invalid credentials', code: 401 });
+    sendError(res, req, { status: 401, code: 'unauthorized', message: 'Invalid credentials' });
     return;
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    res.status(401).json({ error: 'unauthorized', message: 'Invalid credentials', code: 401 });
+    sendError(res, req, { status: 401, code: 'unauthorized', message: 'Invalid credentials' });
     return;
   }
 
@@ -123,28 +134,30 @@ router.post('/login', async (req: Request, res: Response) => {
 router.post('/refresh', (req: Request, res: Response) => {
   const { refreshToken } = req.body;
   if (!refreshToken) {
-    res.status(400).json({ error: 'missing_token', message: 'Refresh token required', code: 400 });
+    sendError(res, req, { status: 400, code: 'missing_token', message: 'Refresh token required' });
     return;
   }
 
   const stored = db.refreshTokens.get(refreshToken);
   if (!stored || stored.expiresAt < new Date()) {
-    res
-      .status(401)
-      .json({ error: 'invalid_token', message: 'Invalid or expired refresh token', code: 401 });
+    sendError(res, req, {
+      status: 401,
+      code: 'invalid_token',
+      message: 'Invalid or expired refresh token',
+    });
     return;
   }
 
   try {
     jwt.verify(refreshToken, config.jwtSecret);
   } catch {
-    res.status(401).json({ error: 'invalid_token', message: 'Invalid refresh token', code: 401 });
+    sendError(res, req, { status: 401, code: 'invalid_token', message: 'Invalid refresh token' });
     return;
   }
 
   const user = db.findUserById(stored.userId);
   if (!user) {
-    res.status(401).json({ error: 'user_not_found', message: 'User not found', code: 401 });
+    sendError(res, req, { status: 401, code: 'user_not_found', message: 'User not found' });
     return;
   }
 
@@ -159,7 +172,7 @@ router.post('/refresh', (req: Request, res: Response) => {
 router.get('/google/callback', (req: Request, res: Response) => {
   const { code } = req.query;
   if (!code) {
-    res.status(400).json({ error: 'missing_code', message: 'OAuth code required', code: 400 });
+    sendError(res, req, { status: 400, code: 'missing_code', message: 'OAuth code required' });
     return;
   }
 

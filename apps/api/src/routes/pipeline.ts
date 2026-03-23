@@ -13,6 +13,7 @@ import {
 import { getAdminSearchConfig } from '../lib/search-config.js';
 import { makeStage1Log, makeStage2Log, makeLayerLog } from '../lib/search-run-log.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
+import { sendError } from '../errors.js';
 
 const router = Router();
 
@@ -1174,11 +1175,11 @@ router.post('/add-topic', (req: Request, res: Response) => {
   // parentLessonId is optional for future lesson-level insertion; v1 ignores it server-side.
   void parentLessonId;
   if (!courseId || typeof courseId !== 'string') {
-    res.status(400).json({ error: 'courseId is required' });
+    sendError(res, req, { status: 400, code: 'validation_error', message: 'courseId is required' });
     return;
   }
   if (!topic || typeof topic !== 'string') {
-    res.status(400).json({ error: 'topic is required' });
+    sendError(res, req, { status: 400, code: 'validation_error', message: 'topic is required' });
     return;
   }
 
@@ -1220,7 +1221,7 @@ router.post('/add-topic', (req: Request, res: Response) => {
 router.post('/', (req: Request, res: Response) => {
   const { topic } = req.body;
   if (!topic || typeof topic !== 'string') {
-    res.status(400).json({ error: 'Topic is required' });
+    sendError(res, req, { status: 400, code: 'validation_error', message: 'Topic is required' });
     return;
   }
 
@@ -1237,13 +1238,11 @@ router.post('/', (req: Request, res: Response) => {
       const existingCount = dbCourses.getAll().filter((c: any) => c.authorId === authorId).length;
       const FREE_LIMIT = 3;
       if (existingCount >= FREE_LIMIT) {
-        res.status(402).json({
-          error: 'payment_required',
-          code: 402,
+        sendError(res, req, {
+          status: 402,
+          code: 'payment_required',
           message: 'Free plan is limited to 3 courses. Upgrade to Pro for unlimited courses.',
-          tier,
-          limit: FREE_LIMIT,
-          count: existingCount,
+          details: { tier, limit: FREE_LIMIT, count: existingCount },
         });
         return;
       }
@@ -1288,7 +1287,7 @@ router.get('/:id', (req: Request, res: Response) => {
   const id = String(req.params.id);
   const p = pipelines.get(id);
   if (!p) {
-    res.status(404).json({ error: 'Pipeline not found' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
   res.json(p);
@@ -1299,7 +1298,7 @@ router.get('/:id/events', (req: Request, res: Response) => {
   const id = String(req.params.id);
   const p = pipelines.get(id);
   if (!p) {
-    res.status(404).json({ error: 'Pipeline not found' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
 
@@ -1341,14 +1340,14 @@ router.get('/', (_req: Request, res: Response) => {
 router.get('/:id/lessons', async (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
   if (!p) {
-    res.status(404).json({ error: 'Pipeline not found' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
 
   const { courses } = await import('./courses.js');
   const course = courses.get(p.courseId) as any;
   if (!course) {
-    res.status(404).json({ error: 'Course not found yet' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found yet' });
     return;
   }
 
@@ -1369,17 +1368,21 @@ router.get('/:id/lessons', async (req: Request, res: Response) => {
 router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
   if (!p) {
-    res.status(404).json({ error: 'Pipeline not found' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
   if (p.stage !== 'reviewing') {
-    res.status(400).json({ error: 'Pipeline must be in reviewing stage' });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: 'Pipeline must be in reviewing stage',
+    });
     return;
   }
 
   const { prompt } = req.body;
   if (!prompt || typeof prompt !== 'string') {
-    res.status(400).json({ error: 'prompt is required' });
+    sendError(res, req, { status: 400, code: 'validation_error', message: 'prompt is required' });
     return;
   }
 
@@ -1389,7 +1392,7 @@ router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) =
   const { courses } = await import('./courses.js');
   const course = courses.get(p.courseId) as any;
   if (!course) {
-    res.status(404).json({ error: 'Course not found' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
 
@@ -1402,7 +1405,7 @@ router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) =
     }
   }
   if (!targetLesson) {
-    res.status(404).json({ error: 'Lesson not found' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Lesson not found' });
     return;
   }
 
@@ -1412,7 +1415,11 @@ router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) =
     apiKeyOverride: (req.body as any)?.apiKey,
   });
   if (!openai) {
-    res.status(500).json({ error: 'OpenAI not configured' });
+    sendError(res, req, {
+      status: 500,
+      code: 'openai_unavailable',
+      message: 'OpenAI not configured',
+    });
     return;
   }
 
@@ -1442,10 +1449,18 @@ router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) =
       dbCourses.save(course);
       res.json({ lessonId, content: newContent, wordCount: targetLesson.wordCount });
     } else {
-      res.status(500).json({ error: 'LLM returned insufficient content' });
+      sendError(res, req, {
+        status: 500,
+        code: 'llm_insufficient_content',
+        message: 'LLM returned insufficient content',
+      });
     }
   } catch (err) {
-    res.status(500).json({ error: `Edit failed: ${String(err)}` });
+    sendError(res, req, {
+      status: 500,
+      code: 'edit_failed',
+      message: `Edit failed: ${String(err)}`,
+    });
   }
 });
 
@@ -1453,11 +1468,15 @@ router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) =
 router.post('/:id/publish', (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
   if (!p) {
-    res.status(404).json({ error: 'Pipeline not found' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
   if (p.stage !== 'reviewing') {
-    res.status(400).json({ error: 'Pipeline must be in reviewing stage' });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: 'Pipeline must be in reviewing stage',
+    });
     return;
   }
   updatePipeline(p, { stage: 'published' });
@@ -1468,11 +1487,15 @@ router.post('/:id/publish', (req: Request, res: Response) => {
 router.post('/:id/personal', (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
   if (!p) {
-    res.status(404).json({ error: 'Pipeline not found' });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
   if (p.stage !== 'reviewing') {
-    res.status(400).json({ error: 'Pipeline must be in reviewing stage' });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: 'Pipeline must be in reviewing stage',
+    });
     return;
   }
   updatePipeline(p, { stage: 'personal' });

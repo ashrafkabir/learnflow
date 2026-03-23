@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { dbMindmaps, dbMindmapSuggestions, dbCourses } from '../db.js';
+import { sendError } from '../errors.js';
 
 const router = Router();
 
@@ -25,14 +26,19 @@ router.post('/suggest', (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const parse = suggestSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
   const { courseId } = parse.data;
   const course = dbCourses.getById(courseId);
   if (!course) {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
 
@@ -63,7 +69,7 @@ router.get('/suggestions', (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const courseId = String(req.query.courseId || '');
   if (!courseId) {
-    res.status(400).json({ error: 'validation_error', message: 'courseId is required', code: 400 });
+    sendError(res, req, { status: 400, code: 'validation_error', message: 'courseId is required' });
     return;
   }
   const row = dbMindmapSuggestions.get(userId, courseId);
@@ -75,7 +81,12 @@ router.post('/accept', (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const parse = acceptSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 

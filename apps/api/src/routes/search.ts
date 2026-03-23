@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { searchSources } from '@learnflow/agents';
 import type { FirecrawlSearchResult } from '@learnflow/agents';
+import { sendError } from '../errors.js';
 
 const router = Router();
 
@@ -18,7 +19,12 @@ router.get('/', async (req: Request, res: Response) => {
     limit: req.query.limit,
   });
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -35,7 +41,11 @@ router.get('/', async (req: Request, res: Response) => {
     }));
     res.status(200).json({ query: q, results: trimmed });
   } catch (err: any) {
-    res.status(500).json({ error: 'search_failed', message: err?.message || 'Failed', code: 500 });
+    sendError(res, req, {
+      status: 500,
+      code: 'search_failed',
+      message: err?.message || 'Failed',
+    });
   }
 });
 

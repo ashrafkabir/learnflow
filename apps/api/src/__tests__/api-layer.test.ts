@@ -246,11 +246,12 @@ describe('S07-A09: Auth required', () => {
 
 // S07-A10: Error responses follow consistent format
 describe('S07-A10: Error format', () => {
-  it('returns {error, message, code}', async () => {
+  it('returns { error: {code, message, details? }, requestId }', async () => {
     const res = await request(app).get('/api/v1/courses');
     expect(res.body).toHaveProperty('error');
-    expect(res.body).toHaveProperty('message');
-    expect(res.body).toHaveProperty('code');
+    expect(res.body.error).toHaveProperty('code');
+    expect(res.body.error).toHaveProperty('message');
+    expect(res.body).toHaveProperty('requestId');
   });
 });
 

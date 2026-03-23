@@ -18,7 +18,7 @@ describe('Selection tools preview validation', () => {
       .post('/api/v1/courses/course-x/lessons/lesson-y/selection-tools/preview')
       .send({ tool: 'nope', selectedText: 'hello world' });
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('validation_error');
+    expect(res.body.error?.code).toBe('validation_error');
   });
 
   it('rejects oversized selectedText', async () => {
@@ -27,6 +27,6 @@ describe('Selection tools preview validation', () => {
       .post('/api/v1/courses/course-x/lessons/lesson-y/selection-tools/preview')
       .send({ tool: 'discover', selectedText: big });
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('validation_error');
+    expect(res.body.error?.code).toBe('validation_error');
   });
 });

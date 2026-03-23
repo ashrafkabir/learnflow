@@ -28,3 +28,30 @@ apps/client/.vite/
 
 # Root local data
 .data/
+
+# Builder logs / local artifacts
+BUILD_LOG_ITER*.md
+BUILD_LOG_CONTINUOUS.md
+BUILD_LOG_ITER50.md
+BUILD_LOG_ITER51.md
+BUILD_LOG_ITER52.md
+BUILD_LOG_ITER53.md
+BUILD_LOG_ITER54.md
+BUILD_LOG_ITER55.md
+BUILD_LOG_ITER57.md
+BUILD_LOG_ITER59.md
+BUILD_LOG_ITER61.md
+BUILD_LOG_ITER62.md
+BUILD_LOG_ITER63.md
+BUILD_LOG_ITER64.md
+BUILD_LOG_ITER65.md
+BUILD_LOG_ITER66.md
+BUILD_LOG_ITER67.md
+BUILD_LOG_ITER68.md
+BUILD_LOG_ITER69.md
+BUILD_LOG_ITER70.md
+BUILD_LOG_ITER71.md
+
+# Test harness artifacts
+/test-artifacts/
+/learnflow/learnflow/

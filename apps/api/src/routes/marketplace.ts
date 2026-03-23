@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { sendError } from '../errors.js';
 
 const router = Router();
 
@@ -76,7 +77,12 @@ const searchSchema = z.object({
 router.get('/courses', (req: Request, res: Response) => {
   const parse = searchSchema.safeParse(req.query);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 

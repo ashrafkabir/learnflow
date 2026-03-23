@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { dbCollaboration } from '../db.js';
+import { sendError } from '../errors.js';
 
 export const collaborationRouter = Router();
 
@@ -28,7 +29,12 @@ collaborationRouter.post('/groups', (req: Request, res: Response) => {
   });
   const parse = schema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -78,14 +84,19 @@ collaborationRouter.post('/groups/:id/messages', (req: Request, res: Response) =
   const schema = z.object({ content: z.string().min(1).max(2000) });
   const parse = schema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
   const groupId = String(req.params.id);
   const group = dbCollaboration.getGroupById(groupId);
   if (!group) {
-    res.status(404).json({ error: 'not_found', message: 'Group not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Group not found' });
     return;
   }
 
@@ -97,7 +108,7 @@ collaborationRouter.post('/groups/:id/messages', (req: Request, res: Response) =
     memberIds = [];
   }
   if (!memberIds.includes(req.user!.sub)) {
-    res.status(403).json({ error: 'forbidden', message: 'Not a group member', code: 403 });
+    sendError(res, req, { status: 403, code: 'forbidden', message: 'Not a group member' });
     return;
   }
 
@@ -121,7 +132,7 @@ collaborationRouter.get('/groups/:id/messages', (req: Request, res: Response) =>
   const groupId = String(req.params.id);
   const group = dbCollaboration.getGroupById(groupId);
   if (!group) {
-    res.status(404).json({ error: 'not_found', message: 'Group not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Group not found' });
     return;
   }
 
@@ -132,7 +143,7 @@ collaborationRouter.get('/groups/:id/messages', (req: Request, res: Response) =>
     memberIds = [];
   }
   if (!memberIds.includes(req.user!.sub)) {
-    res.status(403).json({ error: 'forbidden', message: 'Not a group member', code: 403 });
+    sendError(res, req, { status: 403, code: 'forbidden', message: 'Not a group member' });
     return;
   }
 

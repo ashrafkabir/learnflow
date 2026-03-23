@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { sendError } from './errors.js';
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
 import { db } from './db.js';
@@ -24,10 +25,10 @@ declare global {
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
-    res.status(401).json({
-      error: 'unauthorized',
+    sendError(res, req, {
+      status: 401,
+      code: 'unauthorized',
       message: 'Missing or invalid authorization header',
-      code: 401,
     });
     return;
   }
@@ -38,7 +39,11 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
     req.user = decoded;
     next();
   } catch {
-    res.status(401).json({ error: 'unauthorized', message: 'Invalid or expired token', code: 401 });
+    sendError(res, req, {
+      status: 401,
+      code: 'unauthorized',
+      message: 'Invalid or expired token',
+    });
   }
 }
 
@@ -46,7 +51,11 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
 export function requireTier(requiredTier: 'pro' | 'admin') {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({ error: 'unauthorized', message: 'Not authenticated', code: 401 });
+      sendError(res, req, {
+        status: 401,
+        code: 'unauthorized',
+        message: 'Not authenticated',
+      });
       return;
     }
 
@@ -55,9 +64,11 @@ export function requireTier(requiredTier: 'pro' | 'admin') {
     const requiredLevel = tierHierarchy[requiredTier] ?? 0;
 
     if (userLevel < requiredLevel) {
-      res
-        .status(403)
-        .json({ error: 'forbidden', message: `Requires ${requiredTier} tier`, code: 403 });
+      sendError(res, req, {
+        status: 403,
+        code: 'forbidden',
+        message: `Requires ${requiredTier} tier`,
+      });
       return;
     }
 

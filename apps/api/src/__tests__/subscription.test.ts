@@ -226,7 +226,7 @@ describe('S10-A08: IAP receipt validation', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ platform: 'ios', receipt: 'invalid-receipt-data', productId: 'pro_monthly' });
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('invalid_receipt');
+    expect(res.body.error?.code).toBe('invalid_receipt');
   });
 
   it('rejects malformed request', async () => {

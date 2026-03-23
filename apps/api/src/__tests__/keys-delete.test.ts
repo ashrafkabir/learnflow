@@ -55,6 +55,7 @@ describe('Keys delete', () => {
       .delete('/api/v1/keys/openai')
       .set('Authorization', `Bearer ${token}`);
     expect(del.status).toBe(404);
-    expect(del.body.error).toBe('not_found');
+    expect(del.body.error?.code).toBe('not_found');
+    expect(typeof del.body.requestId).toBe('string');
   });
 });

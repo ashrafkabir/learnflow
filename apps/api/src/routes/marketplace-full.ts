@@ -3,6 +3,7 @@
  */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { sendError } from '../errors.js';
 import {
   dbMarketplaceCourses,
   dbMarketplaceEnrollments,
@@ -156,7 +157,12 @@ const createReviewSchema = z.object({
 router.post(['/publish', '/courses'], (req: Request, res: Response) => {
   const parse = publishCourseSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -222,7 +228,12 @@ router.post(['/publish', '/courses'], (req: Request, res: Response) => {
 router.get('/courses', (req: Request, res: Response) => {
   const parse = searchSchema.safeParse(req.query);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -263,7 +274,7 @@ router.get('/courses/:id', (req: Request, res: Response) => {
   const course = (publishedCourses.get(String(req.params.id)) ||
     (dbMarketplaceCourses.getById(String(req.params.id)) as any)) as any;
   if (!course || course.status !== 'published') {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
 
@@ -295,13 +306,18 @@ router.post('/courses/:id/reviews', (req: Request, res: Response) => {
   const course = (publishedCourses.get(courseId) ||
     (dbMarketplaceCourses.getById(courseId) as any)) as any;
   if (!course || course.status !== 'published') {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
 
   const parse = createReviewSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
@@ -330,9 +346,11 @@ router.post('/courses/:id/reviews', (req: Request, res: Response) => {
 
     res.status(201).json({ review, aggregates: { rating: agg.avgRating, reviewCount: agg.count } });
   } catch (err: any) {
-    res
-      .status(500)
-      .json({ error: 'server_error', message: err?.message || 'Failed to save review', code: 500 });
+    sendError(res, req, {
+      status: 500,
+      code: 'server_error',
+      message: err?.message || 'Failed to save review',
+    });
   }
 });
 
@@ -345,7 +363,7 @@ router.post('/checkout', (req: Request, res: Response) => {
   const course = (publishedCourses.get(courseId) ||
     (dbMarketplaceCourses.getById(courseId) as any)) as any;
   if (!course) {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
 
@@ -376,21 +394,26 @@ router.post('/checkout/confirm', (req: Request, res: Response) => {
   const schema = z.object({ paymentIntentId: z.string().min(1) });
   const parse = schema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 
   const { paymentIntentId } = parse.data;
   const intent = paymentIntents.get(paymentIntentId);
   if (!intent || intent.userId !== req.user!.sub) {
-    res.status(404).json({ error: 'not_found', message: 'Payment intent not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Payment intent not found' });
     return;
   }
 
   const course = (publishedCourses.get(intent.courseId) ||
     (dbMarketplaceCourses.getById(intent.courseId) as any)) as any;
   if (!course) {
-    res.status(404).json({ error: 'not_found', message: 'Course not found', code: 404 });
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
 
@@ -460,7 +483,12 @@ router.post('/checkout/confirm', (req: Request, res: Response) => {
 router.post('/agents/submit', (req: Request, res: Response) => {
   const parse = submitAgentSchema.safeParse(req.body);
   if (!parse.success) {
-    res.status(400).json({ error: 'validation_error', message: parse.error.message, code: 400 });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: parse.error.message,
+      details: parse.error.flatten(),
+    });
     return;
   }
 

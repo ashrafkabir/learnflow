@@ -64,7 +64,7 @@ describe('S02-A03: POST /api/v1/auth/login rejects invalid credentials', () => {
       .send({ email: 'bad@example.com', password: 'wrongpassword' });
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toBe('unauthorized');
+    expect(res.body.error?.code).toBe('unauthorized');
   });
 
   it('rejects non-existent user', async () => {
@@ -179,7 +179,8 @@ describe('S02-A08: Key validation rejects invalid keys', () => {
       .send({ provider: 'openai', apiKey: 'bad-key' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('invalid_key');
+    expect(res.body.error?.code).toBe('invalid_key');
+    expect(typeof res.body.requestId).toBe('string');
   });
 });
 
@@ -303,7 +304,8 @@ describe('S02-A14: RBAC blocks free users from Pro endpoints', () => {
       .set('Authorization', `Bearer ${reg.body.accessToken}`);
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toBe('forbidden');
+    expect(res.body.error?.code).toBe('forbidden');
+    expect(typeof res.body.requestId).toBe('string');
   });
 
   it('returns 200 for pro user on Pro endpoint', async () => {

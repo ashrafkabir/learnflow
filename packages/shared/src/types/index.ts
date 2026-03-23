@@ -1,5 +1,6 @@
 export * from './ws.js';
 export * from './notifications.js';
+export * from './api.js';
 
 /** User — represents a platform user (student, creator, admin) */
 export interface User {
