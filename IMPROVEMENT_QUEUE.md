@@ -748,3 +748,119 @@ Required:
 Notes:
 
 - Added request-scoped `fast` mode to course creation in API to avoid external web search flakiness and ensure ≥2 sources render in the drawer.
+
+---
+
+## Iteration 77 — COURSE BUILD RESTARTABILITY + STALL DETECTION (UI + API)
+
+Status: **READY FOR BUILDER**
+
+Why this iteration (high leverage, smallest next step):
+
+- Iter72–76 made course generation higher-quality and screenshot capture deterministic, but **builds can still get stuck** (course status stays `CREATING`, pipeline feels stalled, user has no clear recovery path).
+- The next biggest product trust win is a clear, reliable **“Resume / Restart build”** flow with a transparent failure reason.
+
+Non-goals:
+
+- Major orchestration redesign (agent mesh / DAG planner)
+- New content-generation features (keep iter74 logic stable)
+
+### P0 (Must do)
+
+1. **Backend: stalled course build → deterministic failure state + reason**
+
+- Implement a completion fence for async course builds:
+  - If a course remains `CREATING` beyond a timeout (configurable; start with e.g. 10–20 minutes in dev), transition it to `FAILED` with `failureReason = 'stalled'` and a human-readable message.
+  - Persist timestamps needed to diagnose: `createdAt`, `generationStartedAt`, `lastProgressAt`, `failedAt`.
+- Acceptance criteria:
+  - A course cannot remain `CREATING` indefinitely.
+  - Failure reason is visible via the course detail endpoint.
+  - Unit/integration test covers time-based transition logic deterministically (fake timers).
+- Likely files:
+  - `apps/api/src/routes/courses.ts`
+  - `apps/api/src/db.ts` (schema + query helpers)
+  - `apps/api/src/utils/*` (timeout logic)
+  - DB migration: new columns and/or a `course_generation_runs` table (preferred if minimal)
+
+2. **Backend: restart/resume endpoints (safe + idempotent)**
+
+- Add an API to recover without manual DB edits:
+  - `POST /api/v1/courses/:id/restart` (hard restart: resets build state and re-runs generation)
+  - Optional: `POST /api/v1/courses/:id/resume` (continue if partial artifacts exist)
+- Guardrails:
+  - Only allowed when course is `FAILED(stalled)` or `FAILED(quality)` (and/or `CREATING` but past timeout).
+  - Must be idempotent (multiple clicks do not spawn duplicate workers).
+- Acceptance criteria:
+  - Restart returns quickly with `status: 'CREATING'` and emits progress events.
+  - A restart records a new `generationAttempt` counter.
+  - API tests cover: allowed states, disallowed states, and idempotency.
+- Likely files:
+  - `apps/api/src/routes/courses.ts`
+  - `apps/api/src/routes/pipeline.ts` (if pipeline is the job runner)
+  - `apps/api/src/utils/courseBuild.ts` (new helper)
+
+3. **Client: clearly show build status + provide “Restart build” action**
+
+- Add UI affordances where users actually notice:
+  - PipelineDetail and/or Course screen should show status badge: `CREATING`, `READY`, `FAILED`.
+  - When failed due to stall, show a callout with the failure message and a **Restart build** button.
+  - Show last progress timestamp (or “last update X minutes ago”).
+- Acceptance criteria:
+  - Users can recover from a stalled build with one click.
+  - UI shows a clear reason (not a silent blank screen).
+  - After restart, UI reflects new attempt and progress resumes.
+- Likely files:
+  - `apps/client/src/screens/PipelineDetail.tsx`
+  - `apps/client/src/screens/Course*.tsx` (wherever course status is displayed)
+  - `apps/client/src/hooks/usePipeline.ts`, `apps/client/src/hooks/useCourse.ts` (if present)
+
+4. **Progress telemetry: update `lastProgressAt` reliably on milestones**
+
+- Ensure any progress update/milestone write updates `lastProgressAt` so stall detection is accurate.
+- Acceptance criteria:
+  - Progress events in the pipeline/course build path update `lastProgressAt` at least once per lesson milestone.
+- Likely files:
+  - `apps/api/src/routes/pipeline.ts`
+  - Any progress emitter/util used by course builds
+
+### P1 (Should do)
+
+5. **Add a small “Build attempts” debug panel (dev-only)**
+
+- Show:
+  - attempt count
+  - started/lastProgress/ended timestamps
+  - failure reason + message
+- Gate behind `?debug=1` or dev env.
+- Acceptance criteria:
+  - Debug panel renders only when enabled.
+- Likely files:
+  - `apps/client/src/screens/PipelineDetail.tsx`
+
+### P2 (Nice to have)
+
+6. **Auto-retry once before failing (only for stall)**
+
+- If stall detected, system may attempt one automatic restart before marking failed.
+- Must not create infinite loops.
+
+---
+
+### Screenshot checklist (Iter77)
+
+- `pipeline-detail-failed-stalled.png` (shows failure reason + Restart button)
+- `pipeline-detail-restarting.png` (shows status back to CREATING + progress)
+- Optional: `course-detail-status-badge.png`
+
+### Verification checklist (Iter77)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
+- API verification:
+  - Create a course in fast mode, simulate stall, observe transition to FAILED(stalled).
+  - Call restart endpoint; ensure status returns to CREATING and progress resumes.
+- Client verification:
+  - Failure callout renders with correct message.
+  - Restart button triggers restart and UI updates.
