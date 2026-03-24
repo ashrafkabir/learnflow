@@ -1,377 +1,179 @@
-# LearnFlow — Improvement Queue (Iteration 72)
-
-Status: **READY FOR BUILDER (iter72)**
+# LearnFlow — Improvement Queue
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Date: 2026-03-23
-
-Focus for Iteration 72: **CONTENT QUALITY + TOPIC-ADAPTIVE COURSE STRUCTURE**
-
-Non-goals (for this iteration): infra re-architecture, marketplace monetization, deep auth changes.
+Last updated: 2026-03-23
 
 ---
 
-## Brutally honest gap assessment (spec intent vs current implementation)
+## Iteration 72 — CONTENT QUALITY + TOPIC-ADAPTIVE COURSE STRUCTURE
 
-### 1) Outline generation logic (course structure)
+Status: **DONE (iter72)**
 
-**What spec wants:** topic decomposition → concept hierarchy → syllabus with prerequisites; adaptive structure per domain; no “generic learning pattern” repetition.
+### What changed (evidence)
 
-**What code does today (reality):**
+Iter72 is materially complete relative to the Iter72 queue intent. The repo now has:
 
-- **Two competing outline systems exist:**
-  - `packages/agents/src/course-builder/topic-decomposer.ts` creates a **deterministic** concept tree with mostly generic “Introduction/Core/Advanced/Best Practices/Applications” unless the topic matches a small keyword list.
-  - `apps/api/src/routes/courses.ts` bypasses that and uses **hard-coded `TOPIC_CONTENT`** buckets (agentic ai / rust / prompt engineering / climate / quantum). Everything else is forced to one of those via `matchTopic()` (and the default fallback is **quantum**).
+- **Topic-preserving, topic-adaptive outline generation** (no more “fallback-to-quantum”).
+  - API course creation uses `classifyTopicDomain(topic)` → domain profile → `buildCourseOutline(topic)`.
+  - **Quantum computing** has a strict required module order via `quantumComputingRequiredModules()`.
+- **Async course creation**: `POST /api/v1/courses` returns quickly with `{ status: "CREATING" }` and background generation emits `progress.update`.
+- **Per-lesson sourcing** (stage 2): `searchForLesson()` runs per lesson; sources persisted per lesson.
+- **Lesson narration structure**: server prompt requires headings (Objectives/Estimated Time/Core Concepts/Worked Example/Recap/Quick Check+Answer Key/Sources/Next Steps) and server runs validators.
+- **Embedded images**: license-safe image retrieval via Wikimedia Commons search; embeds image + attribution block in lesson markdown; illustration metadata persisted.
+- **Regression tests**: outline diversity test + quantum outline regression + pipeline/course integration.
 
-**Why this is a problem:**
+Key commits observed in `git log`:
 
-- **Generic repetition is baked in** (same “Fundamentals/Advanced/Best Practices/Applications” scaffolding across topics).
-- The outline is not “topic adaptive” beyond a few curated topics.
-- The “fallback to quantum” is a content-quality footgun: many unrelated topics can silently become quantum-shaped.
+- `6f21c58` Iter72 P0: topic-adaptive outline generation (remove quantum fallback)
+- `5134b17` Iter72: enforce lesson structure + structured sources
+- `a28fe52` Iter72: async course creation status+progress
+- `82413c4` iter72: per-lesson sources + embedded Wikimedia image + reduce boilerplate
+- `bce8bbe` Iter72: license-safe images (Wikimedia) + illustration attribution metadata
+- `c140777` test(iter72): add cross-domain outline diversity regression
 
-### 2) Lesson synthesis (narrated e-learning vs generic prose)
+### Planner verification (Iter73 planner run)
 
-**What spec wants:** <10 min lessons with a consistent e-learning cadence: **core concepts → worked examples → recap → quick checks**, plus objectives, takeaways, sources, next steps.
+- ✅ Boot: `systemctl --user restart learnflow-api learnflow-client learnflow-web || true`
+- ✅ Screenshots: `SCREENSHOT_DIR=screenshots/iter73/planner-run node screenshot-all.mjs`
+  - Output dir: `learnflow/screenshots/iter73/planner-run/`
+- ✅ `npm test`
+- ✅ `npx tsc --noEmit`
+- ✅ `npx eslint .`
+- ✅ `npx prettier --check .`
 
-**What code does today:**
+### Brutally honest remaining gaps vs spec (sections 1–17)
 
-- LLM prompt in `apps/api/src/routes/courses.ts:generateLessonContentWithLLM()` asks for structure, but **doesn’t enforce**:
-  - presence/quality of **worked examples** (incl. “show your work” steps)
-  - **recap** quality (often generic)
-  - **quick check** correctness + answers
-  - “no filler” constraints (it only says “avoid generic platitudes”, but there’s no validation)
-- Fallback (no OpenAI) emits **very generic template content** with made-up sounding phrasing and weak specificity.
+Iter72 improved “course/lesson generation quality”, but the product spec is far larger than current implementation. High-level truth:
 
-### 3) Citations + image embedding (license-safe attribution)
-
-**Text sources (today):**
-
-- Lesson sources are parsed from markdown via `apps/api/src/utils/sources.ts` and persisted in `dbLessonSources`.
-- There is an “attribution gate” of **>=2 resolvable sources**, but:
-  - it’s based on **parsing**, not on a robust structured citation object produced at generation time.
-  - it does **not** capture **license** or **access timestamp** per source (spec §6.3 requires this).
-
-**Images (today):**
-
-- Images are generated via OpenAI Images (`dall-e-3`) and stored as remote URLs.
-- **No attribution object exists for images** (prompt-only), no license info, no “generated by” labeling, no provenance chain.
-
-### 4) UI rendering (embedded images + attribution)
-
-- `apps/client/src/screens/LessonReader.tsx` renders:
-  - text content + inline [n] citations + a references list
-  - per-section illustrations (if present)
-- It **does not** render a standardized **attribution panel** for images (or text sources beyond the references list), and there is no UX for “license-safe attribution”.
-
----
-
-## Iteration 72 — Prioritized tasks (CONTENT QUALITY / TOPIC-ADAPTIVE STRUCTURE)
-
-### P0 — MUST DO
-
-#### 1) P0 — Replace `matchTopic()` fallback-to-quantum with safe, topic-preserving behavior
-
-Problem: `matchTopic()` defaults to `'quantum'` which corrupts structure for unrelated topics.
-
-Acceptance criteria:
-
-- For unknown topics, the system must **not** default to quantum.
-- Unknown topic must generate a **generic-but-topic-preserving** outline (topic string remains the driver, not a different domain template).
-- Add regression test: create course with topic “Italian cooking basics” and assert module titles contain “Italian”/“cooking” (not quantum terms).
-
-Likely files:
-
-- `apps/api/src/routes/courses.ts`
-- tests under `apps/api/src/__tests__/`
+- **Spec §§1–2 (vision/positioning/personas)**: _Partial/MVP_. UI exists; “agentic platform” framing is implemented primarily as deterministic pipelines + limited WS events.
+- **Spec §§3–4 (multi-agent orchestration)**: _Not truly implemented as described._ There is no DAG planner / dynamic agent spawning registry matching the spec. There are functional “pipelines” and WS progress events, but not an orchestrator mesh.
+- **Spec §5 (client app screens)**: _Mostly implemented as MVP screens_ (onboarding, dashboard, lesson reader, mindmap, marketplace stubs). Polished UX details (action chips, source drawers, agent transparency) are inconsistent.
+- **Spec §6 (content pipeline + attribution)**: _Partial, improved._
+  - Structured sources exist and are persisted per lesson.
+  - **License/access timestamps** exist for sources best-effort.
+  - Still missing: durable “credibility scoring”, dedupe, and a full provenance chain model.
+- **Spec §6.2 (worked examples + cadence)**: _Partial._ Structure is enforced, but **worked-example depth/quality is not guaranteed** (validators currently warn, don’t regenerate).
+- **Spec image provenance**: Wikimedia is license-safe, but **image relevance/placement quality is not validated**.
+- **Spec §11 (API spec)**: _Partial._ Several endpoints exist; not all spec endpoints/features are present.
+- **Spec §12 (marketing website)**: _Implemented/MVP_ (pages exist + screenshots pass).
+- **Spec §14 (Update Agent Pro)**: _Partial/stub_.
+- **Spec §15 (Export)**: _MVP_.
+- **Spec §16 (security/privacy)**: _MVP_. BYOAI vaulting + full compliance posture not at spec level.
+- **Spec §17 (observability/ops)**: _Not implemented beyond basics._
 
 ---
 
-#### 2) P0 — Implement topic-adaptive outline generator (kill generic repetition)
+## Iteration 73 — TRUE TOPIC-SPECIFIC CURRICULUM + NARRATION QUALITY + SOURCING RELIABILITY
 
-Replace hard-coded bucket outlines with a single pipeline:
+Status: **READY FOR BUILDER (iter73)**
 
-- Topic → domain classifier → outline “style profile” (e.g., programming vs math vs history vs business) → module skeleton → lesson titles/descriptions.
+Focus:
 
-Acceptance criteria:
+1. **True topic-specific curriculum templates beyond quantum** (domain profiles that feel real, not generic)
+2. **Narration quality**: worked examples must be concrete and fully worked, not placeholders
+3. **Image placement relevance**: only when it helps, and in the right spot
+4. **Sourcing reliability under 429s / rate limits**: resilient retries + graceful degradation without losing attribution
 
-- New outline generator produces **distinct structures** across at least 6 topics (see regression suite below).
-- Output must include:
-  - module `title`, `objective`
-  - lesson `title`, `description`
-  - ordering that reflects prerequisites (basic → advanced)
-- Remove/soft-deprecate `TOPIC_CONTENT` as the default path; keep only as optional curated overrides.
+Non-goals:
 
-Likely files:
+- Full infra re-architecture to the spec’s K8s agent mesh
+- Marketplace monetization/payment rails
+- Enterprise auth/SSO
 
-- `apps/api/src/routes/courses.ts` (course creation path)
-- new: `packages/agents/src/course-builder/domain-outline.ts` (or similar)
-- `packages/shared` types if needed
+### P0 (Must do)
 
-Tests:
+1. **Add real domain profiles (beyond quantum) with distinct module skeletons**
+   - Add profiles for at least: `programming`, `math`, `policy_business`, `cooking`, `ai_prompting`.
+   - Each profile must define:
+     - module ordering that reflects actual prerequisites for that domain
+     - module objectives that are not generic
+     - lesson title/description patterns that force specificity
+   - Add regression test: module titles across 6 topics must be both _diverse_ and _domain-appropriate_.
 
-- Add unit tests for “outline diversity”:
-  - ensure module titles differ meaningfully by topic (not the same 6 generic patterns)
+2. **Replace generic “general outline” with topic decomposition (lightweight)**
+   - Implement a small “concept extraction” step that pulls 8–15 key subtopics from sources (or from the topic string if sources unavailable).
+   - Use these subtopics to populate modules/lessons (prevents “Orientation/Core/Advanced/Best Practices” repetition).
+   - Deterministic in tests.
 
-Screenshots:
+3. **Worked Example Quality Gate = regenerate or fail (not just warn)**
+   - Today: `validateWorkedExampleQuality()` only logs warnings.
+   - Change behavior:
+     - If worked-example gate fails, **regenerate the lesson** up to N attempts (2–3) with stricter instructions.
+     - If still failing, mark lesson generation as degraded and surface a clear UI banner (“Lesson generated without a fully worked example; try again”).
 
-- `course-create-after-click.png`
-- `course-view.png`
+4. **Make “worked example” domain-specific and artifact-producing**
+   - Programming: runnable snippet + expected output and “how to run”.
+   - Math/science: numeric example with step-by-step computation.
+   - Policy/business: scenario + options + tradeoff table.
+   - Add tests that check for these artifacts by domain.
 
----
+5. **Image relevance/placement rules (do not always insert after Core Concepts)**
+   - Add heuristics:
+     - Only add an image when it supports a definable visual concept (diagram/flow/map/graph/physical object).
+     - Place image near the section it supports (often Worked Example or a dedicated “Diagram” section).
+   - Add an “imageReason” field in illustration metadata.
 
-#### 3) P0 — Quantum Computing course: enforce required reference structure
+6. **Sourcing reliability: implement rate-limit aware fetch with backoff + caching**
+   - Web search/scrape frequently hits 429/timeout. Add:
+     - exponential backoff with jitter
+     - per-domain rate limiting
+     - small persistent cache (URL→extracted content + timestamp) to avoid re-fetch
+   - Ensure attribution is not lost on retries.
 
-Required structure:
+### P1 (Should do)
 
-**Intro → Math Foundations → Qubits/Physics → Python → Qiskit → Teleportation → Bernstein–Vazirani → Deutsch → Grover → Shor → Next Steps**
+7. **Per-lesson domain diversity gate for sources (enforced, not advisory)**
+   - Require ≥2 sources AND ≥2 distinct domains (best-effort override for ultra-niche).
+   - If gate fails: broaden query set or use secondary provider.
 
-Acceptance criteria:
+8. **Source metadata enrichment (publication/year/title normalization)**
+   - Improve `toStructuredLessonSources()`:
+     - canonicalize titles
+     - attempt publish date extraction
+     - store `publication` consistently
+   - UI should show: title, domain, year, license, accessedAt.
 
-- Creating course with topic containing “quantum computing” yields modules in that order (exact or near-exact titles, but the sequence must match).
-- Each module has at least one lesson.
-- Add API test that asserts module order (strict array comparison of normalized titles).
+9. **Lesson length control should include section-level quotas**
+   - Keep total <10 min, but also prevent 80% of words in “Core Concepts”.
+   - Add quotas: objectives short; worked example must have minimum content.
 
-Likely files:
+10. **Quality telemetry in DB + UI**
 
-- `apps/api/src/routes/courses.ts` (override profile for quantum)
-- new: `packages/agents/src/course-builder/domain-profiles/quantum.ts`
+- Persist per-lesson quality flags: `missingWorkedExample`, `lowSourceCount`, `imageMissingReason`, etc.
+- UI: small “Quality” pill or debug view (admin/dev) to see why a lesson is degraded.
 
-Screenshots:
+### P2 (Nice to have)
 
-- `course-view.png` for a quantum course
+11. **Prompt hardening to reduce template-y writing**
 
----
+- Add “ban phrases” / “avoid generic claims” list.
+- Add a post-pass that rewrites generic sentences (best-effort, non-LLM mode optional).
 
-#### 4) P0 — Lesson synthesis v3: enforce narrated e-learning cadence + worked examples + recap + quick checks
+12. **Test harness: offline deterministic “topic pack”**
 
-Today’s lesson generation prompt requests structure but doesn’t enforce quality.
+- Build a deterministic fixture set per domain (mock sources) to make content-quality tests stable without network.
 
-Acceptance criteria:
+13. **Improve pipeline-to-course test: enforce minimum word count without flaky retries**
 
-- Every generated lesson must include headings:
-  - `## Learning Objectives`
-  - `## Estimated Time`
-  - `## Core Concepts` (or `## Core Content`)
-  - `## Worked Example` (or `## Worked Examples`) **(mandatory)**
-  - `## Recap`
-  - `## Quick Check` (include **answers** or a revealable “Answer key”)
-  - `## Sources`
-  - `## Next Steps`
-- Add server-side validation that fails generation (or regenerates) if structure missing.
-- Add test: `lesson-structure-required.test.ts` that creates a course and asserts required headings exist.
+- Tests currently log that lessons fall below 500 words; harden generation or adjust threshold.
 
-Likely files:
+14. **Client: Attribution Drawer component**
 
-- `apps/api/src/routes/courses.ts:generateLessonContentWithLLM`
-- `apps/api/src/utils/lessonSizing.ts` (or new `lessonStructure.ts`)
+- Consolidate text sources + image provenance in one accessible drawer.
 
-Screenshots:
+15. **Client: Action chips (Take Notes / Quiz Me / Go Deeper / See Sources)**
 
-- `lesson-reader.png`
-
----
-
-#### 5) P0 — Structured citations first: generate and store per-lesson source objects (not regex-parsed)
-
-Problem: citations are extracted from markdown post-hoc; license/access timestamp missing.
-
-Acceptance criteria:
-
-- Lesson generation returns **(a)** markdown and **(b)** `sources[]` with fields:
-  - `url`, `title`, `author?`, `publication?`, `year?`, `license?`, `accessedAt` (ISO string)
-- DB persists those sources (not only derived from parsing).
-- API `GET /courses/:id/lessons/:lessonId` returns `sources[]` always from persisted structured data when available.
-- Add test ensuring `accessedAt` is present and parseable as ISO date.
-
-Likely files:
-
-- `apps/api/src/routes/courses.ts`
-- `apps/api/src/utils/sources.ts`
-- `apps/api/src/db.ts` + tables for sources metadata if needed
-- `packages/agents/src/content-pipeline/attribution-tracker.ts` (extend to include license/access)
+- Spec wants these consistently; implement minimal version with existing routes.
 
 ---
 
-### P1 — SHOULD DO
+## Evidence pack (Iter73 planner run)
 
-#### 6) P1 — License-safe attribution: implement “source license resolution” (best-effort) + UI display
-
-Acceptance criteria:
-
-- For each URL source, best-effort derive `license` from:
-  - known domains (e.g., Wikipedia CC BY-SA)
-  - page metadata hints (if available)
-  - fallback: `license: "unknown"` (explicit, not omitted)
-- UI references list shows for each source:
-  - title, domain, year
-  - **license** label (even if “unknown”)
-  - “accessed” date
-
-Likely files:
-
-- `packages/agents/src/content-pipeline/source-fetchers.ts` (add metadata extraction)
-- `apps/api/src/routes/courses.ts` (store)
-- `apps/client/src/screens/LessonReader.tsx` (render)
-
-Screenshots:
-
-- `lesson-reader.png` showing license/access rows
-
----
-
-#### 7) P1 — Image attribution objects + “Generated image” disclosure in UI
-
-Acceptance criteria:
-
-- Each illustration record includes:
-  - `provider` (e.g., `openai`)
-  - `model` (e.g., `dall-e-3`)
-  - `prompt`
-  - `createdAt`
-  - `license` (for generated: e.g., `"generated"` or provider ToS label)
-- Lesson UI renders a small attribution footer under each image:
-  - “Generated image (OpenAI / dall-e-3) · Prompt: … · Created: …”
-
-Likely files:
-
-- `apps/api/src/routes/courses.ts` (illustration endpoints)
-- `apps/api/src/db.ts` (illustrations schema)
-- `apps/client/src/screens/LessonReader.tsx`
-
----
-
-#### 8) P1 — Domain diversity gate for sources (avoid 5 links from the same site)
-
-Acceptance criteria:
-
-- For each lesson, sources must satisfy:
-  - **min 2 sources**
-  - **min 2 distinct domains** (best-effort; unless topic is ultra-niche)
-- If gate fails, system automatically expands search and retries.
-- Add test: uses deterministic test sources with 1 domain; assert it triggers retry or marks `sourcesMissingReason: domain_diversity_failed`.
-
-Likely files:
-
-- `packages/agents/src/content-pipeline/web-search-provider.ts` (already exports `checkDomainDiversity`)
-- `apps/api/src/routes/courses.ts`
-
----
-
-#### 9) P1 — Worked-example quality: enforce “concrete artifacts” by domain
-
-Acceptance criteria:
-
-- Programming topics: at least one runnable code block (`python/`js/```rust etc.)
-- Math/science topics: at least one step-by-step derivation or numeric example
-- Business topics: at least one scenario + decision tradeoff table
-
-Implementation can be heuristic rules by domain profile.
-
-Likely files:
-
-- new domain profiles under `packages/agents/src/course-builder/domain-profiles/*`
-- lesson validator under `apps/api/src/utils/lessonQuality.ts`
-
----
-
-### P2 — NICE TO HAVE
-
-#### 10) P2 — Reduce template-y language in fallback mode (no OpenAI key)
-
-Acceptance criteria:
-
-- Fallback lessons must still be structured and specific:
-  - use topic-specific vocabulary
-  - include at least one worked example
-  - do not claim citations that don’t exist
-- Add snapshot test for fallback content for 2 topics.
-
-Likely files:
-
-- `apps/api/src/routes/courses.ts:generateLessonContentWithLLM`
-
----
-
-#### 11) P2 — Add “Attribution Drawer” component (text + images) with standardized formatting
-
-Acceptance criteria:
-
-- A reusable UI component that lists:
-  - text sources (with license + accessedAt)
-  - image provenance (generated/provider/model)
-- Accessible: keyboard navigable, clear headings.
-
-Likely files:
-
-- `apps/client/src/components/AttributionDrawer.tsx` (new)
-- `apps/client/src/screens/LessonReader.tsx` (integration)
-
-Screenshots:
-
-- `lesson-reader.png` with drawer open
-
----
-
-#### 12) P2 — Regression evaluation harness: multi-topic content-quality checks
-
-Add a lightweight eval suite that creates courses and asserts:
-
-- outline is topic-adaptive (module titles vary)
-- lesson includes required headings
-- sources have license/accessedAt
-- quantum structure order is correct
-
-Topics (minimum set):
-
-1. Rust programming (programming)
-2. Climate policy & carbon markets (policy/business)
-3. Prompt engineering (AI)
-4. Italian cooking basics (non-technical)
-5. Linear algebra (math)
-6. Quantum computing (quantum)
-
-Likely files:
-
-- `apps/api/src/__tests__/content-quality-regression.test.ts`
-- optionally `evals/` scripts
-
----
-
-## Evidence pack (Iteration 72 planner run)
-
-### Spec read
-
-- Read full spec: `/home/aifactory/.openclaw/workspace/learnflow/LearnFlow_Product_Spec.md`
-
-### Code inspected (relevant)
-
-- Outline logic:
-  - `packages/agents/src/course-builder/topic-decomposer.ts`
-  - `packages/agents/src/course-builder/syllabus-generator.ts`
-  - `apps/api/src/routes/courses.ts` (`TOPIC_CONTENT` + `matchTopic()`)
-- Lesson synthesis:
-  - `apps/api/src/routes/courses.ts:generateLessonContentWithLLM()`
-- Citations:
-  - `apps/api/src/utils/sources.ts`
-  - client fallback: `apps/client/src/lib/sources.ts`
-- UI lesson rendering:
-  - `apps/client/src/screens/LessonReader.tsx` (citations + images, but no image attribution)
-
-### Boot + screenshots
-
-Commands executed:
-
-- `systemctl --user restart learnflow-api learnflow-client learnflow-web || true`
-- `cd /home/aifactory/.openclaw/workspace/learnflow && SCREENSHOT_DIR=screenshots/iter72/planner-run node screenshot-all.mjs`
-
-Screenshots saved to:
-
-- `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter72/planner-run/`
-
----
-
-## OneDrive sync (required)
-
-- Copy this queue to: `/home/aifactory/onedrive-learnflow/learnflow/IMPROVEMENT_QUEUE.md`
-- Copy screenshots to: `/home/aifactory/onedrive-learnflow/learnflow/learnflow/learnflow/screenshots/iter72/planner-run/`
+- Spec read: `learnflow/LearnFlow_Product_Spec.md`
+- Code inspected:
+  - `apps/api/src/routes/courses.ts` (async course creation, per-lesson sourcing, Wikimedia images)
+  - `packages/agents/src/course-builder/domain-outline.ts` (domain classification + outline generator)
+  - `packages/agents/src/course-builder/domain-profiles/quantum.ts`
+  - `apps/api/src/utils/lessonQuality.ts` (worked example quality checks)
+- Screenshots: `learnflow/screenshots/iter73/planner-run/`

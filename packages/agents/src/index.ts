@@ -12,6 +12,11 @@ export {
   type OutlineLesson,
 } from './course-builder/domain-outline.js';
 export { quantumComputingRequiredModules } from './course-builder/domain-profiles/quantum.js';
+export { programmingRequiredModules } from './course-builder/domain-profiles/programming.js';
+export { mathRequiredModules } from './course-builder/domain-profiles/math.js';
+export { policyBusinessRequiredModules } from './course-builder/domain-profiles/policy-business.js';
+export { cookingRequiredModules } from './course-builder/domain-profiles/cooking.js';
+export { aiPromptingRequiredModules } from './course-builder/domain-profiles/ai-prompting.js';
 
 // Content Pipeline
 export { discoverSources } from './content-pipeline/source-discovery.js';

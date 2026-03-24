@@ -7,6 +7,11 @@ import {
   buildCourseOutline,
   classifyTopicDomain,
   quantumComputingRequiredModules,
+  programmingRequiredModules,
+  mathRequiredModules,
+  policyBusinessRequiredModules,
+  cookingRequiredModules,
+  aiPromptingRequiredModules,
   searchWikimediaCommonsImages,
   type FirecrawlSource,
   type LicenseSafeImageCandidate,
@@ -342,7 +347,17 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
   const outlineModules =
     domain === 'quantum_computing'
       ? quantumComputingRequiredModules(topic)
-      : buildCourseOutline(topic).modules;
+      : domain === 'programming'
+        ? programmingRequiredModules(topic)
+        : domain === 'math'
+          ? mathRequiredModules(topic)
+          : domain === 'policy_business'
+            ? policyBusinessRequiredModules(topic)
+            : domain === 'cooking'
+              ? cookingRequiredModules(topic)
+              : domain === 'ai_prompting'
+                ? aiPromptingRequiredModules(topic)
+                : buildCourseOutline(topic).modules;
 
   const topicData = { modules: outlineModules };
 
