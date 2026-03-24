@@ -11,6 +11,12 @@ export type StructuredLessonSource = {
   year?: number;
   license?: string;
   accessedAt: string; // ISO string
+
+  // Iter76: Enrich sources so the client AttributionDrawer can render SourceCard-like fields.
+  // These are best-effort and may be empty when upstream content is missing.
+  sourceType?: 'docs' | 'blog' | 'paper' | 'forum';
+  summary?: string;
+  whyThisMatters?: string;
 };
 
 export function resolveLicenseForSource(source: {
@@ -102,6 +108,72 @@ export function toStructuredLessonSources(
       const year = bestEffortYear(x);
       const title = normalizeTitle(x.title || x.url);
 
+      const raw = String((x as any)?.content || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const summary = raw ? (raw.length <= 320 ? raw : raw.slice(0, 317).trimEnd() + '…') : '';
+
+      // Best-effort sourceType inference (mirrors apps/api/utils/sourceCards.ts)
+      const u = String(x.url || '').toLowerCase();
+      const d = String(domain || '').toLowerCase();
+      const isDocs =
+        d.startsWith('docs.') ||
+        u.includes('/docs') ||
+        u.includes('/documentation') ||
+        u.includes('readthedocs') ||
+        d.startsWith('developer.') ||
+        d.startsWith('api.') ||
+        u.includes('/reference');
+
+      const isPaper =
+        d === 'arxiv.org' ||
+        d.endsWith('.ac.uk') ||
+        d.endsWith('.edu') ||
+        u.includes('doi.org') ||
+        u.includes('acm.org') ||
+        u.includes('ieee.org') ||
+        u.endsWith('.pdf') ||
+        u.includes('/paper') ||
+        u.includes('/papers');
+
+      const isForum =
+        d === 'stackoverflow.com' ||
+        d.endsWith('stackexchange.com') ||
+        d === 'reddit.com' ||
+        d === 'news.ycombinator.com' ||
+        u.includes('/forum') ||
+        u.includes('/discuss') ||
+        u.includes('/questions/');
+
+      const isBlog =
+        u.includes('/blog') ||
+        u.includes('/posts') ||
+        u.includes('/article') ||
+        d === 'medium.com' ||
+        d.endsWith('substack.com') ||
+        d.endsWith('blogspot.com') ||
+        d.endsWith('wordpress.com');
+
+      const sourceType: StructuredLessonSource['sourceType'] = isDocs
+        ? 'docs'
+        : isPaper
+          ? 'paper'
+          : isForum
+            ? 'forum'
+            : isBlog
+              ? 'blog'
+              : 'docs';
+
+      const whyThisMatters =
+        sourceType === 'docs'
+          ? `Good for authoritative definitions and API details (${publication || domain || 'web'}).`
+          : sourceType === 'paper'
+            ? `Useful for evidence and evaluation (${publication || domain || 'web'}).`
+            : sourceType === 'forum'
+              ? `Shows real-world pitfalls and edge cases (${publication || domain || 'web'}).`
+              : `Often includes step-by-step examples (${publication || domain || 'web'}) (verify against docs).`;
+
       return {
         url: x.url,
         title: title || x.url,
@@ -111,6 +183,9 @@ export function toStructuredLessonSources(
         year,
         license: resolveLicenseForSource({ url: x.url, domain, publication }),
         accessedAt,
+        sourceType,
+        summary,
+        whyThisMatters,
       } satisfies StructuredLessonSource;
     });
 }

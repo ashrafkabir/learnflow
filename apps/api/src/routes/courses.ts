@@ -348,6 +348,8 @@ const createCourseSchema = z.object({
   description: z.string().optional(),
   depth: z.string().optional(),
   max_lessons: z.number().optional(),
+  /** Iter76: request-scoped fast mode for deterministic screenshots (skips network + uses seeded sources). */
+  fast: z.boolean().optional(),
 });
 
 // GET /api/v1/courses - List courses
@@ -482,8 +484,9 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
       let crawledSources: FirecrawlSource[] = [];
       const _crawlStart = Date.now();
 
-      if (process.env.NODE_ENV === 'test') {
-        // In tests, do NOT hit the network. Keep this deterministic and fast.
+      if (process.env.NODE_ENV === 'test' || Boolean(req.body?.fast)) {
+        // In tests (and Iter76 screenshot fast mode), do NOT hit the network.
+        // Keep this deterministic and fast.
         crawledSources = [
           {
             url: 'https://en.wikipedia.org/wiki/Software_testing',
@@ -581,7 +584,8 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
 
       // In test mode, keep course creation fast/deterministic.
       // We still create content, but skip expensive network-based lesson generation.
-      const fastTestMode = process.env.NODE_ENV === 'test';
+      // Iter76: allow a request-scoped fast mode for screenshot determinism (no external dependencies).
+      const fastTestMode = process.env.NODE_ENV === 'test' || Boolean(req.body?.fast);
 
       const modules: Module[] = [];
       const totalLessons = topicData.modules.reduce((sum, m) => sum + (m.lessons?.length || 0), 0);
@@ -595,6 +599,33 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
           // Use per-lesson sourcing threads (Stage 2) so each lesson has its own relevant sources/images,
           // rather than sharing one topic-wide crawl.
           let lessonSources: FirecrawlSource[] = crawledSources;
+
+          // Iter76: In fast mode, seed a small deterministic set of sources with content so
+          // the AttributionDrawer can render SourceCard-like fields (sourceType/summary/whyThisMatters)
+          // without relying on external search providers.
+          if (fastTestMode) {
+            lessonSources = [
+              {
+                url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
+                title: 'JavaScript — MDN Web Docs',
+                author: 'MDN contributors',
+                domain: 'developer.mozilla.org',
+                source: 'mdn',
+                content:
+                  'JavaScript is a programming language that allows you to implement complex features on web pages. It is used to create dynamic content, control multimedia, animate images, and more.',
+              },
+              {
+                url: 'https://en.wikipedia.org/wiki/JavaScript',
+                title: 'JavaScript - Wikipedia',
+                author: 'Wikipedia contributors',
+                domain: 'en.wikipedia.org',
+                source: 'wikipedia',
+                content:
+                  'JavaScript is a high-level, often just-in-time compiled language that conforms to the ECMAScript specification. It has curly-bracket syntax, dynamic typing, and first-class functions.',
+              },
+            ] as any;
+          }
+
           if (!fastTestMode) {
             const baseCfg = {
               maxSourcesPerLesson: 6,

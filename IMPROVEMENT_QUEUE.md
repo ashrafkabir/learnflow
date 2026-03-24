@@ -595,3 +595,156 @@ Non-goals:
   - `SCREENSHOT_DIR=screenshots/iter75/run-001 PIPELINE_ID=<real> node screenshot-all.mjs`
   - Confirm files written into `screenshots/iter75/run-001/`
   - (Builder) sync screenshots to OneDrive
+
+---
+
+## Iteration 76 — SCREENSHOT HARNESS: DETERMINISTIC LESSON + PIPELINE CAPTURE (NO MANUAL IDS)
+
+Status: **DONE**
+
+Context:
+
+Iteration 75 is marked DONE but has explicit known gaps that block “deterministic evidence”:
+
+- Screenshot harness does **not** capture Lesson Reader with Sources drawer open.
+- `scripts/screenshots-auth.js` calls a **nonexistent** endpoint (`/api/v1/courses/:id/lessons`) → 404.
+- `pipeline-detail` screenshot currently requires manual `PIPELINE_ID` (script does not create one).
+- Screenshot bundle standard requires OneDrive sync, but the process is not documented/verified in-repo.
+
+Goal for Iter76:
+
+Make screenshot capture **fully deterministic** (single command, no manual IDs) and produce an evidence bundle at:
+
+- `screenshots/iter76/run-001/`
+
+Non-goals:
+
+- No new product features beyond what’s needed to make deterministic screenshots.
+- No major UI changes; this is about harness + minimal API/UI glue.
+
+### P0 (Must do)
+
+1. **Fix `scripts/screenshots-auth.js`: reliably reach a real lesson + capture Sources drawer open**
+
+- Problem:
+  - The script currently cannot enumerate lessons due to wrong endpoint and thus cannot navigate to a deterministic Lesson Reader URL.
+  - It also does not click “See Sources”, so it cannot prove SourceCard fields render.
+- Approach (preferred): derive a lesson id without adding new API surface.
+  - Use existing payloads:
+    - If course create returns course id and lessons (or pipeline debug includes coursePlan / lesson ids), use that.
+    - Otherwise fetch the course detail endpoint that includes lessons or a way to navigate to the first lesson.
+- Approach (acceptable fallback): add a minimal API endpoint to list lessons.
+  - Example: `GET /api/v1/courses/:courseId/lessons` returning `[{ id, title, ordinal }]`.
+- Acceptance criteria:
+  - Script flow:
+    1. login
+    2. create or select a course deterministically (fast/degraded mode OK)
+    3. resolve a `lessonId`
+    4. navigate to Lesson Reader
+    5. click **“See Sources”**
+    6. take screenshot: `lesson-reader-sources-drawer.png`
+  - Screenshot must visibly show the drawer and at least 2 cards with:
+    - `sourceType`
+    - `summary`
+    - `whyThisMatters`
+  - Script must log the resolved `courseId` + `lessonId` for auditability.
+- Likely files:
+  - `scripts/screenshots-auth.js`
+  - `apps/client/src/screens/LessonReader.tsx` (only if selectors need stabilization)
+  - `apps/api/src/routes/*` (only if adding the minimal lessons list endpoint)
+
+2. **Add pipeline creation + capture `pipeline-detail` without manual `PIPELINE_ID`**
+
+- Problem:
+  - Current harness either requires manually setting `PIPELINE_ID` or skips the shot.
+- Acceptance criteria:
+  - Running the screenshot command with no `PIPELINE_ID` will:
+    - create a new pipeline deterministically (fast mode OK)
+    - wait until it has at least one lesson milestone (or a stable “created” state)
+    - capture `pipeline-detail.png` (or `pipeline-detail-milestones.png`)
+  - A manual override still works:
+    - If `PIPELINE_ID` is set, use it and skip creation.
+- Likely files:
+  - `scripts/screenshots.js` and/or `scripts/screenshots-auth.js`
+  - `apps/api/src/routes/pipeline.ts` (ensure create endpoint exists and returns an id; add if missing)
+
+3. **Fix the “lesson list” dependency (404) in the most stable way**
+
+- Choose one:
+  - (A) **No new endpoint**: resolve lesson ids from existing course/pipeline responses.
+  - (B) Add `GET /api/v1/courses/:id/lessons` (minimal, read-only) to match script needs.
+- Acceptance criteria:
+  - No more 404 from the harness.
+  - The chosen method is documented inline at the top of the script.
+
+4. **Ensure screenshots land in `screenshots/iter76/run-001/` and include `NOTES.md`**
+
+- Acceptance criteria:
+  - All screenshot scripts honor `SCREENSHOT_DIR` and do not hardcode any iteration.
+  - Create `screenshots/iter76/run-001/NOTES.md` including:
+    - command(s) run
+    - timestamp
+    - environment notes (API base, auth mode)
+    - pipelineId/courseId/lessonId used
+    - known issues / TODOs
+
+5. **Screenshot harness can capture Lesson Reader with Sources drawer open (UI state issue)**
+
+- Known problem:
+  - Some harness runs fail to capture the drawer-open state because the click isn’t executed or UI isn’t ready.
+- Acceptance criteria:
+  - Add stable selectors/waits:
+    - Wait for Lesson Reader main heading to render.
+    - Click the “See Sources” action chip by role/name.
+    - Wait for drawer heading/text to appear (“Sources & Attribution” or similar).
+  - Screenshot is taken only after drawer is confirmed open.
+
+6. **OneDrive sync: document the team-standard process (builder-run)**
+
+- Constraint:
+  - Planner does not perform OneDrive sync; builder must.
+- Acceptance criteria:
+  - `NOTES.md` includes a short “OneDrive sync” section:
+    - what to run / where to drag-and-drop
+    - destination folder name convention
+  - If the machine lacks OneDrive CLI integration, document as **TODO** with clear owner.
+
+### Screenshot checklist (Iter76)
+
+Required:
+
+- `app-pipelines.png` (sanity)
+- `pipeline-detail.png` (or `pipeline-detail-milestones.png`) — **created automatically**
+- `lesson-reader.png` (lesson content visible)
+- `lesson-reader-sources-drawer.png` — drawer open with `sourceType/summary/whyThisMatters` visible
+
+### Verification checklist (Iter76)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
+- Screenshot run (no manual IDs):
+  - `SCREENSHOT_DIR=screenshots/iter76/run-001 node scripts/screenshots-auth.js`
+  - Confirm files exist:
+    - `screenshots/iter76/run-001/pipeline-detail*.png`
+    - `screenshots/iter76/run-001/lesson-reader-sources-drawer.png`
+    - `screenshots/iter76/run-001/NOTES.md`
+- Confirm no 404s from lesson listing in logs
+- (Builder) Sync `screenshots/iter76/run-001` to OneDrive per NOTES
+
+### Evidence (Iter76)
+
+- `scripts/screenshots-auth.js` now:
+  - Creates a course deterministically via `fast: true` and derives `lessonId` from `GET /api/v1/courses/:id`.
+  - Opens Sources drawer by clicking **See Sources** and waiting for **Sources & Attribution**.
+  - Creates pipeline when `PIPELINE_ID` is not provided; uses `waitUntil: 'domcontentloaded'` to avoid SSE/networkidle hangs.
+  - Writes `NOTES.md` (timestamp/command/ids).
+- Evidence bundle:
+  - `screenshots/iter76/run-001/lesson-reader-sources-drawer.png`
+  - `screenshots/iter76/run-001/pipeline-detail.png`
+  - `screenshots/iter76/run-001/NOTES.md`
+
+Notes:
+
+- Added request-scoped `fast` mode to course creation in API to avoid external web search flakiness and ensure ≥2 sources render in the drawer.

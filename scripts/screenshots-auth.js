@@ -1,8 +1,19 @@
 const { chromium } = require('playwright');
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * Iter76: Deterministic screenshot harness (no manual IDs).
+ *
+ * We intentionally do NOT depend on a lessons-list endpoint.
+ * Instead, we derive a lessonId from the existing course detail response (modules[].lessons[].id).
+ */
 
 (async () => {
   const browser = await chromium.launch();
-  const BASE = process.env.LEARNFLOW_WEB_BASE || 'http://127.0.0.1:3003';
+  // Note: the app (client) runs on :3001; the marketing site runs on :3003.
+  // This script targets the app so we can capture authenticated UI states.
+  const BASE = process.env.LEARNFLOW_WEB_BASE || 'http://127.0.0.1:3001';
   const DIR =
     process.env.SCREENSHOT_DIR ||
     process.env.LEARNFLOW_SCREENSHOT_DIR ||
@@ -10,18 +21,42 @@ const { chromium } = require('playwright');
 
   const API_BASE = process.env.LEARNFLOW_API_BASE || 'http://127.0.0.1:3000';
 
+  fs.mkdirSync(DIR, { recursive: true });
+
+  const runStartedAt = new Date().toISOString();
+
+  async function writeNotes(partial) {
+    const notesPath = path.join(DIR, 'NOTES.md');
+    const payload = {
+      timestamp: runStartedAt,
+      command: partial.command || '',
+      env: {
+        LEARNFLOW_WEB_BASE: BASE,
+        LEARNFLOW_API_BASE: API_BASE,
+        SCREENSHOT_DIR: DIR,
+        PIPELINE_ID: process.env.PIPELINE_ID || '',
+      },
+      ids: partial.ids || {},
+    };
+
+    const md = `# Iter76 Screenshot Run Notes\n\n- Timestamp: ${payload.timestamp}\n- Command: ${payload.command}\n\n## Environment\n- LEARNFLOW_WEB_BASE: ${payload.env.LEARNFLOW_WEB_BASE}\n- LEARNFLOW_API_BASE: ${payload.env.LEARNFLOW_API_BASE}\n- SCREENSHOT_DIR: ${payload.env.SCREENSHOT_DIR}\n- PIPELINE_ID (input): ${payload.env.PIPELINE_ID || '(none)'}\n\n## IDs Used\n- pipelineId: ${payload.ids.pipelineId || ''}\n- pipelineCourseId: ${payload.ids.pipelineCourseId || ''}\n- courseId: ${payload.ids.courseId || ''}\n- lessonId: ${payload.ids.lessonId || ''}\n\n## Notes\n- Lesson screenshot includes Sources drawer opened via UI click and verified by drawer heading.\n`;
+
+    fs.writeFileSync(notesPath, md, 'utf8');
+  }
+
   // Register via API
+  const email = 'screenshotuser' + Date.now() + '@test.com';
   const res = await fetch(API_BASE + '/api/v1/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email: 'screenshotuser' + Date.now() + '@test.com',
+      email,
       password: 'TestPass123!',
       displayName: 'Screenshot User',
     }),
   });
   const auth = await res.json();
-  console.log('Registered:', auth.user.email);
+  console.log('Registered:', auth.user?.email || email);
 
   // Create context with auth
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -34,6 +69,8 @@ const { chromium } = require('playwright');
     localStorage.setItem('learnflow-refresh', data.refreshToken);
     localStorage.setItem('learnflow-user', JSON.stringify(data.user));
     localStorage.setItem('learnflow-onboarding-complete', 'true');
+    // Prevent onboarding overlay/tour from intercepting clicks
+    localStorage.setItem('onboarding-tour-complete', 'true');
   }, auth);
 
   const routes = [
@@ -65,67 +102,171 @@ const { chromium } = require('playwright');
     console.log('FAIL create-course: ' + e.message.slice(0, 80));
   }
 
-  // Check if there are any courses
+  // Deterministic course + lesson resolution (no /courses/:id/lessons endpoint)
+  // We create a course via API, then derive lessonId from course detail (modules[].lessons[].id).
+  let courseId = '';
+  let lessonId = '';
   try {
-    const coursesRes = await fetch(API_BASE + '/api/v1/courses', {
-      headers: { Authorization: 'Bearer ' + auth.accessToken },
+    const createRes = await fetch(API_BASE + '/api/v1/courses', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + auth.accessToken,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ topic: 'Iter76 Screenshot Harness', depth: 'beginner', fast: true }),
     });
-    const courses = await coursesRes.json();
-    console.log('Courses:', JSON.stringify(courses).slice(0, 200));
+    const created = await createRes.json();
+    courseId = created?.id || created?.courseId || created?.course?.id || '';
+    if (!courseId) throw new Error('courseId missing from create course response');
 
-    if (courses.length > 0 || (courses.courses && courses.courses.length > 0)) {
-      const courseList = courses.courses || courses;
-      const cid = courseList[0].id;
-      await page.goto(BASE + '/courses/' + cid, { waitUntil: 'networkidle', timeout: 8000 });
-      await page.waitForTimeout(1000);
-      await page.screenshot({ path: DIR + '/course-detail-auth.png', fullPage: true });
-      console.log('OK course-detail-auth');
-
-      // Get lessons
-      const lessonsRes = await fetch(API_BASE + '/api/v1/courses/' + cid + '/lessons', {
+    // Poll course detail until the first lesson has content (or timeout)
+    const deadline = Date.now() + 60_000;
+    let courseDetail = null;
+    while (Date.now() < deadline) {
+      const cRes = await fetch(API_BASE + '/api/v1/courses/' + courseId, {
         headers: { Authorization: 'Bearer ' + auth.accessToken },
       });
-      const lessons = await lessonsRes.json();
-      console.log('Lessons:', JSON.stringify(lessons).slice(0, 200));
-      if (lessons.length > 0 || (lessons.lessons && lessons.lessons.length > 0)) {
-        const lessonList = lessons.lessons || lessons;
-        const lid = lessonList[0].id;
-        await page.goto(BASE + '/courses/' + cid + '/lessons/' + lid, {
-          waitUntil: 'networkidle',
-          timeout: 8000,
-        });
-        await page.waitForTimeout(1000);
-        await page.screenshot({ path: DIR + '/lesson-reader-auth.png', fullPage: true });
-        console.log('OK lesson-reader-auth');
-      }
+      courseDetail = await cRes.json();
+      const firstLesson =
+        courseDetail?.modules?.[0]?.lessons?.find((l) => l && l.id) ||
+        courseDetail?.modules?.[0]?.lessons?.[0];
 
-      // Mindmap
-      await page.goto(BASE + '/courses/' + cid + '/mindmap', {
-        waitUntil: 'networkidle',
-        timeout: 8000,
-      });
-      await page.waitForTimeout(1000);
-      await page.screenshot({ path: DIR + '/mindmap-auth.png', fullPage: true });
-      console.log('OK mindmap-auth');
+      lessonId = firstLesson?.id || '';
+      const hasContent = Boolean(firstLesson?.content && String(firstLesson.content).length > 200);
+      if (lessonId && hasContent) break;
+      await new Promise((r) => setTimeout(r, 1500));
     }
+
+    if (!lessonId) {
+      lessonId = courseDetail?.modules?.[0]?.lessons?.[0]?.id || '';
+    }
+
+    console.log('Resolved courseId:', courseId);
+    console.log('Resolved lessonId:', lessonId);
+
+    await writeNotes({
+      command:
+        'SCREENSHOT_DIR=' +
+        DIR +
+        ' LEARNFLOW_WEB_BASE=' +
+        BASE +
+        ' LEARNFLOW_API_BASE=' +
+        API_BASE +
+        ' node scripts/screenshots-auth.js',
+      ids: { courseId, lessonId },
+    });
+
+    await page.goto(BASE + '/courses/' + courseId, { waitUntil: 'networkidle', timeout: 15000 });
+    await page.waitForTimeout(1000);
+    await page.screenshot({ path: DIR + '/course-detail-auth.png', fullPage: true });
+    console.log('OK course-detail-auth');
+
+    if (lessonId) {
+      await page.goto(BASE + '/courses/' + courseId + '/lessons/' + lessonId, {
+        waitUntil: 'networkidle',
+        timeout: 15000,
+      });
+
+      // Dismiss any overlays that can block clicks
+      try {
+        await page.evaluate(() => {
+          const tour = document.querySelector('[aria-label="Onboarding tour"]');
+          if (tour) tour.remove();
+        });
+      } catch {}
+
+      // Ensure Lesson Reader is interactive before clicking
+      const seeSourcesBtn = page.getByRole('button', { name: 'See Sources' });
+      await seeSourcesBtn.waitFor({ timeout: 25000 });
+      await seeSourcesBtn.click({ timeout: 25000 });
+
+      // Verify drawer is open
+      await page
+        .getByRole('heading', { name: 'Sources & Attribution' })
+        .waitFor({ timeout: 25000 });
+
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: DIR + '/lesson-reader-sources-drawer.png', fullPage: true });
+      console.log('OK lesson-reader-sources-drawer');
+    }
+
+    // Mindmap
+    await page.goto(BASE + '/courses/' + courseId + '/mindmap', {
+      waitUntil: 'networkidle',
+      timeout: 15000,
+    });
+    await page.waitForTimeout(1000);
+    await page.screenshot({ path: DIR + '/mindmap-auth.png', fullPage: true });
+    console.log('OK mindmap-auth');
   } catch (e) {
-    console.log('FAIL courses: ' + e.message.slice(0, 120));
+    console.log('FAIL deterministic course/lesson: ' + e.message.slice(0, 160));
   }
 
-  // Pipeline detail (optional)
+  // Pipeline detail: use provided PIPELINE_ID or create one deterministically.
   try {
-    const pipelineId = process.env.PIPELINE_ID;
-    if (pipelineId) {
-      await page.goto(BASE + '/pipeline/' + pipelineId, {
-        waitUntil: 'networkidle',
-        timeout: 10000,
+    let pipelineId = process.env.PIPELINE_ID || '';
+    let pipelineCourseId = '';
+
+    if (!pipelineId) {
+      const pRes = await fetch(API_BASE + '/api/v1/pipeline', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + auth.accessToken,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ topic: 'Iter76 Pipeline Screenshot' }),
       });
-      await page.waitForTimeout(1000);
-      await page.screenshot({ path: DIR + '/pipeline-detail-auth.png', fullPage: true });
-      console.log('OK pipeline-detail-auth');
+      const created = await pRes.json();
+      pipelineId = created?.pipelineId || created?.id || '';
+      pipelineCourseId = created?.courseId || '';
+      console.log('Created pipelineId:', pipelineId);
+    } else {
+      console.log('Using pipelineId from env:', pipelineId);
     }
+
+    // Poll for stable state (at least created / not QUEUED)
+    const deadline = Date.now() + 60_000;
+    while (Date.now() < deadline) {
+      const stateRes = await fetch(API_BASE + '/api/v1/pipeline/' + pipelineId, {
+        headers: { Authorization: 'Bearer ' + auth.accessToken },
+      });
+      const state = await stateRes.json();
+      const status = state?.status;
+      const progress = state?.progress;
+      const milestones = Array.isArray(state?.lessonMilestones) ? state.lessonMilestones : [];
+      const stable =
+        status === 'RUNNING' || status === 'SUCCEEDED' || status === 'FAILED' || progress > 1;
+      if (stable || milestones.length > 0) break;
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    // Update NOTES with pipelineId
+    await writeNotes({
+      command:
+        'SCREENSHOT_DIR=' +
+        DIR +
+        ' LEARNFLOW_WEB_BASE=' +
+        BASE +
+        ' LEARNFLOW_API_BASE=' +
+        API_BASE +
+        ' node scripts/screenshots-auth.js',
+      ids: { pipelineId, courseId, lessonId, pipelineCourseId },
+    });
+
+    // NOTE: pipeline detail page may keep an SSE connection open, which prevents "networkidle".
+    await page.goto(BASE + '/pipeline/' + pipelineId, {
+      waitUntil: 'domcontentloaded',
+      timeout: 30000,
+    });
+    // Best-effort wait for the detail screen to render something stable
+    try {
+      await page.getByText('Pipeline', { exact: false }).first().waitFor({ timeout: 15000 });
+    } catch {}
+    await page.waitForTimeout(1600);
+    await page.screenshot({ path: DIR + '/pipeline-detail.png', fullPage: true });
+    console.log('OK pipeline-detail');
   } catch (e) {
-    console.log('FAIL pipeline-detail-auth: ' + e.message.slice(0, 80));
+    console.log('FAIL pipeline-detail: ' + e.message.slice(0, 120));
   }
 
   // Mobile
