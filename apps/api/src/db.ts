@@ -549,6 +549,7 @@ const stmts = {
   findPipelineById: sqlite.prepare(`SELECT * FROM pipelines WHERE id = ?`),
   getAllPipelines: sqlite.prepare(`SELECT * FROM pipelines`),
   updatePipeline: sqlite.prepare(`UPDATE pipelines SET stage=?, state=?, updatedAt=? WHERE id=?`),
+  deletePipeline: sqlite.prepare(`DELETE FROM pipelines WHERE id = ?`),
 
   // Invoices
   insertInvoice: sqlite.prepare(
@@ -1119,7 +1120,7 @@ export const dbPipelines = {
       stage,
       JSON.stringify(rest),
       p.createdAt || now,
-      now,
+      (p.updatedAt as string | undefined) || now,
     );
   },
 
@@ -1133,9 +1134,18 @@ export const dbPipelines = {
       topic: row.topic,
       stage: row.stage,
       ...state,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      // Preserve pipeline-state timestamps if present; otherwise fallback to row timestamps.
+      createdAt: (state as any).createdAt || row.createdAt,
+      updatedAt: (state as any).updatedAt || row.updatedAt,
     };
+  },
+
+  delete(id: string): void {
+    try {
+      stmts.deletePipeline.run(id);
+    } catch {
+      // ignore
+    }
   },
 
   getAll(): any[] {

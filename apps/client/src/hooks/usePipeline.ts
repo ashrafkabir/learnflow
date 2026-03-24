@@ -49,14 +49,20 @@ export interface QualityCheck {
   overallPass: boolean;
 }
 
+export type PipelineRunStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+
 export interface PipelineState {
   id: string;
   courseId: string;
   topic: string;
+  status: PipelineRunStatus;
   stage: PipelineStage;
   progress: number;
   startedAt: string;
   updatedAt: string;
+  finishedAt?: string;
+  failReason?: string;
+  logs?: Array<{ ts: string; level: 'info' | 'warn' | 'error'; message: string }>;
   crawlThreads: CrawlThread[];
   sources?: PipelineSource[];
   synthesisSummary?: string;
@@ -107,6 +113,19 @@ export function usePipeline(pipelineId: string | null) {
             setState(d);
           } catch {
             // ignore malformed SSE payload
+          }
+        });
+
+        es.addEventListener('pipeline:log', (e) => {
+          try {
+            const line = JSON.parse(e.data) as any;
+            setState((prev) => {
+              if (!prev) return prev;
+              const logs = Array.isArray(prev.logs) ? prev.logs : [];
+              return { ...prev, logs: [...logs, line].slice(-800) };
+            });
+          } catch {
+            // ignore
           }
         });
 

@@ -29,6 +29,8 @@ export type PipelineStage =
   | 'personal'
   | 'failed';
 
+export type PipelineRunStatus = 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+
 export interface CrawlThread {
   id: string;
   url: string;
@@ -72,10 +74,21 @@ export interface PipelineState {
   id: string;
   courseId: string;
   topic: string;
-  stage: PipelineStage;
-  progress: number; // 0-100
+
+  /** Run state machine (Iter73 hotfix) */
+  status: PipelineRunStatus;
   startedAt: string;
   updatedAt: string;
+  finishedAt?: string;
+  failReason?: string;
+
+  /** Legacy/progress UI */
+  stage: PipelineStage;
+  progress: number; // 0-100
+
+  /** Persisted log lines for UI + debugging */
+  logs?: Array<{ ts: string; level: 'info' | 'warn' | 'error'; message: string }>;
+
   // Stage data
   crawlThreads: CrawlThread[];
   sources?: PipelineSource[];
@@ -123,6 +136,19 @@ function broadcast(pipelineId: string, event: string, data: unknown) {
   }
 }
 
+function appendLog(p: PipelineState, level: 'info' | 'warn' | 'error', message: string): void {
+  const line = { ts: new Date().toISOString(), level, message } as const;
+  const logs = Array.isArray(p.logs) ? p.logs : [];
+  logs.push(line);
+  // cap to prevent unbounded growth
+  const capped = logs.slice(-800);
+  Object.assign(p, { logs: capped, updatedAt: new Date().toISOString() });
+  pipelines.set(p.id, p);
+  dbPipelines.save(p);
+  broadcast(p.id, 'pipeline:log', line);
+  broadcast(p.id, 'pipeline:update', p);
+}
+
 function updatePipeline(p: PipelineState, partial: Partial<PipelineState>) {
   Object.assign(p, partial, { updatedAt: new Date().toISOString() });
   pipelines.set(p.id, p);
@@ -130,6 +156,61 @@ function updatePipeline(p: PipelineState, partial: Partial<PipelineState>) {
   dbPipelines.save(p);
   broadcast(p.id, 'pipeline:update', p);
 }
+
+function failPipeline(p: PipelineState, reason: string, error?: unknown): void {
+  if (p.status === 'FAILED' || p.status === 'SUCCEEDED') return;
+  const msg = error ? `${reason}: ${String(error)}` : reason;
+  appendLog(p, 'error', msg);
+  updatePipeline(p, {
+    status: 'FAILED',
+    stage: 'failed',
+    failReason: reason,
+    error: error ? String(error) : p.error,
+    finishedAt: new Date().toISOString(),
+    progress: Math.min(100, Math.max(p.progress ?? 0, 1)),
+  });
+}
+
+function stallTimeoutMs(): number {
+  return Number(process.env.PIPELINE_STALL_TIMEOUT_MS || 5 * 60_000);
+}
+function cleanupMaxAgeMs(): number {
+  return Number(process.env.PIPELINE_CLEANUP_MAX_AGE_MS || 24 * 60 * 60_000);
+}
+
+function isStalled(p: PipelineState, now = Date.now()): boolean {
+  if (p.status !== 'RUNNING') return false;
+  const updated = Date.parse(p.updatedAt || p.startedAt || '') || 0;
+  return now - updated > stallTimeoutMs();
+}
+
+function cleanupStalePipelines(): void {
+  const now = Date.now();
+  for (const p of pipelines.values()) {
+    const started = Date.parse(p.startedAt || '') || 0;
+    const finished = Date.parse(p.finishedAt || '') || 0;
+    if (p.status === 'RUNNING' && isStalled(p, now)) {
+      failPipeline(p, 'stalled');
+      continue;
+    }
+    // hard cleanup very old runs so list doesn't accumulate forever
+    const age = now - (finished || started || now);
+    if ((p.status === 'SUCCEEDED' || p.status === 'FAILED') && age > cleanupMaxAgeMs()) {
+      pipelines.delete(p.id);
+      // Also remove from DB to avoid a long-lived list of finished pipelines
+      dbPipelines.delete(p.id);
+    }
+  }
+}
+
+// Periodic sweep to prevent stuck runs accumulating (no auto-start behavior)
+setInterval(() => {
+  try {
+    cleanupStalePipelines();
+  } catch {
+    // ignore
+  }
+}, 30_000).unref();
 
 // ── Topic → Module structure (reuse from courses.ts logic) ───────────────────
 
@@ -272,6 +353,9 @@ async function runAddTopicPipeline(pipelineId: string) {
   const p = pipelines.get(pipelineId);
   if (!p) return;
 
+  updatePipeline(p, { status: 'RUNNING', startedAt: p.startedAt || new Date().toISOString() });
+  appendLog(p, 'info', `run started (add-topic) id=${pipelineId}`);
+
   const topic = p.topic;
   const courseId = p.courseId;
 
@@ -285,6 +369,7 @@ async function runAddTopicPipeline(pipelineId: string) {
 
   // ── STAGE 1: Discovery (web search) ──────────────────────────────────
   updatePipeline(p, { stage: 'scraping', progress: 5 });
+  appendLog(p, 'info', `stage=scraping (discovery) topic="${topic}"`);
 
   const threads: CrawlThread[] = Array.from({ length: 4 }).map((_, i) => ({
     id: `thread-${i}`,
@@ -443,7 +528,13 @@ async function runAddTopicPipeline(pipelineId: string) {
   existing.modules.push(newModule);
   dbCourses.save(existing);
 
-  updatePipeline(p, { stage: 'reviewing', progress: 100 });
+  updatePipeline(p, {
+    stage: 'reviewing',
+    progress: 100,
+    status: 'SUCCEEDED',
+    finishedAt: new Date().toISOString(),
+  });
+  appendLog(p, 'info', 'run succeeded');
   broadcast(p.id, 'pipeline:complete', { courseId });
 }
 
@@ -452,10 +543,14 @@ async function runPipeline(pipelineId: string) {
   const p = pipelines.get(pipelineId);
   if (!p) return;
 
+  updatePipeline(p, { status: 'RUNNING', startedAt: p.startedAt || new Date().toISOString() });
+  appendLog(p, 'info', `run started id=${pipelineId}`);
+
   const topic = p.topic;
 
   // ── STAGE 1: Scraping (bulk research) ──────────────────────────────────
   updatePipeline(p, { stage: 'scraping', progress: 5 });
+  appendLog(p, 'info', `stage=scraping topic="${topic}"`);
 
   // Threads are used only for UI progress visualization. Actual query generation
   // is done inside searchTopicTrending() (LLM-generated + multi-source).
@@ -524,12 +619,14 @@ async function runPipeline(pipelineId: string) {
 
       const layerSources: FirecrawlSource[] = [];
       for (const q of capped) {
+        appendLog(p, 'info', `search:query "${q}"`);
         const batch = await searchTopicTrending(q, {
           stage1Templates: [q],
           enabledSources: searchCfg.enabledSources,
           perQueryLimit,
           maxStage1Queries: 1,
         } as any);
+        appendLog(p, 'info', `search:results ${batch.length} for "${q}"`);
         layerSources.push(...batch);
       }
       byLayer[layer.id] = layerSources.map((s) => ({
@@ -577,12 +674,14 @@ async function runPipeline(pipelineId: string) {
     );
     updatePipeline(p, { searchRuns });
 
+    appendLog(p, 'info', `search:legacy stage1 queries=${stage1Queries.length}`);
     crawledSources = await searchTopicTrending(topic, {
       stage1Templates: searchCfg.stage1Templates,
       enabledSources: searchCfg.enabledSources,
       perQueryLimit: searchCfg.perQueryLimit,
       maxStage1Queries: searchCfg.maxStage1Queries,
     } as any);
+    appendLog(p, 'info', `search:legacy stage1 sources=${crawledSources.length}`);
   }
 
   // Persist the actual sources discovered so the UI can attribute what was used.
@@ -660,7 +759,9 @@ async function runPipeline(pipelineId: string) {
     progress: 45,
   });
 
-  await new Promise((r) => setTimeout(r, 1000));
+  if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
+    await new Promise((r) => setTimeout(r, 1000));
+  }
 
   // ── STAGE 3: Synthesizing (per-lesson scraping + generation) ─────────
   updatePipeline(p, { stage: 'synthesizing', progress: 50 });
@@ -874,7 +975,9 @@ async function runPipeline(pipelineId: string) {
   });
 
   updatePipeline(p, { qualityResults, progress: 92 });
-  await new Promise((r) => setTimeout(r, 500));
+  if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
+    await new Promise((r) => setTimeout(r, 500));
+  }
 
   // ── STAGE 5: Ready for Review ──────────────────────────────────────────
   // Build the course object and store it
@@ -904,7 +1007,13 @@ async function runPipeline(pipelineId: string) {
   courses.set(course.id, course);
   dbCourses.save(course);
 
-  updatePipeline(p, { stage: 'reviewing', progress: 100 });
+  updatePipeline(p, {
+    stage: 'reviewing',
+    progress: 100,
+    status: 'SUCCEEDED',
+    finishedAt: new Date().toISOString(),
+  });
+  appendLog(p, 'info', 'run succeeded');
   broadcast(p.id, 'pipeline:complete', { courseId: p.courseId });
 }
 
@@ -1188,16 +1297,19 @@ router.post('/add-topic', (req: Request, res: Response) => {
 
   const pipelineId = uuid();
 
+  const now = new Date().toISOString();
   const state: PipelineState & { userId?: string; tier?: string } = {
     id: pipelineId,
     courseId,
     topic: topic.trim(),
     userId: req.user?.sub,
     tier: req.user?.tier,
+    status: 'QUEUED',
     stage: 'scraping',
     progress: 0,
-    startedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    startedAt: now,
+    updatedAt: now,
+    logs: [{ ts: now, level: 'info', message: 'queued (add-topic)' }],
     crawlThreads: [],
     sources: [],
     synthesisSummary: '',
@@ -1214,7 +1326,7 @@ router.post('/add-topic', (req: Request, res: Response) => {
 
   runAddTopicPipeline(pipelineId).catch((err) => {
     const p = pipelines.get(pipelineId);
-    if (p) updatePipeline(p, { stage: 'failed', error: String(err) });
+    if (p) failPipeline(p, 'error', err);
   });
 
   res.status(201).json({ pipelineId, courseId });
@@ -1252,16 +1364,19 @@ router.post('/', (req: Request, res: Response) => {
     }
   }
 
+  const now = new Date().toISOString();
   const state: PipelineState & { userId?: string; tier?: string } = {
     id: pipelineId,
     courseId,
     topic,
     userId: req.user?.sub,
     tier: req.user?.tier,
+    status: 'QUEUED',
     stage: 'scraping',
     progress: 0,
-    startedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    startedAt: now,
+    updatedAt: now,
+    logs: [{ ts: now, level: 'info', message: 'queued' }],
     crawlThreads: [],
     sources: [],
     synthesisSummary: '',
@@ -1279,7 +1394,7 @@ router.post('/', (req: Request, res: Response) => {
   // Start pipeline async
   runPipeline(pipelineId).catch((err) => {
     const p = pipelines.get(pipelineId);
-    if (p) updatePipeline(p, { stage: 'failed', error: String(err) });
+    if (p) failPipeline(p, 'error', err);
   });
 
   res.status(201).json({ pipelineId, courseId });
@@ -1288,21 +1403,42 @@ router.post('/', (req: Request, res: Response) => {
 /** GET /api/v1/pipeline/:id — Get pipeline state */
 router.get('/:id', (req: Request, res: Response) => {
   const id = String(req.params.id);
-  const p = pipelines.get(id);
+
+  // Always prefer persisted state so UI reflects latest, and tests can force stale timestamps.
+  const persisted = dbPipelines.getById(id) as PipelineState | undefined;
+  const p = (persisted || pipelines.get(id)) as PipelineState | undefined;
+
   if (!p) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
-  res.json(p);
+
+  // Keep in-memory cache fresh
+  pipelines.set(id, p);
+
+  // Opportunistic stall check on read
+  if (isStalled(p)) {
+    failPipeline(p, 'stalled');
+  }
+
+  res.json(pipelines.get(id));
 });
 
 /** GET /api/v1/pipeline/:id/events — SSE stream */
 router.get('/:id/events', (req: Request, res: Response) => {
   const id = String(req.params.id);
-  const p = pipelines.get(id);
+  const persisted = dbPipelines.getById(id) as PipelineState | undefined;
+  const p = (persisted || pipelines.get(id)) as PipelineState | undefined;
   if (!p) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
+  }
+
+  pipelines.set(id, p);
+
+  // Ensure subscribers see stalled runs as failed quickly
+  if (isStalled(p)) {
+    failPipeline(p, 'stalled');
   }
 
   res.writeHead(200, {
@@ -1326,17 +1462,93 @@ router.get('/:id/events', (req: Request, res: Response) => {
 
 /** GET /api/v1/pipeline — List all pipelines */
 router.get('/', (_req: Request, res: Response) => {
+  // Proactively prevent stuck run accumulation
+  cleanupStalePipelines();
+
   const all = Array.from(pipelines.values()).map((p) => ({
     id: p.id,
     courseId: p.courseId,
     topic: p.topic,
+    status: p.status,
     stage: p.stage,
     progress: p.progress,
     courseTitle: p.courseTitle,
     startedAt: p.startedAt,
     updatedAt: p.updatedAt,
+    finishedAt: p.finishedAt,
+    failReason: p.failReason,
   }));
   res.json({ pipelines: all });
+});
+
+/** POST /api/v1/pipeline/:id/restart — Restart a failed/stalled pipeline by creating a new run id */
+router.post('/:id/restart', (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const old = pipelines.get(id);
+  if (!old) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  // Mark old run failed if it is stalled but not yet marked
+  if (isStalled(old)) {
+    failPipeline(old, 'stalled');
+  }
+
+  if (old.status === 'RUNNING' || old.status === 'QUEUED') {
+    sendError(res, req, {
+      status: 409,
+      code: 'conflict',
+      message: 'Pipeline is still running',
+    });
+    return;
+  }
+
+  const pipelineId = uuid();
+  const now = new Date().toISOString();
+
+  // Clone params, create new courseId deterministically for the new run.
+  // IMPORTANT: restarting should not be a no-op.
+  const courseId = `course-${pipelineId}`;
+
+  const next: PipelineState & { userId?: string; tier?: string } = {
+    ...(old as any),
+    id: pipelineId,
+    courseId,
+    status: 'QUEUED',
+    stage: 'scraping',
+    progress: 0,
+    startedAt: now,
+    updatedAt: now,
+    finishedAt: undefined,
+    failReason: undefined,
+    error: undefined,
+    logs: [{ ts: now, level: 'info', message: `queued (restart of ${old.id})` }],
+    crawlThreads: [],
+    sources: [],
+    synthesisSummary: '',
+    organizedSources: 0,
+    deduplicatedCount: 0,
+    credibilityScores: [],
+    themes: [],
+    lessonSyntheses: [],
+    qualityResults: [],
+  };
+
+  pipelines.set(pipelineId, next);
+  dbPipelines.save(next);
+
+  // Best-effort: label old run as stale to avoid confusion
+  if (old.status !== 'FAILED' && old.status !== 'SUCCEEDED') {
+    failPipeline(old, 'stale');
+  }
+
+  runPipeline(pipelineId).catch((err) => {
+    const p = pipelines.get(pipelineId);
+    if (p) failPipeline(p, 'error', err);
+  });
+
+  res.status(201).json({ pipelineId, courseId });
 });
 
 /** GET /api/v1/pipeline/:id/lessons — Get all lessons for a pipeline's course */

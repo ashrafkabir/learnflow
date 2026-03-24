@@ -59,7 +59,7 @@ export function PipelineDetail() {
   const _failedThreads = crawlThreads.filter(
     (t: any) => t.status === 'error' || t.status === 'failed',
   ).length;
-  const progressPct = Math.round((state.progress ?? 0) * 100);
+  const progressPct = Math.round(state.progress ?? 0);
 
   const statusBadge =
     state.stage === 'published'
@@ -145,7 +145,20 @@ export function PipelineDetail() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() => toast('Pipeline restarted', 'success')}
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/v1/pipeline/${state.id}/restart`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                    });
+                    if (!res.ok) throw new Error('restart failed');
+                    const data = await res.json();
+                    toast('Pipeline restarted', 'success');
+                    if (data?.pipelineId) nav(`/pipeline/${data.pipelineId}`);
+                  } catch {
+                    toast('Restart failed', 'error');
+                  }
+                }}
               >
                 <span className="inline-flex items-center gap-2">
                   <IconRefresh size={16} className="text-white" decorative />
@@ -217,23 +230,25 @@ export function PipelineDetail() {
               Pipeline Logs
             </h2>
             <div className="font-mono text-xs text-green-300 space-y-1 max-h-64 overflow-y-auto">
-              {crawlThreads.map((t: any, i: number) => (
+              {(state.logs || []).map((l: any, i: number) => (
                 <div key={i} className="flex gap-2">
-                  <span className="text-gray-500">[{new Date().toISOString().slice(11, 19)}]</span>
+                  <span className="text-gray-500">
+                    [{String(l.ts || '').slice(11, 19) || new Date().toISOString().slice(11, 19)}]
+                  </span>
                   <span
                     className={
-                      t.status === 'error'
+                      l.level === 'error'
                         ? 'text-red-400'
-                        : t.status === 'complete'
-                          ? 'text-green-400'
-                          : 'text-yellow-300'
+                        : l.level === 'warn'
+                          ? 'text-yellow-300'
+                          : 'text-green-300'
                     }
                   >
-                    Thread {i + 1}: {t.url || t.name || `Thread ${i + 1}`} — {t.status || 'pending'}
+                    {l.message}
                   </span>
                 </div>
               ))}
-              {crawlThreads.length === 0 && (
+              {(state.logs || []).length === 0 && (
                 <div className="text-gray-500">No log entries yet.</div>
               )}
             </div>

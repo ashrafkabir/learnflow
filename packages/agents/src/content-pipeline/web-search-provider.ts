@@ -66,6 +66,10 @@ import {
 } from './source-fetchers.js';
 import { tavilySearch } from './tavily-provider.js';
 
+function hasTavilyKey(): boolean {
+  return !!process.env.TAVILY_API_KEY;
+}
+
 // Alias cache controls for existing tests/exports.
 export function clearSourceCache(): void {
   clearScrapeCache();
@@ -184,8 +188,11 @@ async function multiSourceSearch(
   if (isEnabled('smashingmag', enabledSources)) tasks.push(smashingMagSearch(query, 2));
   if (isEnabled('coursera', enabledSources)) tasks.push(courseraSearch(query, 2));
   if (isEnabled('baiduscholar', enabledSources)) tasks.push(baiduScholarSearch(query, 2));
-  if (isEnabled('tavily', enabledSources))
-    tasks.push(tavilySearch(query, { maxResults: perSourceLimit }));
+  // Prefer Tavily first if API key is present.
+  // This improves freshness + coverage while keeping a fallback to free providers.
+  if (hasTavilyKey() && isEnabled('tavily', enabledSources)) {
+    tasks.unshift(tavilySearch(query, { maxResults: perSourceLimit }));
+  }
 
   const results = await Promise.all(tasks);
   return uniqueByUrl(results.flat());
