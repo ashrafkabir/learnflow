@@ -132,9 +132,15 @@ export interface PipelineState {
   lessonCount?: number;
   error?: string;
   sourceMode?: 'real' | 'mock';
+
+  /** Debug-only attachments for UI inspection (not persisted) */
+  debug?: {
+    coursePlan?: any;
+  };
 }
 
 import { dbPipelines, dbCourses } from '../db.js';
+import { buildCoursePlan } from '../utils/coursePlan.js';
 
 // Pipeline store — runtime cache backed by SQLite
 const pipelines: Map<string, PipelineState> = new Map();
@@ -1179,6 +1185,13 @@ async function runPipeline(pipelineId: string) {
     authorId: (p as any).userId || 'pipeline',
     modules: builtModules,
     progress: {},
+    // Iter74 P0.1: persist course plan artifact on pipeline-created courses too.
+    plan: buildCoursePlan({
+      topic,
+      depth: 'intermediate',
+      modules,
+      topicSources: uniqueSources,
+    }),
     createdAt: new Date().toISOString(),
   };
 
@@ -1599,7 +1612,20 @@ router.get('/:id', (req: Request, res: Response) => {
     failPipeline(p, 'stalled');
   }
 
-  res.json(pipelines.get(id));
+  const current = pipelines.get(id) as PipelineState;
+  const course = dbCourses.getById(current.courseId);
+
+  // Attach persisted course planning artifact in the pipeline detail response for debug view.
+  // Do NOT persist this onto the pipeline record (keeps pipeline state stable/portable).
+  const withDebug: PipelineState = {
+    ...current,
+    debug: {
+      ...(current.debug || {}),
+      coursePlan: course?.plan,
+    },
+  };
+
+  res.json(withDebug);
 });
 
 /** GET /api/v1/pipeline/:id/events — SSE stream */
