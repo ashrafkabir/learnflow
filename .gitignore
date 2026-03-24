@@ -29,6 +29,9 @@ apps/client/.vite/
 # Root local data
 .data/
 
+# Persistent agent caches
+.learnflow-cache/
+
 # Builder logs / local artifacts
 BUILD_LOG_ITER*.md
 BUILD_LOG_CONTINUOUS.md

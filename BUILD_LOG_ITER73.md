@@ -76,3 +76,16 @@ P0–P2, in order.
 - Checks: turbo test ✅, npx tsc -b ✅, turbo lint ✅, prettier ✅.
 - Screenshots: `screenshots/iter73/run-4` (pipeline-detail.png updated).
 
+## Iteration 73 - P0.5/P0.6 — Illustration imageReason + 429 reliability + persistent scrape cache (run-5)
+- API/DB: added `imageReason` field to `illustrations` metadata.
+  - DB migration: `ALTER TABLE illustrations ADD COLUMN imageReason TEXT NOT NULL DEFAULT ''`.
+  - Create paths now set a best-effort reason string (generated, Wikimedia search, placeholder).
+- Tests: `apps/api/src/__tests__/illustrations-attribution.test.ts` now asserts `imageReason` is present.
+- Source fetching reliability:
+  - Added lightweight backoff for HTTP `429` / `503` in `fetchWithTimeout()` (honors `Retry-After` if present; exponential backoff + jitter otherwise).
+  - Added best-effort persistent scrape cache stored at `.learnflow-cache/scrape-cache.v1.json` (ignored in tests; `.learnflow-cache/` added to `.gitignore`).
+  - Existing in-memory cache remains for fast repeat calls.
+- Checks: `npm test` ✅, `npm run build` ✅, `npm run lint:check` ✅, `npm run format:check` ✅.
+- Screenshots: `SCREENSHOT_DIR=screenshots/iter73/run-5 node screenshot-all.mjs` ✅.
+
+

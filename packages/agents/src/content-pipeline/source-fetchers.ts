@@ -6,25 +6,60 @@ import { ScraperRateLimiter } from './rate-limiter.js';
 
 const USER_AGENT = 'LearnFlow/1.0 (Educational content aggregator; contact@learnflow.dev)';
 
+import { cacheClear, cacheGet, cacheSet, cacheSize } from './persistent-scrape-cache.js';
+
 const scrapeCache: Map<string, { content: string; title: string; cachedAt: number }> = new Map();
 const CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 
 const IS_TEST = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
 const limiter = new ScraperRateLimiter(IS_TEST ? 0 : 900);
 
+function parseRetryAfterMs(v: string | null): number | null {
+  if (!v) return null;
+  const s = String(v).trim();
+  if (!s) return null;
+  // seconds
+  if (/^\d+$/.test(s)) return Math.max(0, Number(s) * 1000);
+  // HTTP date
+  const t = Date.parse(s);
+  if (!Number.isFinite(t)) return null;
+  return Math.max(0, t - Date.now());
+}
+
 async function fetchWithTimeout(url: string, timeoutMs = 12000): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const headers = {
+    'User-Agent': USER_AGENT,
+    Accept: 'text/html,application/json,application/xhtml+xml,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+  };
+
   try {
-    return await fetch(url, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        Accept: 'text/html,application/json,application/xhtml+xml,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      signal: controller.signal,
-      redirect: 'follow',
-    });
+    // Lightweight backoff on 429/503. Keep tests fast/deterministic.
+    const maxAttempts = IS_TEST ? 1 : 4;
+    let attempt = 0;
+
+    while (true) {
+      attempt++;
+      const resp = await fetch(url, {
+        headers,
+        signal: controller.signal,
+        redirect: 'follow',
+      });
+
+      if (resp.status === 429 || resp.status === 503) {
+        if (attempt >= maxAttempts) return resp;
+        const retryAfterMs = parseRetryAfterMs(resp.headers.get('retry-after'));
+        const jitter = Math.floor(Math.random() * 250);
+        const base = retryAfterMs ?? Math.min(20_000, 800 * 2 ** (attempt - 1));
+        await sleep(base + jitter);
+        continue;
+      }
+
+      return resp;
+    }
   } finally {
     clearTimeout(timer);
   }
@@ -177,6 +212,16 @@ export async function scrapeWithReadability(
     return { content: cached.content, title: cached.title };
   }
 
+  // Best-effort persistent cache (skip in tests).
+  if (!IS_TEST) {
+    const persisted = await cacheGet(url);
+    if (persisted && Date.now() - persisted.cachedAt < CACHE_TTL) {
+      // Warm in-memory cache.
+      scrapeCache.set(url, persisted);
+      return { content: persisted.content, title: persisted.title };
+    }
+  }
+
   // Deterministic/offline content for tests.
   // The web-search provider is exercised in API tests; avoid live network in vitest.
   if (IS_TEST) {
@@ -205,7 +250,9 @@ export async function scrapeWithReadability(
         if (md.trim().length > 100) {
           const title = url;
           const content = md.slice(0, 6000);
-          scrapeCache.set(url, { content, title, cachedAt: Date.now() });
+          const entry = { content, title, cachedAt: Date.now() };
+          scrapeCache.set(url, entry);
+          if (!IS_TEST) await cacheSet(url, entry);
           return { content, title };
         }
       }
@@ -233,7 +280,9 @@ export async function scrapeWithReadability(
     // If plain text (e.g., markdown), return directly
     if (contentType.includes('text/plain') && body.trim().length > 100) {
       const content = body.slice(0, 6000);
-      scrapeCache.set(url, { content, title: url, cachedAt: Date.now() });
+      const entry = { content, title: url, cachedAt: Date.now() };
+      scrapeCache.set(url, entry);
+      if (!IS_TEST) await cacheSet(url, entry);
       return { content, title: url };
     }
 
@@ -246,7 +295,9 @@ export async function scrapeWithReadability(
     if (content.length < 120) throw new Error('Content too short');
 
     const trimmed = content.slice(0, 6000);
-    scrapeCache.set(url, { content: trimmed, title, cachedAt: Date.now() });
+    const entry = { content: trimmed, title, cachedAt: Date.now() };
+    scrapeCache.set(url, entry);
+    if (!IS_TEST) await cacheSet(url, entry);
     return { content: trimmed, title };
   } catch (err) {
     console.warn(`[WebSearch] Scrape failed for ${url}:`, (err as Error).message);
@@ -313,10 +364,18 @@ export async function fetchAndScoreSources(
 
 export function clearScrapeCache(): void {
   scrapeCache.clear();
+  // Best-effort: also clear persistent cache.
+  void cacheClear();
 }
 
 export function getScrapeCacheSize(): number {
+  // Keep signature; count in-memory + persisted (best-effort).
+  // Note: cacheSize is async; use in-memory count for sync callers.
   return scrapeCache.size;
+}
+
+export async function getPersistentScrapeCacheSize(): Promise<number> {
+  return cacheSize();
 }
 
 // ─── New Sources ─────────────────────────────────────────────────────────────

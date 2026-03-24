@@ -693,6 +693,8 @@ Continue.`,
                     license: picked.license || 'unknown',
                     sourcePageUrl: picked.sourcePageUrl,
                     attributionText: `Image from Wikimedia Commons · License: ${picked.license || 'unknown'}${picked.author ? ` · Author: ${picked.author}` : ''} · Accessed: ${picked.accessedAt}`,
+                    imageReason:
+                      'Auto-embedded as a license-safe visual anchor to improve comprehension; placed at the start of Core Concepts.',
                   });
                 } catch {
                   // best effort
@@ -1299,6 +1301,8 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
         license: picked.license || 'unknown',
         sourcePageUrl: picked.sourcePageUrl,
         attributionText: `Image from Wikimedia Commons · License: ${picked.license || 'unknown'}${picked.author ? ` · Author: ${picked.author}` : ''} · Accessed: ${picked.accessedAt}`,
+        imageReason:
+          'User-requested license-safe image search; saved to the selected sectionIndex for relevant visual support.',
       });
       res.status(201).json({ illustration });
       return;
@@ -1326,6 +1330,8 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
         model: 'dall-e-3',
         license: 'generated',
         attributionText: 'Generated image (OpenAI / dall-e-3)',
+        imageReason:
+          'Placeholder illustration record created while OpenAI is unavailable; preserves the intended placement and prompt for later regeneration.',
       },
       'openai_unavailable',
     );
@@ -1355,6 +1361,8 @@ router.post('/:id/lessons/:lessonId/illustrations', async (req: Request, res: Re
       model: 'dall-e-3',
       license: 'generated',
       attributionText: `Generated image (OpenAI / dall-e-3) · Prompt: ${prompt} · Created: ${new Date().toISOString()}`,
+      imageReason:
+        'User-requested generated illustration; saved to the selected sectionIndex to visually reinforce the surrounding content.',
     });
     res.status(201).json({ illustration });
   } catch (err: any) {

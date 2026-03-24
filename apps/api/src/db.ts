@@ -71,6 +71,11 @@ if (!isTest) {
       if (!hasColumn('illustrations', 'sourcePageUrl')) {
         sqlite.exec(`ALTER TABLE illustrations ADD COLUMN sourcePageUrl TEXT NOT NULL DEFAULT '';`);
       }
+
+      // Iter73: illustrations gained imageReason for placement/relevance decisions.
+      if (!hasColumn('illustrations', 'imageReason')) {
+        sqlite.exec(`ALTER TABLE illustrations ADD COLUMN imageReason TEXT NOT NULL DEFAULT '';`);
+      }
     } catch {
       // If illustrations doesn't exist yet, CREATE TABLE below will handle it.
     }
@@ -386,7 +391,8 @@ sqlite.exec(`
     model TEXT NOT NULL DEFAULT 'unknown',
     license TEXT NOT NULL DEFAULT 'unknown',
     attributionText TEXT NOT NULL DEFAULT '',
-    sourcePageUrl TEXT NOT NULL DEFAULT ''
+    sourcePageUrl TEXT NOT NULL DEFAULT '',
+    imageReason TEXT NOT NULL DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_illustrations_lesson ON illustrations(lessonId);
 
@@ -629,8 +635,8 @@ const stmts = {
 
   // Illustrations
   insertIllustration: sqlite.prepare(
-    `INSERT INTO illustrations (id, lessonId, sectionIndex, prompt, imageUrl, createdAt, provider, model, license, attributionText, sourcePageUrl)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO illustrations (id, lessonId, sectionIndex, prompt, imageUrl, createdAt, provider, model, license, attributionText, sourcePageUrl, imageReason)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   getIllustrationsByLesson: sqlite.prepare(
     `SELECT * FROM illustrations WHERE lessonId = ? ORDER BY sectionIndex, createdAt`,
@@ -1536,6 +1542,7 @@ export const dbIllustrations = {
       license?: string;
       attributionText?: string;
       sourcePageUrl?: string;
+      imageReason?: string;
     },
     status?: 'ok' | 'openai_unavailable',
   ): any {
@@ -1546,6 +1553,7 @@ export const dbIllustrations = {
     const license = meta?.license || 'unknown';
     const attributionText = meta?.attributionText || '';
     const sourcePageUrl = meta?.sourcePageUrl || '';
+    const imageReason = meta?.imageReason || '';
 
     stmts.insertIllustration.run(
       id,
@@ -1559,6 +1567,7 @@ export const dbIllustrations = {
       license,
       attributionText,
       sourcePageUrl,
+      imageReason,
     );
 
     return {
@@ -1574,6 +1583,7 @@ export const dbIllustrations = {
       license,
       attributionText,
       sourcePageUrl,
+      imageReason,
     };
   },
   delete(id: string): void {

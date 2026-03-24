@@ -50,6 +50,7 @@ describe('Illustrations attribution metadata', () => {
       expect(ill.body.illustration.provider).toBeTruthy();
       expect(ill.body.illustration.model).toBeTruthy();
       expect(ill.body.illustration.license).toBeTruthy();
+      expect(ill.body.illustration.imageReason).toBeTruthy();
     }
   });
 });
