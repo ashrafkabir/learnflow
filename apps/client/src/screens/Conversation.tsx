@@ -1,15 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import remarkMath from 'remark-math';
-import rehypeKatex from 'rehype-katex';
-import rehypeHighlight from 'rehype-highlight';
 import 'katex/dist/katex.min.css';
+import { MarkdownRenderer } from '../lib/markdownRenderer.js';
 import 'highlight.js/styles/github-dark.css';
 import { useApp } from '../context/AppContext.js';
-import { SourceDrawer } from '../components/SourceDrawer.js';
-import type { Source } from '../components/CitationTooltip.js';
+import { AttributionDrawer } from '../components/AttributionDrawer.js';
+import { ActionChips } from '../components/ActionChips.js';
+import { normalizeAttributionSources } from '../lib/attribution.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { Button } from '../components/Button.js';
 import {
@@ -228,84 +225,8 @@ const AGENT_LABELS: Record<string, { icon: React.ReactNode; label: string; activ
   },
 };
 
-// Rich markdown renderer
-function MarkdownContent({ content }: { content: string }) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[rehypeKatex, rehypeHighlight]}
-      components={{
-        h1: ({ children }) => <h1 className="text-lg font-bold mt-3 mb-1">{children}</h1>,
-        h2: ({ children }) => <h2 className="text-base font-semibold mt-2 mb-1">{children}</h2>,
-        h3: ({ children }) => <h3 className="text-sm font-medium mt-2 mb-1">{children}</h3>,
-        p: ({ children }) => <p className="text-sm leading-relaxed mb-1">{children}</p>,
-        ul: ({ children }) => <ul className="ml-4 list-disc text-sm space-y-0.5">{children}</ul>,
-        ol: ({ children }) => <ol className="ml-4 list-decimal text-sm space-y-0.5">{children}</ol>,
-        li: ({ children }) => <li className="mb-0.5">{children}</li>,
-        code: ({ className, children, ...props }) => {
-          const isBlock = className?.startsWith('language-') || className?.startsWith('hljs');
-          if (isBlock) {
-            return (
-              <code className={className} {...props}>
-                {children}
-              </code>
-            );
-          }
-          return (
-            <code
-              className="bg-black/10 dark:bg-white/10 px-1 rounded text-xs font-mono"
-              {...props}
-            >
-              {children}
-            </code>
-          );
-        },
-        pre: ({ children }) => (
-          <pre className="bg-gray-900 dark:bg-black text-green-400 rounded-xl p-3 my-2 overflow-x-auto text-xs font-mono">
-            {children}
-          </pre>
-        ),
-        table: ({ children }) => (
-          <div className="overflow-x-auto my-2">
-            <table className="min-w-full text-sm border-collapse border border-gray-300 dark:border-gray-600">
-              {children}
-            </table>
-          </div>
-        ),
-        th: ({ children }) => (
-          <th className="border border-gray-300 dark:border-gray-600 px-2 py-1 bg-gray-100 dark:bg-gray-800 font-semibold text-left">
-            {children}
-          </th>
-        ),
-        td: ({ children }) => (
-          <td className="border border-gray-300 dark:border-gray-600 px-2 py-1">{children}</td>
-        ),
-        sup: ({ children }) => <sup className="text-accent font-medium">{children}</sup>,
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            className="text-accent underline hover:opacity-80"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {children}
-          </a>
-        ),
-        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-        blockquote: ({ children }) => (
-          <blockquote className="border-l-2 border-accent pl-3 my-2 italic text-sm opacity-80">
-            {children}
-          </blockquote>
-        ),
-      }}
-    >
-      {content}
-    </ReactMarkdown>
-  );
-}
-
 function renderMarkdown(content: string): React.ReactNode {
-  return <MarkdownContent content={content} />;
+  return <MarkdownRenderer content={content} />;
 }
 
 // Quick-action chips
@@ -374,8 +295,8 @@ export function Conversation() {
     }
   }, [searchParams]);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerSources, setDrawerSources] = useState<Source[]>([]);
+  const [attributionOpen, setAttributionOpen] = useState(false);
+  const [attributionSources, setAttributionSources] = useState<any[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [wsActions, setWsActions] = useState<Array<{ type: string; label: string }>>([]);
   const [mindmapOpen, setMindmapOpen] = useState(false);
@@ -413,16 +334,7 @@ export function Conversation() {
             return '';
           });
           if (evt.data?.sources?.length) {
-            setDrawerSources(
-              evt.data.sources.map((s: any, i: number) => ({
-                id: i + 1,
-                title: s.title || `Source ${i + 1}`,
-                author: s.author || 'Source',
-                publication: s.publication || '',
-                year: s.year || 2024,
-                url: s.url || '#',
-              })),
-            );
+            setAttributionSources(evt.data.sources);
           }
           setWsActions(Array.isArray(evt.data?.actions) ? evt.data.actions : []);
           setActiveAgent(null);
@@ -594,7 +506,7 @@ export function Conversation() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setDrawerOpen(!drawerOpen)}
+            onClick={() => setAttributionOpen((v) => !v)}
             className="border border-gray-200 dark:border-gray-700"
             title="View sources"
             aria-label="View sources"
@@ -723,7 +635,10 @@ export function Conversation() {
                     : 'bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-card text-gray-900 dark:text-gray-100 rounded-bl-md'
                 }`}
               >
-                <div data-component="markdown-content" className="leading-relaxed">
+                <div
+                  data-component="markdown-content"
+                  className="leading-relaxed overflow-x-hidden"
+                >
                   {renderMarkdown(msg.content)}
                 </div>
                 {msg.role === 'assistant' && msg.content.includes('```improved') && (
@@ -757,75 +672,72 @@ export function Conversation() {
             </div>
             {/* Quick-action chips after assistant messages */}
             {msg.role === 'assistant' && idx === state.chat.length - 1 && (
-              <div className="flex flex-wrap gap-2 mt-2 ml-1">
-                {wsActions.length > 0
-                  ? wsActions.map((a) => (
-                      <Button
-                        key={a.type || a.label}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => send(a.label)}
-                        className="rounded-full border border-gray-200 dark:border-gray-700"
-                      >
-                        {a.label}
-                      </Button>
-                    ))
-                  : getContextChips(msg.content).map((chip) => (
-                      <Button
-                        key={chip.label}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
+              <div className="mt-2 ml-1">
+                <ActionChips
+                  chips={(wsActions.length > 0
+                    ? wsActions.map((a) => ({
+                        key: String(a.type || a.label),
+                        label: a.label,
+                        tone: 'neutral' as const,
+                        onClick: () => send(a.label),
+                      }))
+                    : getContextChips(msg.content).map((chip) => ({
+                        key: chip.label,
+                        label: chip.label,
+                        tone:
+                          chip.message === '__open_sources__'
+                            ? ('info' as const)
+                            : ('neutral' as const),
+                        onClick: () => {
                           if (chip.message === '__open_sources__') {
-                            setDrawerOpen(true);
+                            setAttributionOpen(true);
                           } else {
                             send(chip.message);
                           }
-                        }}
-                        className="rounded-full border border-gray-200 dark:border-gray-700"
-                      >
-                        {chip.label}
-                      </Button>
-                    ))}
-                {msg.content.includes('[1]') && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      const sourceRegex = /\[(\d+)\]\s*(.*?)(?:\.|$)/gm;
-                      const parsed: Source[] = [];
-                      let m;
-                      while ((m = sourceRegex.exec(msg.content)) !== null) {
-                        parsed.push({
-                          id: parseInt(m[1]),
-                          title: m[2].trim(),
-                          author: 'Author',
-                          publication: 'Source',
-                          year: 2024,
-                          url: '#',
-                        });
-                      }
-                      setDrawerSources(
-                        parsed.length
-                          ? parsed
-                          : [
-                              {
-                                id: 1,
-                                title: 'Source referenced in response',
-                                author: 'Various',
-                                publication: 'Web',
-                                year: 2024,
-                                url: '#',
-                              },
-                            ],
-                      );
-                      setDrawerOpen(true);
-                    }}
-                    className="rounded-full border border-accent/30 text-accent hover:bg-accent/10"
-                  >
-                    View Sources
-                  </Button>
-                )}
+                        },
+                      }))
+                  ).concat(
+                    msg.content.includes('[1]')
+                      ? [
+                          {
+                            key: 'view-sources',
+                            label: 'View Sources',
+                            tone: 'info' as const,
+                            onClick: () => {
+                              const sourceRegex = /\[(\d+)\]\s*(.*?)(?:\.|$)/gm;
+                              const parsed: any[] = [];
+                              let m;
+                              while ((m = sourceRegex.exec(msg.content)) !== null) {
+                                parsed.push({
+                                  id: parseInt(m[1]),
+                                  title: m[2].trim(),
+                                  author: 'Author',
+                                  publication: 'Source',
+                                  year: 2024,
+                                  url: '#',
+                                });
+                              }
+                              setAttributionSources(
+                                parsed.length
+                                  ? parsed
+                                  : [
+                                      {
+                                        id: 1,
+                                        title: 'Source referenced in response',
+                                        author: 'Various',
+                                        publication: 'Web',
+                                        year: 2024,
+                                        url: '#',
+                                      },
+                                    ],
+                              );
+                              setAttributionOpen(true);
+                            },
+                          },
+                        ]
+                      : [],
+                  )}
+                />
               </div>
             )}
           </div>
@@ -834,7 +746,7 @@ export function Conversation() {
         {streamingContent && (
           <div className="flex justify-start">
             <div className="max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-card text-gray-900 dark:text-gray-100 rounded-bl-md">
-              <div data-component="markdown-content" className="leading-relaxed">
+              <div data-component="markdown-content" className="leading-relaxed overflow-x-hidden">
                 {renderMarkdown(streamingContent)}
               </div>
               <span className="inline-block w-1.5 h-4 bg-accent animate-pulse ml-0.5" />
@@ -943,11 +855,11 @@ export function Conversation() {
         </div>
       </div>
 
-      {/* Source Drawer */}
-      <SourceDrawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        sources={drawerSources}
+      <AttributionDrawer
+        open={attributionOpen}
+        onClose={() => setAttributionOpen(false)}
+        sources={normalizeAttributionSources(attributionSources)}
+        images={[]}
       />
 
       {/* Mindmap Panel — Spec §5.2.3 */}

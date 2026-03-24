@@ -8,6 +8,7 @@ import { SkeletonLessonContent } from '../components/Skeleton.js';
 import { Confetti } from '../components/Confetti.js';
 import { Button } from '../components/Button.js';
 import { AttributionDrawer } from '../components/AttributionDrawer.js';
+import { ActionChips } from '../components/ActionChips.js';
 import { useSwipe } from '../hooks/useSwipe.js';
 import { analytics } from '../lib/analytics.js';
 import {
@@ -1528,45 +1529,45 @@ export function LessonReader() {
               </div>
             ))}
 
-          {/* Iter73 P2.15: Action chips */}
-          <div
-            className="flex flex-wrap gap-2 mb-4"
-            data-testid="action-chips"
-            aria-label="Lesson actions"
-          >
-            <button
-              onClick={() => setActivePanel('notes')}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 inline-flex items-center gap-2"
-            >
-              <IconPencil className="w-4 h-4" />
-              Take Notes
-            </button>
-            <button
-              onClick={() => setActivePanel('quiz')}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-accent/10 text-accent hover:bg-accent/20 inline-flex items-center gap-2"
-            >
-              <IconTestTube className="w-4 h-4" />
-              Quiz Me
-            </button>
-            <button
-              onClick={() => {
-                // MVP: jump to Next Steps if present; otherwise open attribution.
-                const el = document.querySelector('[data-testid="next-steps"]');
-                if (el) (el as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
-                else setAttributionOpen(true);
-              }}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-success/10 text-success hover:bg-success/20 inline-flex items-center gap-2"
-            >
-              <IconRocket className="w-4 h-4" />
-              Go Deeper
-            </button>
-            <button
-              onClick={() => setAttributionOpen(true)}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 inline-flex items-center gap-2"
-            >
-              <IconBook className="w-4 h-4" />
-              See Sources
-            </button>
+          {/* Iter79: Action chips (shared) */}
+          <div className="mb-4" data-testid="action-chips" aria-label="Lesson actions">
+            <ActionChips
+              chips={[
+                {
+                  key: 'notes',
+                  label: 'Take Notes',
+                  icon: <IconPencil className="w-4 h-4" />,
+                  tone: 'neutral',
+                  onClick: () => setActivePanel('notes'),
+                },
+                {
+                  key: 'quiz',
+                  label: 'Quiz Me',
+                  icon: <IconTestTube className="w-4 h-4" />,
+                  tone: 'accent',
+                  onClick: () => setActivePanel('quiz'),
+                },
+                {
+                  key: 'deeper',
+                  label: 'Go Deeper',
+                  icon: <IconRocket className="w-4 h-4" />,
+                  tone: 'success',
+                  onClick: () => {
+                    // MVP: jump to Next Steps if present; otherwise open attribution.
+                    const el = document.querySelector('[data-testid="next-steps"]');
+                    if (el) (el as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    else setAttributionOpen(true);
+                  },
+                },
+                {
+                  key: 'sources',
+                  label: 'See Sources',
+                  icon: <IconBook className="w-4 h-4" />,
+                  tone: 'info',
+                  onClick: () => setAttributionOpen(true),
+                },
+              ]}
+            />
           </div>
 
           {/* Sources / References */}
