@@ -2112,7 +2112,7 @@ Non-goals:
 
 ## Iteration 85 — SPEC PARITY SWEEP: TRUSTED BYOAI VAULT + REAL PROVIDER CLIENTS + DASHBOARD SIGNALS
 
-Status: **PLANNED**
+Status: **READY FOR BUILDER**
 
 Source of truth spec: `LearnFlow_Product_Spec.md` (March 2026)
 
