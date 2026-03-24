@@ -365,7 +365,8 @@ export function ProfileSettings() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4 flex flex-col">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">API Keys</h2>
             <p className="text-xs text-gray-800/80 dark:text-gray-200">
-              Keys are encrypted with AES-256 and stored on the server. We never store raw keys.
+              Keys are encrypted at rest (AES-256) and stored on the server. We never store raw
+              keys.
             </p>
 
             {/* Saved keys with usage stats — Task 12 */}
