@@ -145,10 +145,14 @@ Non-goals:
      - worked_example_too_short / recap_too_short
    - Integrated into lesson regeneration retry loop (skipped in fastTestMode).
 
-10. **Quality telemetry in DB + UI**
+10. **Quality telemetry in DB + UI** — **PARTIAL (iter73)**
 
-- Persist per-lesson quality flags: `missingWorkedExample`, `lowSourceCount`, `imageMissingReason`, etc.
-- UI: small “Quality” pill or debug view (admin/dev) to see why a lesson is degraded.
+- **DONE (DB)**: persist per-lesson quality telemetry (`lesson_quality` table) with:
+  - generationAttemptCount
+  - finalStatus (pass/fail)
+  - reasons[] (placeholder/worked-example/section-quotas)
+  - wordCount
+- **TODO (UI)**: surface a small “Quality” pill / debug view (admin/dev) to inspect telemetry + sourcing missingReason.
 
 ### P2 (Nice to have)
 
