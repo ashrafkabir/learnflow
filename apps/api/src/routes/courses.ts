@@ -43,6 +43,11 @@ import {
 } from '../utils/lessonQuality.js';
 import { validateSectionLevelQuotas } from '../utils/lessonSectionQuotas.js';
 import { buildLessonQualityTelemetry } from '../utils/qualityTelemetry.js';
+import {
+  buildStage2RetryTemplates,
+  inferMissingReasonsFromLessonContent,
+  type Stage2RetryReason,
+} from '../utils/stage2Retry.js';
 import { hardenLessonStyle } from '../utils/styleHardening.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
@@ -949,6 +954,57 @@ Continue.`,
             ...(placeholder.reasons || []),
             ...(quotas.reasons || []),
           ];
+
+          // Iter74 P0.2: if quality gates fail OR sources are thin, re-search with hint-token queries.
+          if ((!quality.ok || !placeholder.ok || !quotas.ok) && !fastTestMode) {
+            const missingReasons: Stage2RetryReason[] = inferMissingReasonsFromLessonContent({
+              markdown: contentFinal,
+              lessonDomain,
+              includeSectionQuotaFailed: !quotas.ok,
+            });
+
+            // Inject retry templates directly into the config passed to searchForLesson.
+            const retryTemplates = buildStage2RetryTemplates({
+              courseTopic: topic,
+              moduleTitle: mod.title,
+              lessonTitle: les.title,
+              lessonDescription: les.description,
+              missingReasons,
+            });
+
+            try {
+              const reSearched = await searchForLesson(topic, mod.title, les.title, les.description, {
+                maxSourcesPerLesson: 6,
+                maxStage2Queries: 10,
+                perQueryLimit: 6,
+                // ensure inputs change
+                stage2Templates: retryTemplates,
+              } as any);
+              if ((reSearched?.length || 0) > (lessonSources?.length || 0)) {
+                lessonSources = reSearched;
+              }
+              // Persist for debugging/UX.
+              try {
+                const lessonId = `${courseId}-m${mi}-l${li}`;
+                dbLessonSources.save(
+                  lessonId,
+                  courseId,
+                  reSearched || [],
+                  missingReasons.length ? missingReasons.join('|') : '',
+                );
+              } catch {
+                // best effort
+              }
+            } catch (err) {
+              console.warn('[LearnFlow] re-search for lesson failed (non-fatal):', err);
+              try {
+                const lessonId = `${courseId}-m${mi}-l${li}`;
+                dbLessonSources.save(lessonId, courseId, lessonSources || [], missingReasons.join('|'));
+              } catch {
+                // best effort
+              }
+            }
+          }
 
           // Iter73 P1: best-effort quality telemetry (even on failure).
           try {
