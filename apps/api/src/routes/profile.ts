@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { db, dbProgress } from '../db.js';
+import { db, dbProgress, dbEvents } from '../db.js';
 import { isAdmin } from '../lib/admin.js';
 
 const router = Router();
@@ -75,6 +75,61 @@ router.post('/onboarding/complete', (req: Request, res: Response) => {
       ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
       : new Date().toISOString(),
   });
+});
+
+// GET /api/v1/profile/data-summary — user-facing counts + last timestamps for tracked data
+router.get('/data-summary', (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+
+  const events = dbEvents.list(userId, 500);
+  const progressRows = dbProgress.getAllByUser(userId);
+  const usageRows = db.listUsageRecordsByUser(userId, 500);
+  const notifications = db.listNotifications(userId, 500);
+
+  function lastIso(rows: any[], field: string): string | null {
+    const iso = rows
+      .map((r) => {
+        const v = (r as any)?.[field];
+        if (!v) return null;
+        try {
+          return new Date(String(v)).toISOString();
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean)
+      .sort()
+      .at(-1);
+    return (iso as string) || null;
+  }
+
+  res.status(200).json({
+    userId,
+    learningEvents: {
+      count: events.length,
+      lastEventAt: lastIso(events, 'createdAt'),
+    },
+    progress: {
+      completionsCount: progressRows.length,
+      lastCompletedAt: lastIso(progressRows, 'completedAt'),
+    },
+    usageRecords: {
+      count: usageRows.length,
+      lastUsedAt: lastIso(usageRows, 'createdAt'),
+    },
+    notifications: {
+      count: notifications.length,
+      lastNotificationAt: lastIso(notifications, 'createdAt'),
+      unreadCount: notifications.filter((n: any) => !n.readAt).length,
+    },
+  });
+});
+
+// DELETE /api/v1/profile — GDPR deletion for the authenticated user
+router.delete('/', (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  db.deleteUserData(userId);
+  res.status(200).json({ ok: true });
 });
 
 export const profileRouter = router;

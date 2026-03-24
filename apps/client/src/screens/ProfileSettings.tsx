@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, apiGet, apiPost, apiDelete } from '../context/AppContext.js';
+import { useApp, apiGet, apiPost, apiDelete, apiBase } from '../context/AppContext.js';
+
+const API = '/api/v1';
 import { useToast } from '../components/Toast.js';
 import { useTheme } from '../design-system/ThemeProvider.js';
 import { Button } from '../components/Button.js';
@@ -748,43 +750,33 @@ export function ProfileSettings() {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const { default: JSZip } = await import('jszip');
-                    const zip = new JSZip();
-                    const jsonData = JSON.stringify(
-                      { courses: state.courses, profile: state.profile },
-                      null,
-                      2,
-                    );
-                    zip.file('learnflow-export.json', jsonData);
-                    const md = state.courses
-                      .map((c) => {
-                        const lessons = c.modules
-                          .map((m) =>
-                            m.lessons.map((l) => `### ${l.title}\n\n${l.content}`).join('\n\n'),
-                          )
-                          .join('\n\n');
-                        return `# ${c.title}\n\n${c.description}\n\n${lessons}`;
-                      })
-                      .join('\n\n---\n\n');
-                    zip.file('learnflow-export.md', md);
-                    zip.file(
-                      'metadata.json',
-                      JSON.stringify(
-                        { exportedAt: new Date().toISOString(), version: '1.0' },
-                        null,
-                        2,
-                      ),
-                    );
-                    const blob = await zip.generateAsync({ type: 'blob' });
+                    const token = localStorage.getItem('learnflow-token') || '';
+                    const res = await fetch(`${apiBase()}${API}/export/zip`, {
+                      headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    });
+
+                    if (!res.ok) {
+                      const text = await res.text();
+                      try {
+                        const err = JSON.parse(text);
+                        throw new Error(err?.message || 'Export failed');
+                      } catch {
+                        throw new Error(text || 'Export failed');
+                      }
+                    }
+
+                    const blob = await res.blob();
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = 'learnflow-export.zip';
+                    document.body.appendChild(a);
                     a.click();
+                    a.remove();
                     URL.revokeObjectURL(url);
                     toast('Data exported as ZIP', 'success');
-                  } catch {
-                    toast('ZIP export failed — JSZip not available', 'error');
+                  } catch (e: any) {
+                    toast(e?.message || 'ZIP export failed', 'error');
                   }
                 }}
               >
@@ -860,7 +852,7 @@ export function ProfileSettings() {
             <Button
               variant="danger"
               size="sm"
-              onClick={() => {
+              onClick={async () => {
                 if (
                   confirm(
                     'Are you sure you want to delete ALL your data? This action is permanent and cannot be undone.',
@@ -871,6 +863,13 @@ export function ProfileSettings() {
                       'This is your final confirmation. Type "delete" mentally and click OK to proceed.',
                     )
                   ) {
+                    try {
+                      await apiDelete('/profile');
+                      toast('Your data has been deleted', 'success');
+                    } catch (e: any) {
+                      toast(e?.message || 'Failed to delete your data', 'error');
+                      return;
+                    }
                     localStorage.clear();
                     window.location.href = '/';
                   }

@@ -556,6 +556,9 @@ const stmts = {
   getUsageByProviderSince: sqlite.prepare(
     `SELECT provider, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? GROUP BY provider`,
   ),
+  listUsageRecordsByUser: sqlite.prepare(
+    `SELECT userId, agentName, provider, tokensIn, tokensOut, tokensTotal, createdAt FROM usage_records WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
+  ),
 
   // Usage meta (counts + last used)
   getUsageCountByProviderSince: sqlite.prepare(
@@ -626,6 +629,9 @@ const stmts = {
     `SELECT lessonId FROM progress WHERE userId = ? AND courseId = ?`,
   ),
   getAllProgressByUser: sqlite.prepare(`SELECT courseId, lessonId FROM progress WHERE userId = ?`),
+  getAllProgressRowsByUser: sqlite.prepare(
+    `SELECT courseId, lessonId, completedAt FROM progress WHERE userId = ? ORDER BY completedAt DESC`,
+  ),
 
   // Learning events
   insertLearningEvent: sqlite.prepare(
@@ -1034,6 +1040,18 @@ class SqliteDb {
     }));
   }
 
+  listUsageRecordsByUser(userId: string, limit = 200): Array<any> {
+    return (stmts.listUsageRecordsByUser.all(userId, limit) as any[]).map((r) => ({
+      userId: String(r.userId || ''),
+      agentName: String(r.agentName || ''),
+      provider: String(r.provider || ''),
+      tokensIn: Number(r.tokensIn || 0),
+      tokensOut: Number(r.tokensOut || 0),
+      tokensTotal: Number(r.tokensTotal || 0),
+      createdAt: String(r.createdAt || ''),
+    }));
+  }
+
   getUsageCountByProviderSince(
     userId: string,
     since: Date,
@@ -1098,6 +1116,63 @@ class SqliteDb {
 
   markNotificationRead(userId: string, id: string): void {
     stmts.markNotificationRead.run(new Date().toISOString(), id, userId);
+  }
+
+  deleteUserData(userId: string): void {
+    // Delete user-scoped records. Be explicit about ownership.
+    // Note: lessons/lesson_sources/lesson_quality are scoped through courses (authorId).
+    // We delete courses by user, which cascades lessons, but lesson_sources/lesson_quality do not have FKs.
+
+    // Course IDs owned by this user (used to clean up course-scoped tables without FKs)
+    const courseIds = (stmts.getAllCourses.all() as any[])
+      .filter((c) => String(c.authorId) === userId)
+      .map((c) => String(c.id));
+
+    const delIn = (table: string, col: string, ids: string[]) => {
+      if (!ids.length) return;
+      const placeholders = ids.map(() => '?').join(',');
+      sqlite.prepare(`DELETE FROM ${table} WHERE ${col} IN (${placeholders})`).run(...ids);
+    };
+
+    // User-owned rows
+    sqlite.prepare(`DELETE FROM api_keys WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM refresh_tokens WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM token_usage WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM usage_records WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM progress WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM learning_events WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM invoices WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM mindmaps WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM mindmap_suggestions WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM marketplace_agents_activated WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM marketplace_enrollments WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM marketplace_payment_intents WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM marketplace_course_reviews WHERE userId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM marketplace_agent_submissions WHERE creatorId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM marketplace_payouts WHERE creatorId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM notifications WHERE userId = ?`).run(userId);
+
+    // Collaboration where user is owner or author
+    sqlite.prepare(`DELETE FROM collaboration_groups WHERE ownerId = ?`).run(userId);
+    sqlite.prepare(`DELETE FROM collaboration_group_messages WHERE userId = ?`).run(userId);
+
+    // Notes are per user + lesson
+    sqlite.prepare(`DELETE FROM notes WHERE userId = ?`).run(userId);
+
+    // Pipelines are course-owned; if any direct user pipelines exist, delete by course
+    delIn('pipelines', 'courseId', courseIds);
+
+    // Course-scoped tables without FK: lesson_sources, lesson_quality
+    delIn('lesson_sources', 'courseId', courseIds);
+    delIn('lesson_quality', 'courseId', courseIds);
+
+    // Finally, delete the user's courses (cascades lessons)
+    for (const cid of courseIds) {
+      stmts.deleteCourse.run(cid);
+    }
+
+    // User record last (revokes auth)
+    sqlite.prepare(`DELETE FROM users WHERE id = ?`).run(userId);
   }
 
   clear(): void {
@@ -1268,6 +1343,14 @@ export const dbProgress = {
 
   getCompletedLessons(userId: string, courseId: string): string[] {
     return (stmts.getProgressByUserCourse.all(userId, courseId) as any[]).map((r) => r.lessonId);
+  },
+
+  getAllByUser(userId: string): Array<{ courseId: string; lessonId: string; completedAt: string }> {
+    return (stmts.getAllProgressRowsByUser.all(userId) as any[]).map((r) => ({
+      courseId: String(r.courseId || ''),
+      lessonId: String(r.lessonId || ''),
+      completedAt: String(r.completedAt || ''),
+    }));
   },
 
   getUserStats(userId: string): {

@@ -1388,7 +1388,7 @@ Capture via `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs`.
 
 ## Iteration 81 — SPEC PARITY SWEEP (MVP → SPEC) + PRIVACY/DELETION + WEB/ DOCS ALIGNMENT
 
-Status: **PLANNED**
+Status: **READY FOR BUILDER**
 
 Planner run evidence (2026-03-24):
 

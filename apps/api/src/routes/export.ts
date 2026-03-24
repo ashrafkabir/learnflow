@@ -19,7 +19,8 @@ function coursesToMarkdown(courses: any[]): string {
 }
 
 // GET /api/v1/export?format=json|md|zip
-router.get('/', async (req: Request, res: Response) => {
+// GET /api/v1/export/zip (alias)
+async function handleExport(req: Request, res: Response) {
   const userId = req.user!.sub;
   const format = String(req.query.format || 'json');
 
@@ -105,6 +106,15 @@ router.get('/', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Content-Disposition', 'attachment; filename="learnflow-export.json"');
   res.status(200).send(JSON.stringify(payload, null, 2));
+}
+
+router.get('/', async (req: Request, res: Response) => {
+  await handleExport(req, res);
+});
+
+router.get('/zip', async (req: Request, res: Response) => {
+  req.query.format = 'zip';
+  await handleExport(req, res);
 });
 
 export const exportRouter = router;
