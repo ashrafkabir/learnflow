@@ -876,7 +876,7 @@ Non-goals:
 
 ## Iteration 78 — SPEC ALIGNMENT: BYOAI VAULT, UPDATE AGENT (REAL), RICH LESSON/CHAT UX
 
-Status: **IN PROGRESS**
+Status: **DONE (P0.1–P0.4 shipped)**
 
 Planner run evidence (Iter78):
 
