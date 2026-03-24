@@ -1383,3 +1383,196 @@ Capture via `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs`.
 - Screenshots:
   - `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs`
   - Confirm files exist in `learnflow/screenshots/iter80/run-001/` and are non-empty
+
+---
+
+## Iteration 81 — SPEC PARITY SWEEP (MVP → SPEC) + PRIVACY/DELETION + WEB/ DOCS ALIGNMENT
+
+Status: **PLANNED**
+
+Planner run evidence (2026-03-24):
+
+- Spec reviewed: `learnflow/LearnFlow_Product_Spec.md` (sections 5–16 highlighted below)
+- Screenshots captured: `learnflow/screenshots/iter81/planner-run/`
+  - `landing-home.png`, `marketing-features.png`, `marketing-pricing.png`, `marketing-docs.png`, `marketing-blog.png`, `marketing-about.png`, `marketing-download.png`
+  - `auth-login.png`, `auth-register.png`
+  - `onboarding-1-welcome.png` → `onboarding-6-first-course.png`
+  - `app-dashboard.png`, `app-conversation.png`, `conversation-rich-rendering.png`, `conversation-sources-drawer.png`, `conversation-sources-empty-state.png`
+  - `lesson-reader.png`, `lesson-reader-sources-drawer.png`, `action-chips-parity.png`
+  - `course-create-after-click.png`, `course-view.png`
+  - `app-mindmap.png`, `app-collaboration.png`
+  - `app-pipelines.png`, `pipeline-detail.png`
+  - `marketplace-courses.png`, `marketplace-agents.png`
+
+### Brutally honest gaps vs spec (what’s true right now)
+
+This repo is an MVP that **covers the surface area** of most major screens, but it does **not** fully implement the spec’s deeper systems:
+
+- **Spec §5 platform matrix** (Flutter/Electron/mobile): **not implemented** (current client is web/React).
+- **Spec §9 behavioral tracking + Student Context Object (SCO)**: **partial** (there is `learning_events` storage + some UI claims, but no full SCO model or behavioral adaptation loop).
+- **Spec privacy (GDPR deletion)**: **UI exists** (“Delete My Data”) but **server-side deletion endpoint is missing**.
+- **BYOAI key management (spec promise: AES-256 at rest)**: implemented as encrypted storage (MVP), but provider clients are **partially stubbed** (e.g., Anthropic placeholder client).
+- **Usage tracking (tokens per agent)**: persisted, but token counts are mostly best-effort (often `tokensTotal=1`) since many agents are deterministic/offline.
+- **Marketing website**: exists (Next.js app under `apps/web`), but content differs from the spec wireframe/copy and lacks PostHog + SEO completeness.
+- **Docs plan**: `apps/docs/pages/*` exists, but client “Docs” marketing page is a custom in-app docs browser, not the canonical docs site.
+
+### Iter81 goals
+
+- Close the highest-risk **spec contradictions** that affect user trust (privacy/deletion, tracking transparency, exports).
+- Align marketing + docs with the actual product, reducing “spec says X” but product does Y.
+- Keep changes bounded: Iter81 is a **parity + trust sweep**, not a full re-platform.
+
+### P0 (Must do)
+
+1. **Implement server-side “Delete My Data” (GDPR) endpoint and wire client button**
+
+- Problem: Profile Settings deletes `localStorage` only; spec requires deletable per-user data.
+- Acceptance criteria:
+  - API: `DELETE /api/v1/profile` (or `POST /api/v1/profile/delete`) deletes all user-scoped rows:
+    - users, api_keys, refresh_tokens, usage_records, token_usage, courses, lessons, lesson_sources, lesson_quality, progress, pipelines, invoices, mindmaps, mindmap_suggestions, marketplace user joins (enrollments/activated agents), collaboration groups/messages (where user is owner/member), notifications.
+  - API responds `{ ok: true }`.
+  - Client: “Delete My Data” calls the endpoint; on success, logs out and redirects to `/`.
+  - Add a test proving the endpoint removes records for the authenticated user only.
+- Likely files:
+  - `apps/api/src/routes/profile.ts`, `apps/api/src/db.ts`
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/__tests__/profile-delete.test.ts`
+
+2. **Add explicit “Tracking & Data” screen section backed by real storage (not just copy)**
+
+- Problem: Privacy card lists what’s tracked, but there is no user-facing audit trail.
+- Acceptance criteria:
+  - API: `GET /api/v1/profile/data-summary` returns counts + recent timestamps for:
+    - learning_events, progress completions, usage_records, notifications.
+  - Client: Settings → Privacy shows live counts (“X learning events stored”, “Y lessons completed”, “Z usage records”).
+  - Must include a “Clear local-only data” disclaimer separately from server data.
+- Likely files:
+  - `apps/api/src/routes/profile.ts`
+  - `apps/client/src/screens/ProfileSettings.tsx`
+
+3. **Export parity: make server export endpoint match Settings export UX (ZIP/Markdown)**
+
+- Problem: Client exports ZIP locally via JSZip; server has `routes/export.ts` but spec expects robust portable export.
+- Acceptance criteria:
+  - API: `GET /api/v1/export/zip` returns a zip containing:
+    - `learnflow-export.md` (courses + lessons)
+    - `metadata.json` (exportedAt, version, userId redacted or hashed)
+  - Client: “Export ZIP” uses server export when available; fallback to JSZip only if server fails.
+  - Add an integration test verifying zip file entries.
+- Likely files:
+  - `apps/api/src/routes/export.ts`
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/__tests__/export-zip.test.ts`
+
+4. **Marketing website spec alignment: homepage hero copy + IA links**
+
+- Problem: Spec §12.2 has specific headline/subhead/CTA intent; current `apps/web` copy differs and lacks Marketplace preview.
+- Acceptance criteria:
+  - Update `apps/web/src/app/page.tsx` to match spec hero headline/subhead and CTA labels.
+  - Ensure nav/links cover spec pages: Home, Features, Pricing, Marketplace (preview), Docs, Blog, About, Download.
+  - Add at least a lightweight Marketplace preview section linking to app marketplace pages.
+- Likely files:
+  - `apps/web/src/app/page.tsx`, `apps/web/src/app/layout.tsx`
+
+5. **Docs source of truth: clarify and link out to `apps/docs` from in-app marketing Docs page**
+
+- Problem: Spec says “Docs: Next.js + MDX”; repo has `apps/docs` MD pages, but `/docs` in client is a marketing page.
+- Acceptance criteria:
+  - In client marketing `/docs`, add prominent links to the canonical docs content (and/or host `apps/docs` via a stable URL path).
+  - Add a brief banner: “Developer docs live in apps/docs (MDX) — this page is a preview.”
+- Likely files:
+  - `apps/client/src/screens/marketing/Docs.tsx`
+  - (optional) route proxy/config if mounting docs app
+
+6. **Privacy promise audit: remove/qualify claims that aren’t implemented (AES-256, session-only conversation)**
+
+- Problem: UI copy claims “API keys (encrypted, AES-256)” and “Conversation content (session only)”. Ensure accuracy.
+- Acceptance criteria:
+  - Confirm encryption implementation and update copy to “encrypted at rest” with details in docs if accurate.
+  - Confirm whether conversation content is persisted anywhere (WS logs, DB). If not persisted, say so; if persisted, disclose.
+  - Add a link to `apps/docs/pages/privacy-security.md`.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/docs/pages/privacy-security.md`
+
+### P1 (Should do)
+
+7. **SCO/behavioral tracking MVP: persist “student context” fields and actually use them**
+
+- Problem: Spec §9 expects SCO personalization; today it’s mostly not used.
+- Acceptance criteria:
+  - Persist a minimal SCO object per user (goals/topics/experience/schedule already exist; add “recent lessons” + “weak areas” placeholder).
+  - Orchestrator uses at least 2 SCO signals in prompts (e.g., experience level, goals) deterministically.
+  - Add a test verifying the context is included.
+- Likely files:
+  - `packages/agents/src/*orchestrator*`
+  - `apps/api/src/routes/chat.ts`, `apps/api/src/db.ts`
+
+8. **Notifications (Update Agent) UI: add “mark read” and deep-link to sources**
+
+- Problem: API exists (`/api/v1/notifications`), Dashboard shows feed but doesn’t support reading titles/bodies well.
+- Acceptance criteria:
+  - Dashboard notifications show `title` + condensed `body`, and clicking opens the URL (if present) or expands.
+  - “Mark read” calls `POST /api/v1/notifications/read`.
+- Likely files:
+  - `apps/client/src/screens/Dashboard.tsx`
+  - `apps/client/src/context/AppContext.tsx`
+
+9. **Conversation: agent activity indicator parity with spec**
+
+- Problem: Spec §5.2.3 requires “which agent is processing”; UI is mostly static.
+- Acceptance criteria:
+  - When streaming/processing, show agent name + stage (“Research Agent searching…”, etc.) based on WS events.
+  - If WS is not used, show a deterministic placeholder that reflects the routed agent.
+- Likely files:
+  - `apps/client/src/screens/Conversation.tsx`
+  - `apps/api/src/wsOrchestrator.ts`
+
+10. **Marketplace: creator flow stubs must be clearly labeled and gated**
+
+- Problem: Spec §7 includes pricing/moderation/publishing; current marketplace is MVP.
+- Acceptance criteria:
+  - Creator dashboard explicitly labels “Not implemented yet” sections and hides “earnings” until backend exists.
+  - Add a `GET /api/v1/marketplace/status` endpoint returning feature flags (publishing/payments enabled).
+- Likely files:
+  - `apps/api/src/routes/marketplace-full.ts`
+  - `apps/client/src/screens/CreatorDashboard.tsx`
+
+### P2 (Nice to have)
+
+11. **PostHog instrumentation (or remove from spec claims)**
+
+- Problem: Spec §12.3 says PostHog; codebase may not include it.
+- Acceptance criteria:
+  - Either integrate PostHog for `apps/web` only (privacy-first) OR explicitly state analytics is “not enabled in MVP”.
+  - Ensure DNT / opt-out path documented.
+- Likely files:
+  - `apps/web/src/analytics.ts`, `apps/web/src/app/layout.tsx`
+  - `apps/docs/pages/privacy-security.md`
+
+12. **Accessibility pass: keyboard focus + dialog ARIA for drawers and modals**
+
+- Problem: spec requires WCAG-ish; drawers exist, but focus trapping/ARIA may be incomplete.
+- Acceptance criteria:
+  - Sources/Attribution drawer: focus trap, Escape closes, `aria-labelledby`.
+  - Playwright screenshot harness includes a quick keyboard-only smoke test (optional).
+- Likely files:
+  - `apps/client/src/components/AttributionDrawer.tsx`
+  - `apps/client/src/components/Modal.tsx` (if exists)
+
+### Screenshot checklist (Iter81)
+
+- `screenshots/iter81/planner-run/app-settings.png`
+  - shows Privacy section and Delete My Data action
+- After implementing P0.1–P0.2:
+  - new screenshot(s): `settings-privacy-data-summary.png` and `settings-delete-confirm.png`
+
+### Verification checklist (Iter81)
+
+- API tests for deletion + export pass
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- Screenshot harness re-run (optional):
+  - `SCREENSHOT_DIR=screenshots/iter81/run-001 ITERATION=81 node screenshot-all.mjs`
