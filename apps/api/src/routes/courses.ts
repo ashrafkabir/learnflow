@@ -39,6 +39,7 @@ import {
   validateNoPlaceholders,
   type LessonDomain,
 } from '../utils/lessonQuality.js';
+import { validateSectionLevelQuotas } from '../utils/lessonSectionQuotas.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
 import { validateBody } from '../validation.js';
@@ -826,26 +827,38 @@ Continue.`,
                     ? 'cooking'
                     : 'general';
 
-          // Iter73 P0: HARD quality gates with retries.
+          // Iter73 P0/P1: HARD quality gates with retries.
           // - No placeholders like "Example (fill in)".
           // - Worked Example must produce a domain-appropriate artifact.
+          // - Section-level quotas prevent pathological verbosity distribution.
           // If gates fail, retry regeneration with stricter instructions up to N attempts.
           const MAX_QUALITY_RETRIES = 3;
           let attempt = 1;
           let quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
           let placeholder = validateNoPlaceholders(contentFinal);
+          let quotas = fastTestMode
+            ? {
+                ok: true,
+                reasons: [],
+                metrics: { totalWords: 0, bySection: {}, coreConceptsShare: 0 },
+              }
+            : validateSectionLevelQuotas(contentFinal);
 
           while (
-            (!quality.ok || !placeholder.ok) &&
+            (!quality.ok || !placeholder.ok || !quotas.ok) &&
             attempt < MAX_QUALITY_RETRIES &&
             !fastTestMode
           ) {
-            const reasons = [...(quality.reasons || []), ...(placeholder.reasons || [])].join(', ');
+            const reasons = [
+              ...(quality.reasons || []),
+              ...(placeholder.reasons || []),
+              ...(quotas.reasons || []),
+            ].join(', ');
             console.warn(
               `[LearnFlow] lesson quality gate failed (attempt ${attempt}/${MAX_QUALITY_RETRIES}): ${reasons}. Retrying regeneration...`,
             );
 
-            const tightenedPrompt = `${les.description}\n\nIMPORTANT QUALITY REQUIREMENTS (must satisfy all):\n- Do NOT include placeholders (no "Example (fill in)", no TBD/TODO, no "Q1/A1", no "placeholder").\n- In "## Worked Example":\n  - Programming: include a runnable fenced code block, "How to run", and "Expected output".\n  - Math/Science: include numeric values and step-by-step computation.\n  - Business/Policy: include a scenario with numbers and a trade-off table.\n  - Cooking: include numbered recipe steps with times/temperatures.\nIf you cannot comply, rewrite the Worked Example until it does.`;
+            const tightenedPrompt = `${les.description}\n\nIMPORTANT QUALITY REQUIREMENTS (must satisfy all):\n- Do NOT include placeholders (no "Example (fill in)", no TBD/TODO, no "Q1/A1", no "placeholder").\n- Keep "## Learning Objectives" very short (3-5 bullets; no long paragraphs).\n- Ensure "## Worked Example" is substantial (not just a few lines) and produces a domain-appropriate artifact:\n  - Programming: include a runnable fenced code block, "How to run", and "Expected output".\n  - Math/Science: include numeric values and step-by-step computation.\n  - Business/Policy: include a scenario with numbers and a trade-off table.\n  - Cooking: include numbered recipe steps with times/temperatures.\n- Do NOT let "## Core Concepts" dominate the lesson; if needed move detail into Worked Example + Recap.\nIf you cannot comply, rewrite until it does.`;
 
             const regen = await generateLessonContentWithLLM(
               topic,
@@ -860,11 +873,16 @@ Continue.`,
 
             quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
             placeholder = validateNoPlaceholders(contentFinal);
+            quotas = validateSectionLevelQuotas(contentFinal);
             attempt++;
           }
 
-          if (!quality.ok || !placeholder.ok) {
-            const reasons = [...(quality.reasons || []), ...(placeholder.reasons || [])];
+          if (!quality.ok || !placeholder.ok || !quotas.ok) {
+            const reasons = [
+              ...(quality.reasons || []),
+              ...(placeholder.reasons || []),
+              ...(quotas.reasons || []),
+            ];
             console.warn('[LearnFlow] lesson quality gate failed permanently:', reasons);
             // Surface failure via course generation failure (pipeline/UI should show FAILED clearly).
             throw new Error(`Lesson quality gate failed: ${reasons.join(', ')}`);
