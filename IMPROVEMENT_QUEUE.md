@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24
+Last updated: 2026-03-24 (Iter79 planning)
 
 ---
 
@@ -1101,3 +1101,154 @@ Capture from `screenshots/iter78/planner-run/` and add any missing manual shots 
   - Sync: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter78/planner-run/`
   - And the updated: `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
   - If no tooling exists, keep this TODO and include the exact paths above.
+
+---
+
+## Iteration 79 — RICH CONVERSATION RENDERING + UNIFIED SOURCES DRAWER + CONSISTENT ACTION CHIPS
+
+Status: **READY FOR BUILDER (iter79)**
+
+### Why this iteration (high leverage)
+
+Iter78 shipped the "trust foundations" (BYOAI vault + validation/rotation + usage dashboard; Update Agent with real search + idempotent tick). The next biggest UX trust gap is **inconsistent rendering and interaction** across Conversation and Lesson Reader:
+
+- Markdown responses can break layout (tables), look inconsistent (code blocks), or fail to render (math).
+- Sources are surfaced differently across screens and feel bolted-on.
+- Quick actions (chips/buttons) are inconsistent and sometimes don’t map cleanly to real behaviors.
+
+Fixing these three issues is high leverage because it directly improves perceived quality, user trust, and comprehension across the most-used surfaces.
+
+### Scope (P0) — Must ship
+
+#### 1) Conversation rendering: tables + code + math without layout break
+
+**Build**
+
+- Standardize a single markdown renderer config used by **Conversation** and **Lesson Reader**.
+- Ensure:
+  - **Tables** render with horizontal scroll (no overflow off-screen) and readable styling.
+  - **Code blocks** render with consistent monospace styling and copy affordance (if already exists, ensure it works in both screens).
+  - **Math**: best-effort LaTeX support for inline and block math. If full KaTeX/MathJax is too heavy, implement a graceful fallback that:
+    - renders raw LaTeX in a styled code-ish block, and
+    - never breaks layout.
+
+**Acceptance criteria**
+
+- In Conversation, a message containing:
+  - a fenced code block,
+  - a Markdown table,
+  - an inline math expression,
+  - and a block math expression
+    renders without horizontal page overflow and without collapsing spacing.
+- In Lesson Reader, the same content renders identically (styling + spacing + table behavior).
+- Mobile viewport: tables are scrollable inside the message bubble/content area.
+
+**Likely files**
+
+- `apps/client/src/lib/markdown*.ts*` (or equivalent markdown pipeline)
+- `apps/client/src/components/MarkdownRenderer.tsx` (new or existing)
+- `apps/client/src/screens/Conversation.tsx`
+- `apps/client/src/screens/LessonReader.tsx`
+- CSS:
+  - `apps/client/src/styles/*` or Tailwind classes in components
+
+---
+
+#### 2) Unify Sources drawer across Conversation + Lesson Reader
+
+**Build**
+
+- Create a single `SourcesDrawer` component and use it in both places.
+- Normalize the data shape passed into the drawer (supports both lesson sources and WS conversation sources).
+- Drawer content must consistently show:
+  - title (or host fallback),
+  - URL,
+  - author/publisher when available,
+  - date (published/accessed) when available.
+
+**Acceptance criteria**
+
+- Lesson Reader: "See Sources" always opens the unified drawer and shows ≥1 source when lesson has sources.
+- Conversation:
+  - when WS `response.end.sources` is present, user can open the same drawer from the conversation UI.
+  - empty sources state is explicit (e.g., "No sources provided for this response").
+- Visual parity: same drawer header, list item styling, and empty state across both screens.
+
+**Likely files**
+
+- `apps/client/src/components/SourcesDrawer.tsx` (new)
+- `apps/client/src/screens/LessonReader.tsx`
+- `apps/client/src/screens/Conversation.tsx`
+- `apps/client/src/lib/sources.ts` (optional: normalization helper)
+
+---
+
+#### 3) Consistent action chips across Conversation + Lesson Reader
+
+**Build**
+
+- Create a shared `ActionChips` (or similarly named) component.
+- Define a small, real set of actions that exist today (no dead buttons), e.g.:
+  - Copy
+  - Regenerate (Conversation)
+  - Ask a follow-up / Explain simpler (Conversation)
+  - Open Sources (both)
+  - (Optional) Export / Save note if already implemented
+- Ensure chips are placed consistently and do not jitter as messages stream.
+
+**Acceptance criteria**
+
+- Same chip styling (spacing, color, hover/pressed) across Conversation and Lesson Reader.
+- Every displayed chip triggers a real behavior.
+- In streaming responses, chips appear when it’s valid (e.g., after `response.end`) and do not duplicate.
+
+**Likely files**
+
+- `apps/client/src/components/ActionChips.tsx` (new)
+- `apps/client/src/screens/Conversation.tsx`
+- `apps/client/src/screens/LessonReader.tsx`
+- `apps/client/src/components/*` (where message bubbles are rendered)
+
+---
+
+### Scope (P1) — If time permits
+
+4. **Contract tightening for sources**
+
+- Ensure the client’s normalization handles missing `title/author/date` safely.
+- Add a small unit test for the normalization helper.
+
+5. **Snapshot coverage for “rich message” rendering**
+
+- Add a deterministic test fixture message that includes code+table+math and snapshot it.
+
+---
+
+### Screenshot checklist (Iter79)
+
+Capture via `SCREENSHOT_DIR=screenshots/iter79/... node screenshot-all.mjs` plus manual shots if needed.
+
+- `conversation-rich-rendering.png`
+  - shows code block + table + math (inline + block)
+- `conversation-sources-drawer.png`
+  - drawer open from Conversation, showing ≥1 source
+- `lesson-reader-sources-drawer.png`
+  - same drawer component styling, open from Lesson Reader
+- `action-chips-parity.png`
+  - side-by-side (or two shots) showing chips are consistent across both screens
+- `conversation-table-mobile.png`
+  - mobile-width table is scrollable inside message
+
+---
+
+### Verification checklist (Iter79)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- Manual spot checks:
+  - Conversation: send prompt that returns a table and code; verify no layout break.
+  - Lesson Reader: open a lesson with sources; verify unified drawer opens and fields render.
+  - Conversation: verify sources drawer opens when sources provided; verify empty state when none.
+  - Verify chips shown are actionable; no duplicates on streaming completion.
