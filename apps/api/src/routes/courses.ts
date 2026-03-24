@@ -33,7 +33,11 @@ import {
   toStructuredLessonSources,
   type StructuredLessonSource,
 } from '../utils/sourcesStructured.js';
-import { validateWorkedExampleQuality, type LessonDomain } from '../utils/lessonQuality.js';
+import {
+  validateWorkedExampleQuality,
+  validateNoPlaceholders,
+  type LessonDomain,
+} from '../utils/lessonQuality.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
 import { validateBody } from '../validation.js';
@@ -560,7 +564,99 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
 
           const gen = fastTestMode
             ? {
-                markdown: `# ${les.title}\n\n${les.description}\n\n(Generated in test fast mode)\n\n## Learning Objectives\n\n- Understand the goal of this lesson\n\n## Estimated Time\n\n**1 minute**\n\n## Core Concepts\n\n- Core concept placeholder\n\n## Worked Example\n\n1. Step 1\n\n## Recap\n\n- Recap placeholder\n\n## Quick Check\n\n1. Q1\n\n### Answer Key\n\n1. A1\n\n## Sources\n\n_No external sources in test fast mode._\n\n## Next Steps\n\nContinue.`,
+                // In test mode we still must satisfy Iter73 hard gates.
+                // Keep it deterministic, concise, and artifact-producing.
+                markdown: `# ${les.title}
+
+${les.description}
+
+(Generated in test fast mode)
+
+## Learning Objectives
+
+- Explain the key idea of **${les.title}** in the context of **${topic}**
+- Apply it in a concrete worked example that produces an output
+
+## Estimated Time
+
+**1 minute**
+
+## Core Concepts
+
+- Key definition: ${les.title} relates to ${topic}.
+- Why it matters: it changes how you make decisions and verify results.
+
+## Worked Example
+
+### Programming artifact (runnable snippet)
+
+How to run:
+
+\`\`\`bash
+node example.js
+\`\`\`
+
+\`\`\`js
+// example.js
+function add(a, b) {
+  return a + b;
+}
+
+console.log(add(2, 3));
+\`\`\`
+
+Expected output:
+
+\`\`\`text
+5
+\`\`\`
+
+### Math/science artifact (numeric steps)
+
+1. Choose values: a = 2, b = 3.
+2. Compute: a + b = 2 + 3 = 5.
+3. Sanity check: 5 is greater than both inputs.
+
+### Business/policy artifact (scenario + trade-offs)
+
+Scenario: You have a budget of $10,000 and 2 options.
+
+| Option | Cost | Benefit | Risk |
+|---|---:|---|---|
+| A | 4000 | Faster initial delivery | Medium |
+| B | 9000 | Higher long-term quality | Low |
+
+Decision rule: pick A if time-to-first-result matters most; pick B if rework risk is the primary constraint.
+
+### Cooking artifact (recipe steps)
+
+1. Heat a pan to medium heat for 2 minutes.
+2. Add 1 tbsp oil and cook for 30 seconds.
+3. Stir for 60 seconds, then reduce heat and simmer for 5 minutes.
+
+## Recap
+
+- You applied ${les.title} via a concrete artifact and verified the output.
+
+## Quick Check
+
+1. What is the main goal of **${les.title}** in **${topic}**?
+2. What output would you expect from the worked example?
+3. Name one common failure mode and one way to catch it.
+
+### Answer Key
+
+1. A correct answer connects the concept to a practical goal in the topic.
+2. The snippet prints 5.
+3. Example: wrong inputs; catch it with a quick sanity check and expected output.
+
+## Sources
+
+_No external sources in test fast mode._
+
+## Next Steps
+
+Continue.`,
                 sources: toStructuredLessonSources(lessonSources, {
                   limit: 4,
                   accessedAt: new Date().toISOString(),
@@ -635,11 +731,52 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
                 ? 'math_science'
                 : d === 'policy_business'
                   ? 'business'
-                  : 'general';
+                  : d === 'cooking'
+                    ? 'cooking'
+                    : 'general';
 
-          const quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
-          if (!quality.ok) {
-            console.warn('[LearnFlow] worked example quality failed:', quality.reasons);
+          // Iter73 P0: HARD quality gates with retries.
+          // - No placeholders like "Example (fill in)".
+          // - Worked Example must produce a domain-appropriate artifact.
+          // If gates fail, retry regeneration with stricter instructions up to N attempts.
+          const MAX_QUALITY_RETRIES = 3;
+          let attempt = 1;
+          let quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
+          let placeholder = validateNoPlaceholders(contentFinal);
+
+          while (
+            (!quality.ok || !placeholder.ok) &&
+            attempt < MAX_QUALITY_RETRIES &&
+            !fastTestMode
+          ) {
+            const reasons = [...(quality.reasons || []), ...(placeholder.reasons || [])].join(', ');
+            console.warn(
+              `[LearnFlow] lesson quality gate failed (attempt ${attempt}/${MAX_QUALITY_RETRIES}): ${reasons}. Retrying regeneration...`,
+            );
+
+            const tightenedPrompt = `${les.description}\n\nIMPORTANT QUALITY REQUIREMENTS (must satisfy all):\n- Do NOT include placeholders (no "Example (fill in)", no TBD/TODO, no "Q1/A1", no "placeholder").\n- In "## Worked Example":\n  - Programming: include a runnable fenced code block, "How to run", and "Expected output".\n  - Math/Science: include numeric values and step-by-step computation.\n  - Business/Policy: include a scenario with numbers and a trade-off table.\n  - Cooking: include numbered recipe steps with times/temperatures.\nIf you cannot comply, rewrite the Worked Example until it does.`;
+
+            const regen = await generateLessonContentWithLLM(
+              topic,
+              mod.title,
+              les.title,
+              tightenedPrompt,
+              lessonSources,
+              { openai: effectiveOpenAi },
+            );
+            const enforced2 = enforceBiteSizedLesson(regen.markdown, { maxMinutes: 10 });
+            contentFinal = enforced2.content;
+
+            quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
+            placeholder = validateNoPlaceholders(contentFinal);
+            attempt++;
+          }
+
+          if (!quality.ok || !placeholder.ok) {
+            const reasons = [...(quality.reasons || []), ...(placeholder.reasons || [])];
+            console.warn('[LearnFlow] lesson quality gate failed permanently:', reasons);
+            // Surface failure via course generation failure (pipeline/UI should show FAILED clearly).
+            throw new Error(`Lesson quality gate failed: ${reasons.join(', ')}`);
           }
 
           const sources = gen.sources || [];

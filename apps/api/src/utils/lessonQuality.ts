@@ -1,22 +1,68 @@
-export type LessonDomain = 'programming' | 'math_science' | 'business' | 'general';
+export type LessonDomain = 'programming' | 'math_science' | 'business' | 'cooking' | 'general';
+
+function sectionBody(md: string, heading: string): string {
+  // Extract content under a "## <heading>" section until the next "## " heading.
+  const re = new RegExp(`^##\\s+${escapeRegExp(heading)}\\s*$`, 'im');
+  const m = md.match(re);
+  if (!m || m.index == null) return '';
+
+  const start = m.index + m[0].length;
+  const rest = md.slice(start);
+  const next = rest.match(/^\n##\s+[^\n]+\s*$/im);
+  const body = next && next.index != null ? rest.slice(0, next.index) : rest;
+  return body.trim();
+}
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function hasFencedCodeBlock(md: string): boolean {
   return /```[a-zA-Z0-9_-]*\n[\s\S]*?```/m.test(md);
 }
 
-function hasMathOrStepByStep(md: string): boolean {
-  // Heuristic: contains numbered steps or an equation-ish token.
-  return /(\n\s*\d+\.)|(=)|(\btherefore\b)|(\bderive\b)/i.test(md);
+function hasExpectedOutput(md: string): boolean {
+  return /(expected output|output should|you should see)/i.test(md);
+}
+
+function hasHowToRun(md: string): boolean {
+  return /(how to run|run (it|this)|execute|command:)/i.test(md);
+}
+
+function hasMathStepsWithNumbers(md: string): boolean {
+  // Require at least one explicit numeric token and step-by-step structure.
+  const hasDigits = /\d/.test(md);
+  const hasSteps = /(\n\s*\d+\.)|(step\s*\d+)|(first,|then,|therefore\b)/i.test(md);
+  const hasEquation = /(=)|([+\-*/])/.test(md);
+  return hasDigits && (hasSteps || hasEquation);
 }
 
 function hasTable(md: string): boolean {
   return /\n\|.+\|\n\|[-:|\s]+\|/m.test(md);
 }
 
-function hasScenarioTradeoff(md: string): boolean {
-  return (
-    /(scenario|trade-?off|decision|option)/i.test(md) && (hasTable(md) || /pros|cons/i.test(md))
-  );
+function hasScenarioTradeoffWithNumbers(md: string): boolean {
+  const hasScenario = /(scenario|case|decision|option|trade-?off)/i.test(md);
+  const hasNumbers = /\d/.test(md);
+  const hasTradeoffStructure = hasTable(md) || /pros\b|cons\b|risk\b|cost\b|benefit\b/i.test(md);
+  return hasScenario && hasNumbers && hasTradeoffStructure;
+}
+
+function hasCookingSteps(md: string): boolean {
+  // Require actionable recipe-like steps.
+  const hasNumberedSteps = /(\n\s*\d+\.)|(step\s*\d+)/i.test(md);
+  const hasTimeOrTemp =
+    /(\bminutes?\b|\bhours?\b|\b°[CF]\b|\bdegrees\b|\bheat\b|\bsimmer\b|\bbake\b)/i.test(md);
+  return hasNumberedSteps && hasTimeOrTemp;
+}
+
+export function validateNoPlaceholders(md: string): { ok: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  if (/(example\s*\(fill\s*in\))/i.test(md)) reasons.push('contains_example_fill_in');
+  if (/(\bTBD\b|\bTODO\b)/.test(md)) reasons.push('contains_tbd_todo');
+  if (/\bQ1\b|\bA1\b/.test(md)) reasons.push('contains_q1_a1_placeholders');
+  if (/placeholder/i.test(md)) reasons.push('contains_placeholder_text');
+  return { ok: reasons.length === 0, reasons };
 }
 
 export function validateWorkedExampleQuality(
@@ -29,14 +75,27 @@ export function validateWorkedExampleQuality(
   const reasons: string[] = [];
   if (!/## Worked Example/i.test(md)) {
     reasons.push('missing_worked_example_heading');
+    return { ok: false, reasons };
+  }
+
+  const worked = sectionBody(md, 'Worked Example');
+  if (!worked) {
+    reasons.push('worked_example_section_empty');
+    return { ok: false, reasons };
   }
 
   if (domain === 'programming') {
-    if (!hasFencedCodeBlock(md)) reasons.push('programming_requires_code_block');
+    if (!hasFencedCodeBlock(worked))
+      reasons.push('programming_requires_code_block_in_worked_example');
+    if (!hasExpectedOutput(worked)) reasons.push('programming_requires_expected_output');
+    if (!hasHowToRun(worked)) reasons.push('programming_requires_how_to_run');
   } else if (domain === 'math_science') {
-    if (!hasMathOrStepByStep(md)) reasons.push('math_science_requires_steps_or_equation');
+    if (!hasMathStepsWithNumbers(worked)) reasons.push('math_science_requires_numeric_steps');
   } else if (domain === 'business') {
-    if (!hasScenarioTradeoff(md)) reasons.push('business_requires_scenario_tradeoff');
+    if (!hasScenarioTradeoffWithNumbers(worked))
+      reasons.push('business_requires_scenario_tradeoff_with_numbers');
+  } else if (domain === 'cooking') {
+    if (!hasCookingSteps(worked)) reasons.push('cooking_requires_numbered_steps_with_time_or_temp');
   }
 
   return { ok: reasons.length === 0, reasons };
