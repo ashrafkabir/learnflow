@@ -66,6 +66,8 @@ Iter72 improved “course/lesson generation quality”, but the product spec is 
 
 ## Iteration 73 — TRUE TOPIC-SPECIFIC CURRICULUM + NARRATION QUALITY + SOURCING RELIABILITY
 
+> Planner note: User interjections to incorporate next planning cycle are tracked in `USER_SUGGESTIONS.md` (must not block current builder progression).
+
 Status: **READY FOR BUILDER (iter73)**
 
 Focus:

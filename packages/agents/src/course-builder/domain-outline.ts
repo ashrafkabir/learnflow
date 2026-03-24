@@ -24,10 +24,24 @@ export type CourseOutline = {
   modules: OutlineModule[];
 };
 
+export type LearnerIntent =
+  | 'hands_on'
+  | 'exam'
+  | 'interview'
+  | 'build_project'
+  | 'overview'
+  | 'troubleshooting'
+  | 'unknown';
+
+export type PrerequisiteProfile = 'beginner' | 'intermediate' | 'advanced' | 'unknown';
+
 export function topicFingerprint(topic: string): {
   raw: string;
   lower: string;
   words: string[];
+  subdomain: string;
+  intent: LearnerIntent;
+  prerequisite: PrerequisiteProfile;
 } {
   const raw = String(topic || '').trim();
   const lower = raw.toLowerCase();
@@ -36,7 +50,86 @@ export function topicFingerprint(topic: string): {
     .split(/\s+/)
     .map((w) => w.trim())
     .filter(Boolean);
-  return { raw, lower, words };
+
+  const intent = inferLearnerIntent(lower);
+  const prerequisite = inferPrerequisiteProfile(lower);
+  const subdomain = inferSubdomain(words);
+
+  return { raw, lower, words, subdomain, intent, prerequisite };
+}
+
+function inferLearnerIntent(lower: string): LearnerIntent {
+  if (/(hands-on|hands on|tutorial|workshop|step-by-step|step by step)/.test(lower))
+    return 'hands_on';
+  if (/(exam|quiz|homework|problem set|practice questions)/.test(lower)) return 'exam';
+  if (/(interview|coding interview|system design interview)/.test(lower)) return 'interview';
+  if (/(build|building|project|ship|deploy)/.test(lower)) return 'build_project';
+  if (/(debug|troubleshoot|fix|error|pitfall)/.test(lower)) return 'troubleshooting';
+  if (/(overview|introduction|intro|basics|fundamentals)/.test(lower)) return 'overview';
+  return 'unknown';
+}
+
+function inferPrerequisiteProfile(lower: string): PrerequisiteProfile {
+  if (/(beginner|no prior|from scratch|introductory)/.test(lower)) return 'beginner';
+  if (/(advanced|expert|research|graduate)/.test(lower)) return 'advanced';
+  if (/(intermediate|practical|applied)/.test(lower)) return 'intermediate';
+  return 'unknown';
+}
+
+function inferSubdomain(words: string[]): string {
+  // Try to extract a salient subdomain token (language/framework/cuisine/etc).
+  const KNOWN = [
+    // programming
+    'rust',
+    'python',
+    'javascript',
+    'typescript',
+    'java',
+    'go',
+    'golang',
+    'react',
+    'nextjs',
+    'next',
+    'node',
+    'docker',
+    'kubernetes',
+    // math/science
+    'linear',
+    'algebra',
+    'calculus',
+    'statistics',
+    'probability',
+    'eigenvalues',
+    'eigenvectors',
+    // policy/business
+    'carbon',
+    'cap-and-trade',
+    'cap',
+    'trade',
+    'esg',
+    'finance',
+    // cooking
+    'italian',
+    'pasta',
+    'sauce',
+    'bake',
+    'roast',
+    'grill',
+    // ai prompting
+    'prompt',
+    'rag',
+    'injection',
+  ];
+
+  for (const w of words) {
+    const cleaned = w.replace(/[^a-z0-9-]/g, '');
+    if (KNOWN.includes(cleaned)) return cleaned;
+  }
+
+  // Fallback: first non-stopword token
+  const STOP = new Set(['and', 'or', 'the', 'a', 'an', 'to', 'for', 'with', 'in', 'of']);
+  const found = words.find((w) => w.length >= 4 && !STOP.has(w));
+  return found || '';
 }
 
 export function classifyTopicDomain(topic: string): OutlineDomain {
@@ -99,45 +192,49 @@ export function classifyTopicDomain(topic: string): OutlineDomain {
 }
 
 function makeGeneralOutline(topic: string): OutlineModule[] {
-  const t = String(topic || 'the topic').trim();
+  const fp = topicFingerprint(topic);
+  const t = fp.raw || 'the topic';
+  const sd = fp.subdomain ? ` (focus: ${fp.subdomain})` : '';
+
+  // Keep general outline usable, but ban generic module titles without anchoring.
   return [
     {
-      title: `${t}: Orientation and Goals`,
-      objective: `Understand what ${t} is, why it matters, and how this course is structured.`,
+      title: `Orientation: ${t}${sd}`,
+      objective: `Define ${t}, clarify the learner goal, and map the main components you will practice.`,
       lessons: [
         {
-          title: `What is ${t}?`,
-          description: `Build a clear definition and map the main moving parts of ${t}.`,
+          title: `Define ${t} and its moving parts`,
+          description: `Build a crisp definition of ${t} and identify the 5–7 parts you will use in practice.`,
         },
       ],
     },
     {
-      title: `${t}: Core Concepts`,
-      objective: `Learn the essential concepts and vocabulary needed to reason about ${t}.`,
+      title: `Foundations for ${t}${sd}`,
+      objective: `Learn the foundational concepts and vocabulary you need before applying ${t}.`,
       lessons: [
         {
-          title: `Key concepts in ${t}`,
-          description: `Identify the core ideas, terms, and mental models used in ${t}.`,
+          title: `Core concepts and vocabulary in ${t}`,
+          description: `Learn the essential concepts and how they relate, so you can reason about ${t} clearly.`,
         },
       ],
     },
     {
-      title: `${t}: Practice and Application`,
-      objective: `Apply the core concepts of ${t} through a concrete worked example.`,
+      title: `Apply ${t}: First Worked Example${sd}`,
+      objective: `Apply ${t} in a step-by-step, realistic example that produces an artifact/output.`,
       lessons: [
         {
-          title: `Worked example: applying ${t}`,
-          description: `Walk through a realistic example step-by-step to apply what you've learned.`,
+          title: `Worked example: apply ${t} end-to-end`,
+          description: `Walk through a realistic example step-by-step and verify the output/result.`,
         },
       ],
     },
     {
-      title: `${t}: Common Pitfalls and Next Steps`,
-      objective: `Avoid common mistakes and plan what to learn next in ${t}.`,
+      title: `${t} Pitfalls, Checks, and Next Steps${sd}`,
+      objective: `Avoid common mistakes, learn how to self-check, and plan what to learn next in ${t}.`,
       lessons: [
         {
-          title: `Mistakes to avoid in ${t}`,
-          description: `Learn the typical errors beginners make and how to avoid them.`,
+          title: `Common pitfalls and how to self-check`,
+          description: `Learn typical errors and build a simple checklist to catch them early.`,
         },
       ],
     },
@@ -145,54 +242,56 @@ function makeGeneralOutline(topic: string): OutlineModule[] {
 }
 
 function makeProgrammingOutline(topic: string): OutlineModule[] {
-  const t = String(topic).trim();
+  const fp = topicFingerprint(topic);
+  const t = fp.raw;
+  const sd = fp.subdomain ? ` (${fp.subdomain})` : '';
   return [
     {
-      title: `Setup and Tooling for ${t}`,
+      title: `Setup and Tooling for ${t}${sd}`,
       objective: `Get a working environment and understand the core toolchain for ${t}.`,
       lessons: [
         {
-          title: `Environment setup`,
+          title: `Environment setup for ${t}${sd}`,
           description: `Install and verify the tools you need for ${t}.`,
         },
       ],
     },
     {
-      title: `Core Syntax & Mental Models (${t})`,
+      title: `Core Syntax & Mental Models: ${t}${sd}`,
       objective: `Learn the foundational syntax and mental models that drive day-to-day work in ${t}.`,
       lessons: [
         {
-          title: `Core building blocks`,
+          title: `Core building blocks in ${t}${sd}`,
           description: `Work through the primitives, data flow, and idioms of ${t}.`,
         },
       ],
     },
     {
-      title: `Working with Real Inputs/Outputs`,
+      title: `Real I/O in ${t}${sd}`,
       objective: `Connect ${t} to files, APIs, and external systems safely.`,
       lessons: [
         {
-          title: `Practical I/O`,
+          title: `Practical I/O and error handling (${t})`,
           description: `Handle input/output and errors in a realistic workflow.`,
         },
       ],
     },
     {
-      title: `Testing, Debugging, and Quality`,
+      title: `Testing and Debugging in ${t}${sd}`,
       objective: `Build confidence in ${t} code through tests and debugging techniques.`,
       lessons: [
         {
-          title: `Debugging + tests`,
+          title: `Debugging + tests for ${t}${sd}`,
           description: `Create a tiny test suite and debug a failure.`,
         },
       ],
     },
     {
-      title: `Building a Small Project`,
+      title: `Ship a Small ${t}${sd} Project`,
       objective: `Synthesize learning by shipping a small, end-to-end ${t} project.`,
       lessons: [
         {
-          title: `Mini-project`,
+          title: `Mini-project in ${t}${sd}`,
           description: `Implement a small project that demonstrates the course's key ideas.`,
         },
       ],
@@ -201,44 +300,46 @@ function makeProgrammingOutline(topic: string): OutlineModule[] {
 }
 
 function makeMathOutline(topic: string): OutlineModule[] {
-  const t = String(topic).trim();
+  const fp = topicFingerprint(topic);
+  const t = fp.raw;
+  const sd = fp.subdomain ? ` (focus: ${fp.subdomain})` : '';
   return [
     {
-      title: `Core Definitions in ${t}`,
+      title: `Definitions and Notation: ${t}${sd}`,
       objective: `Establish precise definitions and notation for ${t}.`,
       lessons: [
         {
-          title: `Definitions and notation`,
+          title: `Definitions and notation for ${t}${sd}`,
           description: `Learn the symbols and definitions you'll use throughout ${t}.`,
         },
       ],
     },
     {
-      title: `${t}: Key Theorems and Intuition`,
+      title: `Key Theorems and Intuition in ${t}${sd}`,
       objective: `Understand the main results and the intuition behind them.`,
       lessons: [
         {
-          title: `Big ideas`,
+          title: `Big ideas in ${t}${sd}`,
           description: `Work through the major theorems/concepts with intuition.`,
         },
       ],
     },
     {
-      title: `Worked Problems`,
+      title: `Worked Problems: ${t}${sd}`,
       objective: `Build skill by solving representative problems in ${t}.`,
       lessons: [
         {
-          title: `Step-by-step example`,
+          title: `Step-by-step example in ${t}${sd}`,
           description: `Solve a concrete problem with all steps shown.`,
         },
       ],
     },
     {
-      title: `Common Mistakes + Exam Tactics`,
+      title: `Mistakes + Checking Work in ${t}${sd}`,
       objective: `Avoid typical errors and learn how to check your work in ${t}.`,
       lessons: [
         {
-          title: `Error checks`,
+          title: `Error checks for ${t}${sd}`,
           description: `Use sanity checks and common patterns to avoid mistakes.`,
         },
       ],
@@ -247,85 +348,95 @@ function makeMathOutline(topic: string): OutlineModule[] {
 }
 
 function makePolicyBusinessOutline(topic: string): OutlineModule[] {
-  const t = String(topic).trim();
+  const fp = topicFingerprint(topic);
+  const t = fp.raw;
+  const sd = fp.subdomain ? ` (focus: ${fp.subdomain})` : '';
   return [
     {
-      title: `Context and Stakeholders (${t})`,
+      title: `Context and Stakeholders: ${t}${sd}`,
       objective: `Understand the background, goals, and key stakeholders for ${t}.`,
       lessons: [
-        { title: `Problem framing`, description: `Define the problem space and who is affected.` },
+        {
+          title: `Frame the problem for ${t}${sd}`,
+          description: `Define the problem space, constraints, and who is affected.`,
+        },
       ],
     },
     {
-      title: `Mechanisms and Incentives`,
+      title: `Mechanisms and Incentives: ${t}${sd}`,
       objective: `Learn how the system works and what incentives drive outcomes in ${t}.`,
       lessons: [
         {
-          title: `How it works`,
+          title: `Mechanism walkthrough for ${t}${sd}`,
           description: `Walk through the mechanisms with a simple numerical example.`,
         },
       ],
     },
     {
-      title: `Implementation Playbook`,
+      title: `Implementation Playbook: ${t}${sd}`,
       objective: `Translate concepts into an actionable plan for applying ${t} in practice.`,
       lessons: [
         {
-          title: `Operational steps`,
+          title: `Operational steps for ${t}${sd}`,
           description: `Build a checklist and sequence of actions to implement in an organization.`,
         },
       ],
     },
     {
-      title: `Risks, Trade-offs, and Measurement`,
+      title: `Risks, Trade-offs, and Measurement: ${t}${sd}`,
       objective: `Evaluate trade-offs and define metrics for success in ${t}.`,
       lessons: [
-        { title: `Trade-off table`, description: `Compare options and define a measurement plan.` },
+        {
+          title: `Trade-off table for ${t}${sd}`,
+          description: `Compare options and define a measurement plan.`,
+        },
       ],
     },
   ];
 }
 
 function makeCookingOutline(topic: string): OutlineModule[] {
-  const t = String(topic).trim();
+  const fp = topicFingerprint(topic);
+  const t = fp.raw;
+  const sd = fp.subdomain ? ` (focus: ${fp.subdomain})` : '';
   return [
     {
-      title: `${t}: Pantry, Tools, and Safety`,
+      title: `Tools, Ingredients, and Safety for ${t}${sd}`,
       objective: `Set up your kitchen, pantry basics, and safety/handling practices for ${t}.`,
       lessons: [
         {
-          title: `Kitchen setup`,
+          title: `Kitchen setup for ${t}${sd}`,
           description: `Choose the essential tools and ingredients to start ${t}.`,
         },
       ],
     },
     {
-      title: `Core Techniques (Italian style)`,
+      title: `Core Techniques for ${t}${sd}`,
       objective: `Learn foundational techniques: heat control, salting, emulsions, and timing.`,
       lessons: [
         {
-          title: `Technique drills`,
+          title: `Technique drills for ${t}${sd}`,
           description: `Practice 2-3 small technique drills that build confidence.`,
         },
       ],
     },
     {
-      title: `Signature Bases: Pasta, Sauce, and Seasoning`,
-      objective: `Build a repeatable process for pasta and a few core sauces.`,
+      title: `Worked Recipe: ${t}${sd}`,
+      objective: `Build a repeatable process for a signature dish and supporting components.`,
       lessons: [
         {
-          title: `Worked recipe: pasta + sauce`,
-          description: `Cook a simple pasta dish with a step-by-step sauce workflow.`,
+          title: `Worked recipe for ${t}${sd}`,
+          description: `Cook a simple dish with a step-by-step workflow and timing checkpoints.`,
         },
       ],
     },
     {
-      title: `Planning, Variations, and Troubleshooting`,
+      title: `Planning, Variations, and Troubleshooting for ${t}${sd}`,
       objective: `Adapt recipes, plan meals, and fix common issues.`,
       lessons: [
         {
-          title: `Troubleshooting`,
-          description: `Fix watery sauce, overcooked pasta, and bland flavor with specific tactics.`,
+          title: `Troubleshooting ${t}${sd}`,
+          description: `Fix common issues (texture, seasoning, timing) with specific tactics.`,
         },
       ],
     },
@@ -333,44 +444,46 @@ function makeCookingOutline(topic: string): OutlineModule[] {
 }
 
 function makeAiPromptingOutline(topic: string): OutlineModule[] {
-  const t = String(topic).trim();
+  const fp = topicFingerprint(topic);
+  const t = fp.raw;
+  const sd = fp.subdomain ? ` (focus: ${fp.subdomain})` : '';
   return [
     {
-      title: `How LLMs Respond to Prompts`,
+      title: `How LLMs Respond to Prompts: ${t}${sd}`,
       objective: `Build a mental model for why prompt changes affect outputs in ${t}.`,
       lessons: [
         {
-          title: `Tokens and instructions`,
+          title: `Tokens and instructions for ${t}${sd}`,
           description: `Understand the basics: tokens, instructions, and constraints.`,
         },
       ],
     },
     {
-      title: `Prompt Patterns You Can Reuse`,
+      title: `Reusable Prompt Patterns for ${t}${sd}`,
       objective: `Learn reusable patterns (few-shot, rubrics, structured output) for ${t}.`,
       lessons: [
         {
-          title: `Reusable templates`,
+          title: `Reusable templates for ${t}${sd}`,
           description: `Use 3-5 prompt templates and see output differences.`,
         },
       ],
     },
     {
-      title: `Evaluation and Iteration`,
+      title: `Evaluation and Iteration for ${t}${sd}`,
       objective: `Measure output quality and iterate prompts systematically.`,
       lessons: [
         {
-          title: `Mini-eval`,
+          title: `Mini-eval for ${t}${sd}`,
           description: `Create a small eval checklist and run prompt variants against it.`,
         },
       ],
     },
     {
-      title: `Safety and Prompt Injection`,
+      title: `Safety and Prompt Injection in ${t}${sd}`,
       objective: `Defend against prompt injection and unsafe outputs in ${t}.`,
       lessons: [
         {
-          title: `Attack + defense`,
+          title: `Attack + defense for ${t}${sd}`,
           description: `See a simple injection attempt and harden your prompt/tooling.`,
         },
       ],

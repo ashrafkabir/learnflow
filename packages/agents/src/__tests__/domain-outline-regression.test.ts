@@ -9,7 +9,7 @@ function getModuleTitles(topic: string): string[] {
 // across multiple topics, module titles should be diverse and domain-appropriate (not generic)
 // and domain classifier should route to the right outline templates.
 describe('Iter73: domain-specific outline regression', () => {
-  it('produces domain-appropriate module titles across 6 topics', () => {
+  it('produces topic-specific, domain-appropriate module titles across 6 topics', () => {
     const cases: Array<{ topic: string; expectDomain: string; mustInclude: string[] }> = [
       {
         topic: 'Rust ownership and borrowing',
@@ -29,7 +29,7 @@ describe('Iter73: domain-specific outline regression', () => {
       {
         topic: 'Italian pasta and sauces',
         expectDomain: 'cooking',
-        mustInclude: ['Pantry', 'Techniques'],
+        mustInclude: ['Techniques', 'Ingredients'],
       },
       {
         topic: 'Prompt injection defenses for LLM apps',
@@ -55,6 +55,17 @@ describe('Iter73: domain-specific outline regression', () => {
       }
 
       const titles = getModuleTitles(c.topic);
+      // Topic-specificity: at least one module title must include a meaningful token from the topic.
+      // (Prevents generic templates like "Core Concepts" without anchoring.)
+      const topicTokens = c.topic
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean)
+        .filter((w) => w.length >= 4);
+      const titlesLower = titles.join(' ').toLowerCase();
+      expect(topicTokens.some((w) => titlesLower.includes(w))).toBe(true);
+
       expect(titles.length).toBeGreaterThanOrEqual(4);
 
       for (const inc of c.mustInclude) {
