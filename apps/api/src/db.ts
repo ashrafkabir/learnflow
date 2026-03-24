@@ -81,12 +81,16 @@ if (!isTest) {
     }
 
     // Iter72: courses gained status + error for async generation progress
+    // Iter74: courses gained plan for persisted course planning artifact
     try {
       if (!hasColumn('courses', 'status')) {
         sqlite.exec(`ALTER TABLE courses ADD COLUMN status TEXT NOT NULL DEFAULT 'READY';`);
       }
       if (!hasColumn('courses', 'error')) {
         sqlite.exec(`ALTER TABLE courses ADD COLUMN error TEXT NOT NULL DEFAULT '';`);
+      }
+      if (!hasColumn('courses', 'plan')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN plan TEXT NOT NULL DEFAULT '{}';`);
       }
     } catch {
       // If courses doesn't exist yet, CREATE TABLE below will handle it.
@@ -125,6 +129,7 @@ sqlite.exec(`
     authorId TEXT NOT NULL DEFAULT 'anonymous',
     modules TEXT NOT NULL DEFAULT '[]',
     progress TEXT NOT NULL DEFAULT '{}',
+    plan TEXT NOT NULL DEFAULT '{}',
     status TEXT NOT NULL DEFAULT 'READY',
     error TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL
@@ -539,7 +544,7 @@ const stmts = {
 
   // Courses
   insertCourse: sqlite.prepare(
-    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, status, error, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   updateCourseStatus: sqlite.prepare(`UPDATE courses SET status = ?, error = ? WHERE id = ?`),
   findCourseById: sqlite.prepare(`SELECT * FROM courses WHERE id = ?`),
@@ -1051,6 +1056,7 @@ export const dbCourses = {
       ...row,
       modules: JSON.parse(row.modules || '[]'),
       progress: JSON.parse(row.progress || '{}'),
+      plan: JSON.parse(row.plan || '{}'),
     }));
   },
 
@@ -1061,6 +1067,7 @@ export const dbCourses = {
       ...row,
       modules: JSON.parse(row.modules || '[]'),
       progress: JSON.parse(row.progress || '{}'),
+      plan: JSON.parse(row.plan || '{}'),
     };
   },
 
@@ -1074,6 +1081,7 @@ export const dbCourses = {
       course.authorId || 'anonymous',
       JSON.stringify(course.modules || []),
       JSON.stringify(course.progress || {}),
+      JSON.stringify(course.plan || {}),
       course.status || 'READY',
       course.error || '',
       course.createdAt || new Date().toISOString(),

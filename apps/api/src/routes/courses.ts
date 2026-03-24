@@ -29,6 +29,7 @@ import {
   sqlite,
 } from '../db.js';
 import { parseLessonSources, type LessonSource } from '../utils/sources.js';
+import { buildCoursePlan } from '../utils/coursePlan.js';
 import { enforceBiteSizedLesson } from '../utils/lessonSizing.js';
 import { lessonHasRequiredStructure } from '../utils/lessonStructure.js';
 import {
@@ -324,6 +325,7 @@ interface Course {
   authorId: string;
   modules: Module[];
   progress: Record<string, number>;
+  plan?: any;
   status?: 'CREATING' | 'READY' | 'FAILED';
   error?: string;
   createdAt: string;
@@ -432,10 +434,23 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
       })),
     })),
     progress: {},
+    plan: {},
     status: 'CREATING',
     error: '',
     createdAt: new Date().toISOString(),
   };
+
+  // Iter74 P0: persist a course planning artifact immediately (even in degraded/test mode)
+  try {
+    courseShell.plan = buildCoursePlan({
+      topic,
+      depth,
+      modules: topicData.modules,
+      topicSources: [],
+    });
+  } catch {
+    courseShell.plan = { version: 'iter74', createdAt: new Date().toISOString(), topic, depth };
+  }
 
   courses.set(courseShell.id, courseShell);
   dbCourses.save(courseShell);
@@ -525,6 +540,20 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
         } catch (err) {
           console.warn('[LearnFlow] Firecrawl crawl failed, falling back to static sources:', err);
         }
+      }
+
+      // Iter74 P0: update persisted plan with real topic sources once available.
+      try {
+        courseShell.plan = buildCoursePlan({
+          topic,
+          depth,
+          modules: topicData.modules,
+          topicSources: crawledSources,
+        });
+        courses.set(courseShell.id, courseShell);
+        dbCourses.save(courseShell);
+      } catch {
+        // best effort
       }
 
       emitToUser(userId, 'progress.update', {

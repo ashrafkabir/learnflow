@@ -19,6 +19,7 @@ export interface Course {
   depth: string;
   modules: Module[];
   progress: Record<string, number>;
+  plan?: any;
   createdAt: string;
 }
 
