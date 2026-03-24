@@ -138,9 +138,12 @@ Non-goals:
      - expanded license heuristics (best-effort)
    - Persisted source objects now include: title, domain, year, license, accessedAt (+ publication).
 
-9. **Lesson length control should include section-level quotas**
-   - Keep total <10 min, but also prevent 80% of words in “Core Concepts”.
-   - Add quotas: objectives short; worked example must have minimum content.
+9. **Lesson length control should include section-level quotas** — **DONE (iter73)**
+   - Added `validateSectionLevelQuotas()` gate (API):
+     - objectives_too_long
+     - core_concepts_too_dominant (share cap)
+     - worked_example_too_short / recap_too_short
+   - Integrated into lesson regeneration retry loop (skipped in fastTestMode).
 
 10. **Quality telemetry in DB + UI**
 
