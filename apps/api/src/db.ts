@@ -1724,11 +1724,59 @@ export const dbProgress = {
     const rows = stmts.getAllProgressByUser.all(userId) as any[];
     const courseIds = new Set(rows.map((r) => r.courseId));
     const totalLessons = rows.length;
+
+    // Iter85: derive streak + study minutes from real learning_events.
+    // Streak counts consecutive days with at least 1 learning event.
+    // totalStudyMinutes sums explicit durations where present and falls back to +5 per completed lesson.
+    const events = dbEvents.list(userId, 2000);
+
+    // totalStudyMinutes
+    let totalStudyMinutes = 0;
+    for (const e of events) {
+      if (e.type === 'lesson.view_end') {
+        try {
+          const meta = JSON.parse(e.meta || '{}') as any;
+          const ms = Number(meta?.durationMs || 0);
+          if (Number.isFinite(ms) && ms > 0) {
+            totalStudyMinutes += Math.max(1, Math.round(ms / 60000));
+            continue;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (e.type === 'lesson.completed') totalStudyMinutes += 5;
+    }
+    if (totalStudyMinutes === 0) totalStudyMinutes = totalLessons * 5;
+
+    // currentStreak
+    const daySet = new Set<string>();
+    for (const e of events) {
+      const d = new Date(e.createdAt);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate(),
+      ).padStart(2, '0')}`;
+      daySet.add(key);
+    }
+
+    const today = new Date();
+    let streak = 0;
+    // Walk back day by day from today.
+    for (let i = 0; i < 365; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+        d.getDate(),
+      ).padStart(2, '0')}`;
+      if (daySet.has(key)) streak++;
+      else break;
+    }
+
     return {
       totalCoursesEnrolled: courseIds.size,
       totalLessonsCompleted: totalLessons,
-      totalStudyMinutes: totalLessons * 5,
-      currentStreak: Math.min(totalLessons, 30),
+      totalStudyMinutes,
+      currentStreak: streak,
     };
   },
 };

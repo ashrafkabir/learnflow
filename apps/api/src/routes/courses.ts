@@ -1921,6 +1921,18 @@ router.post('/:id/lessons/:lessonId/complete', (req: Request, res: Response) => 
   const totalLessons = course?.modules?.reduce((acc, m) => acc + (m.lessons?.length || 0), 0) || 0;
   const completion_percent = totalLessons ? (completedLessons.length / totalLessons) * 100 : 0;
 
+  // Record an event for analytics.
+  try {
+    dbEvents.add(userId, {
+      type: 'lesson.completed',
+      courseId,
+      lessonId,
+      meta: {},
+    });
+  } catch {
+    // best effort
+  }
+
   // Emit a progress.update WS event for real UI updates.
   emitToUser(userId, 'progress.update', {
     course_id: courseId,
