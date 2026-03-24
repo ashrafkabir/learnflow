@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24 (Iter84 planning)
+Last updated: 2026-03-24 (Iter85 planning)
 
 ---
 
@@ -2107,3 +2107,181 @@ Non-goals:
   - source validation
 - DB hygiene:
   - create screenshot/fast-mode data → cleanup removes only flagged rows
+
+---
+
+## Iteration 85 — SPEC PARITY SWEEP: TRUSTED BYOAI VAULT + REAL PROVIDER CLIENTS + DASHBOARD SIGNALS
+
+Status: **PLANNED**
+
+Source of truth spec: `LearnFlow_Product_Spec.md` (March 2026)
+
+### Planner verification (Iter85 planner run)
+
+- ✅ Boot: `systemctl --user restart learnflow-api learnflow-client learnflow-web`
+- ✅ Screenshots: `SCREENSHOT_DIR=screenshots/iter85/planner-run node screenshot-all.mjs`
+  - Output dir: `learnflow/screenshots/iter85/planner-run/`
+- ✅ `npm test`
+- ✅ `npx tsc --noEmit`
+- ✅ `npm run lint:check`
+- ✅ `npm run format:check`
+
+### Brutally honest: biggest spec gaps observed
+
+The app is a strong MVP for _course generation + lesson reading + update-agent notifications_, but several spec pillars remain incomplete:
+
+- **BYOAI vault is not spec-compliant** (§5.2.8, §3, §11): provider selection, key validation, encryption at rest, rotation, and usage dashboard are partial.
+- **Provider coverage is incomplete**: `apps/api/src/llm/anthropic.ts` is explicitly a placeholder; multi-provider execution is not end-to-end.
+- **Behavioral tracking & streaks are heuristic** (§9): streak/progress stats are not based on event history (see JSON persistence placeholder).
+- **Agent transparency is inconsistent** (§5.2.3): chips + activity exist, but token/usage + “which agent ran” visibility is limited.
+
+Focus for Iter85:
+
+1. Make BYOAI key storage + validation **trustworthy** and aligned with spec language.
+2. Turn “provider routing” into **real provider clients** (at least Anthropic) with safe logging.
+3. Make dashboard stats/streaks **derived from real events** (not heuristics).
+
+### P0 (Must do)
+
+1. **BYOAI Key Vault: provider selection + validate-on-save (OpenAI + Anthropic)**
+
+- Acceptance criteria:
+  - Settings has provider dropdown (OpenAI/Anthropic) + API key input per provider.
+  - Save triggers server-side validation with a deterministic healthcheck call (non-billable/minimal).
+  - UI shows: Valid / Invalid + error reason (never echo key back).
+  - Keys are never written to logs (add tests).
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/routes/profile.ts`
+  - `apps/api/src/llm/providers.ts`
+  - `apps/api/src/utils/redact.ts` (or similar)
+
+2. **Encrypt API keys at rest (dev-friendly implementation, spec-aligned)**
+
+- Acceptance criteria:
+  - Keys are encrypted before persistence with a server-side master key (env var).
+  - Decryption happens only per request in memory.
+  - Migration path for existing plaintext keys (one-time read→encrypt→overwrite).
+  - Unit tests cover encrypt/decrypt + “no plaintext in DB dump”.
+- Likely files:
+  - `apps/api/src/crypto/*` (new)
+  - `apps/api/src/db.ts` (or wherever keys are stored)
+  - `apps/api/src/routes/profile.ts`
+
+3. **Replace Anthropic placeholder with real client wiring**
+
+- Acceptance criteria:
+  - `getAnthropicForRequest()` returns a usable Anthropic SDK/client (or HTTP wrapper) and is exercised by at least one route.
+  - Clear provider error mapping: invalid_key / rate_limited / network.
+  - Adds a basic integration test in mock mode (no external calls in CI).
+- Likely files:
+  - `apps/api/src/llm/anthropic.ts`
+  - `apps/api/src/llm/*` (provider call sites)
+  - `apps/api/src/__tests__/*`
+
+4. **Usage dashboard MVP: per-provider request counters + last-used timestamps**
+
+- Acceptance criteria:
+  - Server records minimal usage events: provider, endpoint/agentName, timestamp.
+  - Settings shows: last used time and count per provider (last 7 days).
+  - Ensure test/screenshot origins can be excluded.
+- Likely files:
+  - `apps/api/src/routes/usage.ts`
+  - `apps/api/src/db.ts`
+  - `apps/client/src/screens/ProfileSettings.tsx`
+
+5. **Behavioral tracking: make streak and study minutes event-driven (no more heuristics)**
+
+- Acceptance criteria:
+  - Lesson completion writes an event record with timestamp + minutes spent.
+  - Dashboard streak derives from event dates (rolling consecutive days).
+  - `getUserStats()` no longer uses placeholder completionDates / Math.min heuristic.
+- Likely files:
+  - `apps/api/src/persistence.ts` (or DB-based replacement)
+  - `apps/api/src/routes/courses.ts` (mark complete)
+  - `apps/client/src/screens/LessonReader.tsx`
+
+### P1 (Should do)
+
+6. **Agent transparency: show “agent ran + tokens used” in conversation metadata**
+
+- Acceptance criteria:
+  - Chat responses include agentResults summary (agentName + status + tokensUsed).
+  - Client shows a collapsible “Details” panel per message.
+  - BYOAI users can see approximate token usage per request.
+- Likely files:
+  - `packages/core/src/orchestrator/response-aggregator.ts`
+  - `apps/api/src/routes/chat.ts`
+  - `apps/client/src/screens/Conversation.tsx`
+
+7. **Intent routing upgrade: fall back to LLM intent classification when regex confidence is low**
+
+- Acceptance criteria:
+  - If no regex match, call a cheap classifier prompt (using user’s provider) to select agent/task.
+  - Deterministic test mode keeps regex-only behavior.
+  - Adds tests for ambiguous prompts.
+- Likely files:
+  - `packages/core/src/orchestrator/intent-router.ts`
+  - `packages/core/src/orchestrator/orchestrator.ts`
+
+8. **Screenshot harness hygiene: default screenshot dir should be Iter85+ (no iter57 defaults)**
+
+- Acceptance criteria:
+  - `scripts/screenshots.js` and `scripts/screenshots-auth.js` default to `screenshots/iter85/...` when unset.
+  - Notes file always written alongside screenshots.
+- Likely files:
+  - `scripts/screenshots.js`
+  - `scripts/screenshots-auth.js`
+
+### P2 (Nice to have)
+
+9. **Spec §11 endpoint parity pass: fill the biggest REST gaps (document + stub where needed)**
+
+- Acceptance criteria:
+  - Add a doc page enumerating what exists vs spec and mark missing endpoints.
+  - For top 3 missing endpoints, add server route stubs returning `501` with clear message.
+- Likely files:
+  - `apps/api/src/routes/*`
+  - `apps/docs/pages/api.md` (new)
+
+10. **Privacy copy alignment: update Settings copy to match actual storage and encryption**
+
+- Acceptance criteria:
+  - Settings explains: encryption at rest, what is stored, and how to delete.
+  - No claims that aren’t technically true.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/docs/pages/privacy-security.md`
+
+11. **Marketplace realism polish: show “coming soon” for unimplemented creator economics**
+
+- Acceptance criteria:
+  - Marketplace screens label paid-course and earnings analytics as “coming soon” if not implemented.
+  - Avoid UI implying revenue share exists if it doesn’t.
+- Likely files:
+  - `apps/client/src/screens/marketplace/*`
+
+### Screenshot checklist (Iter85)
+
+Capture via:
+
+- `SCREENSHOT_DIR=screenshots/iter85/run-001 ITERATION=85 node screenshot-all.mjs`
+
+Required:
+
+- `app-settings.png` (key vault + validation + usage panel)
+- `app-dashboard.png` (streak + stats reflect event-driven values)
+- `app-conversation.png` (agent transparency details)
+- `lesson-reader.png` (mark complete writes events)
+
+### Verification checklist (Iter85)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- New tests:
+  - key encryption migration + redaction
+  - provider validation path
+  - streak calculation from events
+  - no-key-in-logs regression
