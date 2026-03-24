@@ -265,7 +265,7 @@ Non-goals:
    - Acceptance criteria:
      - Creating a course persists a plan object (even in degraded / test mode). ✅ DONE (courses.plan persisted)
      - Each lesson in the plan has 3–6 “planned queries” and a target source mix (e.g., docs + blog + academic). ✅ DONE
-     - Plan is visible in the pipeline detail API response (debug view). ⏳ TODO
+     - Plan is visible in the pipeline detail API response (debug view). ✅ DONE
    - Likely files:
      - `packages/agents/src/course-builder/*` (new plan builder)
      - `apps/api/src/routes/courses.ts`, `apps/api/src/routes/pipeline.ts`
@@ -274,7 +274,10 @@ Non-goals:
      - New API integration test: creating a course returns/produces plan with per-lesson queries.
    - Evidence:
      - Commit: `3f42987` ("Iter74 P0: persist course plan artifact on courses")
+     - Commit: `077f63b` ("iter74: expose course plan in pipeline detail debug")
      - Code: `apps/api/src/utils/coursePlan.ts`, `apps/api/src/db.ts`, `apps/api/src/routes/courses.ts`
+     - Code: `apps/api/src/routes/pipeline.ts` (adds `debug.coursePlan` + persists plan on pipeline-created courses)
+     - Test: `apps/api/src/__tests__/pipeline-course-plan-debug.test.ts`
      - Checks: `npm test`, `npx tsc --noEmit`, `npx eslint .`, `npx prettier --check .` all ✅
 
 2. **Per-lesson “re-search loop” when lesson quality gates fail (topic-aware queries)**
