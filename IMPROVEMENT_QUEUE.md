@@ -2896,3 +2896,271 @@ Gates:
 Notes:
 
 - Root `npm run tsc` script does not exist in this repo; build step runs `tsc` per-package via turbo.
+
+---
+
+## Iteration 89 — SPEC TRUTH PASS + WS CONTRACT HARDENING + MVP PROMISE ALIGNMENT (Docs/UI copy + Ops)
+
+Status: **PLANNED (planner run complete)**
+
+Source of truth spec: `learnflow/LearnFlow_Product_Spec.md` (March 2026)
+
+Planner evidence (Iter89):
+
+- ✅ Services running:
+  - `learnflow-api` (3000), `learnflow-client` (3001), `learnflow-web` (3003)
+- ✅ Screenshots captured (script):
+  - Command: `SCREENSHOT_DIR=screenshots/iter89/planner-run node screenshot-all.mjs`
+  - Output: `learnflow/screenshots/iter89/planner-run/` (see `NOTES.md`)
+
+### Brutally honest: where spec still diverges from reality
+
+The repo is now a solid **web-first MVP** with real course generation, lesson reading, WS chat, Update Agent notifications, and meaningful trust/hardening work (Iter87–88). The remaining highest-leverage issues are **truth + contracts**:
+
+- **Spec claims cross-platform native clients (Flutter/RN/Electron)**; implementation is web-only (React + Vite) + marketing site (Next). This is fine, but it must be clearly disclosed everywhere to avoid over-promise.
+- **Spec promises a “true multi-agent mesh + gRPC + DAG planner”**. Implementation is an in-process orchestrator + agent registry. Again acceptable for MVP, but must be framed as such.
+- **WebSocket contract is present but not enterprise-grade**: reconnect semantics, ordering invariants, idempotency, and stable IDs are not proven by tests.
+- **OpenAPI exists but is not a complete product contract** (coverage gaps + drift risk).
+- **Marketplace + billing** are MVP/stubbed; UI can still imply production economics.
+- **Content provenance** is much stronger than earlier iterations (structured sources + attribution drawer), but still lacks: credibility scoring, dedupe guarantees, and a durable provenance chain model described in spec §6.3.
+
+Iter89 should prioritize clarity + reliability over new features.
+
+---
+
+### P0 (Must do) — 10–15 tasks for Iter89
+
+#### 1) Update `IMPLEMENTED_VS_SPEC.md` to reflect current iteration reality (Iter89)
+
+- Problem: `IMPLEMENTED_VS_SPEC.md` is labeled **Iteration 70** and is now misleading (Update Agent status, security posture, key vault, data hygiene, etc.).
+- Acceptance criteria:
+  - Rename/update header to **Iteration 89**.
+  - Update sections 1–17 with current truth:
+    - Update Agent is now **real RSS/HTML monitoring MVP** (Iter83–84), not stub.
+    - API posture: Helmet/CORS/payload limits/rate limiting/error envelope (Iter87).
+    - Request validation: Zod write endpoints (Iter88).
+    - Origin hygiene + cleanup tooling (Iter86).
+    - Web-first MVP disclosure (no Flutter/RN/Electron).
+  - Add a “Biggest remaining gaps” list that matches the actual backlog (WS contract hardening, platform matrix, marketplace realism, provenance).
+- Likely files:
+  - `IMPLEMENTED_VS_SPEC.md`
+- Screenshot checklist:
+  - N/A
+- Verification checklist:
+  - Document reads consistently; no contradictory claims.
+
+#### 2) MVP truth pass: ensure marketing + docs do not over-promise platform support
+
+- Acceptance criteria:
+  - `apps/web` pages (Home/Download/Pricing) clearly state current supported platform is **Web**.
+  - Any references to macOS/Windows installers, iOS/Android apps are labeled “planned/future”.
+  - `apps/docs` Getting Started and/or FAQ includes a short “Supported platforms” section.
+- Likely files:
+  - `apps/web/src/app/page.tsx`
+  - `apps/web/src/app/download/page.tsx`
+  - `apps/docs/pages/*` (or docs index)
+- Screenshot checklist:
+  - `landing-home.png`, `marketing-download.png` reflect updated copy.
+- Verification checklist:
+  - Run screenshot harness after changes.
+
+#### 3) WebSocket contract hardening: define and test ordering/idempotency invariants
+
+- Acceptance criteria:
+  - Document WS event contract (ids, ordering, retry semantics) in one place.
+  - Add tests covering:
+    - invalid JSON → standard error envelope w/ requestId/messageId when applicable
+    - reconnect does not duplicate `response.end` for same `messageId`
+    - ordering: `response.start` precedes chunks; `response.end` exactly once
+  - Client expectations explicitly documented (what it must tolerate).
+- Likely files:
+  - `apps/api/src/wsOrchestrator.ts`
+  - `apps/api/src/__tests__/ws-contract.test.ts`
+  - `apps/client/src/screens/Conversation.tsx` (only if contract changes require UI updates)
+- Screenshot checklist:
+  - `app-conversation.png` (optional: show stable activity indicator + sources)
+- Verification checklist:
+  - `npm test`
+
+#### 4) OpenAPI completeness pass: cover all user-facing endpoints + error envelopes
+
+- Acceptance criteria:
+  - OpenAPI includes request/response schemas for the main surfaces:
+    - auth, profile, keys, courses/lessons, pipeline, chat/WS description, notifications/update agent, export, usage
+  - Document standard error envelope once and reference in all endpoints.
+  - `npm run -w @learnflow/api openapi:lint` passes.
+- Likely files:
+  - `apps/api/openapi.yaml`
+  - `apps/docs/pages/api.md` (or equivalent)
+- Verification checklist:
+  - `openapi:lint`
+
+#### 5) Privacy/security copy audit (again): ensure UI + docs match implementation exactly
+
+- Acceptance criteria:
+  - Settings + docs disclose what’s stored:
+    - course content, sources, learning events, notifications
+  - API key storage: state “encrypted at rest” and link to doc; do **not** claim specific cipher unless proven.
+  - Clarify what is excluded by default from analytics (non-user origins).
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/docs/pages/privacy-security.md`
+- Screenshot checklist:
+  - `app-settings.png` (privacy copy visible)
+- Verification checklist:
+  - Grep for stale promises (cipher/session-only/etc.) and remove/qualify.
+
+#### 6) Course/Lesson UX: make the “<10 min” spec promise testable and enforced
+
+- Acceptance criteria:
+  - Define the canonical constraint (word-count or reading-time heuristic) and enforce it.
+  - Add a unit/integration test that fails if lesson exceeds limit in normal generation mode.
+  - UI displays estimated read time consistently in Lesson Reader.
+- Likely files:
+  - `apps/api/src/utils/*` (reading time / word count)
+  - `apps/api/src/routes/courses.ts`
+  - `apps/client/src/screens/LessonReader.tsx`
+- Screenshot checklist:
+  - `lesson-reader.png` shows the time badge.
+- Verification checklist:
+  - `npm test`
+
+#### 7) Provenance chain MVP: define “source credibility + dedupe” rules (even if heuristic)
+
+- Acceptance criteria:
+  - For each lesson, persist and expose:
+    - dedupe key (normalized url)
+    - sourceType (docs/blog/paper/forum)
+    - credibility score (heuristic) and reason
+  - Document what the score is (and what it is not).
+- Likely files:
+  - `apps/api/src/utils/sourceCards.ts`
+  - `apps/api/src/utils/sourcesStructured.ts`
+  - `apps/client/src/components/SourcesDrawer.tsx`
+- Screenshot checklist:
+  - `lesson-reader-sources-drawer.png` shows credibility label (if surfaced)
+- Verification checklist:
+  - Unit tests for scoring/dedupe.
+
+#### 8) Marketplace realism: stop implying payments/earnings are live unless they are
+
+- Acceptance criteria:
+  - Marketplace UI labels paid flows as “coming soon” (or hides them) unless end-to-end exists.
+  - Creator dashboard clearly states what is implemented.
+  - API endpoints that are stubs return `501 Not Implemented` with standard envelope.
+- Likely files:
+  - `apps/client/src/screens/marketplace/*`
+  - `apps/api/src/routes/marketplace-full.ts`
+  - `apps/docs/pages/*` (marketplace docs)
+- Screenshot checklist:
+  - `marketplace-courses.png`, `marketplace-agents.png` show updated labeling.
+- Verification checklist:
+  - `npm test`
+
+#### 9) Ops: document “how to run + ports + env + services” as the canonical local-dev guide
+
+- Acceptance criteria:
+  - Single doc location describes:
+    - ports (3000/3001/3002/3003)
+    - required env vars (ENCRYPTION_KEY, CORS allowlist, etc.)
+    - systemd user services vs `npm run dev` approach
+    - screenshot harness usage (SCREENSHOT_DIR)
+- Likely files:
+  - `learnflow/README.md` and/or `learnflow/DEV_PORTS.md`
+  - `learnflow/screenshots/*/README.md` (if needed)
+- Verification checklist:
+  - Fresh machine/engineer can follow docs without tribal knowledge.
+
+#### 10) Update Agent: publish a deployable scheduling guide (cron/K8s CronJob) + safety notes
+
+- Acceptance criteria:
+  - Add docs showing:
+    - tick endpoint
+    - recommended schedule
+    - run lock/idempotency assumptions
+    - rate-limit + backoff behaviors
+    - privacy/storage disclosure
+- Likely files:
+  - `apps/docs/pages/update-agent.md` (or create if missing)
+  - `scripts/notifications-tick.mjs` (reference)
+- Verification checklist:
+  - Docs match code + endpoints.
+
+#### 11) Screenshot harness: ensure it captures “sources drawer open” for Lesson Reader + Conversation
+
+- Acceptance criteria:
+  - Harness produces these shots deterministically:
+    - `lesson-reader-sources-drawer.png`
+    - `conversation-sources-drawer.png`
+    - `conversation-sources-empty-state.png`
+  - `NOTES.md` always written with ids + commands.
+- Likely files:
+  - `screenshot-all.mjs`
+  - `debug-screenshot.mjs`
+- Verification checklist:
+  - Run harness twice; outputs stable.
+
+#### 12) Tier/limits truth: document rate limits & plan gating in docs and UI
+
+- Acceptance criteria:
+  - Docs list current rate limits (what is implemented, not just spec).
+  - UI communicates when an action is Pro-only and where to change plan (even if billing is stubbed).
+- Likely files:
+  - `apps/docs/pages/api.md` (rate limits)
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/middleware/rateLimit.ts` (confirm)
+
+#### 13) Tests: add a “no secrets in errors” regression for validation failures
+
+- Acceptance criteria:
+  - Validation error details never contain raw values for sensitive fields.
+  - Add tests for common secrets: Authorization header, apiKey fields.
+- Likely files:
+  - `apps/api/src/middleware/validate.ts`
+  - `apps/api/src/__tests__/redaction.test.ts`
+
+#### 14) Consistency: normalize `origin` semantics across all creation paths and document it
+
+- Acceptance criteria:
+  - A short doc explains origin values, default filtering, and cleanup.
+  - Tests confirm non-user origins are excluded from user-facing stats by default.
+- Likely files:
+  - `apps/api/src/db.ts`
+  - `apps/api/src/routes/profile.ts`
+  - `apps/docs/pages/dev-harness.md` (or similar)
+
+---
+
+### Screenshot checklist (Iter89)
+
+Capture via:
+
+```bash
+cd /home/aifactory/.openclaw/workspace/learnflow
+SCREENSHOT_DIR=screenshots/iter89/run-001 node screenshot-all.mjs
+```
+
+Required:
+
+- `landing-home.png` (platform disclosure correct)
+- `marketing-download.png` (no false native download claims)
+- `app-settings.png` (privacy/security copy accurate)
+- `app-conversation.png` (+ sources drawer if harness supports)
+- `lesson-reader.png` (+ sources drawer if harness supports)
+
+### Verification checklist (Iter89)
+
+- `npm test`
+- `npm run lint:check` (or repo equivalent)
+- `npm run format:check`
+- `npm run -w @learnflow/api openapi:lint`
+- Screenshot run produces expected files + `NOTES.md`
+
+### OneDrive / artifacts (TODO)
+
+- Sync screenshots:
+  - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter89/planner-run/`
+- Sync planning doc updates:
+  - `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
+
+(Planner did not perform OneDrive sync from this session.)
