@@ -1601,7 +1601,16 @@ This repo is an MVP that **covers the surface area** of most major screens, but 
 
 ## Iteration 82 — SETTINGS: LIVE DATA SUMMARY + TRACKING TRANSPARENCY + SMALL TRUST/PARITY FIXES
 
-Status: **READY FOR BUILDER**
+Status: **DONE** ✅
+
+Evidence:
+
+- Commit: `2ecfff2` (pushed)
+- UI: `apps/client/src/screens/ProfileSettings.tsx` (Privacy → “Your data on our servers” live summary)
+- API route: `apps/api/src/routes/profile.ts` (`GET /api/v1/profile/data-summary`)
+- DB support: `apps/api/src/db.ts` (`db.getDataSummary()` + prepared statements)
+- Contract test: `apps/api/src/__tests__/profile-data-summary.test.ts`
+- Screenshots: `learnflow/screenshots/iter82/run-001/app-settings.png` + `learnflow/screenshots/iter82/run-001/NOTES.md`
 
 ### Why this iteration
 
