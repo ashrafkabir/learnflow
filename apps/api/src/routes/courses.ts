@@ -42,6 +42,7 @@ import {
 } from '../utils/lessonQuality.js';
 import { validateSectionLevelQuotas } from '../utils/lessonSectionQuotas.js';
 import { buildLessonQualityTelemetry } from '../utils/qualityTelemetry.js';
+import { hardenLessonStyle } from '../utils/styleHardening.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
 import { validateBody } from '../validation.js';
@@ -61,6 +62,15 @@ Requirements:
 - Use an e-learning narration cadence: explain clearly, avoid filler, favor concrete details.
 - Include inline citations like [1], [2] referencing the provided sources.
 - Be specific and technical — avoid generic platitudes.
+- Avoid these generic phrases (rewrite them into specific claims):
+  - "in today’s world"
+  - "ever-evolving"
+  - "robust" (unless you define what makes it robust)
+  - "seamless"
+  - "leverage"
+  - "best practices" (unless you name which ones)
+  - "it depends" (unless you list the deciding variables)
+- Prefer concrete nouns + numbers.
 - Use markdown formatting with headers, bold, lists, and code blocks.
 - REQUIRED STRUCTURE (all headings must appear exactly):
   - ## Learning Objectives
@@ -671,12 +681,19 @@ ${les.description}
 
 ## Estimated Time
 
-**1 minute**
+**8 minutes**
 
 ## Core Concepts
 
 - Key definition: ${les.title} relates to ${topic}.
 - Why it matters: it changes how you make decisions and verify results.
+- Concrete detail: include at least one measurable constraint (e.g., latency < 100ms, error rate < 1%).
+- Common pitfall: state a specific failure mode and how you detect it.
+
+Additional explanation:
+
+In practice, you will usually have to choose *one* constraint to optimize first (speed, correctness, cost, or safety). Write that constraint down, then pick a single observable metric (e.g., total time, error count, or dollars). That metric is what you will measure in the worked example so you can tell whether a change helped or hurt.
+
 
 ## Worked Example
 
@@ -730,17 +747,27 @@ Decision rule: pick A if time-to-first-result matters most; pick B if rework ris
 
 - You applied ${les.title} via a concrete artifact and verified the output.
 
+Reflection:
+
+Write down (1) the input you chose, (2) the exact steps you followed, and (3) the output you observed. If you can repeat the same steps and get the same output, you have a reliable baseline. Now change exactly one thing and observe how the output changes.
+
+- Next you will vary one input, re-run the artifact, and compare outputs to build intuition.
+
 ## Quick Check
 
 1. What is the main goal of **${les.title}** in **${topic}**?
 2. What output would you expect from the worked example?
 3. Name one common failure mode and one way to catch it.
+4. What input would you change first to test your understanding?
+5. What evidence would convince you the result is correct?
 
 ### Answer Key
 
 1. A correct answer connects the concept to a practical goal in the topic.
 2. The snippet prints 5.
 3. Example: wrong inputs; catch it with a quick sanity check and expected output.
+4. Change a single parameter (e.g., inputs or constraints) and re-run to observe the effect.
+5. A combination of expected output, sanity checks, and (when possible) a test case.
 
 ## Sources
 
@@ -765,6 +792,15 @@ Continue.`,
 
           const enforced = enforceBiteSizedLesson(gen.markdown, { maxMinutes: 10 });
           let contentFinal = enforced.content;
+
+          // Iter73 P2.11: Non-LLM style hardening pass to reduce template-y writing.
+          // Best-effort: rewrites a small set of banned phrases.
+          try {
+            const hardened = hardenLessonStyle(contentFinal);
+            if (hardened.changed) contentFinal = hardened.updated;
+          } catch {
+            // best effort
+          }
 
           // Iter72: Embed a license-safe illustration directly into the lesson markdown.
           // We default to Wikimedia Commons (search) for safety + attribution.

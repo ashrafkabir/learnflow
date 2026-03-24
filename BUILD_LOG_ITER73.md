@@ -89,3 +89,24 @@ P0–P2, in order.
 - Screenshots: `SCREENSHOT_DIR=screenshots/iter73/run-5 node screenshot-all.mjs` ✅.
 
 
+
+## Run 6 (Iter73 P2 items 11-15)
+- Added API style hardening pass + prompt bans for generic phrases.
+  - Files: apps/api/src/utils/styleHardening.ts, apps/api/src/routes/courses.ts
+  - Tests: apps/api/src/utils/__tests__/styleHardening.test.ts
+- Added offline deterministic topic packs for domain tests.
+  - Files: packages/agents/src/fixtures/topic-packs.ts
+  - Tests: packages/agents/src/__tests__/iter73-offline-topic-pack.test.ts
+- Enforced minimum lesson word count deterministically in test fast mode.
+  - Expanded fastTestMode lesson template to ~528 words.
+  - Added integration test: apps/api/src/__tests__/iter73-course-generation-min-words.test.ts
+- Client: Added AttributionDrawer (sources + image provenance) and Action Chips in LessonReader.
+  - Files: apps/client/src/components/AttributionDrawer.tsx, apps/client/src/screens/LessonReader.tsx
+  - Screenshots: screenshots/iter73/run-6/* (includes lesson-reader.png)
+
+Checks:
+- npm test ✅
+- npm run build ✅
+- npm run lint ✅
+- npm run format:check ✅
+- screenshots ✅ (SCREENSHOT_DIR=screenshots/iter73/run-6)

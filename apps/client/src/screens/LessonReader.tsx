@@ -7,6 +7,7 @@ import { parseSources } from '../lib/sources.js';
 import { SkeletonLessonContent } from '../components/Skeleton.js';
 import { Confetti } from '../components/Confetti.js';
 import { Button } from '../components/Button.js';
+import { AttributionDrawer } from '../components/AttributionDrawer.js';
 import { useSwipe } from '../hooks/useSwipe.js';
 import { analytics } from '../lib/analytics.js';
 import {
@@ -48,6 +49,7 @@ interface Illustration {
   license?: string;
   attributionText?: string;
   sourcePageUrl?: string;
+  imageReason?: string;
 }
 
 interface Annotation {
@@ -143,6 +145,7 @@ export function LessonReader() {
   const { state, fetchLesson, completeLesson, generateQuiz } = useApp();
   const [loading, setLoading] = useState(false);
   const [activePanel, setActivePanel] = useState<'none' | 'notes' | 'quiz'>('none');
+  const [attributionOpen, setAttributionOpen] = useState(false);
   const [_notesFormat, _setNotesFormat] = useState<'cornell' | 'flashcard'>('cornell');
   const [savedNote, setSavedNote] = useState<any>(null);
   const [customNoteText, setCustomNoteText] = useState('');
@@ -1525,6 +1528,47 @@ export function LessonReader() {
               </div>
             ))}
 
+          {/* Iter73 P2.15: Action chips */}
+          <div
+            className="flex flex-wrap gap-2 mb-4"
+            data-testid="action-chips"
+            aria-label="Lesson actions"
+          >
+            <button
+              onClick={() => setActivePanel('notes')}
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 inline-flex items-center gap-2"
+            >
+              <IconPencil className="w-4 h-4" />
+              Take Notes
+            </button>
+            <button
+              onClick={() => setActivePanel('quiz')}
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-accent/10 text-accent hover:bg-accent/20 inline-flex items-center gap-2"
+            >
+              <IconTestTube className="w-4 h-4" />
+              Quiz Me
+            </button>
+            <button
+              onClick={() => {
+                // MVP: jump to Next Steps if present; otherwise open attribution.
+                const el = document.querySelector('[data-testid="next-steps"]');
+                if (el) (el as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                else setAttributionOpen(true);
+              }}
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-success/10 text-success hover:bg-success/20 inline-flex items-center gap-2"
+            >
+              <IconRocket className="w-4 h-4" />
+              Go Deeper
+            </button>
+            <button
+              onClick={() => setAttributionOpen(true)}
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 inline-flex items-center gap-2"
+            >
+              <IconBook className="w-4 h-4" />
+              See Sources
+            </button>
+          </div>
+
           {/* Sources / References */}
           <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
@@ -1608,6 +1652,22 @@ export function LessonReader() {
             </div>
           )}
         </article>
+
+        <AttributionDrawer
+          open={attributionOpen}
+          onClose={() => setAttributionOpen(false)}
+          sources={sources as any}
+          images={(sectionIllustrations as any).map((i: any) => ({
+            imageUrl: i.imageUrl,
+            sourcePageUrl: i.sourcePageUrl,
+            license: i.license,
+            attributionText: i.attributionText,
+            provider: i.provider,
+            createdAt: i.createdAt,
+            imageReason: (i as any).imageReason,
+          }))}
+          sourcesMissingReason={(lesson as any)?.sourcesMissingReason}
+        />
 
         {/* Previous / Next Lesson Navigation */}
         {(prevLesson || nextLesson) && (
