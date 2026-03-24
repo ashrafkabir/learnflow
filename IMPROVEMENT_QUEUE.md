@@ -2112,7 +2112,19 @@ Non-goals:
 
 ## Iteration 85 — SPEC PARITY SWEEP: TRUSTED BYOAI VAULT + REAL PROVIDER CLIENTS + DASHBOARD SIGNALS
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
+
+Builder evidence (run-001):
+
+- Screenshots: `screenshots/iter85/run-001/p0-1-settings-byoai.png`, `screenshots/iter85/run-001/p0-3-dashboard-streak.png`
+- Build log: `BUILD_LOG_ITER85.md`
+- Commits:
+  - 5a40003 — Iter85 P0: validate-on-save + validation status for BYOAI keys
+  - ab09529 — Iter85: honor provider hint in chat usage attribution
+  - d31bcf6 — Iter85 P0: real Anthropic HTTP client
+  - 5e74130 — Iter85 P0: derive streak/study minutes from learning events
+  - 6db1a02 — Iter85 P0: align settings copy (encrypted at rest)
+  - affb99d — chore: add iter85 dashboard screenshot script
 
 Source of truth spec: `LearnFlow_Product_Spec.md` (March 2026)
 
