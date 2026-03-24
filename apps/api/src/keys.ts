@@ -14,6 +14,8 @@ const addKeySchema = z.object({
   provider: z.enum(PROVIDERS),
   apiKey: z.string().min(1),
   label: z.string().optional(),
+  // When true, deactivate other keys for this provider and make this one active.
+  activate: z.boolean().optional(),
 });
 
 const validateKeySchema = z.object({
@@ -25,13 +27,23 @@ const validateSavedKeySchema = z.object({
   provider: z.enum(PROVIDERS),
 });
 
+const activateKeySchema = z.object({
+  id: z.string().uuid(),
+});
+
+const rotateKeySchema = z.object({
+  provider: z.enum(PROVIDERS),
+  apiKey: z.string().min(1),
+  label: z.string().optional(),
+});
+
 const deleteKeySchema = z.object({
   provider: z.enum(PROVIDERS),
 });
 
 /** POST /api/v1/keys — store an encrypted API key */
 router.post('/', validateBody(addKeySchema), (req: Request, res: Response) => {
-  const { provider, apiKey, label } = req.body;
+  const { provider, apiKey, label, activate } = req.body;
   const userId = req.user!.sub;
 
   const { encrypted, iv } = encrypt(apiKey);
@@ -45,12 +57,16 @@ router.post('/', validateBody(addKeySchema), (req: Request, res: Response) => {
     iv,
     label: label || `${provider} key`,
     lastFour,
-    active: true,
+    active: activate !== false,
+    rotatedAt: undefined,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
 
   db.addApiKey(keyRecord);
+
+  // Ensure exactly one active key per provider/user.
+  if (keyRecord.active) db.activateApiKey({ userId, keyId: keyRecord.id });
 
   const maskedPrefix =
     provider === 'anthropic'
@@ -107,6 +123,7 @@ router.get('/', (req: Request, res: Response) => {
       maskedKey: `${maskedPrefix}${k.lastFour}`,
       active: k.active,
       createdAt: k.createdAt,
+      rotatedAt: k.rotatedAt ? k.rotatedAt.toISOString() : undefined,
       usageCount,
       lastUsed: lastUsed ? lastUsed.toISOString() : undefined,
       validatedAt: k.validatedAt ? k.validatedAt.toISOString() : undefined,
@@ -236,7 +253,50 @@ router.post(
   },
 );
 
-/** DELETE /api/v1/keys/:provider — delete a provider key */
+/** POST /api/v1/keys/activate — activate a specific key ID (deactivates other keys for provider) */
+router.post('/activate', validateBody(activateKeySchema), (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const keyId = req.body.id;
+
+  const key = db.findApiKeyById(keyId);
+  if (!key || key.userId !== userId) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Key not found' });
+    return;
+  }
+
+  db.activateApiKey({ userId, keyId });
+  res.status(200).json({ ok: true });
+});
+
+/** POST /api/v1/keys/rotate — add a new key for a provider, set it active, and deactivate old keys */
+router.post('/rotate', validateBody(rotateKeySchema), (req: Request, res: Response) => {
+  const { provider, apiKey, label } = req.body;
+  const userId = req.user!.sub;
+
+  const { encrypted, iv } = encrypt(apiKey);
+  const lastFour = apiKey.slice(-4);
+
+  const keyRecord: DbApiKey = {
+    id: uuidv4(),
+    userId,
+    provider,
+    encryptedKey: encrypted,
+    iv,
+    label: label || `${provider} key`,
+    lastFour,
+    active: true,
+    rotatedAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  db.addApiKey(keyRecord);
+  db.activateApiKey({ userId, keyId: keyRecord.id });
+
+  res.status(201).json({ ok: true, id: keyRecord.id });
+});
+
+/** DELETE /api/v1/keys/:provider — delete all keys for a provider */
 router.delete('/:provider', validateParams(deleteKeySchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const provider = req.params.provider as (typeof PROVIDERS)[number];

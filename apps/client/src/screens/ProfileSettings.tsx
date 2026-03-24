@@ -37,6 +37,7 @@ export function ProfileSettings() {
       validatedAt?: string;
       lastValidationStatus?: string;
       lastValidationError?: string;
+      rotatedAt?: string;
     }>
   >([]);
 
@@ -343,7 +344,7 @@ export function ProfileSettings() {
               Keys are encrypted with AES-256 and stored on the server. We never store raw keys.
             </p>
 
-            {/* Saved keys with usage stats — Task 12 */}
+            {/* Saved keys with usage stats */}
             {savedKeys.length > 0 && (
               <div className="space-y-2">
                 {savedKeys.map((k) => (
@@ -356,8 +357,55 @@ export function ProfileSettings() {
                         <span className="ml-2 text-xs text-gray-800/80 dark:text-gray-200 font-mono">
                           {k.maskedKey}
                         </span>
+                        {k.active && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-green-100 dark:bg-green-900/40 px-2 py-0.5 text-[10px] font-medium text-green-800 dark:text-green-200">
+                            Active
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
+                        {!k.active && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                await apiPost('/keys/activate', { id: k.id });
+                                const data = await apiGet('/keys');
+                                if (data?.keys) setSavedKeys(data.keys);
+                                toast('Key activated', 'success');
+                              } catch {
+                                toast('Failed to activate key', 'error');
+                              }
+                            }}
+                          >
+                            Activate
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            const newKey = window.prompt(
+                              `Enter new ${k.provider} API key to rotate to:`,
+                            );
+                            if (!newKey || !newKey.trim()) return;
+                            try {
+                              await apiPost('/keys/rotate', {
+                                provider: k.provider,
+                                apiKey: newKey.trim(),
+                                label: k.label,
+                              });
+                              const data = await apiGet('/keys');
+                              if (data?.keys) setSavedKeys(data.keys);
+                              toast('Key rotated', 'success');
+                            } catch {
+                              toast('Failed to rotate key', 'error');
+                            }
+                          }}
+                        >
+                          Rotate
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -397,7 +445,7 @@ export function ProfileSettings() {
                         </Button>
                       </div>
                     </div>
-                    {/* Usage stats — Task 12 */}
+                    {/* Usage stats */}
                     <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-300">
                       <span className="inline-flex items-center gap-1">
                         <IconChart className="w-4 h-4" />

@@ -83,7 +83,7 @@ if (!isTest) {
     // Iter72: courses gained status + error for async generation progress
     // Iter74: courses gained plan for persisted course planning artifact
 
-    // Iter78: api_keys gained validation timestamps/status
+    // Iter78: api_keys gained validation timestamps/status + rotation metadata
     try {
       if (!hasColumn('api_keys', 'validatedAt')) {
         sqlite.exec(`ALTER TABLE api_keys ADD COLUMN validatedAt TEXT;`);
@@ -97,6 +97,9 @@ if (!isTest) {
         sqlite.exec(
           `ALTER TABLE api_keys ADD COLUMN lastValidationError TEXT NOT NULL DEFAULT '';`,
         );
+      }
+      if (!hasColumn('api_keys', 'rotatedAt')) {
+        sqlite.exec(`ALTER TABLE api_keys ADD COLUMN rotatedAt TEXT;`);
       }
     } catch {
       // If api_keys doesn't exist yet, CREATE TABLE below will handle it.
@@ -244,6 +247,7 @@ sqlite.exec(`
     validatedAt TEXT,
     lastValidationStatus TEXT NOT NULL DEFAULT '',
     lastValidationError TEXT NOT NULL DEFAULT '',
+    rotatedAt TEXT,
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL
   );
@@ -508,10 +512,18 @@ const stmts = {
 
   // API keys
   insertApiKey: sqlite.prepare(
-    `INSERT INTO api_keys (id, userId, provider, encryptedKey, iv, label, lastFour, active, expiresAt, validatedAt, lastValidationStatus, lastValidationError, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO api_keys (id, userId, provider, encryptedKey, iv, label, lastFour, active, expiresAt, validatedAt, lastValidationStatus, lastValidationError, rotatedAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
-  getKeysByUserId: sqlite.prepare(`SELECT * FROM api_keys WHERE userId = ?`),
+  getKeysByUserId: sqlite.prepare(
+    `SELECT * FROM api_keys WHERE userId = ? ORDER BY provider ASC, active DESC, createdAt DESC`,
+  ),
   findApiKeyById: sqlite.prepare(`SELECT * FROM api_keys WHERE id = ?`),
+  deactivateKeysForProvider: sqlite.prepare(
+    `UPDATE api_keys SET active = 0, updatedAt = ? WHERE userId = ? AND provider = ? AND id != ?`,
+  ),
+  activateApiKey: sqlite.prepare(
+    `UPDATE api_keys SET active = 1, updatedAt = ? WHERE id = ? AND userId = ?`,
+  ),
   deleteApiKey: sqlite.prepare(`DELETE FROM api_keys WHERE id = ?`),
   updateApiKeyValidation: sqlite.prepare(
     `UPDATE api_keys SET validatedAt = ?, lastValidationStatus = ?, lastValidationError = ?, updatedAt = ? WHERE id = ? AND userId = ?`,
@@ -769,6 +781,7 @@ export interface DbApiKey {
   validatedAt?: Date;
   lastValidationStatus?: string;
   lastValidationError?: string;
+  rotatedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -814,6 +827,7 @@ function rowToApiKey(row: any): DbApiKey {
     validatedAt: row.validatedAt ? new Date(row.validatedAt) : undefined,
     lastValidationStatus: row.lastValidationStatus ? String(row.lastValidationStatus) : undefined,
     lastValidationError: row.lastValidationError ? String(row.lastValidationError) : undefined,
+    rotatedAt: row.rotatedAt ? new Date(row.rotatedAt) : undefined,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
   };
@@ -909,6 +923,7 @@ class SqliteDb {
       key.validatedAt ? key.validatedAt.toISOString() : null,
       key.lastValidationStatus || '',
       key.lastValidationError || '',
+      key.rotatedAt ? key.rotatedAt.toISOString() : null,
       key.createdAt.toISOString(),
       key.updatedAt.toISOString(),
     );
@@ -943,6 +958,16 @@ class SqliteDb {
       params.keyId,
       params.userId,
     );
+  }
+
+  activateApiKey(params: { userId: string; keyId: string }): void {
+    const key = this.findApiKeyById(params.keyId);
+    if (!key || key.userId !== params.userId) return;
+
+    const nowIso = new Date().toISOString();
+    // Deactivate any other keys for this provider/user.
+    stmts.deactivateKeysForProvider.run(nowIso, params.userId, key.provider, key.id);
+    stmts.activateApiKey.run(nowIso, key.id, params.userId);
   }
 
   addTokenUsage(record: TokenUsageRecord): void {
