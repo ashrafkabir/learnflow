@@ -239,7 +239,7 @@ Non-goals:
 
 ## Iteration 74 — E2E COURSE PLANNING (FROM SOURCES) + PER-TOPIC RE-SEARCH LOOP + E-LEARNING NARRATION POLISH
 
-Status: **READY FOR BUILDER (iter74)**
+Status: **IN PROGRESS (builder running)**
 
 Focus (why this iteration exists):
 
@@ -263,15 +263,19 @@ Non-goals:
 1. **Course Planning stage: build a “course plan” from sources before writing lessons**
    - Add an explicit planning artifact that links: topic → extracted subtopics → modules/lessons → target sources.
    - Acceptance criteria:
-     - Creating a course persists a plan object (even in degraded / test mode).
-     - Each lesson in the plan has 3–6 “planned queries” and a target source mix (e.g., docs + blog + academic).
-     - Plan is visible in the pipeline detail API response (debug view).
+     - Creating a course persists a plan object (even in degraded / test mode). ✅ DONE (courses.plan persisted)
+     - Each lesson in the plan has 3–6 “planned queries” and a target source mix (e.g., docs + blog + academic). ✅ DONE
+     - Plan is visible in the pipeline detail API response (debug view). ⏳ TODO
    - Likely files:
      - `packages/agents/src/course-builder/*` (new plan builder)
      - `apps/api/src/routes/courses.ts`, `apps/api/src/routes/pipeline.ts`
      - DB: extend `courses` or add `course_plans` table
    - Tests:
      - New API integration test: creating a course returns/produces plan with per-lesson queries.
+   - Evidence:
+     - Commit: `3f42987` ("Iter74 P0: persist course plan artifact on courses")
+     - Code: `apps/api/src/utils/coursePlan.ts`, `apps/api/src/db.ts`, `apps/api/src/routes/courses.ts`
+     - Checks: `npm test`, `npx tsc --noEmit`, `npx eslint .`, `npx prettier --check .` all ✅
 
 2. **Per-lesson “re-search loop” when lesson quality gates fail (topic-aware queries)**
    - Today: regeneration reuses mostly the same sources; add a loop that **broadens / changes** queries when:
