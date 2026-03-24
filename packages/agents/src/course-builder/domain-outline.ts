@@ -7,6 +7,8 @@ export type OutlineDomain =
   | 'ai_prompting'
   | 'general';
 
+import { extractTopicSubtopics } from './topic-subtopics.js';
+
 export type OutlineLesson = {
   title: string;
   description: string;
@@ -22,6 +24,8 @@ export type CourseOutline = {
   topic: string;
   domain: OutlineDomain;
   modules: OutlineModule[];
+  /** Iter73 P0.2: extracted subtopics used to seed module/lesson specificity. */
+  subtopics?: string[];
 };
 
 export type LearnerIntent =
@@ -509,5 +513,9 @@ export function buildCourseOutline(topic: string): CourseOutline {
                 ? makeAiPromptingOutline(topic)
                 : makeGeneralOutline(topic);
 
-  return { topic, domain, modules };
+  // Iter73 P0.2: lightweight topic decomposition concept extraction.
+  // When sources are unavailable, use a deterministic topic-only fallback.
+  const subtopics = extractTopicSubtopics(topic, undefined, { min: 8, max: 15 });
+
+  return { topic, domain, modules, subtopics };
 }
