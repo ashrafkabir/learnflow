@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { validateBody } from '../validation.js';
+import { sendError } from '../errors.js';
 import { db } from '../db.js';
 
 const router = Router();
@@ -23,32 +24,39 @@ const cleanupSchema = z.object({
 router.post('/cleanup', validateBody(cleanupSchema), (req: Request, res: Response) => {
   const devMode = Boolean((req.app as any)?.locals?.devMode);
   if (!devMode) {
-    res.status(403).json({ error: { code: 'forbidden', message: 'Dev admin endpoints disabled' } });
+    sendError(res, req, {
+      status: 403,
+      code: 'forbidden',
+      message: 'Dev admin endpoints disabled',
+    });
     return;
   }
 
   const requestOrigin = String((req as any).origin || 'user');
   if (requestOrigin === 'user') {
-    res
-      .status(403)
-      .json({ error: { code: 'forbidden', message: 'Missing harness origin header' } });
+    sendError(res, req, {
+      status: 403,
+      code: 'forbidden',
+      message: 'Missing harness origin header',
+    });
     return;
   }
 
   const { origin, dryRun, confirm } = req.body;
   if (origin === 'user') {
-    res
-      .status(400)
-      .json({ error: { code: 'bad_request', message: 'Refusing to clean up user data' } });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: 'Refusing to clean up user data',
+    });
     return;
   }
 
   if (!dryRun && confirm !== 'DELETE') {
-    res.status(400).json({
-      error: {
-        code: 'bad_request',
-        message: 'Confirmation required. Provide confirm="DELETE" to proceed.',
-      },
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: 'Confirmation required. Provide confirm="DELETE" to proceed.',
     });
     return;
   }

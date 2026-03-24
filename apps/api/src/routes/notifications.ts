@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db.js';
+import { sendError } from '../errors.js';
 import { validateBody, validateQuery } from '../validation.js';
 import { fetchWithBackoff } from '../utils/updateAgent/fetchWithBackoff.js';
 import { parseFeed } from '../utils/updateAgent/rss.js';
@@ -60,7 +61,12 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
       staleBefore: new Date(Date.now() - 3 * 60 * 1000),
     });
     if (!acquired || acquired.lockId !== lockId) {
-      return res.status(409).json({ error: 'run already in progress' });
+      sendError(res, req, {
+        status: 409,
+        code: 'conflict',
+        message: 'Run already in progress',
+      });
+      return;
     }
     (req as any)._uaLock = { topicId, lockId };
   }

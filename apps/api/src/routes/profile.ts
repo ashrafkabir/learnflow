@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { db, dbProgress } from '../db.js';
 import { isAdmin } from '../lib/admin.js';
+import { validateBody } from '../validation.js';
 
 const router = Router();
 
@@ -46,8 +48,13 @@ router.get('/context', (req: Request, res: Response) => {
   });
 });
 
+const saveGoalsSchema = z.object({
+  goals: z.array(z.string()).optional(),
+  topics: z.array(z.string()).optional(),
+});
+
 // POST /api/v1/profile/goals - Save learning goals
-router.post('/goals', (req: Request, res: Response) => {
+router.post('/goals', validateBody(saveGoalsSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const { goals, topics } = req.body;
   const user = db.findUserById(userId);
@@ -60,22 +67,28 @@ router.post('/goals', (req: Request, res: Response) => {
   res.status(200).json({ success: true, goals: user?.goals || goals || [], topics: topics || [] });
 });
 
+const completeOnboardingSchema = z.object({});
+
 // POST /api/v1/profile/onboarding/complete - Durable onboarding completion flag
-router.post('/onboarding/complete', (req: Request, res: Response) => {
-  const userId = req.user!.sub;
-  const user = db.findUserById(userId);
-  if (user) {
-    (user as any).onboardingCompletedAt = new Date();
-    user.updatedAt = new Date();
-    db.updateUser(user);
-  }
-  res.status(200).json({
-    success: true,
-    onboardingCompletedAt: (user as any)?.onboardingCompletedAt
-      ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
-      : new Date().toISOString(),
-  });
-});
+router.post(
+  '/onboarding/complete',
+  validateBody(completeOnboardingSchema),
+  (req: Request, res: Response) => {
+    const userId = req.user!.sub;
+    const user = db.findUserById(userId);
+    if (user) {
+      (user as any).onboardingCompletedAt = new Date();
+      user.updatedAt = new Date();
+      db.updateUser(user);
+    }
+    res.status(200).json({
+      success: true,
+      onboardingCompletedAt: (user as any)?.onboardingCompletedAt
+        ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
+        : new Date().toISOString(),
+    });
+  },
+);
 
 // GET /api/v1/profile/data-summary
 // Returns a minimal, user-auditable summary of what the server stores.

@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import { v4 as uuid } from 'uuid';
 import {
   crawlSourcesForTopic,
@@ -14,6 +15,7 @@ import { getAdminSearchConfig } from '../lib/search-config.js';
 import { makeStage1Log, makeStage2Log, makeLayerLog } from '../lib/search-run-log.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
+import { validateBody } from '../validation.js';
 import {
   buildSourceCards,
   selectFurtherReadingCards,
@@ -1506,18 +1508,16 @@ function generateSourceAwareFallback(
 // ── Routes ───────────────────────────────────────────────────────────────────
 
 /** POST /api/v1/pipeline/add-topic — Add a suggested topic to an existing course with pipeline UX */
-router.post('/add-topic', (req: Request, res: Response) => {
-  const { courseId, topic, parentLessonId } = req.body || {};
+const addTopicSchema = z.object({
+  courseId: z.string().min(1),
+  topic: z.string().min(1),
+  parentLessonId: z.string().min(1).optional(),
+});
+
+router.post('/add-topic', validateBody(addTopicSchema), (req: Request, res: Response) => {
+  const { courseId, topic, parentLessonId } = req.body;
   // parentLessonId is optional for future lesson-level insertion; v1 ignores it server-side.
   void parentLessonId;
-  if (!courseId || typeof courseId !== 'string') {
-    sendError(res, req, { status: 400, code: 'validation_error', message: 'courseId is required' });
-    return;
-  }
-  if (!topic || typeof topic !== 'string') {
-    sendError(res, req, { status: 400, code: 'validation_error', message: 'topic is required' });
-    return;
-  }
 
   const pipelineId = uuid();
 
@@ -1557,12 +1557,12 @@ router.post('/add-topic', (req: Request, res: Response) => {
 });
 
 /** POST /api/v1/pipeline — Start a new course creation pipeline */
-router.post('/', (req: Request, res: Response) => {
+const createPipelineSchema = z.object({
+  topic: z.string().min(1),
+});
+
+router.post('/', validateBody(createPipelineSchema), (req: Request, res: Response) => {
   const { topic } = req.body;
-  if (!topic || typeof topic !== 'string') {
-    sendError(res, req, { status: 400, code: 'validation_error', message: 'Topic is required' });
-    return;
-  }
 
   const pipelineId = uuid();
   // Deterministic course id for idempotency: one pipeline → one course.
@@ -1719,7 +1719,7 @@ router.get('/', (_req: Request, res: Response) => {
 });
 
 /** POST /api/v1/pipeline/:id/restart — Restart a failed/stalled pipeline by creating a new run id */
-router.post('/:id/restart', (req: Request, res: Response) => {
+router.post('/:id/restart', validateBody(z.object({})), (req: Request, res: Response) => {
   const id = String(req.params.id);
   const old = pipelines.get(id);
   if (!old) {
@@ -1817,107 +1817,113 @@ router.get('/:id/lessons', async (req: Request, res: Response) => {
 });
 
 /** POST /api/v1/pipeline/:id/lessons/:lessonId/edit — Edit a lesson with a prompt */
-router.post('/:id/lessons/:lessonId/edit', async (req: Request, res: Response) => {
-  const p = pipelines.get(String(req.params.id));
-  if (!p) {
-    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
-    return;
-  }
-  if (p.stage !== 'reviewing') {
-    sendError(res, req, {
-      status: 400,
-      code: 'validation_error',
-      message: 'Pipeline must be in reviewing stage',
-    });
-    return;
-  }
-
-  const { prompt } = req.body;
-  if (!prompt || typeof prompt !== 'string') {
-    sendError(res, req, { status: 400, code: 'validation_error', message: 'prompt is required' });
-    return;
-  }
-
-  const lessonId = String(req.params.lessonId);
-
-  // Find the course and lesson
-  const { courses } = await import('./courses.js');
-  const course = courses.get(p.courseId) as any;
-  if (!course) {
-    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
-    return;
-  }
-
-  let targetLesson: any = null;
-  for (const mod of course.modules) {
-    const found = mod.lessons.find((l: any) => l.id === lessonId);
-    if (found) {
-      targetLesson = found;
-      break;
-    }
-  }
-  if (!targetLesson) {
-    sendError(res, req, { status: 404, code: 'not_found', message: 'Lesson not found' });
-    return;
-  }
-
-  const { client: openai } = getOpenAIForRequest({
-    userId: req.user!.sub,
-    tier: req.user!.tier,
-    apiKeyOverride: (req.body as any)?.apiKey,
-  });
-  if (!openai) {
-    sendError(res, req, {
-      status: 500,
-      code: 'openai_unavailable',
-      message: 'OpenAI not configured',
-    });
-    return;
-  }
-
-  try {
-    const resp = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      temperature: 0.7,
-      max_tokens: 4000,
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert educational content editor. You will be given the current lesson content and a user's edit instruction. Revise the lesson accordingly while maintaining the same structure (headings, objectives, takeaways, sources). Keep all source attributions and links intact. Return the full revised lesson content in markdown.`,
-        },
-        {
-          role: 'user',
-          content: `Here is the current lesson content:\n\n${targetLesson.content}\n\n---\n\nThe user wants: ${prompt}\n\nRevise the lesson accordingly. Return the FULL revised lesson content.`,
-        },
-      ],
-    });
-
-    const newContent = resp.choices[0]?.message?.content;
-    if (newContent && newContent.length > 100) {
-      targetLesson.content = newContent;
-      targetLesson.wordCount = newContent.split(/\s+/).filter((w: string) => w).length;
-      targetLesson.estimatedTime = Math.max(5, Math.ceil(targetLesson.wordCount / 200));
-      // Persist edited course to SQLite
-      dbCourses.save(course);
-      res.json({ lessonId, content: newContent, wordCount: targetLesson.wordCount });
-    } else {
-      sendError(res, req, {
-        status: 500,
-        code: 'llm_insufficient_content',
-        message: 'LLM returned insufficient content',
-      });
-    }
-  } catch (err) {
-    sendError(res, req, {
-      status: 500,
-      code: 'edit_failed',
-      message: `Edit failed: ${String(err)}`,
-    });
-  }
+const editLessonSchema = z.object({
+  prompt: z.string().min(1),
+  // Optional per-request override key (same pattern as chat/courses)
+  apiKey: z.string().optional(),
 });
 
+router.post(
+  '/:id/lessons/:lessonId/edit',
+  validateBody(editLessonSchema),
+  async (req: Request, res: Response) => {
+    const p = pipelines.get(String(req.params.id));
+    if (!p) {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+      return;
+    }
+    if (p.stage !== 'reviewing') {
+      sendError(res, req, {
+        status: 400,
+        code: 'validation_error',
+        message: 'Pipeline must be in reviewing stage',
+      });
+      return;
+    }
+
+    const { prompt } = req.body;
+
+    const lessonId = String(req.params.lessonId);
+
+    // Find the course and lesson
+    const { courses } = await import('./courses.js');
+    const course = courses.get(p.courseId) as any;
+    if (!course) {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
+      return;
+    }
+
+    let targetLesson: any = null;
+    for (const mod of course.modules) {
+      const found = mod.lessons.find((l: any) => l.id === lessonId);
+      if (found) {
+        targetLesson = found;
+        break;
+      }
+    }
+    if (!targetLesson) {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Lesson not found' });
+      return;
+    }
+
+    const { client: openai } = getOpenAIForRequest({
+      userId: req.user!.sub,
+      tier: req.user!.tier,
+      apiKeyOverride: (req.body as any)?.apiKey,
+    });
+    if (!openai) {
+      sendError(res, req, {
+        status: 500,
+        code: 'openai_unavailable',
+        message: 'OpenAI not configured',
+      });
+      return;
+    }
+
+    try {
+      const resp = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        max_tokens: 4000,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert educational content editor. You will be given the current lesson content and a user's edit instruction. Revise the lesson accordingly while maintaining the same structure (headings, objectives, takeaways, sources). Keep all source attributions and links intact. Return the full revised lesson content in markdown.`,
+          },
+          {
+            role: 'user',
+            content: `Here is the current lesson content:\n\n${targetLesson.content}\n\n---\n\nThe user wants: ${prompt}\n\nRevise the lesson accordingly. Return the FULL revised lesson content.`,
+          },
+        ],
+      });
+
+      const newContent = resp.choices[0]?.message?.content;
+      if (newContent && newContent.length > 100) {
+        targetLesson.content = newContent;
+        targetLesson.wordCount = newContent.split(/\s+/).filter((w: string) => w).length;
+        targetLesson.estimatedTime = Math.max(5, Math.ceil(targetLesson.wordCount / 200));
+        // Persist edited course to SQLite
+        dbCourses.save(course);
+        res.json({ lessonId, content: newContent, wordCount: targetLesson.wordCount });
+      } else {
+        sendError(res, req, {
+          status: 500,
+          code: 'llm_insufficient_content',
+          message: 'LLM returned insufficient content',
+        });
+      }
+    } catch (err) {
+      sendError(res, req, {
+        status: 500,
+        code: 'edit_failed',
+        message: `Edit failed: ${String(err)}`,
+      });
+    }
+  },
+);
+
 /** POST /api/v1/pipeline/:id/publish — Publish course to marketplace */
-router.post('/:id/publish', (req: Request, res: Response) => {
+router.post('/:id/publish', validateBody(z.object({})), (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
   if (!p) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
@@ -1936,7 +1942,7 @@ router.post('/:id/publish', (req: Request, res: Response) => {
 });
 
 /** POST /api/v1/pipeline/:id/personal — Keep course as personal */
-router.post('/:id/personal', (req: Request, res: Response) => {
+router.post('/:id/personal', validateBody(z.object({})), (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
   if (!p) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });

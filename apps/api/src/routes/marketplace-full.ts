@@ -336,7 +336,11 @@ router.post(
 // NOTE: MVP is in MOCK mode (no Stripe wiring). We still keep the state machine honest:
 // - Return a non-terminal mock status.
 // - Enrollment only occurs after explicit confirmation step.
-router.post('/checkout', (req: Request, res: Response) => {
+const checkoutSchema = z.object({
+  courseId: z.string().min(1),
+});
+
+router.post('/checkout', validateBody(checkoutSchema), (req: Request, res: Response) => {
   const { courseId } = req.body;
   const course = (publishedCourses.get(courseId) ||
     (dbMarketplaceCourses.getById(courseId) as any)) as any;
@@ -503,22 +507,26 @@ router.get('/agents/activated', async (req: Request, res: Response) => {
 });
 
 // POST /api/v1/marketplace/agents/:id/activate — activate agent (S09-A07)
-router.post('/agents/:id/activate', async (req: Request, res: Response) => {
-  const agentId = String(req.params.id);
+router.post(
+  '/agents/:id/activate',
+  validateBody(z.object({})),
+  async (req: Request, res: Response) => {
+    const agentId = String(req.params.id);
 
-  // Support both "full" submission ids (as-*) and seeded marketplace ids (ma-*).
-  const agent = agentSubmissions.get(agentId) || ({ id: agentId, name: agentId } as any);
+    // Support both "full" submission ids (as-*) and seeded marketplace ids (ma-*).
+    const agent = agentSubmissions.get(agentId) || ({ id: agentId, name: agentId } as any);
 
-  // Persist activation.
-  const mod = await import('../db.js');
-  mod.dbMarketplace.activateAgent(req.user!.sub, agent.id);
+    // Persist activation.
+    const mod = await import('../db.js');
+    mod.dbMarketplace.activateAgent(req.user!.sub, agent.id);
 
-  // Keep legacy in-memory map for existing marketplace-full tests.
-  if (!activatedAgents.has(req.user!.sub)) activatedAgents.set(req.user!.sub, new Set());
-  activatedAgents.get(req.user!.sub)!.add(agent.id);
+    // Keep legacy in-memory map for existing marketplace-full tests.
+    if (!activatedAgents.has(req.user!.sub)) activatedAgents.set(req.user!.sub, new Set());
+    activatedAgents.get(req.user!.sub)!.add(agent.id);
 
-  res.status(200).json({ message: `Agent "${agent.name}" activated`, agentId: agent.id });
-});
+    res.status(200).json({ message: `Agent "${agent.name}" activated`, agentId: agent.id });
+  },
+);
 
 // GET /api/v1/marketplace/creator/dashboard — creator analytics (S09-A10)
 router.get('/creator/dashboard', (req: Request, res: Response) => {

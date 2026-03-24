@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db.js';
-import { validateBody } from '../validation.js';
+import { sendError } from '../errors.js';
+import { validateBody, validateQuery, validateParams } from '../validation.js';
 import { normalizeUrl } from '../utils/updateAgent/url.js';
 
 const router = Router();
@@ -51,7 +52,10 @@ const updateTopicSchema = z.object({
 router.post('/topics/update', validateBody(updateTopicSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const existing = db.listUpdateAgentTopics(userId).find((t) => t.id === req.body.id);
-  if (!existing) return res.status(404).json({ error: 'topic not found' });
+  if (!existing) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Topic not found' });
+    return;
+  }
 
   const row = {
     id: existing.id,
@@ -73,13 +77,16 @@ router.post('/topics/update', validateBody(updateTopicSchema), (req: Request, re
   });
 });
 
-router.delete('/topics/:id', (req: Request, res: Response) => {
-  const userId = req.user!.sub;
-  const id = String(req.params.id || '');
-  if (!id) return res.status(400).json({ error: 'id required' });
-  db.deleteUpdateAgentTopic(userId, id);
-  res.status(200).json({ ok: true });
-});
+router.delete(
+  '/topics/:id',
+  validateParams(z.object({ id: z.string().min(1) })),
+  (req: Request, res: Response) => {
+    const userId = req.user!.sub;
+    const id = String(req.params.id || '');
+    db.deleteUpdateAgentTopic(userId, id);
+    res.status(200).json({ ok: true });
+  },
+);
 
 const deleteTopicSchema = z.object({ id: z.string().min(1) });
 router.delete('/topics', validateBody(deleteTopicSchema), (req: Request, res: Response) => {
@@ -89,13 +96,16 @@ router.delete('/topics', validateBody(deleteTopicSchema), (req: Request, res: Re
 });
 
 // Sources
-router.get('/sources', (req: Request, res: Response) => {
-  const userId = req.user!.sub;
-  const topicId = String(req.query.topicId || '');
-  if (!topicId) return res.status(400).json({ error: 'topicId required' });
-  const sources = db.listUpdateAgentSources(userId, topicId);
-  res.json({ sources });
-});
+router.get(
+  '/sources',
+  validateQuery(z.object({ topicId: z.string().min(1) })),
+  (req: Request, res: Response) => {
+    const userId = req.user!.sub;
+    const topicId = String((req.query as any).topicId || '');
+    const sources = db.listUpdateAgentSources(userId, topicId);
+    res.json({ sources });
+  },
+);
 
 const createSourceSchema = z.object({
   topicId: z.string().min(1),
@@ -111,7 +121,12 @@ router.post('/sources', validateBody(createSourceSchema), (req: Request, res: Re
   try {
     url = normalizeUrl(req.body.url);
   } catch (e: any) {
-    return res.status(400).json({ error: e?.message || 'Invalid URL' });
+    sendError(res, req, {
+      status: 400,
+      code: 'validation_error',
+      message: e?.message || 'Invalid URL',
+    });
+    return;
   }
 
   const row = {
@@ -161,14 +176,22 @@ router.post('/sources/update', validateBody(updateSourceSchema), (req: Request, 
       break;
     }
   }
-  if (!found) return res.status(404).json({ error: 'source not found' });
+  if (!found) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Source not found' });
+    return;
+  }
 
   let nextUrl = found.url;
   if (typeof req.body.url === 'string') {
     try {
       nextUrl = normalizeUrl(req.body.url);
     } catch (e: any) {
-      return res.status(400).json({ error: e?.message || 'Invalid URL' });
+      sendError(res, req, {
+        status: 400,
+        code: 'validation_error',
+        message: e?.message || 'Invalid URL',
+      });
+      return;
     }
   }
 
@@ -196,13 +219,16 @@ router.post('/sources/update', validateBody(updateSourceSchema), (req: Request, 
   res.status(200).json({ source: row });
 });
 
-router.delete('/sources/:id', (req: Request, res: Response) => {
-  const userId = req.user!.sub;
-  const id = String(req.params.id || '');
-  if (!id) return res.status(400).json({ error: 'id required' });
-  db.deleteUpdateAgentSource(userId, id);
-  res.status(200).json({ ok: true });
-});
+router.delete(
+  '/sources/:id',
+  validateParams(z.object({ id: z.string().min(1) })),
+  (req: Request, res: Response) => {
+    const userId = req.user!.sub;
+    const id = String(req.params.id || '');
+    db.deleteUpdateAgentSource(userId, id);
+    res.status(200).json({ ok: true });
+  },
+);
 
 const deleteSourceSchema = z.object({ id: z.string().min(1) });
 router.delete('/sources', validateBody(deleteSourceSchema), (req: Request, res: Response) => {

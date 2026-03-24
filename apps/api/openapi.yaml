@@ -1302,17 +1302,42 @@ paths:
     post:
       summary: Mark notification read
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: { type: string }
       responses:
         '200':
           description: OK
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
 
   /api/v1/notifications/read-all:
     post:
       summary: Mark all notifications as read
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Empty object
       responses:
         '200':
           description: OK
@@ -1326,17 +1351,53 @@ paths:
                 properties:
                   ok: { type: boolean }
                   updated: { type: integer }
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
 
   /api/v1/notifications/generate:
     post:
       summary: Generate notifications (MVP)
       security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [topic]
+              properties:
+                topic: { type: string }
       responses:
         '201':
           description: Created
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Conflict
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
 
   /api/v1/daily:
     get:

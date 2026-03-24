@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24 (Iter86 planning)
+Last updated: 2026-03-24 (Iter88 DONE)
 
 ---
 
@@ -2724,3 +2724,175 @@ Non-goals:
   - `SCREENSHOT_DIR=screenshots/iter87/planner-run node screenshot-all.mjs`
 - OneDrive sync (if available):
   - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter87/planner-run/`
+
+---
+
+## Iteration 88 — API REQUEST VALIDATION (ZOD) FOR ALL WRITE ENDPOINTS + CONTRACT-DRIVEN ERROR RESPONSES
+
+Status: **READY FOR BUILDER**
+
+### Why this iteration (smallest high-leverage P0)
+
+Iter87 tightened production posture (headers/CORS/payload caps/error envelope/rate limiting/OpenAPI hygiene). The next highest leverage gap is **request-shape trust**:
+
+- Write endpoints currently accept arbitrary JSON and rely on ad-hoc checks. This creates:
+  - silent data corruption risk
+  - inconsistent 400 vs 500 behavior
+  - OpenAPI drift (docs don’t match reality)
+  - fragile clients (especially screenshot harness + future mobile)
+
+This iteration standardizes **Zod-based validation** across all write endpoints and makes invalid requests fail fast with the **same error envelope**.
+
+Non-goals:
+
+- No new features.
+- No deep refactor of business logic.
+- No provider/client work.
+
+### P0 (Must do)
+
+1. **Introduce a single validation pattern for Express routes (Zod + typed helpers)**
+
+- Build:
+  - A small helper like `validateBody(schema)` (and optionally `validateQuery`, `validateParams`) that:
+    - parses/coerces input
+    - returns typed `req.body`
+    - on failure, responds `400` with the standard error envelope + field-level details
+  - Ensure validation errors are **not** logged with raw payload (avoid leaking secrets).
+- Acceptance criteria:
+  - Invalid request body returns:
+    - status `400`
+    - `{ error: { code: 'invalid_request', message, requestId, details } }`
+    - `details` includes per-field issues (path + message) but **never** includes sensitive values.
+  - Valid requests continue to work with no behavior change.
+- Likely files:
+  - `apps/api/src/middleware/validate.ts` (new)
+  - `apps/api/src/errors.ts` (extend to support validation details)
+  - `apps/api/src/app.ts` (ensure requestId is present on 400s)
+
+2. **Apply Zod validation to every write endpoint (create/update/delete POST/PUT/PATCH/DELETE bodies)**
+
+- Scope target (brutally honest: confirm list with `apps/api/src/routes/*`):
+  - Auth:
+    - `POST /api/v1/auth/register`
+    - `POST /api/v1/auth/login`
+    - `POST /api/v1/auth/refresh` (if present)
+    - `POST /api/v1/auth/logout` (if present)
+  - Profile/Settings:
+    - `DELETE /api/v1/profile`
+    - key vault endpoints: validate/activate/rotate
+  - Courses:
+    - `POST /api/v1/courses`
+    - restart/resume endpoints
+    - any “mark complete” / progress endpoints
+  - Pipeline:
+    - create/restart endpoints
+  - Conversation/chat:
+    - `POST /api/v1/chat` (or equivalent)
+  - Notifications / Update Agent:
+    - generate/tick endpoints
+    - mark read / read-all
+  - Admin cleanup (dev-only):
+    - cleanup endpoints must validate `confirm`, `origins`, `olderThanDays`, `limit`
+- Acceptance criteria:
+  - Every write route has a schema.
+  - Unknown fields policy is explicit:
+    - prefer `strict()` for security-sensitive routes (auth, keys, admin cleanup)
+    - allow passthrough only where we intentionally support forward-compatible payloads.
+
+3. **Validation test coverage for each route class (not necessarily every route)**
+
+- Minimum required tests:
+  - One auth route: missing required field → 400 w/ details.
+  - One content route (`POST /courses`): invalid topic type/empty string → 400.
+  - One update-agent route: invalid URL → 400.
+  - One admin cleanup route (dev-only): missing/incorrect confirm phrase → 400.
+- Acceptance criteria:
+  - Tests assert:
+    - status code
+    - error envelope shape
+    - presence of `requestId`
+    - details paths are correct
+- Likely files:
+  - `apps/api/src/__tests__/validation-*.test.ts`
+
+4. **OpenAPI alignment for request bodies (contract-driven)**
+
+- Build:
+  - Update OpenAPI requestBody schemas to match Zod definitions (manual is fine).
+  - Ensure documented 400 error response matches the new envelope.
+- Acceptance criteria:
+  - `npm run -w @learnflow/api openapi:lint` passes.
+  - Spec examples show at least one validation error payload.
+- Likely files:
+  - `apps/api/openapi.*` (wherever the spec lives)
+  - `apps/api/src/openapi.ts` (if generated/assembled)
+
+### P1 (Should do)
+
+5. **Normalize enum/string coercion for common fields**
+
+- Examples:
+  - `origin` enum
+  - `days` query params for usage/data summary
+  - booleans like `fast`, `includeNonUserOrigins`
+- Acceptance criteria:
+  - `?days=7` parses as number.
+  - `fast=true` parses as boolean.
+
+6. **Add a small “invalid request” screenshot (optional, dev-only)**
+
+- Goal: make the new error shape visible for debugging.
+- Acceptance criteria:
+  - Screenshot of an API error response page or dev toast (only if such UI exists; otherwise skip).
+
+### Screenshot checklist (Iter88)
+
+- (Optional) `settings-admin-harness-cleanup-validation-error.png` — shows UI blocking invalid cleanup request.
+- (Optional) `api-400-invalid-request.json` captured in `screenshots/iter88/run-001/NOTES.md` as a snippet.
+
+### Verification checklist (Iter88)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
+- `npm run -w @learnflow/api openapi:lint`
+- Manual spot checks (curl):
+  - invalid login payload → 400 w/ details
+  - invalid course create payload → 400 w/ details
+
+### Notes / gaps to watch
+
+- Be careful not to break the screenshot harness: it may send extra fields today; decide per-route strict vs passthrough.
+- Never include raw `Authorization` headers, API keys, or full request bodies in validation error logs.
+
+---
+
+## Iteration 88 — STATUS
+
+**DONE (2026-03-24)**
+
+Evidence:
+
+- Implemented Zod validation on remaining write endpoints + consistent envelope for validation failures:
+  - `apps/api/src/routes/pipeline.ts` (POST /pipeline, /pipeline/add-topic, /pipeline/:id/restart, /pipeline/:id/lessons/:lessonId/edit, /pipeline/:id/publish, /pipeline/:id/personal)
+  - `apps/api/src/routes/update-agent.ts` (params/query validation for sources/topics, invalid URL → validation_error envelope)
+  - `apps/api/src/routes/notifications.ts` (409 conflict uses standard envelope; request body schemas already validated)
+  - `apps/api/src/routes/marketplace-full.ts` (POST /checkout, /agents/:id/activate)
+  - `apps/api/src/routes/profile.ts` (POST /goals, /onboarding/complete)
+  - `apps/api/src/routes/admin-cleanup.ts` (403/400 responses now use sendError envelope)
+- OpenAPI updated for notifications write endpoints request bodies + error responses:
+  - `apps/api/openapi.yaml`
+
+Gates:
+
+- `npm -w @learnflow/api run test` ✅ (184 tests passed)
+- `npm -w @learnflow/api run openapi:lint` ✅
+- `npm run lint` ✅
+- `npm run format:check` ✅
+- `npm run build` ✅
+
+Notes:
+
+- Root `npm run tsc` script does not exist in this repo; build step runs `tsc` per-package via turbo.
