@@ -82,7 +82,10 @@ router.post('/onboarding/complete', (req: Request, res: Response) => {
 router.get('/data-summary', (req: Request, res: Response) => {
   const userId = req.user!.sub;
 
-  const summary = db.getDataSummary(userId);
+  const includeNonUserOrigins = String(req.query.includeNonUserOrigins || '') === '1';
+  const summary = includeNonUserOrigins
+    ? db.getDataSummaryIncludingOrigins(userId)
+    : db.getDataSummary(userId);
   res.status(200).json(summary);
 });
 

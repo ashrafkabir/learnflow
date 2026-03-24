@@ -60,6 +60,8 @@ for (const vp of viewports) {
     await ctx.addInitScript(() => {
       try {
         globalThis.localStorage.setItem('learnflow-token', 'dev');
+        // Iter86: tag harness-origin so API can suppress durable data/usage writes.
+        globalThis.localStorage.setItem('learnflow-origin', 'harness');
         globalThis.localStorage.setItem('learnflow-onboarding-complete', 'true');
         globalThis.localStorage.setItem('onboarding-tour-complete', 'true');
       } catch {

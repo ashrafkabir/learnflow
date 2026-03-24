@@ -214,6 +214,9 @@ router.post('/', validateBody(chatSchema), async (req: Request, res: Response) =
       (savedActive?.provider as any) ||
       'unknown';
 
+    const origin = String(
+      (req as any).origin || (req.headers['x-learnflow-origin'] as any) || 'user',
+    );
     db.addUsageRecord({
       userId: req.user!.sub,
       agentName: routedAgentName,
@@ -221,6 +224,7 @@ router.post('/', validateBody(chatSchema), async (req: Request, res: Response) =
       tokensIn: 0,
       tokensOut: 0,
       tokensTotal,
+      origin,
       createdAt: new Date(),
     });
   } catch {

@@ -41,6 +41,7 @@ describe('Iter82: GET /api/v1/profile/data-summary', () => {
       tokensIn: 1,
       tokensOut: 2,
       tokensTotal: 3,
+      origin: 'user',
       createdAt: new Date('2026-01-01T00:00:00.000Z'),
     });
 
@@ -51,6 +52,7 @@ describe('Iter82: GET /api/v1/profile/data-summary', () => {
       type: 'update',
       title: 'Hello',
       body: 'World',
+      origin: 'user',
       createdAt: new Date('2026-01-02T00:00:00.000Z'),
       readAt: null,
     });
@@ -60,6 +62,7 @@ describe('Iter82: GET /api/v1/profile/data-summary', () => {
     await request(app)
       .post('/api/v1/events')
       .set('Authorization', `Bearer ${token}`)
+      .set('x-learnflow-origin', 'user')
       .send({ type: 'lesson.started', meta: { a: 1 } })
       .expect(201);
 
@@ -92,6 +95,7 @@ describe('Iter82: GET /api/v1/profile/data-summary', () => {
     expect(typeof res.body.notifications.count).toBe('number');
 
     // Timestamps can be null when empty; for seeded items, should be non-empty strings.
+    expect(res.body.learningEvents.lastEventAt).toBeTruthy();
     expect(res.body.usageRecords.lastUsedAt).toBeTruthy();
     expect(res.body.notifications.lastNotificationAt).toBeTruthy();
   });

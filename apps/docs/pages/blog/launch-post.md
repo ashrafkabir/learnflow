@@ -73,7 +73,7 @@ LearnFlow is built on a modern stack:
 - **Express.js API** with WebSocket streaming
 - **React + Vite** client with dark mode and responsive design
 - **Zod validation** for type-safe request/response handling
-- **AES-256 encryption** for API key storage (Bring Your Own Key model)
+- **AES-256-CBC encryption** for API key storage (Bring Your Own Key model)
 - **PostgreSQL, Redis, MinIO** infrastructure
 
 ## Start Learning Today

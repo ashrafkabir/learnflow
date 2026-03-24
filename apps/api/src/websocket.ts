@@ -32,10 +32,16 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
     }
 
     // Dev-only auth path to make local screenshots/evals deterministic.
+    // Iter86: require explicit opt-in to avoid accidental real builds during harness runs.
     // In production, a real JWT is always required.
     let user: AuthUser;
-    if (token === 'dev' && process.env.NODE_ENV !== 'production') {
-      user = { sub: 'dev-user', email: 'dev@learnflow.local' } as AuthUser;
+    if (
+      token === 'dev' &&
+      process.env.NODE_ENV !== 'production' &&
+      (process.env.LEARNFLOW_DEV_AUTH === '1' || process.env.LEARNFLOW_DEV_AUTH === 'true')
+    ) {
+      user = { sub: 'dev-user', email: 'dev@learnflow.local', tier: 'free' } as AuthUser;
+      (user as any).origin = 'harness';
     } else {
       try {
         user = jwt.verify(token, config.jwtSecret) as AuthUser;

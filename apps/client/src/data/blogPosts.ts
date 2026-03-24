@@ -156,7 +156,7 @@ LearnFlow lets you bring your own API keys. Here's why:
 
 ### You Control Your Keys
 
-Your API keys are encrypted with AES-256-GCM before storage:
+Your API keys are encrypted with AES-256-CBC before storage:
 
 \`\`\`typescript
 // Server-side encryption

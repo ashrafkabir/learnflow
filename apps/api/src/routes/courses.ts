@@ -469,7 +469,10 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
     plan: {},
     status: 'CREATING',
     error: '',
-    origin: process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'screenshot' : 'user',
+    // Iter86: standardize origin tagging across harness-created artifacts.
+    origin:
+      String((req as any).origin || (req.headers['x-learnflow-origin'] as any) || '').trim() ||
+      (process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'harness' : 'user'),
     generationAttempt: 0,
     generationStartedAt: null,
     lastProgressAt: new Date().toISOString(),
@@ -604,20 +607,39 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
           `[LearnFlow] (test) crawlSourcesForTopic skipped network, using ${crawledSources.length} deterministic sources`,
         );
       } else {
-        try {
-          crawledSources = await crawlSourcesForTopic(topic);
-          console.log(
-            `[LearnFlow] crawlSourcesForTopic took ${Date.now() - _crawlStart}ms, got ${crawledSources.length} sources`,
+        // Iter86: Prevent accidental real builds during harness/screenshot/fixture runs.
+        // Real web crawling is only allowed when explicitly opted-in.
+        const origin = String(
+          (req as any).origin || (req.headers['x-learnflow-origin'] as any) || 'user',
+        );
+        const allowRealBuilds =
+          process.env.LEARNFLOW_ALLOW_REAL_BUILDS === '1' ||
+          process.env.LEARNFLOW_ALLOW_REAL_BUILDS === 'true';
+
+        if (origin !== 'user' && !allowRealBuilds) {
+          crawledSources = [];
+          console.warn(
+            `[LearnFlow][Iter86] Skipping real web crawl for origin="${origin}". Set LEARNFLOW_ALLOW_REAL_BUILDS=1 to enable.`,
           );
-          // NOTE: We no longer require FIRECRAWL_API_KEY for spec compliance in dev.
-          // The default provider uses free multi-source search + readability scraping.
-          if (!process.env.FIRECRAWL_API_KEY) {
+        } else {
+          try {
+            crawledSources = await crawlSourcesForTopic(topic);
+            console.log(
+              `[LearnFlow] crawlSourcesForTopic took ${Date.now() - _crawlStart}ms, got ${crawledSources.length} sources`,
+            );
+            // NOTE: We no longer require FIRECRAWL_API_KEY for spec compliance in dev.
+            // The default provider uses free multi-source search + readability scraping.
+            if (!process.env.FIRECRAWL_API_KEY) {
+              console.warn(
+                '[LearnFlow] FIRECRAWL_API_KEY not set — using WebSearch provider (real sources, no paid key)',
+              );
+            }
+          } catch (err) {
             console.warn(
-              '[LearnFlow] FIRECRAWL_API_KEY not set — using WebSearch provider (real sources, no paid key)',
+              '[LearnFlow] Firecrawl crawl failed, falling back to static sources:',
+              err,
             );
           }
-        } catch (err) {
-          console.warn('[LearnFlow] Firecrawl crawl failed, falling back to static sources:', err);
         }
       }
 
@@ -1209,7 +1231,11 @@ Continue.`,
         progress: {},
         status: 'READY',
         error: '',
-        origin: process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'screenshot' : 'user',
+        // Iter86: preserve origin across build.
+        origin:
+          String((req as any).origin || (req.headers['x-learnflow-origin'] as any) || '').trim() ||
+          (courses.get(courseId) as any)?.origin ||
+          (process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'harness' : 'user'),
         generationAttempt:
           (courses.get(courseId) as any)?.generationAttempt || courseShell.generationAttempt || 0,
         generationStartedAt:
@@ -1355,10 +1381,23 @@ function startCourseBuildInBackground(args: {
           },
         ];
       } else {
-        try {
-          crawledSources = await crawlSourcesForTopic(topic);
-        } catch {
+        // Iter86: Prevent accidental real builds during harness/screenshot/fixture runs.
+        // Real web crawling is only allowed when explicitly opted-in.
+        const origin = String(
+          (req as any).origin || (req.headers['x-learnflow-origin'] as any) || 'user',
+        );
+        const allowRealBuilds =
+          process.env.LEARNFLOW_ALLOW_REAL_BUILDS === '1' ||
+          process.env.LEARNFLOW_ALLOW_REAL_BUILDS === 'true';
+
+        if (origin !== 'user' && !allowRealBuilds) {
           crawledSources = [];
+        } else {
+          try {
+            crawledSources = await crawlSourcesForTopic(topic);
+          } catch {
+            crawledSources = [];
+          }
         }
       }
 
@@ -1528,7 +1567,11 @@ ok
         progress: {},
         status: 'READY',
         error: '',
-        origin: process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'screenshot' : 'user',
+        // Iter86: preserve origin across build.
+        origin:
+          String((req as any).origin || (req.headers['x-learnflow-origin'] as any) || '').trim() ||
+          (courses.get(courseId) as any)?.origin ||
+          (process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'harness' : 'user'),
         lastProgressAt: new Date().toISOString(),
         failedAt: null,
         failureReason: '',
@@ -1797,12 +1840,17 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
       : persisted?.missingReason || 'attribution_gate: sources missing from lesson';
 
   // Record an event for analytics.
+  // Iter86: suppress if non-user/harness origin.
   try {
+    const origin = String(
+      (req as any).origin || (req.headers['x-learnflow-origin'] as any) || 'user',
+    );
     dbEvents.add(req.user!.sub, {
       type: 'lesson.opened',
       courseId: course.id,
       lessonId: lesson.id,
       meta: {},
+      origin,
     });
   } catch {
     // best effort
@@ -1922,12 +1970,17 @@ router.post('/:id/lessons/:lessonId/complete', (req: Request, res: Response) => 
   const completion_percent = totalLessons ? (completedLessons.length / totalLessons) * 100 : 0;
 
   // Record an event for analytics.
+  // Iter86: suppress if non-user/harness origin.
   try {
+    const origin = String(
+      (req as any).origin || (req.headers['x-learnflow-origin'] as any) || 'user',
+    );
     dbEvents.add(userId, {
       type: 'lesson.completed',
       courseId,
       lessonId,
       meta: {},
+      origin,
     });
   } catch {
     // best effort

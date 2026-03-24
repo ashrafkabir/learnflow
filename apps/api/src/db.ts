@@ -42,6 +42,33 @@ if (!isTest) {
       // If notifications doesn't exist yet, CREATE TABLE below will handle it.
     }
 
+    // Iter86: usage_records origin tagging
+    try {
+      if (!hasColumn('usage_records', 'origin')) {
+        sqlite.exec(`ALTER TABLE usage_records ADD COLUMN origin TEXT NOT NULL DEFAULT 'user';`);
+      }
+    } catch {
+      // If usage_records doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
+    // Iter86: learning_events origin tagging
+    try {
+      if (!hasColumn('learning_events', 'origin')) {
+        sqlite.exec(`ALTER TABLE learning_events ADD COLUMN origin TEXT NOT NULL DEFAULT 'user';`);
+      }
+    } catch {
+      // If learning_events doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
+    // Iter86: token_usage origin tagging
+    try {
+      if (!hasColumn('token_usage', 'origin')) {
+        sqlite.exec(`ALTER TABLE token_usage ADD COLUMN origin TEXT NOT NULL DEFAULT 'user';`);
+      }
+    } catch {
+      // If token_usage doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
     // Iter84: Update Agent topics/sources enable + ordering + backoff
     try {
       if (!hasColumn('update_agent_topics', 'enabled')) {
@@ -311,6 +338,7 @@ sqlite.exec(`
     courseId TEXT,
     lessonId TEXT,
     meta TEXT NOT NULL DEFAULT '{}',
+    origin TEXT NOT NULL DEFAULT 'user',
     createdAt TEXT NOT NULL
   );
 
@@ -552,6 +580,7 @@ sqlite.exec(`
     userId TEXT NOT NULL,
     agentId TEXT NOT NULL,
     tokensUsed INTEGER NOT NULL,
+    origin TEXT NOT NULL DEFAULT 'user',
     timestamp TEXT NOT NULL
   );
 
@@ -564,6 +593,7 @@ sqlite.exec(`
     tokensIn INTEGER NOT NULL DEFAULT 0,
     tokensOut INTEGER NOT NULL DEFAULT 0,
     tokensTotal INTEGER NOT NULL DEFAULT 0,
+    origin TEXT NOT NULL DEFAULT 'user',
     createdAt TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_usage_records_user_created ON usage_records(userId, createdAt);
@@ -655,7 +685,7 @@ const stmts = {
 
   // Token usage
   insertTokenUsage: sqlite.prepare(
-    `INSERT INTO token_usage (userId, agentId, tokensUsed, timestamp) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO token_usage (userId, agentId, tokensUsed, origin, timestamp) VALUES (?, ?, ?, ?, ?)`,
   ),
   getTokenUsageByAgent: sqlite.prepare(
     `SELECT COALESCE(SUM(tokensUsed), 0) as total FROM token_usage WHERE userId = ? AND agentId = ?`,
@@ -663,36 +693,42 @@ const stmts = {
 
   // Usage records (Iter67)
   insertUsageRecord: sqlite.prepare(
-    `INSERT INTO usage_records (userId, agentName, provider, tokensIn, tokensOut, tokensTotal, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO usage_records (userId, agentName, provider, tokensIn, tokensOut, tokensTotal, origin, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   countUsageRecordsByUser: sqlite.prepare(
-    `SELECT COUNT(*) as n FROM usage_records WHERE userId = ?`,
+    `SELECT COUNT(*) as n FROM usage_records WHERE userId = ? AND origin = 'user'`,
   ),
   getLastUsageRecordAtByUser: sqlite.prepare(
+    `SELECT MAX(createdAt) as lastAt FROM usage_records WHERE userId = ? AND origin = 'user'`,
+  ),
+  countUsageRecordsByUserAllOrigins: sqlite.prepare(
+    `SELECT COUNT(*) as n FROM usage_records WHERE userId = ?`,
+  ),
+  getLastUsageRecordAtByUserAllOrigins: sqlite.prepare(
     `SELECT MAX(createdAt) as lastAt FROM usage_records WHERE userId = ?`,
   ),
   getUsageTotalSince: sqlite.prepare(
-    `SELECT COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ?`,
+    `SELECT COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? AND origin = 'user'`,
   ),
   getUsageByDaySince: sqlite.prepare(
-    `SELECT substr(createdAt, 1, 10) as day, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? GROUP BY day ORDER BY day ASC`,
+    `SELECT substr(createdAt, 1, 10) as day, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? AND origin = 'user' GROUP BY day ORDER BY day ASC`,
   ),
   getTopAgentsSince: sqlite.prepare(
-    `SELECT agentName, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? GROUP BY agentName ORDER BY total DESC LIMIT ?`,
+    `SELECT agentName, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? AND origin = 'user' GROUP BY agentName ORDER BY total DESC LIMIT ?`,
   ),
   getTopProvidersSince: sqlite.prepare(
-    `SELECT provider, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? GROUP BY provider ORDER BY total DESC LIMIT ?`,
+    `SELECT provider, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? AND origin = 'user' GROUP BY provider ORDER BY total DESC LIMIT ?`,
   ),
   getUsageByProviderSince: sqlite.prepare(
-    `SELECT provider, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? GROUP BY provider`,
+    `SELECT provider, COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ? AND origin = 'user' GROUP BY provider`,
   ),
 
   // Usage meta (counts + last used)
   getUsageCountByProviderSince: sqlite.prepare(
-    `SELECT provider, COUNT(*) as count FROM usage_records WHERE userId = ? AND createdAt >= ? GROUP BY provider`,
+    `SELECT provider, COUNT(*) as count FROM usage_records WHERE userId = ? AND createdAt >= ? AND origin = 'user' GROUP BY provider`,
   ),
   getLastUsedByProvider: sqlite.prepare(
-    `SELECT provider, MAX(createdAt) as lastUsed FROM usage_records WHERE userId = ? GROUP BY provider`,
+    `SELECT provider, MAX(createdAt) as lastUsed FROM usage_records WHERE userId = ? AND origin = 'user' GROUP BY provider`,
   ),
 
   // Collaboration
@@ -718,9 +754,15 @@ const stmts = {
     `SELECT * FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
   ),
   countNotificationsByUser: sqlite.prepare(
-    `SELECT COUNT(*) as n FROM notifications WHERE userId = ?`,
+    `SELECT COUNT(*) as n FROM notifications WHERE userId = ? AND origin = 'user'`,
   ),
   getLastNotificationAtByUser: sqlite.prepare(
+    `SELECT MAX(createdAt) as lastAt FROM notifications WHERE userId = ? AND origin = 'user'`,
+  ),
+  countNotificationsByUserAllOrigins: sqlite.prepare(
+    `SELECT COUNT(*) as n FROM notifications WHERE userId = ?`,
+  ),
+  getLastNotificationAtByUserAllOrigins: sqlite.prepare(
     `SELECT MAX(createdAt) as lastAt FROM notifications WHERE userId = ?`,
   ),
   markNotificationRead: sqlite.prepare(
@@ -839,15 +881,21 @@ const stmts = {
 
   // Learning events
   insertLearningEvent: sqlite.prepare(
-    `INSERT INTO learning_events (id, userId, type, courseId, lessonId, meta, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO learning_events (id, userId, type, courseId, lessonId, meta, origin, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   getLearningEventsByUser: sqlite.prepare(
-    `SELECT * FROM learning_events WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
+    `SELECT * FROM learning_events WHERE userId = ? AND origin = 'user' ORDER BY createdAt DESC LIMIT ?`,
   ),
   countLearningEventsByUser: sqlite.prepare(
-    `SELECT COUNT(*) as n FROM learning_events WHERE userId = ?`,
+    `SELECT COUNT(*) as n FROM learning_events WHERE userId = ? AND origin = 'user'`,
   ),
   getLastLearningEventAtByUser: sqlite.prepare(
+    `SELECT MAX(createdAt) as lastAt FROM learning_events WHERE userId = ? AND origin = 'user'`,
+  ),
+  countLearningEventsByUserAllOrigins: sqlite.prepare(
+    `SELECT COUNT(*) as n FROM learning_events WHERE userId = ?`,
+  ),
+  getLastLearningEventAtByUserAllOrigins: sqlite.prepare(
     `SELECT MAX(createdAt) as lastAt FROM learning_events WHERE userId = ?`,
   ),
 
@@ -1007,6 +1055,7 @@ export interface UsageRecord {
   tokensIn: number;
   tokensOut: number;
   tokensTotal: number;
+  origin?: string;
   createdAt: Date;
 }
 
@@ -1014,6 +1063,7 @@ export interface TokenUsageRecord {
   userId: string;
   agentId: string;
   tokensUsed: number;
+  origin?: string;
   timestamp: Date;
 }
 
@@ -1157,6 +1207,7 @@ class SqliteDb {
       record.userId,
       record.agentId,
       record.tokensUsed,
+      record.origin || 'user',
       record.timestamp.toISOString(),
     );
   }
@@ -1169,11 +1220,13 @@ class SqliteDb {
       Math.max(0, Math.round(record.tokensIn || 0)),
       Math.max(0, Math.round(record.tokensOut || 0)),
       Math.max(0, Math.round(record.tokensTotal || 0)),
+      record.origin || 'user',
       record.createdAt.toISOString(),
     );
   }
 
   // Data Summary (Iter81/82): minimal auditable summary of server-stored records.
+  // By default excludes non-user origins (Iter86).
   getDataSummary(userId: string): {
     learningEvents: { count: number; lastEventAt: string | null };
     progress: { completedCount: number; lastCompletedAt: string | null };
@@ -1192,6 +1245,47 @@ class SqliteDb {
 
     const notifCount = (stmts as any).countNotificationsByUser.get(userId) as any;
     const notifLast = (stmts as any).getLastNotificationAtByUser.get(userId) as any;
+
+    return {
+      learningEvents: {
+        count: Number(leCount?.n || 0),
+        lastEventAt: leLast?.lastAt ? String(leLast.lastAt) : null,
+      },
+      progress: {
+        completedCount: Number(progCount?.n || 0),
+        lastCompletedAt: progLast?.lastAt ? String(progLast.lastAt) : null,
+      },
+      usageRecords: {
+        count: Number(usageCount?.n || 0),
+        lastUsedAt: usageLast?.lastAt ? String(usageLast.lastAt) : null,
+      },
+      notifications: {
+        count: Number(notifCount?.n || 0),
+        lastNotificationAt: notifLast?.lastAt ? String(notifLast.lastAt) : null,
+      },
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  // Iter86: data-summary variant that includes all origins.
+  getDataSummaryIncludingOrigins(userId: string): {
+    learningEvents: { count: number; lastEventAt: string | null };
+    progress: { completedCount: number; lastCompletedAt: string | null };
+    usageRecords: { count: number; lastUsedAt: string | null };
+    notifications: { count: number; lastNotificationAt: string | null };
+    generatedAt: string;
+  } {
+    const leCount = (stmts as any).countLearningEventsByUserAllOrigins.get(userId) as any;
+    const leLast = (stmts as any).getLastLearningEventAtByUserAllOrigins.get(userId) as any;
+
+    const progCount = (stmts as any).countProgressByUser.get(userId) as any;
+    const progLast = (stmts as any).getLastProgressCompletedAtByUser.get(userId) as any;
+
+    const usageCount = (stmts as any).countUsageRecordsByUserAllOrigins.get(userId) as any;
+    const usageLast = (stmts as any).getLastUsageRecordAtByUserAllOrigins.get(userId) as any;
+
+    const notifCount = (stmts as any).countNotificationsByUserAllOrigins.get(userId) as any;
+    const notifLast = (stmts as any).getLastNotificationAtByUserAllOrigins.get(userId) as any;
 
     return {
       learningEvents: {
@@ -1284,6 +1378,60 @@ class SqliteDb {
   getTokenUsageByAgent(userId: string, agentId: string): number {
     const row = stmts.getTokenUsageByAgent.get(userId, agentId) as any;
     return row?.total || 0;
+  }
+
+  // Iter86: Dev-only cleanup helper.
+  adminCleanupByOrigin(params: {
+    origin: 'harness' | 'screenshot' | 'fixture' | 'test';
+    dryRun: boolean;
+  }): {
+    tables: Record<string, { matching: number; deleted: number }>;
+  } {
+    const { origin, dryRun } = params;
+    if (origin === ('user' as any)) throw new Error('Refusing to delete user data');
+
+    const tables: Record<string, { matching: number; deleted: number }> = {};
+
+    const specs: Array<{ name: string; where: string }> = [
+      { name: 'courses', where: `origin = ?` },
+      { name: 'learning_events', where: `origin = ?` },
+      { name: 'usage_records', where: `origin = ?` },
+      { name: 'token_usage', where: `origin = ?` },
+    ];
+
+    for (const s of specs) {
+      const row = sqlite
+        .prepare(`SELECT COUNT(*) as n FROM ${s.name} WHERE ${s.where}`)
+        .get(origin) as any;
+      const matching = Number(row?.n || 0);
+      let deleted = 0;
+      if (!dryRun && matching > 0) {
+        const info = sqlite.prepare(`DELETE FROM ${s.name} WHERE ${s.where}`).run(origin) as any;
+        deleted = Number(info?.changes || 0);
+      }
+      tables[s.name] = { matching, deleted };
+    }
+
+    // Progress doesn't have origin; delete by courseId for harness courses only.
+    try {
+      const cids = (
+        sqlite.prepare(`SELECT id FROM courses WHERE origin = ?`).all(origin) as any[]
+      ).map((r) => String(r.id));
+      const matching = cids.length;
+      let deleted = 0;
+      if (!dryRun && cids.length > 0) {
+        const placeholders = cids.map(() => '?').join(',');
+        const info = sqlite
+          .prepare(`DELETE FROM progress WHERE courseId IN (${placeholders})`)
+          .run(...cids) as any;
+        deleted = Number(info?.changes || 0);
+      }
+      tables['progress'] = { matching, deleted };
+    } catch {
+      // ignore
+    }
+
+    return { tables };
   }
 
   // Update Agent
@@ -1705,7 +1853,13 @@ export const dbProgress = {
     stmts.upsertProgress.run(userId, lessonId, courseId, now);
     // Also record an event (used by analytics).
     try {
-      dbEvents.add(userId, { type: 'lesson.completed', courseId, lessonId, meta: {} });
+      dbEvents.add(userId, {
+        type: 'lesson.completed',
+        courseId,
+        lessonId,
+        meta: {},
+        origin: 'user',
+      });
     } catch {
       // best effort
     }
@@ -1786,9 +1940,19 @@ export const dbProgress = {
 export const dbEvents = {
   add(
     userId: string,
-    evt: { type: string; courseId?: string; lessonId?: string; meta?: Record<string, unknown> },
+    evt: {
+      type: string;
+      courseId?: string;
+      lessonId?: string;
+      meta?: Record<string, unknown>;
+      origin?: string;
+    },
   ): void {
     const now = new Date().toISOString();
+    // Iter86: never persist events for non-user/harness origins.
+    const origin = evt.origin || 'user';
+    if (origin !== 'user') return;
+
     stmts.insertLearningEvent.run(
       `evt-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       userId,
@@ -1796,6 +1960,7 @@ export const dbEvents = {
       evt.courseId || null,
       evt.lessonId || null,
       JSON.stringify(evt.meta || {}),
+      origin,
       now,
     );
   },

@@ -9,8 +9,14 @@ test('mindmap CRDT syncs between two clients', async ({ browser, baseURL }) => {
   const p2 = await ctx2.newPage();
 
   // Ensure dev auth path for websocket token
-  await p1.addInitScript(() => localStorage.setItem('learnflow-token', 'dev'));
-  await p2.addInitScript(() => localStorage.setItem('learnflow-token', 'dev'));
+  await p1.addInitScript(() => {
+    localStorage.setItem('learnflow-token', 'dev');
+    localStorage.setItem('learnflow-origin', 'harness');
+  });
+  await p2.addInitScript(() => {
+    localStorage.setItem('learnflow-token', 'dev');
+    localStorage.setItem('learnflow-origin', 'harness');
+  });
 
   // Bypass onboarding and route guards
   await p1.addInitScript(() => localStorage.setItem('learnflow-onboarding-complete', 'true'));
