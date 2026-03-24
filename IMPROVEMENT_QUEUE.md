@@ -900,15 +900,23 @@ The app is a strong MVP, but spec promises are ahead of implementation in a few 
 
 1. **BYOAI Vault: enforce encrypted-at-rest semantics + explicit provider validation UX**
 
-- Status: **PARTIAL ✅** (validate UX + validation metadata shipped; rotation TBD)
+- Status: **PARTIAL ✅** (validation shipped; rotation shipped; encryption enforcement remaining)
 - Evidence:
-  - API: `POST /api/v1/keys/validate-saved` (format + best-effort provider ping; network ping skipped in tests)
-  - DB: `api_keys.validatedAt/lastValidationStatus/lastValidationError`
-  - Client: Settings → API Keys list shows Validate button + status text
-  - Tests: `apps/api/src/__tests__/keys-validate-saved.test.ts`
-  - Commit: `92808e8` (branch `iter78`)
+  - API:
+    - `POST /api/v1/keys/validate-saved` (format + best-effort provider ping; network ping skipped in tests)
+    - `POST /api/v1/keys/activate` (activate by key id)
+    - `POST /api/v1/keys/rotate` (create new key + set active)
+    - `GET /api/v1/keys` returns list w/ `active` + `label` + `rotatedAt`
+  - DB: `api_keys.validatedAt/lastValidationStatus/lastValidationError/rotatedAt`
+  - Client: Settings → API Keys list shows Active badge + Activate + Rotate buttons
+  - Tests:
+    - `apps/api/src/__tests__/keys-validate-saved.test.ts`
+    - `apps/api/src/__tests__/keys-rotation-activation.test.ts`
+  - Commits (branch `iter78`):
+    - `92808e8` validate UX + validation metadata
+    - `a1544c8` multi-key + activate/rotate + tests
 - Remaining:
-  - Key rotation: keep multiple keys per provider, mark old inactive; UX to rotate + switch active
+  - ~~Key rotation: keep multiple keys per provider, mark old inactive; UX to rotate + switch active~~ ✅ DONE (multi-key list + activate + rotate)
   - Encrypted-at-rest enforcement: currently AES-256-CBC; consider tightening to AES-256-GCM + enforce ENCRYPTION_KEY presence in non-dev
 
 - Likely files:
