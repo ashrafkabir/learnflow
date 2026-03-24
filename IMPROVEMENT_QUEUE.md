@@ -931,17 +931,25 @@ The app is a strong MVP, but spec promises are ahead of implementation in a few 
 
 2. **User-facing Usage Dashboard (spec §5.2.8 / usage tracking)**
 
-- What to build:
-  - Settings → Usage view that summarizes tokens by provider + last used + top agents.
-  - Make the numbers stable and understandable ("tokens" + approximate cost note is optional).
-- Acceptance criteria:
-  - A Pro/Free user can see totals for the last 7/30 days.
-  - Usage aggregates match server-side records (API test + UI test snapshot).
-- Likely files:
-  - `apps/api/src/routes/usage.ts` (or add if missing)
-  - `apps/api/src/db.ts` (aggregate helpers)
-  - `apps/client/src/screens/ProfileSettings.tsx`
-  - `apps/client/src/components/*` (charts/tables)
+- Status: **DONE ✅**
+- What shipped:
+  - Settings → Usage card with **7d / 30d** toggle.
+  - Provider breakdown includes **tokens**, **call count**, **last used**.
+  - Top agents list.
+- Evidence:
+  - API:
+    - `GET /api/v1/usage/aggregates` returns stable windows `{ windows:[7,30], data:{'7':..., '30':...} }`
+    - `GET /api/v1/usage/summary?days=N` extended to include `providerMeta`.
+  - Client:
+    - `apps/client/src/components/UsageDashboard.tsx` rendered in Settings (`ProfileSettings`).
+  - Tests:
+    - `apps/api/src/__tests__/usage-aggregates.test.ts`
+    - `apps/client/src/__tests__/usageDashboard.snapshot.test.tsx` (+ snapshot)
+  - Commits (branch `iter78`):
+    - `59decea` add `/usage/aggregates` + API test
+    - `0ec45f4` Settings usage dashboard + client snapshot test
+- Notes:
+  - Costs are intentionally omitted for now (provider/model pricing is variable); UI includes a short disclaimer.
 
 3. **Update Agent: replace stubbed “search” with real provider(s) + credibility filters (MVP)**
 
