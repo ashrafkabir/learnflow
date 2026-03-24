@@ -277,6 +277,68 @@ export function Conversation() {
   const [input, setInput] = useState('');
   const [contextBadge, setContextBadge] = useState<string | null>(null);
 
+  // Iter80: deterministic screenshot fixtures (no network / no WS streaming required)
+  useEffect(() => {
+    const fixture = searchParams.get('fixture');
+    if (!fixture) return;
+
+    const richMarkdown = `# Rich rendering fixture\n\nThis message is designed to prove **code**, **tables**, and **math** render without layout break.\n\n## Fenced code block\n\n\`\`\`ts\nfunction add(a: number, b: number) {\n  return a + b;\n}\n\nconsole.log(add(2, 3)); // 5\n\`\`\`\n\n## Markdown table\n\n| Feature | Purpose | Notes |\n|---|---|---|\n| Tables | Test horizontal scroll | Should not overflow page |\n| Code | Test monospace + styling | Should keep indentation |\n| Math | Test inline + block | Fallback must not break layout |\n\n## Math\n\nInline: $E = mc^2$\n\nBlock:\n\n$$\n\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}\n$$\n`;
+
+    dispatch({
+      type: 'SET_CHAT',
+      messages: [
+        {
+          id: 'fixture-user-1',
+          role: 'user',
+          content: 'Show me a rich markdown response with code, a table, and math.',
+          timestamp: new Date().toISOString(),
+        },
+        {
+          id: 'fixture-assistant-1',
+          role: 'assistant',
+          content: richMarkdown,
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    });
+
+    // Seed sources for the unified drawer evidence.
+    if (fixture === 'rich') {
+      setAttributionSources([
+        {
+          id: 1,
+          title: 'CommonMark Spec — Tables (GFM extension)',
+          url: 'https://spec.commonmark.org/',
+          sourceType: 'Docs',
+          summary:
+            'Defines the baseline Markdown syntax; table support is commonly provided via GFM extensions.',
+          whyThisMatters:
+            'Acts as a stable reference point when discussing Markdown features and renderer behavior.',
+          publication: 'CommonMark',
+          year: 2024,
+        },
+        {
+          id: 2,
+          title: 'KaTeX Documentation — Supported Functions',
+          url: 'https://katex.org/docs/supported.html',
+          sourceType: 'Docs',
+          summary: 'Lists the LaTeX functions KaTeX can render for inline and block math.',
+          whyThisMatters:
+            'Proves math rendering coverage and helps explain fallback behavior when unsupported.',
+          publication: 'KaTeX',
+          year: 2024,
+        },
+      ]);
+    } else if (fixture === 'emptySources') {
+      setAttributionSources([]);
+    }
+
+    // Optional: open drawer immediately for drawer screenshots.
+    if (searchParams.get('openSources') === '1') {
+      setAttributionOpen(true);
+    }
+  }, [searchParams]);
+
   // Handle query params from lesson action bar
   useEffect(() => {
     const action = searchParams.get('action');

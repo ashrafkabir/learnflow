@@ -11,6 +11,14 @@ export function useWebSocket(onEvent: WsHandler, deps: ReadonlyArray<unknown> = 
   handlersRef.current = onEvent;
 
   useEffect(() => {
+    // Screenshot harness / offline fixtures can disable websockets deterministically.
+    // Set in browser context via init script: window.__LEARNFLOW_DISABLE_WS__ = true
+    try {
+      if ((globalThis as any).__LEARNFLOW_DISABLE_WS__ === true) return;
+    } catch {
+      // ignore
+    }
+
     const token = localStorage.getItem('learnflow-token') || (import.meta.env.DEV ? 'dev' : null);
     if (!token) return;
 

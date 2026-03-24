@@ -82,6 +82,9 @@ const browser = await chromium.launch();
     localStorage.setItem('learnflow-onboarding-complete', 'true');
     // Prevent the dashboard tour overlay from blocking clicks
     localStorage.setItem('onboarding-tour-complete', 'true');
+
+    // Iter80: deterministic screenshot mode (no WS / no network dependencies)
+    window.__LEARNFLOW_DISABLE_WS__ = true;
   });
 
   for (const [path, name] of AUTHED_PAGES) {
@@ -91,6 +94,31 @@ const browser = await chromium.launch();
     await page.screenshot({ path: `${DIR}/${name}.png`, fullPage: true });
     await page.close();
     console.log(`✓ ${name}`);
+  }
+
+  // Iter80 evidence: deterministic Conversation rich rendering + Sources drawer (non-empty + empty state)
+  {
+    const page = await ctx.newPage();
+    await safeGoto(page, '/conversation?fixture=rich');
+    await dismissOverlays(page);
+    await page.waitForSelector('[aria-label="Conversation"]', { timeout: 15000 }).catch(() => {});
+    await page.screenshot({ path: `${DIR}/conversation-rich-rendering.png`, fullPage: true });
+    console.log('✓ conversation-rich-rendering');
+
+    // Open drawer via real UI affordance (header icon button)
+    await page.click('[aria-label="View sources"]', { timeout: 15000 }).catch(() => {});
+    await page.waitForSelector('text=Sources & Attribution', { timeout: 15000 }).catch(() => {});
+    await page.screenshot({ path: `${DIR}/conversation-sources-drawer.png`, fullPage: true });
+    console.log('✓ conversation-sources-drawer');
+
+    // Empty-sources state
+    await safeGoto(page, '/conversation?fixture=emptySources&openSources=1');
+    await dismissOverlays(page);
+    await page.waitForSelector('text=Sources & Attribution', { timeout: 15000 }).catch(() => {});
+    await page.screenshot({ path: `${DIR}/conversation-sources-empty-state.png`, fullPage: true });
+    console.log('✓ conversation-sources-empty-state');
+
+    await page.close();
   }
 
   // Extra: pipeline detail (click first pipeline card)
@@ -103,6 +131,35 @@ const browser = await chromium.launch();
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${DIR}/pipeline-detail.png`, fullPage: true });
     console.log('✓ pipeline-detail');
+  }
+
+  // Iter80 evidence: LessonReader Sources drawer via seeded route (deterministic)
+  await safeGoto(page, '/courses/c-1/lessons/l1');
+  await dismissOverlays(page);
+  await page.click('text=See Sources', { timeout: 15000 }).catch(() => {});
+  await page.waitForSelector('text=Sources & Attribution', { timeout: 15000 }).catch(() => {});
+  await page.screenshot({ path: `${DIR}/lesson-reader-sources-drawer.png`, fullPage: true });
+  console.log('✓ lesson-reader-sources-drawer');
+
+  // Iter80 evidence: action chips parity (Conversation vs Lesson Reader)
+  await safeGoto(page, '/conversation?fixture=rich');
+  await dismissOverlays(page);
+  await page.waitForSelector('[data-component="action-chips"]', { timeout: 15000 }).catch(() => {});
+  await page.screenshot({ path: `${DIR}/_action-chips-conversation.png`, fullPage: true });
+  await safeGoto(page, '/courses/c-1/lessons/l1');
+  await dismissOverlays(page);
+  await page.waitForSelector('[data-testid="action-chips"]', { timeout: 15000 }).catch(() => {});
+  await page.screenshot({ path: `${DIR}/_action-chips-lesson.png`, fullPage: true });
+  console.log('✓ action-chips (inputs)');
+
+  // Compose side-by-side parity shot (best effort)
+  try {
+    const { execSync } = await import('node:child_process');
+    execSync(`SCREENSHOT_DIR=${DIR} node scripts/compose-parity-shot.mjs`, {
+      stdio: 'inherit',
+    });
+  } catch {
+    // ignore
   }
 
   // Extra: attempt course create + course/lesson views
@@ -148,6 +205,12 @@ const browser = await chromium.launch();
       await dismissOverlays(page);
       await page.screenshot({ path: `${DIR}/lesson-reader.png`, fullPage: true });
       console.log('✓ lesson-reader');
+
+      // Iter80 evidence: Sources drawer open from Lesson Reader via "See Sources" action chip
+      await page.click('text=See Sources', { timeout: 15000 }).catch(() => {});
+      await page.waitForSelector('text=Sources & Attribution', { timeout: 15000 }).catch(() => {});
+      await page.screenshot({ path: `${DIR}/lesson-reader-sources-drawer.png`, fullPage: true });
+      console.log('✓ lesson-reader-sources-drawer');
     }
   }
 

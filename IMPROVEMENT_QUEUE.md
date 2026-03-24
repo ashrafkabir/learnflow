@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24 (Iter79 planning)
+Last updated: 2026-03-24 (Iter80 planning)
 
 ---
 
@@ -1259,3 +1259,127 @@ Capture via `SCREENSHOT_DIR=screenshots/iter79/... node screenshot-all.mjs` plus
   - Lesson Reader: open a lesson with sources; verify unified drawer opens and fields render.
   - Conversation: verify sources drawer opens when sources provided; verify empty state when none.
   - Verify chips shown are actionable; no duplicates on streaming completion.
+
+---
+
+## Iteration 80 — SCREENSHOT HARNESS + EVIDENCE PACK CONSISTENCY (POST-ITER79 UX)
+
+Status: **DONE**
+
+Evidence (run-001):
+
+- `screenshots/iter80/run-001/conversation-rich-rendering.png`
+- `screenshots/iter80/run-001/conversation-sources-drawer.png`
+- `screenshots/iter80/run-001/conversation-sources-empty-state.png`
+- `screenshots/iter80/run-001/lesson-reader-sources-drawer.png`
+- `screenshots/iter80/run-001/action-chips-parity.png`
+- `screenshots/iter80/run-001/conversation-table-mobile.png`
+
+Docs:
+
+- `screenshots/iter80/README.md`
+
+### Why this iteration (smallest high-leverage next step)
+
+Iter79 materially improved the UX (unified markdown renderer + sources drawer + action chips). The remaining trust gap is **evidence consistency**:
+
+- Iter79’s note says screenshots were “copied from iter57 harness run”, which is a smell: the harness is not reliably producing the new UX evidence.
+- When the harness can’t deterministically capture Conversation rich rendering + sources drawer states, future iterations will regress unnoticed.
+
+This iteration is deliberately narrow: make the existing screenshot harness consistently produce the Iter79-required screenshots (desktop + mobile) using deterministic fixtures.
+
+### Scope (P0) — Must ship
+
+1. **Add deterministic “rich message” fixtures for Conversation screenshots**
+
+- Ensure the screenshot harness can load a Conversation state that includes:
+  - fenced code block
+  - markdown table
+  - inline math and block math
+  - at least 1 structured source (so Sources Drawer is non-empty)
+  - also a second state with **zero** sources (explicit empty state)
+
+**Acceptance criteria**
+
+- Running `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs` produces the Iter80 checklist shots below without manual clicking.
+- Fixture is deterministic and does not require network access or live WS streaming.
+
+**Likely files**
+
+- `screenshot-all.mjs`
+- `debug-screenshot.mjs` (if used for page setup)
+- `apps/client/src/screens/Conversation.tsx` (only if a fixture hook is needed)
+- `apps/client/src/lib/*` (fixture/seed utilities, if they exist)
+- `apps/client/src/dev/*` (if there is a dev-only seed route)
+
+2. **Ensure harness can open unified Sources Drawer from both Conversation + Lesson Reader**
+
+- Conversation: open the drawer via the same UI affordance as users (action chip or button).
+- Lesson Reader: open the drawer via “See Sources”.
+
+**Acceptance criteria**
+
+- Harness captures both drawer screenshots and they match styling parity.
+- Drawer screenshots show stable content and do not vary run-to-run.
+
+**Likely files**
+
+- `screenshot-all.mjs`
+- `apps/client/src/components/SourcesDrawer.tsx`
+- `apps/client/src/screens/LessonReader.tsx`
+- `apps/client/src/screens/Conversation.tsx`
+
+3. **Mobile screenshot reliability for table scroll**
+
+- Ensure the harness includes a mobile viewport run that captures a table inside a message without page overflow.
+
+**Acceptance criteria**
+
+- The mobile screenshot reliably shows:
+  - the table present
+  - horizontal scrolling constrained to the table container (not the entire page)
+  - no clipped columns off-screen
+
+**Likely files**
+
+- `screenshot-mobile.mjs` (or where mobile mode is configured)
+- `screenshot-all.mjs`
+
+### Scope (P1) — If time permits
+
+4. **Evidence pack README for screenshots**
+
+- Add a short README in the Iter80 screenshots folder describing:
+  - how the states are generated
+  - what each screenshot proves
+
+**Acceptance criteria**
+
+- A new `screenshots/iter80/README.md` exists and is accurate.
+
+### Screenshot checklist (Iter80)
+
+Capture via `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs`.
+
+- `conversation-rich-rendering.png`
+  - includes code block + table + math (inline + block)
+- `conversation-sources-drawer.png`
+  - unified sources drawer open from Conversation with ≥1 source
+- `conversation-sources-empty-state.png`
+  - unified sources drawer open from Conversation with explicit empty state
+- `lesson-reader-sources-drawer.png`
+  - unified sources drawer open from Lesson Reader
+- `action-chips-parity.png`
+  - chips shown in both surfaces (two shots or one combined)
+- `conversation-table-mobile.png`
+  - mobile viewport; table scrolls inside container; no page overflow
+
+### Verification checklist (Iter80)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- Screenshots:
+  - `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs`
+  - Confirm files exist in `learnflow/screenshots/iter80/run-001/` and are non-empty

@@ -39,7 +39,8 @@ const pages = [
   ['/onboarding/subscription', 'onboarding-subscription'],
   ['/onboarding/first-course', 'onboarding-first-course'],
   ['/dashboard', 'dashboard'],
-  ['/conversation', 'conversation'],
+  ['/conversation?fixture=rich', 'conversation-rich'],
+  ['/conversation?fixture=rich', 'conversation'],
   ['/mindmap', 'mindmap'],
   ['/settings', 'settings'],
   ['/marketplace/courses', 'marketplace-courses'],
@@ -62,6 +63,9 @@ for (const vp of viewports) {
         globalThis.localStorage.setItem('learnflow-token', 'dev');
         globalThis.localStorage.setItem('learnflow-onboarding-complete', 'true');
         globalThis.localStorage.setItem('onboarding-tour-complete', 'true');
+
+        // Iter80: deterministic screenshot mode (no WS / no network dependencies)
+        globalThis.__LEARNFLOW_DISABLE_WS__ = true;
       } catch {
         // ignore
       }
@@ -78,6 +82,18 @@ for (const vp of viewports) {
     const viewWidth = await page.evaluate(() => globalThis.window.innerWidth);
     if (scrollWidth > viewWidth + 10) {
       console.warn(`⚠️  ${vp.name} ${name} has horizontal overflow: ${scrollWidth} > ${viewWidth}`);
+    }
+
+    // If we're on the conversation rich fixture, try to ensure the table is in view.
+    if (p.includes('/conversation') && name.includes('conversation-rich')) {
+      await page.evaluate(() => {
+        const doc = globalThis.document;
+        const table = doc?.querySelector?.('table');
+        if (table && typeof table.scrollIntoView === 'function') {
+          table.scrollIntoView({ block: 'center' });
+        }
+      });
+      await page.waitForTimeout(250);
     }
 
     await page.screenshot({ path: `${DIR}/${vp.name}__${name}.png`, fullPage: true });
