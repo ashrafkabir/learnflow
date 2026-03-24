@@ -153,6 +153,15 @@ sqlite.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_lesson_sources_course ON lesson_sources(courseId);
 
+  -- Iter73 P1: quality telemetry (best-effort)
+  CREATE TABLE IF NOT EXISTS lesson_quality (
+    lessonId TEXT PRIMARY KEY,
+    courseId TEXT NOT NULL,
+    telemetry TEXT NOT NULL DEFAULT '{}',
+    updatedAt TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_lesson_quality_course ON lesson_quality(courseId);
+
   CREATE TABLE IF NOT EXISTS progress (
     userId TEXT NOT NULL,
     lessonId TEXT NOT NULL,
@@ -521,6 +530,12 @@ const stmts = {
   getLessonSources: sqlite.prepare(
     `SELECT sources, missingReason FROM lesson_sources WHERE lessonId = ?`,
   ),
+
+  // Lesson quality telemetry
+  upsertLessonQuality: sqlite.prepare(
+    `INSERT OR REPLACE INTO lesson_quality (lessonId, courseId, telemetry, updatedAt) VALUES (?, ?, ?, ?)`,
+  ),
+  getLessonQuality: sqlite.prepare(`SELECT telemetry FROM lesson_quality WHERE lessonId = ?`),
 
   // Courses
   insertCourse: sqlite.prepare(
@@ -975,7 +990,7 @@ class SqliteDb {
 
   clear(): void {
     sqlite.exec(
-      `DELETE FROM users; DELETE FROM api_keys; DELETE FROM refresh_tokens; DELETE FROM token_usage; DELETE FROM usage_records; DELETE FROM courses; DELETE FROM lessons; DELETE FROM lesson_sources; DELETE FROM progress; DELETE FROM pipelines; DELETE FROM invoices; DELETE FROM mindmaps; DELETE FROM mindmap_suggestions; DELETE FROM marketplace_agents_activated; DELETE FROM marketplace_courses; DELETE FROM marketplace_enrollments; DELETE FROM marketplace_payment_intents; DELETE FROM marketplace_payouts; DELETE FROM marketplace_agent_submissions; DELETE FROM marketplace_course_reviews; DELETE FROM collaboration_groups; DELETE FROM collaboration_group_messages; DELETE FROM notifications;`,
+      `DELETE FROM users; DELETE FROM api_keys; DELETE FROM refresh_tokens; DELETE FROM token_usage; DELETE FROM usage_records; DELETE FROM courses; DELETE FROM lessons; DELETE FROM lesson_sources; DELETE FROM lesson_quality; DELETE FROM progress; DELETE FROM pipelines; DELETE FROM invoices; DELETE FROM mindmaps; DELETE FROM mindmap_suggestions; DELETE FROM marketplace_agents_activated; DELETE FROM marketplace_courses; DELETE FROM marketplace_enrollments; DELETE FROM marketplace_payment_intents; DELETE FROM marketplace_payouts; DELETE FROM marketplace_agent_submissions; DELETE FROM marketplace_course_reviews; DELETE FROM collaboration_groups; DELETE FROM collaboration_group_messages; DELETE FROM notifications;`,
     );
   }
 }
@@ -1005,6 +1020,27 @@ export const dbLessonSources = {
       };
     } catch {
       return { sources: [] };
+    }
+  },
+};
+
+export const dbLessonQuality = {
+  save(lessonId: string, courseId: string, telemetry: any): void {
+    stmts.upsertLessonQuality.run(
+      lessonId,
+      courseId,
+      JSON.stringify(telemetry || {}),
+      new Date().toISOString(),
+    );
+  },
+
+  get(lessonId: string): any {
+    const row = stmts.getLessonQuality.get(lessonId) as any;
+    if (!row) return undefined;
+    try {
+      return JSON.parse(row.telemetry || '{}');
+    } catch {
+      return undefined;
     }
   },
 };

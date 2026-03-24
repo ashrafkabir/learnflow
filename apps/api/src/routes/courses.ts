@@ -19,6 +19,7 @@ import {
 } from '@learnflow/agents';
 import {
   dbCourses,
+  dbLessonQuality,
   dbLessonSources,
   dbProgress,
   dbNotes,
@@ -40,6 +41,7 @@ import {
   type LessonDomain,
 } from '../utils/lessonQuality.js';
 import { validateSectionLevelQuotas } from '../utils/lessonSectionQuotas.js';
+import { buildLessonQualityTelemetry } from '../utils/qualityTelemetry.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
 import { validateBody } from '../validation.js';
@@ -877,15 +879,32 @@ Continue.`,
             attempt++;
           }
 
+          const qualityReasons = [
+            ...(quality.reasons || []),
+            ...(placeholder.reasons || []),
+            ...(quotas.reasons || []),
+          ];
+
+          // Iter73 P1: best-effort quality telemetry (even on failure).
+          try {
+            const lessonId = `${courseId}-m${mi}-l${li}`;
+            const telemetry = buildLessonQualityTelemetry({
+              lessonId,
+              courseId,
+              generationAttemptCount: attempt,
+              ok: quality.ok && placeholder.ok && quotas.ok,
+              reasons: qualityReasons,
+              wordCount: enforceBiteSizedLesson(contentFinal, { maxMinutes: 999 }).sizing.wordCount,
+            });
+            dbLessonQuality.save(lessonId, courseId, telemetry);
+          } catch {
+            // best effort
+          }
+
           if (!quality.ok || !placeholder.ok || !quotas.ok) {
-            const reasons = [
-              ...(quality.reasons || []),
-              ...(placeholder.reasons || []),
-              ...(quotas.reasons || []),
-            ];
-            console.warn('[LearnFlow] lesson quality gate failed permanently:', reasons);
+            console.warn('[LearnFlow] lesson quality gate failed permanently:', qualityReasons);
             // Surface failure via course generation failure (pipeline/UI should show FAILED clearly).
-            throw new Error(`Lesson quality gate failed: ${reasons.join(', ')}`);
+            throw new Error(`Lesson quality gate failed: ${qualityReasons.join(', ')}`);
           }
 
           const sources = gen.sources || [];
@@ -900,7 +919,8 @@ Continue.`,
                 : 'domain_diversity_gate: lesson sources lack ≥2 distinct domains';
 
           try {
-            dbLessonSources.save(`${courseId}-m${mi}-l${li}`, courseId, sources, missingReason);
+            const lessonId = `${courseId}-m${mi}-l${li}`;
+            dbLessonSources.save(lessonId, courseId, sources, missingReason);
           } catch {
             // best effort
           }
