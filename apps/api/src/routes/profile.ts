@@ -77,4 +77,13 @@ router.post('/onboarding/complete', (req: Request, res: Response) => {
   });
 });
 
+// GET /api/v1/profile/data-summary
+// Returns a minimal, user-auditable summary of what the server stores.
+router.get('/data-summary', (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+
+  const summary = db.getDataSummary(userId);
+  res.status(200).json(summary);
+});
+
 export const profileRouter = router;

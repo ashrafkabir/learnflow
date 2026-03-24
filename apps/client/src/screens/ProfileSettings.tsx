@@ -40,6 +40,10 @@ export function ProfileSettings() {
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [serverRole, setServerRole] = useState<string>('');
 
+  const [dataSummary, setDataSummary] = useState<any>(null);
+  const [dataSummaryLoading, setDataSummaryLoading] = useState(false);
+  const [dataSummaryError, setDataSummaryError] = useState<string>('');
+
   useEffect(() => {
     (async () => {
       try {
@@ -50,6 +54,24 @@ export function ProfileSettings() {
       }
     })();
   }, [apiGet]);
+
+  const loadDataSummary = React.useCallback(async () => {
+    setDataSummaryError('');
+    setDataSummaryLoading(true);
+    try {
+      const res = await apiGet('/profile/data-summary');
+      setDataSummary(res);
+    } catch (e: any) {
+      setDataSummary(null);
+      setDataSummaryError(String(e?.message || 'Failed to load data summary'));
+    } finally {
+      setDataSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDataSummary();
+  }, [loadDataSummary]);
 
   // Server-driven admin gating (Iter69): trust /profile/context rather than localStorage.
   useEffect(() => {
@@ -801,6 +823,110 @@ export function ProfileSettings() {
                 <span>{item.label}</span>
               </div>
             ))}
+          </div>
+
+          <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Your data on our servers
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-300">
+                  Live summary of server-stored records (counts + last updated).
+                </p>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={loadDataSummary}
+                disabled={dataSummaryLoading}
+              >
+                <span className="inline-flex items-center gap-1">
+                  <IconRefresh className="w-4 h-4" />
+                  {dataSummaryLoading ? 'Loading…' : 'Refresh'}
+                </span>
+              </Button>
+            </div>
+
+            {dataSummaryLoading && (
+              <div className="mt-3 text-sm text-gray-500 dark:text-gray-300">Loading…</div>
+            )}
+
+            {!dataSummaryLoading && dataSummaryError && (
+              <div className="mt-3 p-3 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30">
+                <p className="text-sm text-red-700 dark:text-red-300">{dataSummaryError}</p>
+                <div className="mt-2">
+                  <Button variant="secondary" size="sm" onClick={loadDataSummary}>
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!dataSummaryLoading && !dataSummaryError && dataSummary && (
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                {[
+                  {
+                    label: 'Learning events',
+                    count: dataSummary.learningEvents?.count,
+                    last: dataSummary.learningEvents?.lastEventAt,
+                    note: 'Server-stored telemetry',
+                  },
+                  {
+                    label: 'Completed lessons',
+                    count: dataSummary.progress?.completedCount,
+                    last: dataSummary.progress?.lastCompletedAt,
+                    note: 'Server-stored progress',
+                  },
+                  {
+                    label: 'Usage records',
+                    count: dataSummary.usageRecords?.count,
+                    last: dataSummary.usageRecords?.lastUsedAt,
+                    note: 'Server-stored usage',
+                  },
+                  {
+                    label: 'Notifications',
+                    count: dataSummary.notifications?.count,
+                    last: dataSummary.notifications?.lastNotificationAt,
+                    note: 'Server-stored messages',
+                  },
+                ].map((row) => (
+                  <div
+                    key={row.label}
+                    className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-gray-900 dark:text-white">{row.label}</span>
+                      <span className="font-mono text-gray-700 dark:text-gray-200">
+                        {typeof row.count === 'number' ? row.count : 0}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+                      Last updated: {row.last ? new Date(row.last).toLocaleString() : 'Never'}
+                    </div>
+                    <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-300">
+                      {row.note}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!dataSummaryLoading &&
+              !dataSummaryError &&
+              dataSummary &&
+              Number(dataSummary.learningEvents?.count || 0) === 0 &&
+              Number(dataSummary.progress?.completedCount || 0) === 0 &&
+              Number(dataSummary.usageRecords?.count || 0) === 0 &&
+              Number(dataSummary.notifications?.count || 0) === 0 && (
+                <div className="mt-3 text-sm text-gray-500 dark:text-gray-300">
+                  No server-stored activity yet.
+                </div>
+              )}
+
+            <div className="mt-3 text-xs text-gray-500 dark:text-gray-300">
+              Local-only: conversation content and temporary UI state stored in your browser.
+            </div>
           </div>
         </div>
 

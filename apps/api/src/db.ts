@@ -504,6 +504,12 @@ const stmts = {
   insertUsageRecord: sqlite.prepare(
     `INSERT INTO usage_records (userId, agentName, provider, tokensIn, tokensOut, tokensTotal, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
   ),
+  countUsageRecordsByUser: sqlite.prepare(
+    `SELECT COUNT(*) as n FROM usage_records WHERE userId = ?`,
+  ),
+  getLastUsageRecordAtByUser: sqlite.prepare(
+    `SELECT MAX(createdAt) as lastAt FROM usage_records WHERE userId = ?`,
+  ),
   getUsageTotalSince: sqlite.prepare(
     `SELECT COALESCE(SUM(tokensTotal), 0) as total FROM usage_records WHERE userId = ? AND createdAt >= ?`,
   ),
@@ -550,6 +556,12 @@ const stmts = {
   listNotificationsByUser: sqlite.prepare(
     `SELECT * FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
   ),
+  countNotificationsByUser: sqlite.prepare(
+    `SELECT COUNT(*) as n FROM notifications WHERE userId = ?`,
+  ),
+  getLastNotificationAtByUser: sqlite.prepare(
+    `SELECT MAX(createdAt) as lastAt FROM notifications WHERE userId = ?`,
+  ),
   markNotificationRead: sqlite.prepare(
     `UPDATE notifications SET readAt = ? WHERE id = ? AND userId = ?`,
   ),
@@ -589,6 +601,10 @@ const stmts = {
     `SELECT lessonId FROM progress WHERE userId = ? AND courseId = ?`,
   ),
   getAllProgressByUser: sqlite.prepare(`SELECT courseId, lessonId FROM progress WHERE userId = ?`),
+  countProgressByUser: sqlite.prepare(`SELECT COUNT(*) as n FROM progress WHERE userId = ?`),
+  getLastProgressCompletedAtByUser: sqlite.prepare(
+    `SELECT MAX(completedAt) as lastAt FROM progress WHERE userId = ?`,
+  ),
 
   // Learning events
   insertLearningEvent: sqlite.prepare(
@@ -596,6 +612,12 @@ const stmts = {
   ),
   getLearningEventsByUser: sqlite.prepare(
     `SELECT * FROM learning_events WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
+  ),
+  countLearningEventsByUser: sqlite.prepare(
+    `SELECT COUNT(*) as n FROM learning_events WHERE userId = ?`,
+  ),
+  getLastLearningEventAtByUser: sqlite.prepare(
+    `SELECT MAX(createdAt) as lastAt FROM learning_events WHERE userId = ?`,
   ),
 
   // Pipelines
@@ -912,6 +934,47 @@ class SqliteDb {
       Math.max(0, Math.round(record.tokensTotal || 0)),
       record.createdAt.toISOString(),
     );
+  }
+
+  // Data Summary (Iter81/82): minimal auditable summary of server-stored records.
+  getDataSummary(userId: string): {
+    learningEvents: { count: number; lastEventAt: string | null };
+    progress: { completedCount: number; lastCompletedAt: string | null };
+    usageRecords: { count: number; lastUsedAt: string | null };
+    notifications: { count: number; lastNotificationAt: string | null };
+    generatedAt: string;
+  } {
+    const leCount = (stmts as any).countLearningEventsByUser.get(userId) as any;
+    const leLast = (stmts as any).getLastLearningEventAtByUser.get(userId) as any;
+
+    const progCount = (stmts as any).countProgressByUser.get(userId) as any;
+    const progLast = (stmts as any).getLastProgressCompletedAtByUser.get(userId) as any;
+
+    const usageCount = (stmts as any).countUsageRecordsByUser.get(userId) as any;
+    const usageLast = (stmts as any).getLastUsageRecordAtByUser.get(userId) as any;
+
+    const notifCount = (stmts as any).countNotificationsByUser.get(userId) as any;
+    const notifLast = (stmts as any).getLastNotificationAtByUser.get(userId) as any;
+
+    return {
+      learningEvents: {
+        count: Number(leCount?.n || 0),
+        lastEventAt: leLast?.lastAt ? String(leLast.lastAt) : null,
+      },
+      progress: {
+        completedCount: Number(progCount?.n || 0),
+        lastCompletedAt: progLast?.lastAt ? String(progLast.lastAt) : null,
+      },
+      usageRecords: {
+        count: Number(usageCount?.n || 0),
+        lastUsedAt: usageLast?.lastAt ? String(usageLast.lastAt) : null,
+      },
+      notifications: {
+        count: Number(notifCount?.n || 0),
+        lastNotificationAt: notifLast?.lastAt ? String(notifLast.lastAt) : null,
+      },
+      generatedAt: new Date().toISOString(),
+    };
   }
 
   getUsageTotalSince(userId: string, since: Date): number {

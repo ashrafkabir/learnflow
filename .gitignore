@@ -21,8 +21,11 @@ apps/web/.next/
 apps/web/out/
 evals/screenshots/
 
-learnflow/screenshots/
+learnflow/screenshots/*
+!learnflow/screenshots/iter82/
+!learnflow/screenshots/iter82/**
 screenshots/iter*/
+!screenshots/iter82/
 playwright-report/
 apps/client/.vite/
 
