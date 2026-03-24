@@ -8,6 +8,7 @@ export type OutlineDomain =
   | 'general';
 
 import { extractTopicSubtopics } from './topic-subtopics.js';
+import { shapeOutlineWithSubtopics } from './subtopic-outline-shaper.js';
 
 export type OutlineLesson = {
   title: string;
@@ -517,5 +518,14 @@ export function buildCourseOutline(topic: string): CourseOutline {
   // When sources are unavailable, use a deterministic topic-only fallback.
   const subtopics = extractTopicSubtopics(topic, undefined, { min: 8, max: 15 });
 
-  return { topic, domain, modules, subtopics };
+  // Iter73 P0.2: use extracted subtopics to force non-generic module/lesson phrasing.
+  // Requirement: for non-quantum courses, >=60% of module titles should contain a subtopic phrase.
+  const shapedModules =
+    domain === 'quantum_computing'
+      ? modules
+      : shapeOutlineWithSubtopics(modules, subtopics, {
+          minFractionWithSubtopicInTitle: 0.6,
+        });
+
+  return { topic, domain, modules: shapedModules, subtopics };
 }
