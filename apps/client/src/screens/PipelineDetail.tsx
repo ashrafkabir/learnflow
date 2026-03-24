@@ -82,6 +82,31 @@ export function PipelineDetail() {
   const createdAt = state.startedAt ? new Date(state.startedAt).toLocaleString() : 'N/A';
   const updatedAt = state.updatedAt ? new Date(state.updatedAt).toLocaleString() : 'N/A';
 
+  const milestoneOrder = ['plan_ready', 'sources_ready', 'draft_ready', 'quality_passed'] as const;
+  const milestoneLabels: Record<(typeof milestoneOrder)[number], string> = {
+    plan_ready: 'Plan',
+    sources_ready: 'Sources',
+    draft_ready: 'Draft',
+    quality_passed: 'Quality',
+  };
+
+  const milestonesByLesson = (() => {
+    const ms = Array.isArray((state as any).lessonMilestones)
+      ? ((state as any).lessonMilestones as any[])
+      : [];
+    const by = new Map<string, { lessonId: string; lessonTitle: string; types: Set<string> }>();
+    for (const m of ms) {
+      const lid = String(m?.lessonId || '');
+      if (!lid) continue;
+      const title = String(m?.lessonTitle || lid);
+      const entry = by.get(lid) || { lessonId: lid, lessonTitle: title, types: new Set() };
+      if (title && !entry.lessonTitle) entry.lessonTitle = title;
+      if (m?.type) entry.types.add(String(m.type));
+      by.set(lid, entry);
+    }
+    return Array.from(by.values());
+  })();
+
   return (
     <section className="min-h-screen bg-bg dark:bg-bg-dark" aria-label="Pipeline Detail">
       {/* Breadcrumb Header */}
@@ -224,6 +249,65 @@ export function PipelineDetail() {
           <PipelineView state={state} onViewCourse={(courseId) => nav(`/courses/${courseId}`)} />
         </div>
 
+        {/* Iter75 P0: Lesson Milestones */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Milestones</h2>
+          {milestonesByLesson.length === 0 ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Milestones will appear as lessons move through planning, sources, drafting, and
+              quality checks.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {milestonesByLesson.map((l) => (
+                <div
+                  key={l.lessonId}
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4"
+                >
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {l.lessonTitle || l.lessonId}
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {milestoneOrder.map((t) => {
+                      const done = l.types.has(t);
+                      return (
+                        <div
+                          key={t}
+                          className={
+                            'flex items-center gap-2 rounded-xl px-3 py-2 text-xs border ' +
+                            (done
+                              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-900/30 text-green-800 dark:text-green-300'
+                              : 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300')
+                          }
+                          aria-label={
+                            (l.lessonTitle || l.lessonId) +
+                            ' ' +
+                            t +
+                            ' ' +
+                            (done ? 'done' : 'pending')
+                          }
+                        >
+                          <span
+                            className={
+                              'inline-flex items-center justify-center w-5 h-5 rounded-full ' +
+                              (done
+                                ? 'bg-green-600 text-white'
+                                : 'bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200')
+                            }
+                            aria-hidden="true"
+                          >
+                            {done ? '✓' : '•'}
+                          </span>
+                          <span className="font-semibold">{milestoneLabels[t]}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         {/* Logs Panel */}
         {showLogs && (
           <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-card p-6">

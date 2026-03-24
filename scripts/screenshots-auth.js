@@ -4,11 +4,14 @@ const { chromium } = require('playwright');
   const browser = await chromium.launch();
   const BASE = process.env.LEARNFLOW_WEB_BASE || 'http://127.0.0.1:3003';
   const DIR =
+    process.env.SCREENSHOT_DIR ||
     process.env.LEARNFLOW_SCREENSHOT_DIR ||
     '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter57';
 
+  const API_BASE = process.env.LEARNFLOW_API_BASE || 'http://127.0.0.1:3000';
+
   // Register via API
-  const res = await fetch('http://127.0.0.1:3000/api/v1/auth/register', {
+  const res = await fetch(API_BASE + '/api/v1/auth/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -64,7 +67,7 @@ const { chromium } = require('playwright');
 
   // Check if there are any courses
   try {
-    const coursesRes = await fetch('http://127.0.0.1:3000/api/v1/courses', {
+    const coursesRes = await fetch(API_BASE + '/api/v1/courses', {
       headers: { Authorization: 'Bearer ' + auth.accessToken },
     });
     const courses = await coursesRes.json();
@@ -79,7 +82,7 @@ const { chromium } = require('playwright');
       console.log('OK course-detail-auth');
 
       // Get lessons
-      const lessonsRes = await fetch('http://127.0.0.1:3000/api/v1/courses/' + cid + '/lessons', {
+      const lessonsRes = await fetch(API_BASE + '/api/v1/courses/' + cid + '/lessons', {
         headers: { Authorization: 'Bearer ' + auth.accessToken },
       });
       const lessons = await lessonsRes.json();
@@ -107,6 +110,22 @@ const { chromium } = require('playwright');
     }
   } catch (e) {
     console.log('FAIL courses: ' + e.message.slice(0, 120));
+  }
+
+  // Pipeline detail (optional)
+  try {
+    const pipelineId = process.env.PIPELINE_ID;
+    if (pipelineId) {
+      await page.goto(BASE + '/pipeline/' + pipelineId, {
+        waitUntil: 'networkidle',
+        timeout: 10000,
+      });
+      await page.waitForTimeout(1000);
+      await page.screenshot({ path: DIR + '/pipeline-detail-auth.png', fullPage: true });
+      console.log('OK pipeline-detail-auth');
+    }
+  } catch (e) {
+    console.log('FAIL pipeline-detail-auth: ' + e.message.slice(0, 80));
   }
 
   // Mobile

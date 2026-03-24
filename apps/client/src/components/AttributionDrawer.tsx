@@ -4,6 +4,13 @@ export type AttributionSource = {
   id?: string | number;
   title?: string;
   url?: string;
+
+  // Newer SourceCard-style fields
+  sourceType?: string;
+  summary?: string;
+  whyThisMatters?: string;
+
+  // Legacy / optional bibliographic fields
   author?: string;
   publication?: string;
   year?: number | string;
@@ -77,8 +84,18 @@ export function AttributionDrawer(props: {
                     {s.title || s.url || 'Untitled'}
                   </p>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    {[s.author, s.publication, s.year].filter(Boolean).join(' · ')}
+                    {[s.sourceType, s.author, s.publication, s.year].filter(Boolean).join(' · ')}
                   </p>
+
+                  {s.summary ? (
+                    <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1">{s.summary}</p>
+                  ) : null}
+
+                  {s.whyThisMatters ? (
+                    <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1">
+                      <span className="font-semibold">Why this matters:</span> {s.whyThisMatters}
+                    </p>
+                  ) : null}
                   {s.url ? (
                     <a
                       href={s.url}

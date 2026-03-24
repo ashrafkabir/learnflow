@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import React from 'react';
 import { ThemeProvider } from '../design-system/ThemeProvider.js';
@@ -94,5 +94,128 @@ describe('Lesson Reader', () => {
     renderAt('/course/c1/lesson/nonexistent');
     await new Promise((r) => setTimeout(r, 500));
     expect(document.body).toBeTruthy();
+  });
+  it('opens Sources & Attribution drawer and shows new fields', async () => {
+    localStorage.setItem(
+      'learnflow-token',
+      'h.' + btoa(JSON.stringify({ sub: 'test', exp: 9999999999 })) + '.s',
+    );
+
+    globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : (input as Request).url;
+
+      if (url.includes('/api/v1/events')) {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (
+        url.includes('/api/v1/courses/') &&
+        url.includes('/lessons/') &&
+        (url.includes('/notes') || url.includes('/illustrations') || url.includes('/annotations'))
+      ) {
+        if (url.includes('/notes')) {
+          return new Response(JSON.stringify({ note: null }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (url.includes('/illustrations')) {
+          return new Response(JSON.stringify({ illustrations: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (url.includes('/annotations')) {
+          return new Response(JSON.stringify({ annotations: [] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      if (url.includes('/api/v1/courses/') && url.includes('/lessons/')) {
+        // Helpful when test fails
+
+        const payload = {
+          id: 'l1',
+          title: 'Intro',
+          content: '# Hello\\nThis is a lesson.',
+          readTimeMin: 5,
+          sourcesMissingReason: '',
+          sources: [
+            {
+              id: 's1',
+              title: 'Example Docs',
+              url: 'https://example.com/docs',
+              sourceType: 'docs',
+              summary: 'A short summary.',
+              whyThisMatters: 'Because it clarifies the API surface.',
+            },
+            {
+              id: 's2',
+              title: 'Example Blog',
+              url: 'https://example.com/blog',
+              sourceType: 'blog',
+              summary: 'Another short summary.',
+              whyThisMatters: 'Because it provides an implementation walk-through.',
+            },
+          ],
+          sectionIllustrations: [],
+        };
+        return new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (url.includes('/api/v1/courses/')) {
+        return new Response(
+          JSON.stringify({
+            id: 'c1',
+            title: 'Test Course',
+            modules: [
+              {
+                title: 'Module 1',
+                lessons: [
+                  {
+                    id: 'l1',
+                    title: 'Intro',
+                    content: '# Hello\\nThis is a lesson.',
+                    readTimeMin: 5,
+                  },
+                ],
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    renderAt('/courses/c1/lessons/l1');
+
+    const btn = await screen.findByText('See Sources');
+    fireEvent.click(btn);
+
+    expect(await screen.findByText('Sources & Attribution')).toBeInTheDocument();
+
+    // Title appears both in References list and inside drawer
+    expect(await screen.findAllByText('Example Docs')).toHaveLength(2);
+
+    expect(await screen.findByText('A short summary.')).toBeInTheDocument();
+    expect(await screen.findByText(/Because it clarifies the API surface\./)).toBeInTheDocument();
   });
 });

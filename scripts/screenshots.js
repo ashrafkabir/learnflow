@@ -4,8 +4,11 @@ const { chromium } = require('playwright');
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
-  const BASE = 'http://127.0.0.1:3003';
-  const DIR = '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter57';
+  const BASE = process.env.LEARNFLOW_WEB_BASE || 'http://127.0.0.1:3003';
+  const DIR =
+    process.env.SCREENSHOT_DIR ||
+    process.env.LEARNFLOW_SCREENSHOT_DIR ||
+    '/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter57';
 
   const routes = [
     ['landing', '/'],
@@ -74,6 +77,21 @@ const { chromium } = require('playwright');
     await page.screenshot({ path: DIR + '/mindmap.png', fullPage: true });
     console.log('OK mindmap');
   } catch (e) {}
+
+  // Pipeline detail (optional)
+  try {
+    const pipelineId = process.env.PIPELINE_ID;
+    if (pipelineId) {
+      await page.goto(BASE + '/pipeline/' + pipelineId, {
+        waitUntil: 'networkidle',
+        timeout: 8000,
+      });
+      await page.screenshot({ path: DIR + '/pipeline-detail.png', fullPage: true });
+      console.log('OK pipeline-detail');
+    }
+  } catch (e) {
+    console.log('FAIL pipeline-detail: ' + e.message.slice(0, 80));
+  }
 
   // Mobile
   const mctx = await browser.newContext({ viewport: { width: 375, height: 812 } });

@@ -62,6 +62,73 @@ function renderAt(path: string) {
 }
 
 describe('PipelineDetail screen', () => {
+  it('renders milestones section when lessonMilestones present', async () => {
+    localStorage.setItem('learnflow-token', 'test-token');
+
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : (input as Request).url;
+      if (url.includes('/api/v1/pipeline/test-id')) {
+        return new Response(
+          JSON.stringify({
+            id: 'test-id',
+            courseId: 'c1',
+            topic: 'Test Topic',
+            status: 'RUNNING',
+            stage: 'synthesizing',
+            progress: 60,
+            startedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            crawlThreads: [],
+            organizedSources: 0,
+            deduplicatedCount: 0,
+            credibilityScores: [],
+            themes: [],
+            lessonSyntheses: [],
+            qualityResults: [],
+            moduleCount: 1,
+            lessonCount: 1,
+            lessonMilestones: [
+              {
+                lessonId: 'c1-m0-l0',
+                lessonTitle: 'Intro',
+                type: 'plan_ready',
+                ts: new Date().toISOString(),
+              },
+              {
+                lessonId: 'c1-m0-l0',
+                lessonTitle: 'Intro',
+                type: 'sources_ready',
+                ts: new Date().toISOString(),
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    renderAt('/pipeline/test-id');
+
+    expect(await screen.findByText('Milestones')).toBeInTheDocument();
+    expect(await screen.findAllByText('Intro')).toHaveLength(3);
+
+    // pending/done indicator should exist via aria-label
+    expect(
+      document.querySelector('[aria-label*="plan_ready"]') ||
+        document.querySelector('[aria-label*="sources_ready"]'),
+    ).toBeTruthy();
+  });
+
   it('renders without crash at /pipeline/test-id', async () => {
     const { container } = renderAt('/pipeline/test-id');
     await waitFor(
