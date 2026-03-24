@@ -1741,7 +1741,16 @@ Capture via `SCREENSHOT_DIR=screenshots/iter82/run-001 node screenshot-all.mjs`.
 
 ## Iteration 83 — UPDATE AGENT (REAL MONITORING MVP) + NOTIFICATIONS TRUST LOOP + SPEC-PARITY UX POLISH
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
+
+Evidence:
+
+- PR/commit: `ad5b6d2` (pushed to `master`)
+- New API endpoints: `/api/v1/update-agent/*`, `/api/v1/notifications/read-all`
+- Generator now fetches RSS/Atom sources + dedupes by normalized URL
+- Client dashboard shows trust loop fields (source + checkedAt + explanation + url)
+- Tests: `apps/api/src/__tests__/notifications-generate-mvp.test.ts`
+- Verification (builder): `npm test`, `npx tsc --noEmit`, `npx eslint .`, `npx prettier --check .`
 
 ### Why this iteration (highest leverage gaps)
 
