@@ -180,6 +180,19 @@ export async function generateLessonContentWithLLM(
   const sources = sourceRefs;
 
   const sel = sources.sort(() => Math.random() - 0.5).slice(0, 4);
+  const sourcesBlock =
+    sel.length > 0
+      ? sel
+          .map(
+            (s, i) =>
+              `[${i + 1}] ${s.author || 'Unknown'}. "${s.title || lessonTitle}." ${
+                s.publication || 'Unknown'
+              }, ${s.year || 2024}. ${s.url} (License: ${s.license || 'unknown'}; Accessed: ${
+                s.accessedAt
+              })`,
+          )
+          .join('\n\n')
+      : '_No external sources were available for this lesson generation run._';
 
   return {
     markdown: `# ${lessonTitle}
@@ -253,16 +266,7 @@ Work through one concrete example end-to-end.
 
 ## Sources
 
-${
-  sel.length > 0
-    ? sel
-        .map(
-          (s, i) =>
-            `[${i + 1}] ${s.author || 'Unknown'}. "${s.title || lessonTitle}." ${s.publication || 'Unknown'}, ${s.year || 2024}. ${s.url} (License: ${s.license || 'unknown'}; Accessed: ${s.accessedAt})`,
-        )
-        .join('\n\n')
-    : '_No external sources were available for this lesson generation run._'
-}
+${sourcesBlock}
 
 ## Next Steps
 
@@ -298,6 +302,8 @@ interface Course {
   authorId: string;
   modules: Module[];
   progress: Record<string, number>;
+  status?: 'CREATING' | 'READY' | 'FAILED';
+  error?: string;
   createdAt: string;
 }
 
@@ -367,201 +373,299 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
     }
   }
 
-  // Task 1: Content sourcing — crawl real sources for this topic
-  let crawledSources: FirecrawlSource[] = [];
-  const _crawlStart = Date.now();
-
-  if (process.env.NODE_ENV === 'test') {
-    // In tests, do NOT hit the network. Keep this deterministic and fast.
-    crawledSources = [
-      {
-        url: 'https://en.wikipedia.org/wiki/Software_testing',
-        title: 'Software testing — Wikipedia',
-        author: 'Wikipedia contributors',
-        publishDate: null,
-        source: 'wikipedia.org',
-        content:
-          'Software testing is the act of evaluating and verifying that a software product or application does what it is supposed to do.',
-        credibilityScore: 0.72,
-        relevanceScore: 0.9,
-        recencyScore: 0.6,
-        wordCount: 24,
-        domain: 'wikipedia.org',
-      },
-      {
-        url: 'https://developer.mozilla.org/en-US/docs/Learn',
-        title: 'Learn web development — MDN',
-        author: 'MDN contributors',
-        publishDate: null,
-        source: 'developer.mozilla.org',
-        content: 'MDN provides learning resources and guides for web development.',
-        credibilityScore: 0.9,
-        relevanceScore: 0.6,
-        recencyScore: 0.6,
-        wordCount: 10,
-        domain: 'developer.mozilla.org',
-      },
-      {
-        url: 'https://kubernetes.io/docs/home/',
-        title: 'Kubernetes Documentation',
-        author: 'Kubernetes Authors',
-        publishDate: null,
-        source: 'kubernetes.io',
-        content:
-          'Kubernetes is an open-source system for automating deployment, scaling, and management of containerized applications.',
-        credibilityScore: 0.9,
-        relevanceScore: 0.55,
-        recencyScore: 0.6,
-        wordCount: 17,
-        domain: 'kubernetes.io',
-      },
-    ];
-    console.log(
-      `[LearnFlow] (test) crawlSourcesForTopic skipped network, using ${crawledSources.length} deterministic sources`,
-    );
-  } else {
-    try {
-      crawledSources = await crawlSourcesForTopic(topic);
-      console.log(
-        `[LearnFlow] crawlSourcesForTopic took ${Date.now() - _crawlStart}ms, got ${crawledSources.length} sources`,
-      );
-      // NOTE: We no longer require FIRECRAWL_API_KEY for spec compliance in dev.
-      // The default provider uses free multi-source search + readability scraping.
-      if (!process.env.FIRECRAWL_API_KEY) {
-        console.warn(
-          '[LearnFlow] FIRECRAWL_API_KEY not set — using WebSearch provider (real sources, no paid key)',
-        );
-      }
-    } catch (err) {
-      console.warn('[LearnFlow] Firecrawl crawl failed, falling back to static sources:', err);
-    }
-  }
-
-  // Generate all lessons with LLM (parallel per module, sequential per lesson for rate limits)
-  const { client: openai } = getOpenAIForRequest({
-    userId: req.user!.sub,
-    tier: req.user!.tier,
-  });
-
-  // In tests, we should never hit the network even if OPENAI_API_KEY is set in the environment.
-  const effectiveOpenAi = process.env.NODE_ENV === 'test' ? null : openai;
-  const _lessonStart = Date.now();
-  const modules: Module[] = [];
-
-  // In test mode, keep course creation fast/deterministic.
-  // We still return a valid course structure, but skip expensive network-based lesson generation.
-  const fastTestMode = process.env.NODE_ENV === 'test';
-
-  for (let mi = 0; mi < topicData.modules.length; mi++) {
-    const mod = topicData.modules[mi];
-    const lessonPromises = mod.lessons.map(async (les, li) => {
-      const gen = fastTestMode
-        ? {
-            markdown: `# ${les.title}\n\n${les.description}\n\n(Generated in test fast mode)\n\n## Learning Objectives\n\n- Understand the goal of this lesson\n\n## Estimated Time\n\n**1 minute**\n\n## Core Concepts\n\n- Core concept placeholder\n\n## Worked Example\n\n1. Step 1\n\n## Recap\n\n- Recap placeholder\n\n## Quick Check\n\n1. Q1\n\n### Answer Key\n\n1. A1\n\n## Sources\n\n_No external sources in test fast mode._\n\n## Next Steps\n\nContinue.`,
-            sources: toStructuredLessonSources(crawledSources, {
-              limit: 4,
-              accessedAt: new Date().toISOString(),
-            }),
-          }
-        : await generateLessonContentWithLLM(
-            topic,
-            mod.title,
-            les.title,
-            les.description,
-            crawledSources,
-            { openai: effectiveOpenAi },
-          );
-
-      const enforced = enforceBiteSizedLesson(gen.markdown, { maxMinutes: 10 });
-      const contentFinal = enforced.content;
-      const wordCount = enforced.sizing.wordCount;
-      const estimatedMinutes = Math.min(10, enforced.sizing.estimatedMinutes);
-
-      const structure = lessonHasRequiredStructure(contentFinal);
-      if (!structure.ok) {
-        console.warn('[LearnFlow] lesson structure missing headings:', structure.missing);
-      }
-
-      const domain = classifyTopicDomain(topic);
-      const lessonDomain: LessonDomain =
-        domain === 'programming' || domain === 'ai_prompting'
-          ? 'programming'
-          : domain === 'math' || domain === 'quantum_computing'
-            ? 'math_science'
-            : domain === 'policy_business'
-              ? 'business'
-              : 'general';
-
-      const quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
-      if (!quality.ok) {
-        console.warn('[LearnFlow] worked example quality failed:', quality.reasons);
-      }
-
-      const sources = gen.sources || [];
-      const missingReason =
-        sources.length >= 2 ? '' : 'attribution_gate: lesson has fewer than 2 resolvable sources';
-      try {
-        dbLessonSources.save(`${courseId}-m${mi}-l${li}`, courseId, sources, missingReason);
-      } catch {
-        // best effort
-      }
-      return {
-        id: `${courseId}-m${mi}-l${li}`,
-        title: les.title,
-        description: les.description,
-        content: contentFinal,
-        estimatedTime: estimatedMinutes,
-        wordCount,
-        sources,
-      };
-    });
-    const lessons: Lesson[] = await Promise.all(lessonPromises);
-    modules.push({
-      id: `${courseId}-m${mi}`,
-      title: mod.title,
-      objective: mod.objective,
-      description: mod.objective,
-      lessons,
-    });
-  }
-
-  const course: Course = {
+  // Create minimal shell immediately and return, while generation happens in background.
+  const courseShell: Course = {
     id: courseId,
     title: req.body.title || `Mastering ${topic}`,
     description: req.body.description || `A comprehensive ${depth}-level course on ${topic}`,
     topic,
     depth,
     authorId: req.user?.sub || 'anonymous',
-    modules,
+    modules: topicData.modules.map((mod, mi) => ({
+      id: `${courseId}-m${mi}`,
+      title: mod.title,
+      objective: mod.objective,
+      description: mod.objective,
+      lessons: (mod.lessons || []).map((les, li) => ({
+        id: `${courseId}-m${mi}-l${li}`,
+        title: les.title,
+        description: les.description,
+        content: '',
+        estimatedTime: 5,
+        wordCount: 0,
+        sources: [],
+      })),
+    })),
     progress: {},
+    status: 'CREATING',
+    error: '',
     createdAt: new Date().toISOString(),
   };
 
-  courses.set(course.id, course);
-  dbCourses.save(course);
-  console.log(
-    `[LearnFlow] Lesson generation took ${Date.now() - _lessonStart}ms for ${topicData.modules.length} modules`,
-  );
-  // Attribution gate: course is only "ready" when every lesson has >= 2 resolvable sources.
-  const lessonsAll = course.modules.flatMap((m) => m.lessons);
-  const lessonsMissing = lessonsAll.filter((l) => (l.sources?.length || 0) < 2);
+  courses.set(courseShell.id, courseShell);
+  dbCourses.save(courseShell);
 
-  const attributionReady = lessonsMissing.length === 0;
+  res.status(201).json({ id: courseId, status: 'CREATING' });
 
-  res.status(201).json({
-    ...course,
-    attributionReady,
-    attributionIssues: attributionReady
-      ? []
-      : lessonsMissing.map((l) => ({
-          lessonId: l.id,
-          title: l.title,
-          sourceCount: l.sources?.length || 0,
-          missingReason: 'attribution_gate: lesson has fewer than 2 resolvable sources',
-        })),
-  });
+  // Background generation task (best effort; do not block the response).
+  const userId = req.user?.sub || 'anonymous';
+  const courseTitle = courseShell.title;
+  const courseDescription = courseShell.description;
+
+  void (async () => {
+    try {
+      emitToUser(userId, 'progress.update', {
+        courseId,
+        stage: 'creating',
+        percent: 1,
+        message: 'Starting course generation…',
+      });
+
+      // Task 1: Content sourcing — crawl real sources for this topic
+      let crawledSources: FirecrawlSource[] = [];
+      const _crawlStart = Date.now();
+
+      if (process.env.NODE_ENV === 'test') {
+        // In tests, do NOT hit the network. Keep this deterministic and fast.
+        crawledSources = [
+          {
+            url: 'https://en.wikipedia.org/wiki/Software_testing',
+            title: 'Software testing — Wikipedia',
+            author: 'Wikipedia contributors',
+            publishDate: null,
+            source: 'wikipedia.org',
+            content:
+              'Software testing is the act of evaluating and verifying that a software product or application does what it is supposed to do.',
+            credibilityScore: 0.72,
+            relevanceScore: 0.9,
+            recencyScore: 0.6,
+            wordCount: 24,
+            domain: 'wikipedia.org',
+          },
+          {
+            url: 'https://developer.mozilla.org/en-US/docs/Learn',
+            title: 'Learn web development — MDN',
+            author: 'MDN contributors',
+            publishDate: null,
+            source: 'developer.mozilla.org',
+            content: 'MDN provides learning resources and guides for web development.',
+            credibilityScore: 0.9,
+            relevanceScore: 0.6,
+            recencyScore: 0.6,
+            wordCount: 10,
+            domain: 'developer.mozilla.org',
+          },
+          {
+            url: 'https://kubernetes.io/docs/home/',
+            title: 'Kubernetes Documentation',
+            author: 'Kubernetes Authors',
+            publishDate: null,
+            source: 'kubernetes.io',
+            content:
+              'Kubernetes is an open-source system for automating deployment, scaling, and management of containerized applications.',
+            credibilityScore: 0.9,
+            relevanceScore: 0.55,
+            recencyScore: 0.6,
+            wordCount: 17,
+            domain: 'kubernetes.io',
+          },
+        ];
+        console.log(
+          `[LearnFlow] (test) crawlSourcesForTopic skipped network, using ${crawledSources.length} deterministic sources`,
+        );
+      } else {
+        try {
+          crawledSources = await crawlSourcesForTopic(topic);
+          console.log(
+            `[LearnFlow] crawlSourcesForTopic took ${Date.now() - _crawlStart}ms, got ${crawledSources.length} sources`,
+          );
+          // NOTE: We no longer require FIRECRAWL_API_KEY for spec compliance in dev.
+          // The default provider uses free multi-source search + readability scraping.
+          if (!process.env.FIRECRAWL_API_KEY) {
+            console.warn(
+              '[LearnFlow] FIRECRAWL_API_KEY not set — using WebSearch provider (real sources, no paid key)',
+            );
+          }
+        } catch (err) {
+          console.warn('[LearnFlow] Firecrawl crawl failed, falling back to static sources:', err);
+        }
+      }
+
+      emitToUser(userId, 'progress.update', {
+        courseId,
+        stage: 'sourcing',
+        percent: 10,
+        message: `Collected ${crawledSources.length} sources`,
+      });
+
+      // Generate all lessons with LLM (parallel per module)
+      const { client: openai } = getOpenAIForRequest({
+        userId,
+        tier: req.user?.tier || 'free',
+      });
+
+      // In tests, we should never hit the network even if OPENAI_API_KEY is set in the environment.
+      const effectiveOpenAi = process.env.NODE_ENV === 'test' ? null : openai;
+      const _lessonStart = Date.now();
+
+      // In test mode, keep course creation fast/deterministic.
+      // We still create content, but skip expensive network-based lesson generation.
+      const fastTestMode = process.env.NODE_ENV === 'test';
+
+      const modules: Module[] = [];
+      const totalLessons = topicData.modules.reduce((sum, m) => sum + (m.lessons?.length || 0), 0);
+      let completedLessons = 0;
+
+      for (let mi = 0; mi < topicData.modules.length; mi++) {
+        const mod = topicData.modules[mi];
+
+        const lessonPromises = (mod.lessons || []).map(async (les, li) => {
+          const gen = fastTestMode
+            ? {
+                markdown: `# ${les.title}\n\n${les.description}\n\n(Generated in test fast mode)\n\n## Learning Objectives\n\n- Understand the goal of this lesson\n\n## Estimated Time\n\n**1 minute**\n\n## Core Concepts\n\n- Core concept placeholder\n\n## Worked Example\n\n1. Step 1\n\n## Recap\n\n- Recap placeholder\n\n## Quick Check\n\n1. Q1\n\n### Answer Key\n\n1. A1\n\n## Sources\n\n_No external sources in test fast mode._\n\n## Next Steps\n\nContinue.`,
+                sources: toStructuredLessonSources(crawledSources, {
+                  limit: 4,
+                  accessedAt: new Date().toISOString(),
+                }),
+              }
+            : await generateLessonContentWithLLM(
+                topic,
+                mod.title,
+                les.title,
+                les.description,
+                crawledSources,
+                { openai: effectiveOpenAi },
+              );
+
+          const enforced = enforceBiteSizedLesson(gen.markdown, { maxMinutes: 10 });
+          const contentFinal = enforced.content;
+          const wordCount = enforced.sizing.wordCount;
+          const estimatedMinutes = Math.min(10, enforced.sizing.estimatedMinutes);
+
+          const structure = lessonHasRequiredStructure(contentFinal);
+          if (!structure.ok) {
+            console.warn('[LearnFlow] lesson structure missing headings:', structure.missing);
+          }
+
+          const d = classifyTopicDomain(topic);
+          const lessonDomain: LessonDomain =
+            d === 'programming' || d === 'ai_prompting'
+              ? 'programming'
+              : d === 'math' || d === 'quantum_computing'
+                ? 'math_science'
+                : d === 'policy_business'
+                  ? 'business'
+                  : 'general';
+
+          const quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
+          if (!quality.ok) {
+            console.warn('[LearnFlow] worked example quality failed:', quality.reasons);
+          }
+
+          const sources = gen.sources || [];
+          const missingReason =
+            sources.length >= 2
+              ? ''
+              : 'attribution_gate: lesson has fewer than 2 resolvable sources';
+          try {
+            dbLessonSources.save(`${courseId}-m${mi}-l${li}`, courseId, sources, missingReason);
+          } catch {
+            // best effort
+          }
+
+          completedLessons++;
+          const percent =
+            totalLessons > 0 ? 10 + Math.floor((completedLessons / totalLessons) * 80) : 90;
+          emitToUser(userId, 'progress.update', {
+            courseId,
+            stage: 'generating',
+            percent,
+            message: `Generated ${completedLessons}/${totalLessons} lessons`,
+          });
+
+          return {
+            id: `${courseId}-m${mi}-l${li}`,
+            title: les.title,
+            description: les.description,
+            content: contentFinal,
+            estimatedTime: estimatedMinutes,
+            wordCount,
+            sources,
+          };
+        });
+
+        const lessons: Lesson[] = await Promise.all(lessonPromises);
+        modules.push({
+          id: `${courseId}-m${mi}`,
+          title: mod.title,
+          objective: mod.objective,
+          description: mod.objective,
+          lessons,
+        });
+      }
+
+      const course: Course = {
+        id: courseId,
+        title: courseTitle,
+        description: courseDescription,
+        topic,
+        depth,
+        authorId: userId,
+        modules,
+        progress: {},
+        status: 'READY',
+        error: '',
+        createdAt: courseShell.createdAt,
+      };
+
+      courses.set(course.id, course);
+      dbCourses.save(course);
+      try {
+        dbCourses.setStatus(courseId, 'READY', '');
+      } catch {
+        // ignore
+      }
+
+      console.log(
+        `[LearnFlow] Lesson generation took ${Date.now() - _lessonStart}ms for ${topicData.modules.length} modules`,
+      );
+
+      // Attribution gate: course is only "ready" when every lesson has >= 2 resolvable sources.
+      const lessonsAll = course.modules.flatMap((m) => m.lessons);
+      const lessonsMissing = lessonsAll.filter((l) => (l.sources?.length || 0) < 2);
+      const attributionReady = lessonsMissing.length === 0;
+
+      emitToUser(userId, 'progress.update', {
+        courseId,
+        stage: 'complete',
+        percent: 100,
+        message: attributionReady
+          ? 'Course ready'
+          : `Course ready (with attribution issues in ${lessonsMissing.length} lessons)`,
+      });
+    } catch (err: any) {
+      const msg = err?.message ? String(err.message) : 'Course generation failed';
+      try {
+        dbCourses.setStatus(courseId, 'FAILED', msg);
+      } catch {
+        // ignore
+      }
+      const cur = courses.get(courseId);
+      if (cur) {
+        (cur as any).status = 'FAILED';
+        (cur as any).error = msg;
+        courses.set(courseId, cur);
+      }
+      emitToUser(userId, 'progress.update', {
+        courseId,
+        stage: 'failed',
+        percent: 100,
+        message: msg,
+      });
+      console.error('[LearnFlow] course generation failed:', err);
+    }
+  })();
 });
-
 // DELETE /api/v1/courses/:id - Delete a course (and cascade related rows)
 router.delete('/:id', (req: Request, res: Response) => {
   const courseId = String(req.params.id);
@@ -591,7 +695,8 @@ router.delete('/:id', (req: Request, res: Response) => {
 
 // GET /api/v1/courses/:id - Get course detail
 router.get('/:id', (req: Request, res: Response) => {
-  const course = courses.get(String(req.params.id));
+  const courseId = String(req.params.id);
+  const course = courses.get(courseId) || (dbCourses.getById(courseId) as any);
   if (!course) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
@@ -603,14 +708,15 @@ router.get('/:id', (req: Request, res: Response) => {
 
 // GET /api/v1/courses/:id/lessons/:lessonId - Get lesson
 router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
-  const course = courses.get(String(req.params.id));
+  const courseId = String(req.params.id);
+  const course = courses.get(courseId) || (dbCourses.getById(courseId) as any);
   if (!course) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
   let lesson: Lesson | undefined;
   for (const mod of course.modules) {
-    lesson = mod.lessons.find((l) => l.id === req.params.lessonId);
+    lesson = mod.lessons.find((l: Lesson) => l.id === req.params.lessonId);
     if (lesson) break;
   }
   if (!lesson) {

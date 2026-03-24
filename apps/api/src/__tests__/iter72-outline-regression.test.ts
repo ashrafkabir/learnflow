@@ -44,7 +44,27 @@ describe('Iter72: topic-adaptive outline regression', () => {
       .send({ topic: 'Quantum computing', depth: 'beginner', title: 'QC 101' });
 
     expect(create.status).toBe(201);
-    const modules = create.body.modules as Array<{ title: string }>;
+    const id = String(create.body.id);
+
+    const deadline = Date.now() + 60_000;
+    let last: any = null;
+    while (Date.now() < deadline) {
+      const getRes = await request(app)
+        .get(`/api/v1/courses/${id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(getRes.status).toBe(200);
+      last = getRes.body;
+
+      if (getRes.body?.status === 'READY') break;
+      if (getRes.body?.status === 'FAILED') {
+        throw new Error(`Course generation failed: ${getRes.body?.error || 'unknown'}`);
+      }
+
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    const modules = (last?.modules || []) as Array<{ title: string }>;
     expect(Array.isArray(modules)).toBe(true);
 
     const got = modules.map((m) => normalizeTitle(m.title));
@@ -76,7 +96,27 @@ describe('Iter72: topic-adaptive outline regression', () => {
       .send({ topic: 'Italian cooking basics', depth: 'beginner', title: 'Italian Cooking' });
 
     expect(create.status).toBe(201);
-    const modules = create.body.modules as Array<{ title: string }>;
+    const id = String(create.body.id);
+
+    const deadline = Date.now() + 60_000;
+    let last: any = null;
+    while (Date.now() < deadline) {
+      const getRes = await request(app)
+        .get(`/api/v1/courses/${id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(getRes.status).toBe(200);
+      last = getRes.body;
+
+      if (getRes.body?.status === 'READY') break;
+      if (getRes.body?.status === 'FAILED') {
+        throw new Error(`Course generation failed: ${getRes.body?.error || 'unknown'}`);
+      }
+
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    const modules = (last?.modules || []) as Array<{ title: string }>;
     expect(Array.isArray(modules)).toBe(true);
 
     const titles = modules.map((m) => String(m.title));

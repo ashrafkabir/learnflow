@@ -44,10 +44,28 @@ describe('Iter72: lesson structure required headings', () => {
       .send({ topic: 'Italian cooking basics' })
       .expect(201);
 
-    const courseId = create.body.id;
+    const courseId = String(create.body.id);
     expect(courseId).toBeTruthy();
 
-    const lessonId = create.body.modules?.[0]?.lessons?.[0]?.id;
+    const deadline = Date.now() + 60_000;
+    let last: any = null;
+    while (Date.now() < deadline) {
+      const getRes = await request(app)
+        .get(`/api/v1/courses/${courseId}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(getRes.status).toBe(200);
+      last = getRes.body;
+
+      if (getRes.body?.status === 'READY') break;
+      if (getRes.body?.status === 'FAILED') {
+        throw new Error(`Course generation failed: ${getRes.body?.error || 'unknown'}`);
+      }
+
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    const lessonId = last?.modules?.[0]?.lessons?.[0]?.id;
     expect(lessonId).toBeTruthy();
 
     const lesson = await request(app)

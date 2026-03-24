@@ -28,22 +28,47 @@ async function registerAndGetToken(): Promise<string> {
 }
 
 describe('POST /api/v1/courses integration', () => {
-  it('returns a created course with modules/lessons populated', async () => {
+  it('returns quickly with status CREATING, then becomes READY with lessons populated', async () => {
     const token = await registerAndGetToken();
 
-    const res = await request(app)
+    const createRes = await request(app)
       .post('/api/v1/courses')
       .set('Authorization', `Bearer ${token}`)
       .send({ title: 'Create Course Integration', topic: 'Testing' });
 
-    expect(res.status).toBe(201);
-    expect(res.body).toHaveProperty('id');
-    expect(res.body).toHaveProperty('title', 'Create Course Integration');
+    expect(createRes.status).toBe(201);
+    expect(createRes.body).toHaveProperty('id');
+    expect(createRes.body).toHaveProperty('status', 'CREATING');
 
-    // Regression guard: ensure course creation completes enough to return a structured syllabus.
-    expect(Array.isArray(res.body.modules)).toBe(true);
-    expect(res.body.modules.length).toBeGreaterThan(0);
-    expect(Array.isArray(res.body.modules[0].lessons)).toBe(true);
-    expect(res.body.modules[0].lessons.length).toBeGreaterThan(0);
+    const id = String(createRes.body.id);
+
+    const deadline = Date.now() + 60_000;
+    let last: any = null;
+    while (Date.now() < deadline) {
+      const getRes = await request(app)
+        .get(`/api/v1/courses/${id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(getRes.status).toBe(200);
+      last = getRes.body;
+
+      if (getRes.body?.status === 'READY') break;
+      if (getRes.body?.status === 'FAILED') {
+        throw new Error(`Course generation failed: ${getRes.body?.error || 'unknown'}`);
+      }
+
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    expect(last).toBeTruthy();
+    expect(last.status).toBe('READY');
+    expect(Array.isArray(last.modules)).toBe(true);
+    expect(last.modules.length).toBeGreaterThan(0);
+    expect(Array.isArray(last.modules[0].lessons)).toBe(true);
+    expect(last.modules[0].lessons.length).toBeGreaterThan(0);
+
+    // Ensure generated lesson content exists
+    expect(typeof last.modules[0].lessons[0].content).toBe('string');
+    expect(last.modules[0].lessons[0].content.length).toBeGreaterThan(10);
   });
 });

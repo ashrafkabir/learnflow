@@ -41,10 +41,32 @@ describe('POST /api/v1/courses (repeat) integration', () => {
         });
 
       expect(res.status).toBe(201);
-      expect(Array.isArray(res.body.modules)).toBe(true);
-      expect(res.body.modules.length).toBeGreaterThan(0);
-      expect(Array.isArray(res.body.modules[0].lessons)).toBe(true);
-      expect(res.body.modules[0].lessons.length).toBeGreaterThan(0);
+      expect(res.body).toHaveProperty('id');
+      expect(res.body).toHaveProperty('status', 'CREATING');
+
+      const id = String(res.body.id);
+      const deadline = Date.now() + 60_000;
+      let last: any = null;
+      while (Date.now() < deadline) {
+        const getRes = await request(app)
+          .get(`/api/v1/courses/${id}`)
+          .set('Authorization', `Bearer ${token}`);
+
+        expect(getRes.status).toBe(200);
+        last = getRes.body;
+
+        if (getRes.body?.status === 'READY') break;
+        if (getRes.body?.status === 'FAILED') {
+          throw new Error(`Course generation failed: ${getRes.body?.error || 'unknown'}`);
+        }
+
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      expect(Array.isArray(last?.modules)).toBe(true);
+      expect(last.modules.length).toBeGreaterThan(0);
+      expect(Array.isArray(last.modules[0].lessons)).toBe(true);
+      expect(last.modules[0].lessons.length).toBeGreaterThan(0);
     }
   });
 });

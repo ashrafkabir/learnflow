@@ -74,6 +74,18 @@ if (!isTest) {
     } catch {
       // If illustrations doesn't exist yet, CREATE TABLE below will handle it.
     }
+
+    // Iter72: courses gained status + error for async generation progress
+    try {
+      if (!hasColumn('courses', 'status')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN status TEXT NOT NULL DEFAULT 'READY';`);
+      }
+      if (!hasColumn('courses', 'error')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN error TEXT NOT NULL DEFAULT '';`);
+      }
+    } catch {
+      // If courses doesn't exist yet, CREATE TABLE below will handle it.
+    }
   } catch {
     // If the users table doesn't exist yet, CREATE TABLE below will handle it.
   }
@@ -108,6 +120,8 @@ sqlite.exec(`
     authorId TEXT NOT NULL DEFAULT 'anonymous',
     modules TEXT NOT NULL DEFAULT '[]',
     progress TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'READY',
+    error TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL
   );
 
@@ -504,8 +518,9 @@ const stmts = {
 
   // Courses
   insertCourse: sqlite.prepare(
-    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, status, error, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
+  updateCourseStatus: sqlite.prepare(`UPDATE courses SET status = ?, error = ? WHERE id = ?`),
   findCourseById: sqlite.prepare(`SELECT * FROM courses WHERE id = ?`),
   getAllCourses: sqlite.prepare(`SELECT * FROM courses`),
   deleteCourse: sqlite.prepare(`DELETE FROM courses WHERE id = ?`),
@@ -1016,8 +1031,14 @@ export const dbCourses = {
       course.authorId || 'anonymous',
       JSON.stringify(course.modules || []),
       JSON.stringify(course.progress || {}),
+      course.status || 'READY',
+      course.error || '',
       course.createdAt || new Date().toISOString(),
     );
+  },
+
+  setStatus(id: string, status: string, error: string = ''): void {
+    stmts.updateCourseStatus.run(status, error || '', id);
   },
 
   delete(id: string): void {
