@@ -7,6 +7,7 @@ import { SourceCards } from './SourceCards.js';
 import { SynthesisList } from './SynthesisList.js';
 import { QualityCheckList } from './QualityCheckList.js';
 import { OrganizingView } from './OrganizingView.js';
+import { LessonMilestones } from './LessonMilestones.js';
 import {
   IconChart,
   IconCheck,
@@ -304,6 +305,9 @@ export function PipelineView({
                       <span className="font-semibold">Summary:</span> {state.synthesisSummary}
                     </div>
                   ) : null}
+
+                  <LessonMilestones state={state} />
+
                   <SynthesisList lessons={state.lessonSyntheses} courseId={state.courseId} />
                 </div>
               )}
@@ -320,10 +324,16 @@ export function PipelineView({
 
       {/* Error */}
       {state.stage === 'failed' && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 space-y-2">
           <p className="text-sm text-red-700 dark:text-red-400">
             Pipeline failed: {state.error || 'Unknown error'}
           </p>
+          {state.status === 'FAILED' && state.failReason === 'stalled' ? (
+            <p className="text-xs text-red-700/80 dark:text-red-400/80">
+              This run appears stalled. Use <span className="font-semibold">Restart Pipeline</span>{' '}
+              to resume from scratch.
+            </p>
+          ) : null}
         </div>
       )}
     </div>

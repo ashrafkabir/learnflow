@@ -93,6 +93,14 @@ export interface PipelineState {
   courseId: string;
   topic: string;
 
+  /** Iter74 P0.5: milestone events per lesson */
+  lessonMilestones?: Array<{
+    lessonId: string;
+    lessonTitle: string;
+    type: 'plan_ready' | 'sources_ready' | 'draft_ready' | 'quality_passed';
+    ts: string;
+  }>;
+
   /** Run state machine (Iter73 hotfix) */
   status: PipelineRunStatus;
   startedAt: string;
@@ -173,6 +181,17 @@ function appendLog(p: PipelineState, level: 'info' | 'warn' | 'error', message: 
   dbPipelines.save(p);
   broadcast(p.id, 'pipeline:log', line);
   broadcast(p.id, 'pipeline:update', p);
+}
+
+function appendLessonMilestone(
+  p: PipelineState,
+  event: { lessonId: string; lessonTitle: string; type: any },
+): void {
+  const milestones = Array.isArray(p.lessonMilestones) ? p.lessonMilestones : [];
+  milestones.push({ ...event, ts: new Date().toISOString() });
+  const capped = milestones.slice(-2000);
+  updatePipeline(p, { lessonMilestones: capped });
+  appendLog(p, 'info', `milestone lessonId=${event.lessonId} type=${event.type}`);
 }
 
 function classifyAuth(statusCode?: number): 'auth_error' | null {
@@ -547,6 +566,12 @@ async function runAddTopicPipeline(pipelineId: string) {
   // Create a single synthetic lesson entry so UI shows work happening
   const moduleIndex = existing.modules.length;
   const lessonId = `${courseId}-m${moduleIndex}-l0`;
+
+  appendLessonMilestone(p, {
+    lessonId,
+    lessonTitle: `${topic}: Overview`,
+    type: 'plan_ready',
+  });
   const syntheses: LessonSynthesis[] = [
     {
       lessonId,
@@ -939,6 +964,8 @@ async function runPipeline(pipelineId: string) {
       });
 
       try {
+        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'plan_ready' });
+
         // ── Per-lesson source scraping ──
         console.log(`[Pipeline] Scraping sources for lesson: "${les.title}"`);
         let lessonSources: FirecrawlSource[];
@@ -1017,6 +1044,7 @@ async function runPipeline(pipelineId: string) {
           },
         );
         updatePipeline(p, { sourceCards: cards });
+        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'sources_ready' });
         const further = selectFurtherReadingCards(cards, { min: 2, max: 5 });
 
         let content = '';
@@ -1077,6 +1105,9 @@ async function runPipeline(pipelineId: string) {
           wc = content.split(/\s+/).filter((w) => w).length;
         }
 
+        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'draft_ready' });
+        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'quality_passed' });
+
         syntheses[synthIdx].status = 'done';
         syntheses[synthIdx].wordCount = wc;
         syntheses[synthIdx].sourcesUsed = lessonSources.length;
@@ -1090,6 +1121,8 @@ async function runPipeline(pipelineId: string) {
           wordCount: wc,
         });
       } catch {
+        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'draft_ready' });
+        // NOTE: in failure mode we do not emit quality_passed.
         syntheses[synthIdx].status = 'failed';
         syntheses[synthIdx].wordCount = 0;
         let fallback = generateEnhancedFallback(

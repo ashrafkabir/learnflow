@@ -162,7 +162,9 @@ export function PipelineDetail() {
               >
                 <span className="inline-flex items-center gap-2">
                   <IconRefresh size={16} className="text-white" decorative />
-                  Restart Pipeline
+                  {state.status === 'FAILED' && state.failReason === 'stalled'
+                    ? 'Resume Build'
+                    : 'Restart Pipeline'}
                 </span>
               </Button>
             </div>

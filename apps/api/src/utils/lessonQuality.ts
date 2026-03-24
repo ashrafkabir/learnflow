@@ -1,5 +1,10 @@
 export type LessonDomain = 'programming' | 'math_science' | 'business' | 'cooking' | 'general';
 
+export type LessonQualityFailure = {
+  ok: boolean;
+  reasons: string[];
+};
+
 function sectionBody(md: string, heading: string): string {
   // Extract content under a "## <heading>" section until the next "## " heading.
   const re = new RegExp(`^##\\s+${escapeRegExp(heading)}\\s*$`, 'im');
@@ -56,7 +61,26 @@ function hasCookingSteps(md: string): boolean {
   return hasNumberedSteps && hasTimeOrTemp;
 }
 
-export function validateNoPlaceholders(md: string): { ok: boolean; reasons: string[] } {
+function containsVagueLanguage(md: string): boolean {
+  // Heuristic: detect common non-answers that frequently appear in under-worked examples.
+  // This should be conservative (avoid false positives) but catch egregious cases.
+  return /(and so on|etc\.|\.\.\.|fill\s+in|left as an exercise|obvious|straightforward|as needed|various|some (?:values|things|steps))/i.test(
+    md,
+  );
+}
+
+function hasConcreteArtifact(md: string): boolean {
+  // Require at least one concrete artifact token:
+  // - code fence
+  // - markdown table
+  // - explicit digits
+  // - numbered steps
+  return (
+    hasFencedCodeBlock(md) || hasTable(md) || /\d/.test(md) || /(\n\s*\d+\.)|(step\s*\d+)/i.test(md)
+  );
+}
+
+export function validateNoPlaceholders(md: string): LessonQualityFailure {
   const reasons: string[] = [];
   if (/(example\s*\(fill\s*in\))/i.test(md)) reasons.push('contains_example_fill_in');
   if (/(\bTBD\b|\bTODO\b)/.test(md)) reasons.push('contains_tbd_todo');
@@ -65,13 +89,36 @@ export function validateNoPlaceholders(md: string): { ok: boolean; reasons: stri
   return { ok: reasons.length === 0, reasons };
 }
 
+export function validateQuickCheckHasAnswerKey(md: string): LessonQualityFailure {
+  const reasons: string[] = [];
+
+  if (!/##\s+Quick Check/i.test(md)) {
+    reasons.push('missing_quick_check_heading');
+    return { ok: false, reasons };
+  }
+
+  const quick = sectionBody(md, 'Quick Check');
+  if (!quick) {
+    reasons.push('quick_check_section_empty');
+    return { ok: false, reasons };
+  }
+
+  // Must contain an explicit answer key and at least one answer entry.
+  if (!/answer\s*key/i.test(quick)) reasons.push('quick_check_missing_answer_key_heading');
+
+  const hasAnswerEntry =
+    /(answer\s*key[\s\S]{0,600})(\n\s*[-*]\s+|\n\s*\d+\.|\bA\b\s*[:-]|\bAnswer\b\s*[:-])/i.test(
+      quick,
+    );
+  if (!hasAnswerEntry) reasons.push('quick_check_missing_answer_key_entries');
+
+  return { ok: reasons.length === 0, reasons };
+}
+
 export function validateWorkedExampleQuality(
   md: string,
   domain: LessonDomain,
-): {
-  ok: boolean;
-  reasons: string[];
-} {
+): LessonQualityFailure {
   const reasons: string[] = [];
   if (!/## Worked Example/i.test(md)) {
     reasons.push('missing_worked_example_heading');
@@ -83,6 +130,10 @@ export function validateWorkedExampleQuality(
     reasons.push('worked_example_section_empty');
     return { ok: false, reasons };
   }
+
+  // Cross-domain hard requirement: no vague, un-worked examples.
+  if (containsVagueLanguage(worked)) reasons.push('worked_example_contains_vague_language');
+  if (!hasConcreteArtifact(worked)) reasons.push('worked_example_requires_concrete_artifact');
 
   if (domain === 'programming') {
     if (!hasFencedCodeBlock(worked))

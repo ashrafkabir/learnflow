@@ -37,6 +37,7 @@ import {
   type StructuredLessonSource,
 } from '../utils/sourcesStructured.js';
 import {
+  validateQuickCheckHasAnswerKey,
   validateWorkedExampleQuality,
   validateNoPlaceholders,
   type LessonDomain,
@@ -908,6 +909,7 @@ Continue.`,
           let attempt = 1;
           let quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
           let placeholder = validateNoPlaceholders(contentFinal);
+          let quickCheck = validateQuickCheckHasAnswerKey(contentFinal);
           let quotas = fastTestMode
             ? {
                 ok: true,
@@ -917,20 +919,23 @@ Continue.`,
             : validateSectionLevelQuotas(contentFinal);
 
           while (
-            (!quality.ok || !placeholder.ok || !quotas.ok) &&
+            (!quality.ok || !placeholder.ok || !quickCheck.ok || !quotas.ok) &&
             attempt < MAX_QUALITY_RETRIES &&
             !fastTestMode
           ) {
             const reasons = [
               ...(quality.reasons || []),
               ...(placeholder.reasons || []),
+              ...(quickCheck.reasons || []),
               ...(quotas.reasons || []),
             ].join(', ');
             console.warn(
               `[LearnFlow] lesson quality gate failed (attempt ${attempt}/${MAX_QUALITY_RETRIES}): ${reasons}. Retrying regeneration...`,
             );
 
-            const tightenedPrompt = `${les.description}\n\nIMPORTANT QUALITY REQUIREMENTS (must satisfy all):\n- Do NOT include placeholders (no "Example (fill in)", no TBD/TODO, no "Q1/A1", no "placeholder").\n- Keep "## Learning Objectives" very short (3-5 bullets; no long paragraphs).\n- Ensure "## Worked Example" is substantial (not just a few lines) and produces a domain-appropriate artifact:\n  - Programming: include a runnable fenced code block, "How to run", and "Expected output".\n  - Math/Science: include numeric values and step-by-step computation.\n  - Business/Policy: include a scenario with numbers and a trade-off table.\n  - Cooking: include numbered recipe steps with times/temperatures.\n- Do NOT let "## Core Concepts" dominate the lesson; if needed move detail into Worked Example + Recap.\nIf you cannot comply, rewrite until it does.`;
+            const strict = attempt >= 2;
+
+            const tightenedPrompt = `${les.description}\n\nIMPORTANT QUALITY REQUIREMENTS (must satisfy all):\n- Do NOT include placeholders (no "Example (fill in)", no TBD/TODO, no "Q1/A1", no "placeholder").\n- Keep "## Learning Objectives" very short (3-5 bullets; no long paragraphs).\n- Ensure "## Worked Example" is substantial and fully worked (no vague language like "etc.", "and so on", or "left as an exercise"), and produces a domain-appropriate artifact:\n  - Programming: include a runnable fenced code block, "How to run", and "Expected output".\n  - Math/Science: include numeric values and step-by-step computation.\n  - Business/Policy: include a scenario with numbers and a trade-off table.\n  - Cooking: include numbered recipe steps with times/temperatures.\n- Ensure "## Quick Check" includes a clearly labeled "Answer Key" with answers (not just questions).\n- Do NOT let "## Core Concepts" dominate the lesson; if needed move detail into Worked Example + Recap.\n${strict ? 'STRICT MODE (regeneration): You MUST correct the specific validation failures listed below. Rewrite the entire lesson if necessary. Do not mention these instructions in the output.\nValidation failures: ' + reasons + '\n' : ''}If you cannot comply, rewrite until it does.`;
 
             const regen = await generateLessonContentWithLLM(
               topic,
@@ -945,6 +950,7 @@ Continue.`,
 
             quality = validateWorkedExampleQuality(contentFinal, lessonDomain);
             placeholder = validateNoPlaceholders(contentFinal);
+            quickCheck = validateQuickCheckHasAnswerKey(contentFinal);
             quotas = validateSectionLevelQuotas(contentFinal);
             attempt++;
           }
@@ -952,11 +958,12 @@ Continue.`,
           const qualityReasons = [
             ...(quality.reasons || []),
             ...(placeholder.reasons || []),
+            ...(quickCheck.reasons || []),
             ...(quotas.reasons || []),
           ];
 
           // Iter74 P0.2: if quality gates fail OR sources are thin, re-search with hint-token queries.
-          if ((!quality.ok || !placeholder.ok || !quotas.ok) && !fastTestMode) {
+          if ((!quality.ok || !placeholder.ok || !quickCheck.ok || !quotas.ok) && !fastTestMode) {
             const missingReasons: Stage2RetryReason[] = inferMissingReasonsFromLessonContent({
               markdown: contentFinal,
               lessonDomain,
@@ -1024,7 +1031,7 @@ Continue.`,
               lessonId,
               courseId,
               generationAttemptCount: attempt,
-              ok: quality.ok && placeholder.ok && quotas.ok,
+              ok: quality.ok && placeholder.ok && quickCheck.ok && quotas.ok,
               reasons: qualityReasons,
               wordCount: enforceBiteSizedLesson(contentFinal, { maxMinutes: 999 }).sizing.wordCount,
             });
@@ -1033,7 +1040,7 @@ Continue.`,
             // best effort
           }
 
-          if (!quality.ok || !placeholder.ok || !quotas.ok) {
+          if (!quality.ok || !placeholder.ok || !quickCheck.ok || !quotas.ok) {
             console.warn('[LearnFlow] lesson quality gate failed permanently:', qualityReasons);
             // Surface failure via course generation failure (pipeline/UI should show FAILED clearly).
             throw new Error(`Lesson quality gate failed: ${qualityReasons.join(', ')}`);
@@ -1185,6 +1192,30 @@ router.get('/:id', (req: Request, res: Response) => {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
     return;
   }
+
+  // Iter74 P0.6: completion fence — detect stalled course creation.
+  // If a course is stuck in CREATING beyond a timeout, mark it FAILED(stalled).
+  const timeoutMs = Number(process.env.COURSE_CREATION_STALL_TIMEOUT_MS || 15 * 60 * 1000);
+  if (course.status === 'CREATING') {
+    try {
+      const startedAt = new Date(course.createdAt || 0).getTime();
+      const ageMs = Date.now() - startedAt;
+      if (Number.isFinite(ageMs) && ageMs > timeoutMs) {
+        const msg = `Course creation stalled (status=CREATING for > ${timeoutMs}ms).`;
+        try {
+          dbCourses.setStatus(courseId, 'FAILED', msg);
+        } catch {
+          // ignore
+        }
+        course.status = 'FAILED';
+        course.error = msg;
+        courses.set(courseId, course);
+      }
+    } catch {
+      // best effort
+    }
+  }
+
   const userId = req.user?.sub || 'anonymous';
   const completedLessons = dbProgress.getCompletedLessons(userId, course.id);
   res.status(200).json({ ...course, completedLessons });

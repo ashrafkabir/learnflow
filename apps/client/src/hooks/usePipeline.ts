@@ -77,6 +77,12 @@ export interface PipelineState {
   finishedAt?: string;
   failReason?: string;
   logs?: Array<{ ts: string; level: 'info' | 'warn' | 'error'; message: string }>;
+  lessonMilestones?: Array<{
+    lessonId: string;
+    lessonTitle: string;
+    type: 'plan_ready' | 'sources_ready' | 'draft_ready' | 'quality_passed';
+    ts: string;
+  }>;
   crawlThreads: CrawlThread[];
   sources?: PipelineSource[];
   sourceCards?: SourceCard[];
