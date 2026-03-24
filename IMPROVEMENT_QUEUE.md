@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-23
+Last updated: 2026-03-24
 
 ---
 
@@ -435,3 +435,144 @@ Non-goals:
 - `npx tsc --noEmit` ✅
 - `npx eslint .` ✅
 - `npx prettier --check .` ✅
+
+---
+
+## Iteration 75 — PIPELINE DETAIL MILESTONES UI + SOURCES DRAWER PARITY + SCREENSHOT HARNESS RELIABILITY
+
+Status: **READY FOR BUILDER**
+
+> OneDrive sync requirement (do not skip): after producing the screenshot bundle for this iteration, **sync the screenshots folder to OneDrive** per the team’s standard process. (Planner note: I’m not attempting sync from here; builder will.)
+
+### Why this iteration
+
+Iter74 added the underlying artifacts (course plan, per-lesson retry loop, richer source card fields, and pipeline plan debug). The highest-leverage remaining gaps are now **UI visibility + deterministic evidence**:
+
+- PipelineDetail should visibly show **per-lesson milestones** (P0.5 acceptance from iter74).
+- LessonReader must show the **Sources drawer** using the new `SourceCard` fields (`summary`, `whyThisMatters`, `sourceType`) in screenshots and ideally in a deterministic test.
+- The Playwright/screenshot harness must stop writing to the wrong iteration directory (currently hardcoded to `iter57`) and should support capturing `pipeline-detail` using a **real pipeline id**.
+
+Non-goals:
+
+- New content-generation behavior (keep iter74 logic stable)
+- Major design overhaul
+
+---
+
+### P0 (Must do)
+
+1. **PipelineDetail: render per-lesson milestones as a first-class UI element (P0.5 carryover)**
+
+- Problem: Iter74 emits/records milestones but PipelineDetail does not visibly render them (or not reliably).
+- Acceptance criteria:
+  - Pipeline detail screen shows a **Milestones** section per lesson with an ordered list (e.g., `plan_ready`, `sources_ready`, `draft_ready`, `quality_passed`, `finalized`).
+  - Milestones are clearly “done vs pending” (checkmark/badge), and the list is stable across refresh.
+  - Works in degraded builds (missing milestones → show “No milestones reported” rather than blank UI).
+  - Screenshot captured: `screenshots/iter75/run-001/pipeline-detail-milestones.png` (or similar) showing at least one lesson with 3+ milestones.
+- Likely files:
+  - `apps/client/src/screens/PipelineDetail.tsx`
+  - `apps/client/src/hooks/usePipeline.ts` (typing for `lessonMilestones`)
+  - `apps/api/src/routes/pipeline.ts` (ensure API returns milestones in a consistent shape)
+- Tests:
+  - Client unit test (React Testing Library): PipelineDetail renders milestones when provided in the pipeline payload.
+  - API route test (if not already present): pipeline detail response contains `lessonMilestones[]` with stable keys.
+
+2. **LessonReader: Sources drawer renders new SourceCard fields + screenshot evidence**
+
+- Problem: Iter74 added richer `SourceCard` fields and UI component work, but we still need: (a) drawer reliably reachable in UI flows, (b) screenshots that **prove** the fields are rendered, and ideally a deterministic test.
+- Acceptance criteria:
+  - Opening “See Sources” displays a drawer with cards that visibly include:
+    - `sourceType` label (e.g., Docs/Blog/Paper/Forum)
+    - `summary` (1–2 sentences)
+    - `whyThisMatters` (short rationale)
+  - Screenshot captured: `screenshots/iter75/run-001/lesson-reader-sources-drawer.png` showing at least 2 source cards with all fields visible.
+  - No layout regressions: cards remain readable on a laptop viewport.
+- Likely files:
+  - `apps/client/src/components/AttributionDrawer.tsx` **or** the drawer used by LessonReader
+  - `apps/client/src/components/pipeline/SourceCards.tsx`
+  - `apps/client/src/screens/LessonReader.tsx`
+- Tests (choose at least one deterministic option):
+  - **Preferred**: Component test for `AttributionDrawer`/Sources drawer rendering a provided `sources[]` fixture containing `summary/whyThisMatters/sourceType`.
+  - Alternative: E2E test that loads a lesson fixture route and asserts drawer contains those strings.
+
+3. **Fix screenshot script output path + add “real pipeline id” capture mode**
+
+- Problem: Screenshot harness writes into the wrong iteration directory (hardcoded `iter57`) and cannot easily capture `pipeline-detail` for a real pipeline (needed for milestones screenshot).
+- Acceptance criteria:
+  - `node screenshot-all.mjs` (or the current entrypoint) writes to `screenshots/iter75/<run-id>/...` when `SCREENSHOT_DIR` is set.
+  - Remove any hardcoded iteration folder; folder selection must be derived from env/config.
+  - Add a mode/env var to capture `pipeline-detail` with a real pipeline id:
+    - Example: `PIPELINE_ID=<id> node screenshot-all.mjs --only pipeline-detail`
+    - If `PIPELINE_ID` not provided, script should either skip pipeline-detail (with a clear log) or create a pipeline and then capture.
+  - Add/refresh docs at the top of the script explaining required env vars.
+- Likely files:
+  - `learnflow/screenshot-all.mjs` (or wherever the script lives)
+  - `learnflow/playwright.config.*` if applicable
+- Tests:
+  - Lightweight node unit test for path resolution (optional), or at minimum: CI/README-level instructions validated by builder run.
+
+---
+
+### P1 (Should do)
+
+4. **PipelineDetail: show “Plan” debug + link to course plan artifact**
+
+- Acceptance criteria:
+  - PipelineDetail has a collapsible “Debug” panel showing:
+    - course plan presence (yes/no)
+    - per-lesson planned queries count
+  - Debug panel is gated to dev/test builds (or behind a `?debug=1` query param).
+- Likely files:
+  - `apps/client/src/screens/PipelineDetail.tsx`
+- Tests:
+  - Client test that debug section renders only when debug flag is enabled.
+
+5. **Deterministic E2E screenshot data: seed a local pipeline with predictable milestones**
+
+- Goal: prevent screenshots from depending on flaky network/source fetching.
+- Acceptance criteria:
+  - Provide a seed/fixture path that creates a pipeline with:
+    - known lesson titles
+    - known milestone sequence
+  - Screenshot script can invoke this seed in “fast mode” and then capture pipeline-detail.
+- Likely files:
+  - `apps/api/src/__tests__/...` (fixture builder)
+  - `apps/api/src/routes/pipeline.ts` (optional helper)
+  - screenshot harness script
+
+---
+
+### P2 (Nice to have)
+
+6. **Add a small visual “Milestone timeline” component usable elsewhere**
+
+- Acceptance criteria:
+  - Extract a `MilestoneList` component with consistent styling.
+  - Reuse in PipelineDetail now; later can be reused in CourseCreate progress.
+- Likely files:
+  - `apps/client/src/components/pipeline/MilestoneList.tsx` (new)
+
+7. **Sources drawer: add sort + domain chip**
+
+- Acceptance criteria:
+  - Cards show the `domain` (host) as a chip.
+  - Optional sort toggle: “Relevance” (default), “Newest”, “Docs-first”.
+
+---
+
+### Screenshot checklist (Iter75)
+
+- `pipeline-detail-milestones` (must show per-lesson milestones)
+- `lesson-reader-sources-drawer` (must show `sourceType`, `summary`, `whyThisMatters`)
+- `app-pipelines` (optional sanity screenshot that pipeline list is not stuck)
+
+### Verification checklist (Iter75)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
+- Screenshot run:
+  - `SCREENSHOT_DIR=screenshots/iter75/run-001 PIPELINE_ID=<real> node screenshot-all.mjs`
+  - Confirm files written into `screenshots/iter75/run-001/`
+  - (Builder) sync screenshots to OneDrive
