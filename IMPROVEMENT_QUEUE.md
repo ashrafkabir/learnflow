@@ -900,14 +900,17 @@ The app is a strong MVP, but spec promises are ahead of implementation in a few 
 
 1. **BYOAI Vault: enforce encrypted-at-rest semantics + explicit provider validation UX**
 
-- What to build:
-  - Ensure keys are encrypted before persistence and are never returned in plaintext.
-  - Add explicit “Validate” action per provider with clear error messages.
-  - Add key rotation UX: mark old key inactive, keep usage history.
-- Acceptance criteria:
-  - DB never stores plaintext API keys (unit tests assert encrypted blob shape + decrypt works only server-side).
-  - API never returns raw key material (even for the owning user).
-  - Client shows validation success/failure and last validated timestamp.
+- Status: **PARTIAL ✅** (validate UX + validation metadata shipped; rotation TBD)
+- Evidence:
+  - API: `POST /api/v1/keys/validate-saved` (format + best-effort provider ping; network ping skipped in tests)
+  - DB: `api_keys.validatedAt/lastValidationStatus/lastValidationError`
+  - Client: Settings → API Keys list shows Validate button + status text
+  - Tests: `apps/api/src/__tests__/keys-validate-saved.test.ts`
+  - Commit: `92808e8` (branch `iter78`)
+- Remaining:
+  - Key rotation: keep multiple keys per provider, mark old inactive; UX to rotate + switch active
+  - Encrypted-at-rest enforcement: currently AES-256-CBC; consider tightening to AES-256-GCM + enforce ENCRYPTION_KEY presence in non-dev
+
 - Likely files:
   - `apps/api/src/crypto.ts`
   - `apps/api/src/routes/keys.ts`
