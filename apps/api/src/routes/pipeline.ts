@@ -149,6 +149,49 @@ function appendLog(p: PipelineState, level: 'info' | 'warn' | 'error', message: 
   broadcast(p.id, 'pipeline:update', p);
 }
 
+function classifyAuth(statusCode?: number): 'auth_error' | null {
+  return statusCode === 401 || statusCode === 403 ? 'auth_error' : null;
+}
+
+function extractStatusCode(err: any): number | undefined {
+  const candidates = [err?.status, err?.statusCode, err?.response?.status, err?.cause?.status];
+  for (const c of candidates) {
+    if (typeof c === 'number' && Number.isFinite(c)) return c;
+  }
+  return undefined;
+}
+
+function safeErrorMessage(err: any): string {
+  const msg = String(err?.message || err || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Never leak common key patterns if an upstream lib echoed it (defense in depth).
+  return msg
+    .replace(/sk-[A-Za-z0-9]{10,}/g, '[REDACTED]')
+    .replace(/tvly-[A-Za-z0-9]{10,}/g, '[REDACTED]')
+    .slice(0, 260);
+}
+
+function logAuthIssue(
+  pipelineId: string,
+  provider: string,
+  statusCode: number | undefined,
+  message: string,
+  envVar?: string,
+): void {
+  const p = pipelines.get(pipelineId);
+  if (!p) return;
+  const classification = classifyAuth(statusCode);
+  const parts = [
+    `${provider} ${classification ? 'auth error' : 'error'}`,
+    statusCode ? `status=${statusCode}` : null,
+    classification ? 'classification=auth_error' : null,
+    envVar ? `suggestion=check ${envVar}` : null,
+    message ? `message="${message}"` : null,
+  ].filter(Boolean);
+  appendLog(p, classification ? 'warn' : 'error', parts.join(' | '));
+}
+
 function updatePipeline(p: PipelineState, partial: Partial<PipelineState>) {
   Object.assign(p, partial, { updatedAt: new Date().toISOString() });
   pipelines.set(p.id, p);
@@ -620,12 +663,28 @@ async function runPipeline(pipelineId: string) {
       const layerSources: FirecrawlSource[] = [];
       for (const q of capped) {
         appendLog(p, 'info', `search:query "${q}"`);
-        const batch = await searchTopicTrending(q, {
-          stage1Templates: [q],
-          enabledSources: searchCfg.enabledSources,
-          perQueryLimit,
-          maxStage1Queries: 1,
-        } as any);
+        let batch: FirecrawlSource[] = [];
+        try {
+          batch = await searchTopicTrending(q, {
+            stage1Templates: [q],
+            enabledSources: searchCfg.enabledSources,
+            perQueryLimit,
+            maxStage1Queries: 1,
+          } as any);
+        } catch (err: any) {
+          // Explicitly log provider auth issues when bubbled up from search providers (e.g., Tavily).
+          const statusCode = extractStatusCode(err);
+          const msg = safeErrorMessage(err);
+          const provider = String(err?.provider || 'web_search');
+          const envVar =
+            provider === 'tavily'
+              ? 'TAVILY_API_KEY'
+              : provider === 'openai'
+                ? 'OPENAI_API_KEY'
+                : undefined;
+          logAuthIssue(p.id, provider, statusCode, msg, envVar);
+          batch = [];
+        }
         appendLog(p, 'info', `search:results ${batch.length} for "${q}"`);
         layerSources.push(...batch);
       }
@@ -675,12 +734,26 @@ async function runPipeline(pipelineId: string) {
     updatePipeline(p, { searchRuns });
 
     appendLog(p, 'info', `search:legacy stage1 queries=${stage1Queries.length}`);
-    crawledSources = await searchTopicTrending(topic, {
-      stage1Templates: searchCfg.stage1Templates,
-      enabledSources: searchCfg.enabledSources,
-      perQueryLimit: searchCfg.perQueryLimit,
-      maxStage1Queries: searchCfg.maxStage1Queries,
-    } as any);
+    try {
+      crawledSources = await searchTopicTrending(topic, {
+        stage1Templates: searchCfg.stage1Templates,
+        enabledSources: searchCfg.enabledSources,
+        perQueryLimit: searchCfg.perQueryLimit,
+        maxStage1Queries: searchCfg.maxStage1Queries,
+      } as any);
+    } catch (err: any) {
+      const statusCode = extractStatusCode(err);
+      const msg = safeErrorMessage(err);
+      const provider = String(err?.provider || 'web_search');
+      const envVar =
+        provider === 'tavily'
+          ? 'TAVILY_API_KEY'
+          : provider === 'openai'
+            ? 'OPENAI_API_KEY'
+            : undefined;
+      logAuthIssue(p.id, provider, statusCode, msg, envVar);
+      crawledSources = [];
+    }
     appendLog(p, 'info', `search:legacy stage1 sources=${crawledSources.length}`);
   }
 
@@ -726,7 +799,31 @@ async function runPipeline(pipelineId: string) {
   });
 
   // Generate INFORMED course plan using scraped sources
-  const modules = await generateModulesForTopic(topic, crawledSources, openai);
+  let modules: TopicModule[] = [];
+  try {
+    modules = await generateModulesForTopic(topic, crawledSources, openai);
+  } catch (err: any) {
+    // OpenAI invalid_api_key / 401/403 should be clearly visible in pipeline logs.
+    const statusCode = extractStatusCode(err);
+    const msg = safeErrorMessage(err);
+    const code = String(err?.code || '').toLowerCase();
+    const type = String(err?.type || '').toLowerCase();
+    const looksAuth =
+      statusCode === 401 ||
+      statusCode === 403 ||
+      code.includes('invalid_api_key') ||
+      type.includes('invalid_api_key');
+    if (looksAuth) {
+      logAuthIssue(p.id, 'OpenAI', statusCode, msg, 'OPENAI_API_KEY');
+    } else {
+      appendLog(
+        p,
+        'warn',
+        `OpenAI error while generating modules (continuing with generic) | message="${msg}"`,
+      );
+    }
+    modules = getGenericModules(topic);
+  }
   const totalLessons = modules.reduce((s, m) => s + m.lessons.length, 0);
 
   const llmTitle = (generateModulesForTopic as any)._lastTitle;
@@ -850,7 +947,19 @@ async function runPipeline(pipelineId: string) {
               maxSourcesPerLesson: searchCfg.maxSourcesPerLesson,
             } as any,
           );
-        } catch (err) {
+        } catch (err: any) {
+          // Log provider errors (esp. auth) without leaking secrets.
+          const statusCode = extractStatusCode(err);
+          const msg = safeErrorMessage(err);
+          const provider = String(err?.provider || 'web_search');
+          const envVar =
+            provider === 'tavily'
+              ? 'TAVILY_API_KEY'
+              : provider === 'openai'
+                ? 'OPENAI_API_KEY'
+                : undefined;
+          logAuthIssue(p.id, provider, statusCode, msg, envVar);
+
           console.warn(
             `[Pipeline] Per-lesson scrape failed for "${les.title}", falling back to course sources:`,
             err,
@@ -873,16 +982,38 @@ async function runPipeline(pipelineId: string) {
               ? ` The response MUST be at least 800 words. Be thorough and detailed.`
               : '';
           const temp = attempt >= 2 ? 0.9 : 0.7;
-          content = await generateLesson(
-            topic,
-            modules[mi].title,
-            les.title,
-            les.description,
-            lessonSources,
-            openai,
-            minWordHint,
-            temp,
-          );
+          try {
+            content = await generateLesson(
+              topic,
+              modules[mi].title,
+              les.title,
+              les.description,
+              lessonSources,
+              openai,
+              minWordHint,
+              temp,
+            );
+          } catch (err: any) {
+            const statusCode = extractStatusCode(err);
+            const msg = safeErrorMessage(err);
+            const code = String(err?.code || '').toLowerCase();
+            const type = String(err?.type || '').toLowerCase();
+            const looksAuth =
+              statusCode === 401 ||
+              statusCode === 403 ||
+              code.includes('invalid_api_key') ||
+              type.includes('invalid_api_key');
+            if (looksAuth) {
+              logAuthIssue(p.id, 'OpenAI', statusCode, msg, 'OPENAI_API_KEY');
+            } else {
+              appendLog(
+                p,
+                'warn',
+                `OpenAI error while generating lesson (attempt ${attempt + 1}) | message="${msg}"`,
+              );
+            }
+            throw err;
+          }
           wc = content.split(/\s+/).filter((w) => w).length;
           if (wc >= MIN_WORDS) break;
           console.warn(

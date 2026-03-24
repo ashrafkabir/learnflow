@@ -64,7 +64,7 @@ import {
   clearScrapeCache,
   getScrapeCacheSize,
 } from './source-fetchers.js';
-import { tavilySearch } from './tavily-provider.js';
+import { tavilySearch, TavilyProviderError } from './tavily-provider.js';
 
 function hasTavilyKey(): boolean {
   return !!process.env.TAVILY_API_KEY;
@@ -188,10 +188,16 @@ async function multiSourceSearch(
   if (isEnabled('smashingmag', enabledSources)) tasks.push(smashingMagSearch(query, 2));
   if (isEnabled('coursera', enabledSources)) tasks.push(courseraSearch(query, 2));
   if (isEnabled('baiduscholar', enabledSources)) tasks.push(baiduScholarSearch(query, 2));
+
   // Prefer Tavily first if API key is present.
   // This improves freshness + coverage while keeping a fallback to free providers.
   if (hasTavilyKey() && isEnabled('tavily', enabledSources)) {
-    tasks.unshift(tavilySearch(query, { maxResults: perSourceLimit }));
+    const tavilyTask = tavilySearch(query, { maxResults: perSourceLimit }).catch((err) => {
+      // Preserve structured auth errors for caller logging, but keep resilient fallback behavior.
+      if (err instanceof TavilyProviderError) throw err;
+      throw err;
+    });
+    tasks.unshift(tavilyTask);
   }
 
   const results = await Promise.all(tasks);
