@@ -973,13 +973,19 @@ Continue.`,
             });
 
             try {
-              const reSearched = await searchForLesson(topic, mod.title, les.title, les.description, {
-                maxSourcesPerLesson: 6,
-                maxStage2Queries: 10,
-                perQueryLimit: 6,
-                // ensure inputs change
-                stage2Templates: retryTemplates,
-              } as any);
+              const reSearched = await searchForLesson(
+                topic,
+                mod.title,
+                les.title,
+                les.description,
+                {
+                  maxSourcesPerLesson: 6,
+                  maxStage2Queries: 10,
+                  perQueryLimit: 6,
+                  // ensure inputs change
+                  stage2Templates: retryTemplates,
+                } as any,
+              );
               if ((reSearched?.length || 0) > (lessonSources?.length || 0)) {
                 lessonSources = reSearched;
               }
@@ -999,7 +1005,12 @@ Continue.`,
               console.warn('[LearnFlow] re-search for lesson failed (non-fatal):', err);
               try {
                 const lessonId = `${courseId}-m${mi}-l${li}`;
-                dbLessonSources.save(lessonId, courseId, lessonSources || [], missingReasons.join('|'));
+                dbLessonSources.save(
+                  lessonId,
+                  courseId,
+                  lessonSources || [],
+                  missingReasons.join('|'),
+                );
               } catch {
                 // best effort
               }

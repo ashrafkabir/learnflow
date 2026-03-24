@@ -1,4 +1,8 @@
-import { validateNoPlaceholders, validateWorkedExampleQuality, type LessonDomain } from './lessonQuality.js';
+import {
+  validateNoPlaceholders,
+  validateWorkedExampleQuality,
+  type LessonDomain,
+} from './lessonQuality.js';
 
 export type Stage2RetryReason =
   | 'worked_example_missing'
@@ -47,7 +51,9 @@ export function buildStage2RetryTemplates(params: {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const q of base) {
-    const s = String(q || '').replace(/\s+/g, ' ').trim();
+    const s = String(q || '')
+      .replace(/\s+/g, ' ')
+      .trim();
     if (!s) continue;
     if (seen.has(s)) continue;
     seen.add(s);

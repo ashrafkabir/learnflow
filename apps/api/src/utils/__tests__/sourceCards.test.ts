@@ -14,9 +14,13 @@ describe('Iter74 P0.3: source cards utilities', () => {
   });
 
   it('inferSourceType classifies docs/blog/paper/forum via heuristics', () => {
-    expect(inferSourceType('https://docs.example.com/sdk/reference/auth', 'docs.example.com')).toBe('docs');
+    expect(inferSourceType('https://docs.example.com/sdk/reference/auth', 'docs.example.com')).toBe(
+      'docs',
+    );
     expect(inferSourceType('https://medium.com/someone/a-post', 'medium.com')).toBe('blog');
     expect(inferSourceType('https://arxiv.org/abs/1234.5678', 'arxiv.org')).toBe('paper');
-    expect(inferSourceType('https://stackoverflow.com/questions/123/how-to-x', 'stackoverflow.com')).toBe('forum');
+    expect(
+      inferSourceType('https://stackoverflow.com/questions/123/how-to-x', 'stackoverflow.com'),
+    ).toBe('forum');
   });
 });
