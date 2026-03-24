@@ -442,6 +442,13 @@ Non-goals:
 
 Status: **DONE**
 
+- Evidence:
+  - Commit: 00e8c5f (Iter77: course stall badge + restart/resume endpoints)
+  - Tests: npm test (pass); npx tsc --noEmit (pass); npx eslint . (pass); npx prettier --check . (pass)
+  - API: GET /api/v1/courses/:id auto-marks stalled CREATING → FAILED(stalled)
+  - API: POST /api/v1/courses/:id/restart and /resume implemented
+  - Client: CourseView shows Failed (stalled) badge + Resume/Restart buttons
+
 Evidence:
 
 - Commit: 9854f94
@@ -753,7 +760,7 @@ Notes:
 
 ## Iteration 77 — COURSE BUILD RESTARTABILITY + STALL DETECTION (UI + API)
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
 
 Why this iteration (high leverage, smallest next step):
 
