@@ -141,7 +141,7 @@ function buildAgentPrompt(params: {
 }
 
 router.post('/', validateBody(chatSchema), async (req: Request, res: Response) => {
-  const { text, message, agent, lessonId, courseId, moduleId, format, apiKey } = req.body;
+  const { text, message, agent, lessonId, courseId, moduleId, format, apiKey, provider } = req.body;
   const input = text || message || '';
 
   // If a client supplies a one-off apiKey, perform basic sanity check.
@@ -206,14 +206,18 @@ router.post('/', validateBody(chatSchema), async (req: Request, res: Response) =
     // 2) active saved key provider (best-effort)
     // 3) otherwise unknown
     const savedActive = (db.getKeysByUserId(req.user!.sub) || []).find((k) => k.active);
-    const provider = apiKey
-      ? guessProviderFromKey(apiKey)
-      : (savedActive?.provider as any) || 'unknown';
+    const providerFromApiKey = apiKey ? guessProviderFromKey(apiKey) : null;
+    const providerFromBody = typeof provider === 'string' && provider.trim() ? provider.trim() : '';
+    const providerChosen =
+      providerFromApiKey ||
+      (providerFromBody as any) ||
+      (savedActive?.provider as any) ||
+      'unknown';
 
     db.addUsageRecord({
       userId: req.user!.sub,
       agentName: routedAgentName,
-      provider,
+      provider: providerChosen,
       tokensIn: 0,
       tokensOut: 0,
       tokensTotal,
