@@ -155,8 +155,13 @@ export function handleYjsConnection(ws: WebSocket, req: IncomingMessage): void {
   }
 
   let user: AuthUser | null = null;
-  if (token === 'dev' && process.env.NODE_ENV !== 'production') {
-    user = { sub: 'dev-user', email: 'dev@learnflow.local' } as AuthUser;
+  if (
+    token === 'dev' &&
+    process.env.NODE_ENV !== 'production' &&
+    (process.env.LEARNFLOW_DEV_AUTH === '1' || process.env.LEARNFLOW_DEV_AUTH === 'true')
+  ) {
+    user = { sub: 'dev-user', email: 'dev@learnflow.local', tier: 'free' } as AuthUser;
+    (user as any).origin = 'harness';
   } else if (token) {
     try {
       user = jwt.verify(token, config.jwtSecret) as AuthUser;

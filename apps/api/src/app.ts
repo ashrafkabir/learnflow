@@ -20,6 +20,7 @@ import { notificationsRouter } from './routes/notifications.js';
 import { updateAgentRouter } from './routes/update-agent.js';
 import { yjsRouter } from './yjsRouter.js';
 import { adminSearchConfigRouter } from './routes/admin-search-config.js';
+import { adminCleanupRouter } from './routes/admin-cleanup.js';
 import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from './middleware.js';
 import { errorHandler, notFoundHandler, requestIdMiddleware, sendError } from './errors.js';
 import jwt from 'jsonwebtoken';
@@ -65,6 +66,16 @@ export function createApp(options?: { devMode?: boolean }) {
 
   app.use(requestIdMiddleware);
   app.use(express.json());
+
+  // Iter86: capture request origin tagging for harness/admin/debug runs.
+  // Default origin is 'user' (normal product behavior).
+  app.use((req, _res, next) => {
+    const header = req.headers['x-learnflow-origin'];
+    const origin = (Array.isArray(header) ? header[0] : header) || '';
+    (req as any).origin = String(origin || '').trim() || 'user';
+    next();
+  });
+
   app.use(tokenUsageMiddleware);
 
   // Public auth routes
@@ -100,7 +111,7 @@ export function createApp(options?: { devMode?: boolean }) {
   const protectedAuth = options?.devMode ? devAuth : authMiddleware;
   if (options?.devMode) {
     console.warn(
-      '[LearnFlow][DEV_AUTH] Dev auth bypass is ENABLED. Set LEARNFLOW_DEV_AUTH=0 to disable. Never enable in production.',
+      '[LearnFlow][DEV_AUTH] Dev auth bypass is ENABLED. Set LEARNFLOW_DEV_AUTH=0 to disable. (Default is OFF; enable with LEARNFLOW_DEV_AUTH=1.) Never enable in production.',
     );
   }
 
@@ -129,6 +140,7 @@ export function createApp(options?: { devMode?: boolean }) {
   app.use('/api/v1/export', protectedAuth, rateLimiter, exportRouter);
   app.use('/api/v1/yjs', protectedAuth, rateLimiter, yjsRouter);
   app.use('/api/v1/admin', protectedAuth, rateLimiter, adminSearchConfigRouter);
+  app.use('/api/v1/admin', protectedAuth, rateLimiter, adminCleanupRouter);
 
   // Pro-only endpoint for RBAC testing
   app.get('/api/v1/pro/features', authMiddleware, requireTier('pro'), (_req, res) => {

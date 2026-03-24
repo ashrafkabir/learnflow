@@ -45,6 +45,9 @@ if (AUTHED) {
     try {
       // eslint-disable-next-line no-undef
       localStorage.setItem('learnflow-token', 'dev');
+      // Iter86: tag harness-origin so API can suppress durable data/usage writes.
+      // eslint-disable-next-line no-undef
+      localStorage.setItem('learnflow-origin', 'harness');
       // eslint-disable-next-line no-undef
       localStorage.setItem('learnflow-onboarding-complete', 'true');
       // eslint-disable-next-line no-undef

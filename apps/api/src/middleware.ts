@@ -82,11 +82,19 @@ export function tokenUsageMiddleware(req: Request, res: Response, next: NextFunc
   res.on('finish', () => {
     const agentId = res.getHeader('x-agent-id') as string | undefined;
     const tokensUsed = parseInt(res.getHeader('x-tokens-used') as string, 10);
-    if (req.user && agentId && !isNaN(tokensUsed) && tokensUsed > 0) {
+
+    // Iter86: never persist usage for non-user/harness origins.
+    // Some harness paths use devAuth (no JWT) with a default user; origin is the reliable signal.
+    const origin = String(
+      (req as any).origin || (req.headers['x-learnflow-origin'] as any) || 'user',
+    );
+
+    if (req.user && origin === 'user' && agentId && !isNaN(tokensUsed) && tokensUsed > 0) {
       db.addTokenUsage({
         userId: req.user.sub,
         agentId,
         tokensUsed,
+        origin,
         timestamp: new Date(),
       });
     }

@@ -51,7 +51,7 @@ const SECTIONS = [
       {
         title: 'Profile & Settings',
         content:
-          'Configure your API keys in the secure API Vault, toggle dark mode, manage notification preferences, and export your data in Markdown or JSON format. All keys are encrypted locally using AES-256.',
+          'Configure your API keys in the secure API Vault, toggle dark mode, manage notification preferences, and export your data in Markdown or JSON format. All API keys are encrypted at rest on the server (AES-256-CBC).',
       },
       {
         title: 'Collaboration',

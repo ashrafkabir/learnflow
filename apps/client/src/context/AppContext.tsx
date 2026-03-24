@@ -432,15 +432,19 @@ async function refreshTokenIfNeeded(): Promise<void> {
 
 export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('learnflow-token');
+  const origin = localStorage.getItem('learnflow-origin');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  // Iter86: propagate origin tagging to the API so harness/screenshot runs can be excluded.
+  if (origin) headers['x-learnflow-origin'] = origin;
   return headers;
 }
 
 export function apiBase(): string {
   // When running in the browser, prefer same-origin requests.
   // In development / tests (Node), default to the local API.
-  if (typeof window !== 'undefined') return '';
+  // NOTE: Vitest uses jsdom where window exists; treat that as Node/test.
+  if (typeof window !== 'undefined' && (window as any).location?.hostname !== 'test') return '';
 
   // Allow explicit override for E2E/CI.
   const envBase = process.env.PLAYWRIGHT_BASE_URL || process.env.VITE_API_BASE_URL;

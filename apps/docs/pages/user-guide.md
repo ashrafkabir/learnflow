@@ -114,7 +114,7 @@ Visualize learning connections:
 ### Settings
 
 - **Profile & Goals**: Learning objectives and preferences
-- **API Keys**: Manage BYOK keys (encrypted with AES-256)
+- **API Keys**: Manage BYOK keys (encrypted at rest with AES-256-CBC)
 - **Subscription**: Free/Pro plan management
 - **Privacy & Export**: GDPR data export, account deletion
 

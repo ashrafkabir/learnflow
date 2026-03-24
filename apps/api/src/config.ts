@@ -12,7 +12,6 @@ export const config = {
   // Never enable in production.
   devMode:
     process.env.NODE_ENV !== 'production' &&
-    // Default ON in development unless explicitly disabled.
-    process.env.LEARNFLOW_DEV_AUTH !== '0' &&
-    process.env.LEARNFLOW_DEV_AUTH !== 'false',
+    // Default OFF: explicit opt-in to prevent accidental unsafe/real builds during harness runs.
+    (process.env.LEARNFLOW_DEV_AUTH === '1' || process.env.LEARNFLOW_DEV_AUTH === 'true'),
 };

@@ -16,9 +16,18 @@ const createEventSchema = z.object({
 router.post('/', validateBody(createEventSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
 
+  // Iter86: never persist events from non-user/harness origins.
+  const origin = String(
+    (req as any).origin || (req.headers['x-learnflow-origin'] as any) || 'user',
+  );
+  if (origin !== 'user') {
+    res.status(201).json({ ok: true, skipped: true });
+    return;
+  }
+
   try {
     const { type, courseId, lessonId, meta } = req.body;
-    dbEvents.add(userId, { type, courseId, lessonId, meta: meta || {} });
+    dbEvents.add(userId, { type, courseId, lessonId, meta: meta || {}, origin });
   } catch {
     // best-effort
   }

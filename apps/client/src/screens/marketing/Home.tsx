@@ -383,7 +383,10 @@ export function HomePage() {
         </motion.div>
         <div className="flex flex-wrap justify-center gap-6 mb-12">
           {[
-            { icon: <IconLock className="w-4 h-4" />, label: 'AES-256 Encryption' },
+            {
+              icon: <IconLock className="w-4 h-4" />,
+              label: 'API key encryption at rest (AES-256-CBC)',
+            },
             { icon: <IconShield className="w-4 h-4" />, label: 'SOC 2 Compliant' },
             { icon: <IconGlobe className="w-4 h-4" />, label: 'GDPR Ready' },
             { icon: <IconShieldKey className="w-4 h-4" />, label: 'BYOK — Your Keys, Your Data' },

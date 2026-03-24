@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24 (Iter85 planning)
+Last updated: 2026-03-24 (Iter86 planning)
 
 ---
 
@@ -2297,3 +2297,220 @@ Required:
   - provider validation path
   - streak calculation from events
   - no-key-in-logs regression
+
+---
+
+## Iteration 86 — DB HYGIENE (HARNESS POLLUTION) + SAFE CLEANUP CONTROLS + BUILD-RUN GUARDRAILS + PRIVACY COPY AUDIT
+
+Status: **READY FOR BUILDER**
+
+### Why this iteration (next spec-parity trust gaps)
+
+User complaint: the system creates **too many useless courses** during screenshot/fixture/test runs, polluting the DB and muddying dashboards/data summaries. This erodes trust and makes it hard to distinguish “real learning” from harness artifacts.
+
+This iteration is a focused trust + hygiene sweep:
+
+- **Stop** accidental durable course builds during harness/screenshot/fixture runs.
+- **Tag** any harness-created rows with a clear origin.
+- **Provide** safe admin/dev cleanup tooling with guardrails.
+- **Audit** privacy/security claims so UI/docs do not over-promise (e.g., “AES-256” vs what’s actually implemented).
+
+Non-goals:
+
+- No changes to core curriculum generation quality.
+- No new agent mesh / orchestration redesign.
+- No production-facing “delete all data” admin panel (keep dev/admin scoped).
+
+---
+
+### P0 (Must do)
+
+1. **Origin tagging (source-of-truth) for harness-created artifacts**
+
+- Problem: harness runs create indistinguishable rows (courses/pipelines/lessons/usage/learning_events/notifications).
+- Build:
+  - Standardize an `origin` enum/string used across created artifacts: e.g. `user`, `screenshot`, `test`, `fixture`, `dev_seed`, `update_agent`.
+  - Ensure creation paths set origin explicitly (course creation, pipeline creation, screenshot scripts).
+- Acceptance criteria:
+  - Creating a course in screenshot/fixture mode persists `origin` on:
+    - course, pipeline (if used), lessons, lesson_quality, lesson_sources (or equivalent child rows).
+  - Default “normal UI” creation uses `origin='user'`.
+  - Origin is surfaced in dev/debug payloads (not user-facing by default).
+- Likely files:
+  - `apps/api/src/routes/courses.ts`
+  - `apps/api/src/routes/pipeline.ts`
+  - `apps/api/src/db.ts` (schema + helpers)
+  - `scripts/screenshots*.js|mjs` (pass origin)
+- Tests:
+  - API test asserts origin is set end-to-end for fast/screenshot mode.
+
+2. **Prevent accidental real builds during screenshot/fixture runs (explicit opt-in)**
+
+- Problem: screenshot harness should not trigger expensive or durable builds unless explicitly requested.
+- Build:
+  - Add a `HARNESS_MODE=1` (or `LEARNFLOW_HARNESS=1`) behavior:
+    - course create defaults to **no durable write** OR writes only minimal seeded fixtures
+    - generation steps are skipped unless `HARNESS_BUILD=1` is explicitly set.
+  - Alternatively (acceptable): “dry-run create” endpoint used by harness to avoid durable DB writes.
+- Acceptance criteria:
+  - Running screenshot harness without explicit opt-in does **not** leave behind durable courses.
+  - Harness can still capture UI states deterministically using seeded/fixture data.
+  - A builder can opt-in to a real build by setting `HARNESS_BUILD=1`.
+- Likely files:
+  - `scripts/screenshots-auth.js`
+  - `apps/api/src/routes/courses.ts`
+  - `packages/agents/src/fixtures/*` (if seed packs used)
+- Verification:
+  - Before/after DB counts (or API summary) show no net increase in courses for a harness run.
+
+3. **Admin/dev cleanup control: delete harness-origin courses with guardrails**
+
+- Build (choose the simplest safe surface):
+  - API: `POST /api/v1/admin/cleanup` with filters:
+    - `origin in ['screenshot','test','fixture','dev_seed']`
+    - optional `olderThanDays`
+    - optional `limit`
+  - Guardrails:
+    - Requires `NODE_ENV !== 'production'` OR explicit `ADMIN_CLEANUP_ENABLED=1`.
+    - Requires an admin/dev auth check (existing admin mechanism) and a `confirm` string.
+    - Dry-run mode returns counts without deleting.
+- Acceptance criteria:
+  - Dry-run returns counts by table/type (courses, lessons, pipelines, usage, learning_events).
+  - Real run deletes only matching origin rows and their dependent children.
+  - Attempting to clean up `origin='user'` is rejected.
+- Likely files:
+  - `apps/api/src/routes/admin.ts` (new or extend)
+  - `apps/api/src/db.ts` (transactional delete helpers)
+  - `apps/client/src/screens/*` (optional dev-only button)
+- Tests:
+  - API test: dry-run counts; delete run removes only harness data.
+
+4. **“Harness cleanup” UX entrypoint (dev-only) with friction**
+
+- Build:
+  - Add a dev-only Settings panel or `/admin` screen:
+    - shows last cleanup summary
+    - provides Dry-run + Cleanup buttons
+    - requires typing a confirmation phrase (e.g., `DELETE HARNESS DATA`)
+- Acceptance criteria:
+  - UI is hidden in prod builds.
+  - Cleanup cannot be triggered accidentally (confirmation phrase + disabled until counts loaded).
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx` (dev-only section) OR `apps/client/src/screens/AdminTools.tsx`
+
+5. **Privacy/security claims audit: remove or qualify misleading “AES-256” mentions**
+
+- Problem: copy may claim a specific cipher (AES-256) without verified implementation details.
+- Build:
+  - Search for claims like “AES-256” / “session only” / “never stored” and update to accurate language.
+  - Prefer: “encrypted at rest using a server-side encryption key” unless the exact algorithm + mode is verifiably implemented and stable.
+  - Ensure docs and Settings copy agree.
+- Acceptance criteria:
+  - No user-facing copy claims a specific cipher unless backed by code + tests.
+  - Privacy/security doc clarifies:
+    - what is stored
+    - how encryption works at a high level
+    - what is **not** encrypted (e.g., course content) if applicable
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/docs/pages/privacy-security.md`
+  - `apps/api/src/crypto.ts` (reference for truth)
+
+6. **Course creation guardrail: “fast mode / fixture mode” must not emit learning events/usage**
+
+- Problem: harness artifacts pollute streak/usage dashboards.
+- Build:
+  - Ensure any non-user origins do not write:
+    - learning_events
+    - usage_records/token_usage
+    - notifications (unless origin is `update_agent`)
+- Acceptance criteria:
+  - A harness-origin run produces zero user stats deltas.
+  - Data summary endpoint (Settings privacy counts) optionally excludes harness origins by default.
+- Likely files:
+  - `apps/api/src/routes/profile.ts` (data-summary query filters)
+  - `apps/api/src/routes/courses.ts` (event emission)
+  - `apps/api/src/routes/usage.ts`
+
+---
+
+### P1 (Should do)
+
+7. **DB-level referential cleanup: add cascading deletes / explicit delete order**
+
+- Problem: cleanup can be brittle if child tables aren’t deleted correctly.
+- Acceptance criteria:
+  - Cleanup is a single transaction.
+  - No orphan rows remain (validate via count checks in tests).
+- Likely files:
+  - `apps/api/src/db.ts` (delete helpers)
+  - migrations (if repo has them)
+
+8. **Add a “harness seed” API for deterministic screenshots (no DB writes by default)**
+
+- Build:
+  - `POST /api/v1/dev/seed` returns IDs for a seeded course/lesson/pipeline, either:
+    - in-memory, or
+    - persisted with `origin='fixture'` and auto-expiring (olderThanDays cleanup)
+- Acceptance criteria:
+  - Screenshot scripts use seed endpoint and do not invoke real build endpoints.
+- Likely files:
+  - `apps/api/src/routes/dev.ts` (dev-only)
+  - `scripts/screenshots-auth.js`
+
+9. **Observability: log origin + requestId on create/cleanup paths**
+
+- Acceptance criteria:
+  - Logs include origin, userId (or hash), and resource IDs for admin cleanup actions.
+- Likely files:
+  - `apps/api/src/errors.ts` or logging util
+  - `apps/api/src/routes/*`
+
+---
+
+### P2 (Nice to have)
+
+10. **Retention policy for harness data (auto-expire)**
+
+- Build:
+  - Any non-user origin rows get a default TTL policy (e.g., eligible for cleanup after 1–7 days).
+- Acceptance criteria:
+  - Cleanup endpoint supports `olderThanDays` and defaults to a safe window.
+
+11. **UI: show “test/harness data excluded” note in stats/usage panels**
+
+- Acceptance criteria:
+  - Settings usage/data summary clarifies that harness rows are excluded by default.
+
+12. **Docs: add a short “Developer harness & cleanup” page**
+
+- Acceptance criteria:
+  - Documents env vars:
+    - `HARNESS_MODE`, `HARNESS_BUILD`, `SCREENSHOT_DIR`
+  - Documents cleanup process + guardrails.
+- Likely files:
+  - `apps/docs/pages/dev-harness.md` (new)
+
+---
+
+### Screenshot checklist (Iter86)
+
+- `settings-admin-harness-cleanup.png`
+  - shows dry-run counts + disabled/enabled cleanup controls (dev-only)
+- `settings-privacy-copy-audit.png`
+  - shows updated privacy/security copy (no misleading cipher claims)
+- Optional: `harness-run-notes.png`
+  - shows `NOTES.md` proving no durable courses created (or only origin-tagged fixtures)
+
+### Verification checklist (Iter86)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- Harness hygiene:
+  - Run screenshot harness twice without `HARNESS_BUILD=1` → confirm no net increase in user-origin courses.
+  - Run cleanup dry-run → confirm counts match expected.
+  - Run cleanup execute → confirm harness-origin rows removed; user-origin untouched.
+- Privacy copy audit:
+  - `rg -n "AES-256|AES256|session only|never stored" apps/` shows only accurate/qualified mentions.

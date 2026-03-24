@@ -56,6 +56,7 @@ describe('WS contract (Spec §11.2)', () => {
     const health = await request.get('/health');
     expect(health.status).toBe(200);
 
+    process.env.LEARNFLOW_DEV_AUTH = '1';
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=dev`);
     await waitForWsOpen(ws);
 
@@ -91,6 +92,7 @@ describe('WS contract (Spec §11.2)', () => {
     if (!addr || typeof addr === 'string') throw new Error('Expected numeric address');
     const port = addr.port;
 
+    process.env.LEARNFLOW_DEV_AUTH = '1';
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=dev`);
     await waitForWsOpen(ws);
 

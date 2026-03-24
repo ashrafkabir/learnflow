@@ -38,6 +38,7 @@ describe('Iter68: GET /api/v1/keys returns usageCount + lastUsed', () => {
       tokensIn: 1,
       tokensOut: 2,
       tokensTotal: 3,
+      origin: 'user',
       createdAt: new Date('2026-03-01T10:00:00.000Z'),
     });
     db.addUsageRecord({
@@ -47,6 +48,7 @@ describe('Iter68: GET /api/v1/keys returns usageCount + lastUsed', () => {
       tokensIn: 1,
       tokensOut: 1,
       tokensTotal: 2,
+      origin: 'user',
       createdAt: new Date('2026-03-02T10:00:00.000Z'),
     });
 

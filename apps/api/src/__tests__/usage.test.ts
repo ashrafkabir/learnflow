@@ -33,6 +33,7 @@ describe('S67-U01: GET /api/v1/usage/summary', () => {
       tokensIn: 10,
       tokensOut: 20,
       tokensTotal: 30,
+      origin: 'user',
       createdAt: new Date(),
     });
 

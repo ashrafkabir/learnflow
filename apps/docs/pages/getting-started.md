@@ -34,7 +34,7 @@ LearnFlow uses a "Bring Your Own Key" (BYOK) model on the free tier:
 4. Paste your API key
 5. Click "Verify & Save"
 
-Your key is encrypted with AES-256-CBC and never leaves your device unencrypted.
+Your key is sent over TLS and encrypted server-side with AES-256-CBC.
 
 > **Pro Tip**: Upgrade to Pro ($20/mo) to use managed API keys — no configuration needed.
 

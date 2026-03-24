@@ -18,6 +18,8 @@ const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 await ctx.addInitScript(() => {
   localStorage.setItem('learnflow-token', 'dev');
+  // Iter86: tag harness-origin so API can suppress durable data/usage writes.
+  localStorage.setItem('learnflow-origin', 'harness');
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem('onboarding-tour-complete', 'true');
 });

@@ -365,7 +365,7 @@ export function ProfileSettings() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4 flex flex-col">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">API Keys</h2>
             <p className="text-xs text-gray-800/80 dark:text-gray-200">
-              Keys are encrypted at rest (AES-256) and stored on the server. We never store raw
+              Keys are encrypted at rest (AES-256-CBC) and stored on the server. We never store raw
               keys.
             </p>
 
@@ -829,6 +829,69 @@ export function ProfileSettings() {
         {/* Admin (server-driven) */}
         {serverRole === 'admin' ? <AdminSearchConfigPanel /> : null}
 
+        {/* Dev-only cleanup (Iter86) */}
+        {serverRole === 'admin' && (window as any)?.location?.hostname !== 'test' ? (
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Dev: Cleanup harness data
+            </h2>
+            <p className="text-xs text-gray-800/80 dark:text-gray-200">
+              Deletes server data created by harness/screenshot runs (origin=harness). This is
+              guarded and requires explicit confirmation.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    // Use harness origin so backend accepts the request.
+                    localStorage.setItem('learnflow-origin', 'harness');
+                    const res = await apiPost('/admin/cleanup', {
+                      origin: 'harness',
+                      dryRun: true,
+                    });
+                    toast(
+                      `Dry-run: ${Object.entries(res?.result?.tables || {}).length} tables scanned`,
+                      'success',
+                    );
+                  } catch (e: any) {
+                    toast(String(e?.message || 'Dry-run failed'), 'error');
+                  }
+                }}
+              >
+                Dry-run
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={async () => {
+                  const ok = window.confirm(
+                    'This will DELETE harness-origin data from the local/dev DB. Type OK to continue.',
+                  );
+                  if (!ok) return;
+                  const confirm = window.prompt('Type DELETE to confirm');
+                  if (confirm !== 'DELETE') return;
+                  try {
+                    localStorage.setItem('learnflow-origin', 'harness');
+                    await apiPost('/admin/cleanup', {
+                      origin: 'harness',
+                      dryRun: false,
+                      confirm: 'DELETE',
+                    });
+                    toast('Cleanup completed', 'success');
+                    loadDataSummary();
+                  } catch (e: any) {
+                    toast(String(e?.message || 'Cleanup failed'), 'error');
+                  }
+                }}
+              >
+                Delete harness data
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {/* Privacy */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Privacy</h2>
@@ -840,7 +903,7 @@ export function ProfileSettings() {
               { label: 'Learning progress & streaks', tracked: true },
               { label: 'Course creation topics', tracked: true },
               { label: 'Quiz scores & completion rates', tracked: true },
-              { label: 'API keys (encrypted, AES-256)', tracked: true },
+              { label: 'API keys (encrypted at rest, AES-256-CBC)', tracked: true },
               { label: 'Conversation content (session only)', tracked: false },
               { label: 'Browsing activity outside LearnFlow', tracked: false },
             ].map((item) => (

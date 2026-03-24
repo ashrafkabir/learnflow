@@ -217,8 +217,9 @@ export function AboutPage() {
           <h2 className="text-2xl font-bold mb-4">Our Privacy Commitment</h2>
           <div className="max-w-2xl mx-auto text-sm text-gray-600 dark:text-gray-300 leading-relaxed space-y-3">
             <p>
-              Your learning data is yours. Period. We use AES-256 encryption at rest and in transit.
-              API keys are stored encrypted and never leave your device in our BYOAI model.
+              Your learning data is yours. Period. We encrypt API keys at rest (AES-256-CBC) and use
+              TLS in transit. API keys are stored encrypted and never leave your device in our BYOAI
+              model.
             </p>
             <p>
               We are SOC 2 compliant and GDPR ready. You can export or delete all your data at any

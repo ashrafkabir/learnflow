@@ -124,6 +124,7 @@ export async function handleWsMessage(
       const savedProviders = (db.getKeysByUserId(user.sub) || []).filter((k) => k.active);
       const provider = (savedProviders[0]?.provider as any) || 'unknown';
 
+      const origin = String((user as any)?.origin || 'user');
       db.addUsageRecord({
         userId: user.sub,
         agentName: routedAgentName,
@@ -131,6 +132,7 @@ export async function handleWsMessage(
         tokensIn: 0,
         tokensOut: 0,
         tokensTotal,
+        origin,
         createdAt: new Date(),
       });
     } catch {
