@@ -92,6 +92,26 @@ if (!isTest) {
       if (!hasColumn('courses', 'plan')) {
         sqlite.exec(`ALTER TABLE courses ADD COLUMN plan TEXT NOT NULL DEFAULT '{}';`);
       }
+
+      // Iter77: courses gained build attempt + stall detection timestamps/reasons
+      if (!hasColumn('courses', 'generationAttempt')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN generationAttempt INTEGER NOT NULL DEFAULT 0;`);
+      }
+      if (!hasColumn('courses', 'generationStartedAt')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN generationStartedAt TEXT;`);
+      }
+      if (!hasColumn('courses', 'lastProgressAt')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN lastProgressAt TEXT;`);
+      }
+      if (!hasColumn('courses', 'failedAt')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN failedAt TEXT;`);
+      }
+      if (!hasColumn('courses', 'failureReason')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN failureReason TEXT NOT NULL DEFAULT '';`);
+      }
+      if (!hasColumn('courses', 'failureMessage')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN failureMessage TEXT NOT NULL DEFAULT '';`);
+      }
     } catch {
       // If courses doesn't exist yet, CREATE TABLE below will handle it.
     }
@@ -132,6 +152,12 @@ sqlite.exec(`
     plan TEXT NOT NULL DEFAULT '{}',
     status TEXT NOT NULL DEFAULT 'READY',
     error TEXT NOT NULL DEFAULT '',
+    generationAttempt INTEGER NOT NULL DEFAULT 0,
+    generationStartedAt TEXT,
+    lastProgressAt TEXT,
+    failedAt TEXT,
+    failureReason TEXT NOT NULL DEFAULT '',
+    failureMessage TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL
   );
 
@@ -544,9 +570,13 @@ const stmts = {
 
   // Courses
   insertCourse: sqlite.prepare(
-    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, generationAttempt, generationStartedAt, lastProgressAt, failedAt, failureReason, failureMessage, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   updateCourseStatus: sqlite.prepare(`UPDATE courses SET status = ?, error = ? WHERE id = ?`),
+  updateCourseBuildTelemetry: sqlite.prepare(
+    `UPDATE courses SET generationAttempt = ?, generationStartedAt = ?, lastProgressAt = ?, failedAt = ?, failureReason = ?, failureMessage = ? WHERE id = ?`,
+  ),
+  updateCourseLastProgressAt: sqlite.prepare(`UPDATE courses SET lastProgressAt = ? WHERE id = ?`),
   findCourseById: sqlite.prepare(`SELECT * FROM courses WHERE id = ?`),
   getAllCourses: sqlite.prepare(`SELECT * FROM courses`),
   deleteCourse: sqlite.prepare(`DELETE FROM courses WHERE id = ?`),
@@ -1084,12 +1114,60 @@ export const dbCourses = {
       JSON.stringify(course.plan || {}),
       course.status || 'READY',
       course.error || '',
+      Number.isFinite(course.generationAttempt) ? Number(course.generationAttempt) : 0,
+      course.generationStartedAt || null,
+      course.lastProgressAt || null,
+      course.failedAt || null,
+      course.failureReason || '',
+      course.failureMessage || '',
       course.createdAt || new Date().toISOString(),
     );
   },
 
   setStatus(id: string, status: string, error: string = ''): void {
     stmts.updateCourseStatus.run(status, error || '', id);
+  },
+
+  setBuildTelemetry(
+    id: string,
+    patch: {
+      generationAttempt?: number;
+      generationStartedAt?: string | null;
+      lastProgressAt?: string | null;
+      failedAt?: string | null;
+      failureReason?: string;
+      failureMessage?: string;
+    },
+  ): void {
+    const existing = this.getById(id) as any;
+    const merged = {
+      generationAttempt:
+        patch.generationAttempt ??
+        (Number.isFinite(existing?.generationAttempt) ? Number(existing.generationAttempt) : 0),
+      generationStartedAt:
+        patch.generationStartedAt ??
+        (existing?.generationStartedAt ? String(existing.generationStartedAt) : null),
+      lastProgressAt:
+        patch.lastProgressAt ?? (existing?.lastProgressAt ? String(existing.lastProgressAt) : null),
+      failedAt: patch.failedAt ?? (existing?.failedAt ? String(existing.failedAt) : null),
+      failureReason:
+        patch.failureReason ?? (existing?.failureReason ? String(existing.failureReason) : ''),
+      failureMessage:
+        patch.failureMessage ?? (existing?.failureMessage ? String(existing.failureMessage) : ''),
+    };
+    stmts.updateCourseBuildTelemetry.run(
+      merged.generationAttempt,
+      merged.generationStartedAt,
+      merged.lastProgressAt,
+      merged.failedAt,
+      merged.failureReason,
+      merged.failureMessage,
+      id,
+    );
+  },
+
+  bumpLastProgressAt(id: string, iso = new Date().toISOString()): void {
+    stmts.updateCourseLastProgressAt.run(iso, id);
   },
 
   delete(id: string): void {

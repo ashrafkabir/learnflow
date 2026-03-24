@@ -21,6 +21,16 @@ export interface Course {
   progress: Record<string, number>;
   plan?: any;
   createdAt: string;
+
+  // Iter77: status & stall metadata for restartability UX
+  status?: 'CREATING' | 'READY' | 'FAILED';
+  error?: string;
+  generationAttempt?: number;
+  generationStartedAt?: string | null;
+  lastProgressAt?: string | null;
+  failedAt?: string | null;
+  failureReason?: string;
+  failureMessage?: string;
 }
 
 export interface Module {

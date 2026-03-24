@@ -56,6 +56,21 @@ import { validateBody } from '../validation.js';
 
 const router = Router();
 
+// Iter77: ensure any progress update bumps lastProgressAt for stall detection.
+function bumpCourseProgress(courseId: string): void {
+  const nowIso = new Date().toISOString();
+  try {
+    dbCourses.bumpLastProgressAt(courseId, nowIso);
+  } catch {
+    // ignore
+  }
+  const cur = courses.get(courseId);
+  if (cur) {
+    (cur as any).lastProgressAt = nowIso;
+    courses.set(courseId, cur);
+  }
+}
+
 // Iter72: topic-adaptive outline generation.
 // We keep course structure generation in one pipeline:
 // topic -> fingerprint/classification -> domain profile -> outline modules.
@@ -335,6 +350,14 @@ interface Course {
   status?: 'CREATING' | 'READY' | 'FAILED';
   error?: string;
   createdAt: string;
+
+  // Iter77: build telemetry for stall detection + restartability
+  generationAttempt?: number;
+  generationStartedAt?: string | null;
+  lastProgressAt?: string | null;
+  failedAt?: string | null;
+  failureReason?: string;
+  failureMessage?: string;
 }
 
 // Courses are now stored in SQLite via dbCourses
@@ -445,6 +468,12 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
     plan: {},
     status: 'CREATING',
     error: '',
+    generationAttempt: 0,
+    generationStartedAt: null,
+    lastProgressAt: new Date().toISOString(),
+    failedAt: null,
+    failureReason: '',
+    failureMessage: '',
     createdAt: new Date().toISOString(),
   };
 
@@ -462,6 +491,18 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
 
   courses.set(courseShell.id, courseShell);
   dbCourses.save(courseShell);
+  try {
+    dbCourses.setBuildTelemetry(courseShell.id, {
+      generationAttempt: 0,
+      generationStartedAt: null,
+      lastProgressAt: courseShell.lastProgressAt || new Date().toISOString(),
+      failedAt: null,
+      failureReason: '',
+      failureMessage: '',
+    });
+  } catch {
+    // ignore
+  }
 
   res.status(201).json({ id: courseId, status: 'CREATING' });
 
@@ -478,6 +519,33 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
         percent: 1,
         message: 'Starting course generation…',
       });
+      bumpCourseProgress(courseId);
+
+      // Iter77: mark generation start + bump attempt counter
+      try {
+        const cur = courses.get(courseId) || (dbCourses.getById(courseId) as any);
+        const nextAttempt = (Number(cur?.generationAttempt) || 0) + 1;
+        const nowIso = new Date().toISOString();
+        dbCourses.setBuildTelemetry(courseId, {
+          generationAttempt: nextAttempt,
+          generationStartedAt: nowIso,
+          lastProgressAt: nowIso,
+          failedAt: null,
+          failureReason: '',
+          failureMessage: '',
+        });
+        if (cur) {
+          (cur as any).generationAttempt = nextAttempt;
+          (cur as any).generationStartedAt = nowIso;
+          (cur as any).lastProgressAt = nowIso;
+          (cur as any).failedAt = null;
+          (cur as any).failureReason = '';
+          (cur as any).failureMessage = '';
+          courses.set(courseId, cur as any);
+        }
+      } catch {
+        // ignore
+      }
 
       // Task 1: Content sourcing
       // Stage 1: crawl topic-level sources (used for initial planning + fallback contexts)
@@ -571,6 +639,7 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
         percent: 10,
         message: `Collected ${crawledSources.length} sources`,
       });
+      bumpCourseProgress(courseId);
 
       // Generate all lessons with LLM (parallel per module)
       const { client: openai } = getOpenAIForRequest({
@@ -1104,6 +1173,7 @@ Continue.`,
             percent,
             message: `Generated ${completedLessons}/${totalLessons} lessons`,
           });
+          bumpCourseProgress(courseId);
 
           return {
             id: `${courseId}-m${mi}-l${li}`,
@@ -1137,6 +1207,16 @@ Continue.`,
         progress: {},
         status: 'READY',
         error: '',
+        generationAttempt:
+          (courses.get(courseId) as any)?.generationAttempt || courseShell.generationAttempt || 0,
+        generationStartedAt:
+          (courses.get(courseId) as any)?.generationStartedAt ||
+          courseShell.generationStartedAt ||
+          null,
+        lastProgressAt: new Date().toISOString(),
+        failedAt: null,
+        failureReason: '',
+        failureMessage: '',
         createdAt: courseShell.createdAt,
       };
 
@@ -1165,6 +1245,7 @@ Continue.`,
           ? 'Course ready'
           : `Course ready (with attribution issues in ${lessonsMissing.length} lessons)`,
       });
+      bumpCourseProgress(courseId);
     } catch (err: any) {
       const msg = err?.message ? String(err.message) : 'Course generation failed';
       try {
@@ -1172,10 +1253,22 @@ Continue.`,
       } catch {
         // ignore
       }
+      try {
+        dbCourses.setBuildTelemetry(courseId, {
+          failedAt: new Date().toISOString(),
+          failureReason: 'error',
+          failureMessage: msg,
+        });
+      } catch {
+        // ignore
+      }
       const cur = courses.get(courseId);
       if (cur) {
         (cur as any).status = 'FAILED';
         (cur as any).error = msg;
+        (cur as any).failedAt = new Date().toISOString();
+        (cur as any).failureReason = 'error';
+        (cur as any).failureMessage = msg;
         courses.set(courseId, cur);
       }
       emitToUser(userId, 'progress.update', {
@@ -1184,10 +1277,411 @@ Continue.`,
         percent: 100,
         message: msg,
       });
+      bumpCourseProgress(courseId);
       console.error('[LearnFlow] course generation failed:', err);
     }
   })();
 });
+
+// Iter77: restart/resume a course build (best-effort).
+
+function startCourseBuildInBackground(args: {
+  req: Request;
+  courseId: string;
+  userId: string;
+  topic: string;
+  depth: string;
+  outlineModules: any[];
+  courseTitle: string;
+  courseDescription: string;
+  attempt: number;
+}): void {
+  const {
+    req,
+    courseId,
+    userId,
+    topic,
+    depth,
+    outlineModules,
+    courseTitle,
+    courseDescription,
+    attempt,
+  } = args;
+
+  void (async () => {
+    try {
+      emitToUser(userId, 'progress.update', {
+        courseId,
+        stage: 'creating',
+        percent: 1,
+        message: `Starting course generation (attempt ${attempt})…`,
+      });
+      bumpCourseProgress(courseId);
+
+      // Stage 1: topic-level sources
+      let crawledSources: FirecrawlSource[] = [];
+      const fastMode = process.env.NODE_ENV === 'test' || Boolean((req as any).body?.fast);
+      if (fastMode) {
+        crawledSources = [
+          {
+            url: 'https://en.wikipedia.org/wiki/Software_testing',
+            title: 'Software testing — Wikipedia',
+            author: 'Wikipedia contributors',
+            publishDate: null,
+            source: 'wikipedia.org',
+            content:
+              'Software testing is the act of evaluating and verifying that a software product or application does what it is supposed to do.',
+            credibilityScore: 0.72,
+            relevanceScore: 0.9,
+            recencyScore: 0.6,
+            wordCount: 24,
+            domain: 'wikipedia.org',
+          },
+          {
+            url: 'https://developer.mozilla.org/en-US/docs/Learn',
+            title: 'Learn web development — MDN',
+            author: 'MDN contributors',
+            publishDate: null,
+            source: 'developer.mozilla.org',
+            content: 'MDN provides learning resources and guides for web development.',
+            credibilityScore: 0.9,
+            relevanceScore: 0.6,
+            recencyScore: 0.6,
+            wordCount: 10,
+            domain: 'developer.mozilla.org',
+          },
+        ];
+      } else {
+        try {
+          crawledSources = await crawlSourcesForTopic(topic);
+        } catch {
+          crawledSources = [];
+        }
+      }
+
+      emitToUser(userId, 'progress.update', {
+        courseId,
+        stage: 'sourcing',
+        percent: 10,
+        message: `Collected ${crawledSources.length} sources`,
+      });
+      bumpCourseProgress(courseId);
+
+      const { client: openai } = getOpenAIForRequest({
+        userId,
+        tier: req.user?.tier || 'free',
+      });
+      const effectiveOpenAi = process.env.NODE_ENV === 'test' ? null : openai;
+
+      const fastTestMode = process.env.NODE_ENV === 'test' || Boolean((req as any).body?.fast);
+
+      const modules: Module[] = [];
+      const totalLessons = outlineModules.reduce(
+        (sum: number, m: any) => sum + (m.lessons?.length || 0),
+        0,
+      );
+      let completedLessons = 0;
+
+      for (let mi = 0; mi < outlineModules.length; mi++) {
+        const mod = outlineModules[mi];
+        const lessonPromises = (mod.lessons || []).map(async (les: any, li: number) => {
+          const lessonId = `${courseId}-m${mi}-l${li}`;
+
+          // Reuse the same generation path from initial create: fast mode uses deterministic template.
+          const gen = fastTestMode
+            ? {
+                markdown: `# ${les.title}
+
+${les.description}
+
+(Generated in test fast mode)
+
+## Learning Objectives
+
+- Explain the key idea of **${les.title}** in the context of **${topic}**
+- Apply it in a concrete worked example that produces an output
+
+## Estimated Time
+
+**8 minutes**
+
+## Core Concepts
+
+- Key definition: ${les.title} relates to ${topic}.
+- Why it matters: it changes how you make decisions and verify results.
+
+## Worked Example
+
+### Programming artifact (runnable snippet)
+
+How to run:
+
+\`\`\`bash
+node example.js
+\`\`\`
+
+\`\`\`js
+console.log('ok')
+\`\`\`
+
+Expected output:
+
+\`\`\`
+ok
+\`\`\`
+
+## Recap
+
+- You learned one concrete mechanism and verified it with output.
+
+## Quick Check
+
+1. What is one key term from this lesson?
+2. What does the example print?
+3. What would you change to test a different case?
+
+### Answer Key
+
+1. ${les.title}
+2. ok
+3. Change the string and re-run
+
+## Sources
+
+[1] Wikipedia contributors. "Software testing — Wikipedia". Wikipedia, 2024. https://en.wikipedia.org/wiki/Software_testing (License: CC BY-SA; Accessed: ${new Date().toISOString()})
+[2] MDN contributors. "Learn web development — MDN". MDN, 2024. https://developer.mozilla.org/en-US/docs/Learn (License: CC BY-SA; Accessed: ${new Date().toISOString()})
+
+## Next Steps
+
+- Repeat the worked example with one assumption changed and compare outputs.`,
+                sources: toStructuredLessonSources(crawledSources, {
+                  limit: 2,
+                  accessedAt: new Date().toISOString(),
+                }),
+              }
+            : await generateLessonContentWithLLM(
+                topic,
+                String(mod.title || ''),
+                String(les.title || ''),
+                String(les.description || ''),
+                crawledSources,
+                effectiveOpenAi ? { openai: effectiveOpenAi } : null,
+              );
+
+          const contentFinal = hardenLessonStyle(gen.markdown || '').updated;
+          const sources = (gen as any).sources || [];
+
+          try {
+            dbLessonSources.save(lessonId, courseId, sources, '');
+          } catch {
+            // ignore
+          }
+
+          completedLessons++;
+          const percent =
+            totalLessons > 0 ? 10 + Math.floor((completedLessons / totalLessons) * 80) : 90;
+          emitToUser(userId, 'progress.update', {
+            courseId,
+            stage: 'generating',
+            percent,
+            message: `Generated ${completedLessons}/${totalLessons} lessons`,
+          });
+          bumpCourseProgress(courseId);
+
+          const wordCount = String(contentFinal || '')
+            .split(/\s+/)
+            .filter(Boolean).length;
+
+          return {
+            id: lessonId,
+            title: String(les.title || ''),
+            description: String(les.description || ''),
+            content: contentFinal,
+            estimatedTime: 5,
+            wordCount,
+            sources,
+          } as Lesson;
+        });
+
+        const lessons: Lesson[] = await Promise.all(lessonPromises);
+        modules.push({
+          id: `${courseId}-m${mi}`,
+          title: String(mod.title || ''),
+          objective: String(mod.objective || ''),
+          description: String(mod.objective || ''),
+          lessons,
+        });
+      }
+
+      const updated: Course = {
+        ...(courses.get(courseId) as any),
+        id: courseId,
+        title: courseTitle,
+        description: courseDescription,
+        topic,
+        depth,
+        authorId: userId,
+        modules,
+        progress: {},
+        status: 'READY',
+        error: '',
+        lastProgressAt: new Date().toISOString(),
+        failedAt: null,
+        failureReason: '',
+        failureMessage: '',
+      };
+
+      courses.set(courseId, updated);
+      dbCourses.save(updated);
+      dbCourses.setStatus(courseId, 'READY', '');
+
+      emitToUser(userId, 'progress.update', {
+        courseId,
+        stage: 'complete',
+        percent: 100,
+        message: 'Course ready',
+      });
+      bumpCourseProgress(courseId);
+    } catch (err: any) {
+      const msg = err?.message ? String(err.message) : 'Course generation failed';
+      try {
+        dbCourses.setStatus(courseId, 'FAILED', msg);
+        dbCourses.setBuildTelemetry(courseId, {
+          failedAt: new Date().toISOString(),
+          failureReason: 'error',
+          failureMessage: msg,
+        });
+      } catch {
+        // ignore
+      }
+      const cur = courses.get(courseId);
+      if (cur) {
+        (cur as any).status = 'FAILED';
+        (cur as any).error = msg;
+        (cur as any).failedAt = new Date().toISOString();
+        (cur as any).failureReason = 'error';
+        (cur as any).failureMessage = msg;
+        courses.set(courseId, cur);
+      }
+      emitToUser(userId, 'progress.update', {
+        courseId,
+        stage: 'failed',
+        percent: 100,
+        message: msg,
+      });
+      bumpCourseProgress(courseId);
+    }
+  })();
+}
+
+function restartOrResumeCourse(req: Request, res: Response, mode: 'restart' | 'resume') {
+  const courseId = String(req.params.id);
+  const course = courses.get(courseId) || (dbCourses.getById(courseId) as any);
+  if (!course) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
+    return;
+  }
+
+  const timeoutMs = Number(process.env.COURSE_CREATION_STALL_TIMEOUT_MS || 15 * 60 * 1000);
+  const lastIso =
+    (course as any).lastProgressAt || (course as any).generationStartedAt || course.createdAt;
+  const last = Date.parse(String(lastIso || '')) || 0;
+  const noProgressMs = Date.now() - last;
+  const stalledWhileCreating =
+    course.status === 'CREATING' && Number.isFinite(noProgressMs) && noProgressMs > timeoutMs;
+
+  const allowed =
+    course.status === 'FAILED' || (course.status === 'CREATING' && stalledWhileCreating);
+  if (!allowed) {
+    sendError(res, req, {
+      status: 409,
+      code: 'invalid_state',
+      message: `Course cannot be ${mode}d from status=${course.status || 'unknown'}`,
+      details: { status: course.status || 'unknown' },
+    });
+    return;
+  }
+
+  // Idempotency: if already creating and not stalled, treat as no-op.
+  if (course.status === 'CREATING' && !stalledWhileCreating) {
+    res.status(200).json({ id: courseId, status: 'CREATING', idempotent: true });
+    return;
+  }
+
+  const nowIso = new Date().toISOString();
+  const nextAttempt = (Number((course as any).generationAttempt) || 0) + 1;
+
+  (course as any).status = 'CREATING';
+  (course as any).error = '';
+  (course as any).generationAttempt = nextAttempt;
+  (course as any).generationStartedAt = nowIso;
+  (course as any).lastProgressAt = nowIso;
+  (course as any).failedAt = null;
+  (course as any).failureReason = '';
+  (course as any).failureMessage = '';
+
+  courses.set(courseId, course);
+  try {
+    dbCourses.save(course);
+    dbCourses.setBuildTelemetry(courseId, {
+      generationAttempt: nextAttempt,
+      generationStartedAt: nowIso,
+      lastProgressAt: nowIso,
+      failedAt: null,
+      failureReason: '',
+      failureMessage: '',
+    });
+  } catch {
+    // ignore
+  }
+
+  const userId = req.user?.sub || 'anonymous';
+  emitToUser(userId, 'progress.update', {
+    courseId,
+    stage: 'creating',
+    percent: 1,
+    message: `${mode === 'resume' ? 'Resuming' : 'Restarting'} course build (attempt ${nextAttempt})…`,
+  });
+  bumpCourseProgress(courseId);
+
+  const outlineModules = Array.isArray(course.modules)
+    ? course.modules.map((m: any) => ({
+        title: String(m.title || ''),
+        objective: String(m.objective || m.description || ''),
+        lessons: Array.isArray(m.lessons)
+          ? m.lessons.map((l: any) => ({
+              title: String(l.title || ''),
+              description: String(l.description || ''),
+            }))
+          : [],
+      }))
+    : buildCourseOutline(String(course.topic || '')).modules;
+
+  startCourseBuildInBackground({
+    req,
+    courseId,
+    userId,
+    topic: String(course.topic || ''),
+    depth: String(course.depth || 'intermediate'),
+    outlineModules,
+    courseTitle: String(course.title || `Mastering ${course.topic || ''}`),
+    courseDescription: String(course.description || ''),
+    attempt: nextAttempt,
+  });
+
+  res.status(200).json({ id: courseId, status: 'CREATING', generationAttempt: nextAttempt });
+}
+
+// POST /api/v1/courses/:id/restart
+router.post('/:id/restart', (req: Request, res: Response) =>
+  restartOrResumeCourse(req, res, 'restart'),
+);
+
+// POST /api/v1/courses/:id/resume
+router.post('/:id/resume', (req: Request, res: Response) =>
+  restartOrResumeCourse(req, res, 'resume'),
+);
+
 // DELETE /api/v1/courses/:id - Delete a course (and cascade related rows)
 router.delete('/:id', (req: Request, res: Response) => {
   const courseId = String(req.params.id);
@@ -1224,22 +1718,32 @@ router.get('/:id', (req: Request, res: Response) => {
     return;
   }
 
-  // Iter74 P0.6: completion fence — detect stalled course creation.
-  // If a course is stuck in CREATING beyond a timeout, mark it FAILED(stalled).
+  // Iter77: completion fence — detect stalled course creation.
+  // If a course is stuck in CREATING beyond a timeout since last progress, mark it FAILED(stalled).
   const timeoutMs = Number(process.env.COURSE_CREATION_STALL_TIMEOUT_MS || 15 * 60 * 1000);
   if (course.status === 'CREATING') {
     try {
-      const startedAt = new Date(course.createdAt || 0).getTime();
-      const ageMs = Date.now() - startedAt;
+      const lastIso =
+        (course as any).lastProgressAt || (course as any).generationStartedAt || course.createdAt;
+      const last = Date.parse(String(lastIso || '')) || 0;
+      const ageMs = Date.now() - last;
       if (Number.isFinite(ageMs) && ageMs > timeoutMs) {
-        const msg = `Course creation stalled (status=CREATING for > ${timeoutMs}ms).`;
+        const msg = `Course creation stalled (no progress for > ${timeoutMs}ms).`;
         try {
           dbCourses.setStatus(courseId, 'FAILED', msg);
+          dbCourses.setBuildTelemetry(courseId, {
+            failedAt: new Date().toISOString(),
+            failureReason: 'stalled',
+            failureMessage: msg,
+          });
         } catch {
           // ignore
         }
-        course.status = 'FAILED';
-        course.error = msg;
+        (course as any).status = 'FAILED';
+        (course as any).error = msg;
+        (course as any).failedAt = new Date().toISOString();
+        (course as any).failureReason = 'stalled';
+        (course as any).failureMessage = msg;
         courses.set(courseId, course);
       }
     } catch {

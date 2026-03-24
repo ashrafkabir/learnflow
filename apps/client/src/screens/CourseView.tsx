@@ -199,6 +199,93 @@ export function CourseView() {
         </div>
       </header>
 
+      {/* Iter77: build status + restart/resume actions */}
+      {course?.status && course.status !== 'READY' && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span
+                  className={
+                    course.status === 'CREATING'
+                      ? 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200'
+                      : 'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200'
+                  }
+                >
+                  {course.status === 'CREATING'
+                    ? 'Creating'
+                    : course.failureReason === 'stalled'
+                      ? 'Failed (stalled)'
+                      : 'Failed'}
+                </span>
+                {typeof course.generationAttempt === 'number' && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Attempt {course.generationAttempt}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 truncate">
+                {course.failureMessage ||
+                  course.error ||
+                  (course.status === 'CREATING'
+                    ? 'We are building your course. If this takes too long, you can restart.'
+                    : 'Course build failed. You can resume or restart.')}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              {course.status === 'FAILED' && (
+                <>
+                  <Button
+                    variant="secondary"
+                    onClick={async () => {
+                      setLoading(true);
+                      setError('');
+                      try {
+                        await fetch(`/api/v1/courses/${course.id}/resume`, {
+                          method: 'POST',
+                          headers: {
+                            Authorization: `Bearer ${localStorage.getItem('learnflow-token') || ''}`,
+                          },
+                        });
+                        await fetchCourse(course.id);
+                      } catch (e: any) {
+                        setError(e?.message || 'Failed to resume');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    Resume
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={async () => {
+                      setLoading(true);
+                      setError('');
+                      try {
+                        await fetch(`/api/v1/courses/${course.id}/restart`, {
+                          method: 'POST',
+                          headers: {
+                            Authorization: `Bearer ${localStorage.getItem('learnflow-token') || ''}`,
+                          },
+                        });
+                        await fetchCourse(course.id);
+                      } catch (e: any) {
+                        setError(e?.message || 'Failed to restart');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                  >
+                    Restart
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Syllabus */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
