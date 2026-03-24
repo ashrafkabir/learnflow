@@ -953,30 +953,35 @@ The app is a strong MVP, but spec promises are ahead of implementation in a few 
 
 3. **Update Agent: replace stubbed “search” with real provider(s) + credibility filters (MVP)**
 
-- What to build:
-  - Implement a real web discovery provider for UpdateAgent using the existing pipeline tooling (Firecrawl/Tavily if available) with strict timeouts.
-  - Filter/score results (authority/recency/relevance) at least at MVP level.
-- Acceptance criteria:
-  - `POST /api/v1/notifications/generate` produces notifications with real URLs/titles for a topic.
-  - Dedup: repeated runs do not spam identical notifications.
-  - Failure mode is graceful (returns 200 with 0 notifications + logs) when providers are down.
-- Likely files:
-  - `packages/agents/src/update-agent/update-agent.ts`
-  - `packages/agents/src/content-pipeline/*` (provider reuse)
-  - `apps/api/src/routes/notifications.ts`
+- Status: **DONE ✅**
+- What shipped:
+  - New `RealWebSearchProvider` for UpdateAgent that reuses `packages/agents/src/content-pipeline/web-search-provider.ts` (multi-source search).
+  - Strict timeout wrapper around provider calls.
+  - MVP scoring: credibility (domain heuristic), relevance (keyword overlap), recency (date heuristic when available), combined into `overallScore`.
+  - URL dedupe before returning results.
+  - API endpoint creates notifications from returned sources and dedupes by a **stable notification id** derived from `userId+topic+url`.
+  - Graceful failure: provider exceptions return **200 {created:0}** and logs.
+- Evidence:
+  - Code:
+    - `packages/agents/src/update-agent/update-agent.ts` (`RealWebSearchProvider` + scoring/dedupe)
+    - `apps/api/src/routes/notifications.ts` (generate endpoint uses real provider + stable id)
+  - Tests:
+    - `apps/api/src/__tests__/notifications-generate-real.test.ts` (creates notifications with real URLs/titles; idempotent on repeat)
+  - Commit (branch `iter78`): `f5a7a93`
 
 4. **Update Agent scheduling contract (no cron in repo, but make it deployable)**
 
-- What to build:
-  - Document + implement a single “cron-safe” entrypoint (HTTP endpoint already exists; ensure idempotency + auth).
-  - Add a dev-only `npm run notifications:tick` script that triggers generation.
-- Acceptance criteria:
-  - Endpoint requires auth (or dev-auth in dev mode only).
-  - Multiple concurrent ticks do not generate duplicates.
-- Likely files:
-  - `apps/api/src/routes/notifications.ts`
-  - `apps/api/src/middleware.ts`
-  - `apps/api/package.json` scripts
+- Status: **DONE ✅**
+- What shipped:
+  - Endpoint is cron-safe/idempotent via stable notification IDs + “seen” check.
+  - Dev-only tick entrypoint: `npm run notifications:tick` calls `POST /api/v1/notifications/generate` with dev auth header.
+- Evidence:
+  - Script:
+    - `scripts/notifications-tick.mjs`
+    - root `package.json` script: `notifications:tick`
+  - Test:
+    - `apps/api/src/__tests__/notifications-tick-script.test.ts` (ensures script exists / parses)
+  - Commit (branch `iter78`): `f5a7a93`
 
 5. **Conversation UX: standardize rich rendering + consistent action chips**
 
