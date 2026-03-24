@@ -3,6 +3,7 @@ import { emitToUser } from '../wsHub.js';
 import { z } from 'zod';
 import {
   crawlSourcesForTopic,
+  searchForLesson,
   buildCourseOutline,
   classifyTopicDomain,
   quantumComputingRequiredModules,
@@ -194,6 +195,11 @@ export async function generateLessonContentWithLLM(
           .join('\n\n')
       : '_No external sources were available for this lesson generation run._';
 
+  // Fallback markdown should still feel topic-specific. We use the lesson/module descriptions to anchor
+  // what to learn, what to do, and how to check understanding.
+  const focus = `${lessonTitle} (${lessonDesc})`;
+  const moduleAnchor = `${moduleTitle}`;
+
   return {
     markdown: `# ${lessonTitle}
 
@@ -201,68 +207,60 @@ export async function generateLessonContentWithLLM(
 
 By the end of this lesson, you will be able to:
 
-- Understand the core principles of ${lessonDesc.toLowerCase()}
-- Apply key concepts from ${moduleTitle.toLowerCase()} in practical scenarios
-- Evaluate different approaches and their trade-offs in the context of ${topic}
+- Explain what “${lessonTitle}” means in the context of **${topic}**
+- Use the key ideas from **${moduleAnchor}** to complete a small, concrete task
+- Identify common mistakes related to **${focus}** and how to avoid them
 
 ## Estimated Time
 
-**8 minutes** (~1200 words)
+**8–10 minutes**
 
 ## Core Concepts
 
-### Understanding ${lessonTitle}
+### What this lesson is really about
 
-${lessonDesc}. This is a critical area within the broader field of ${topic}.
+${lessonDesc}.
 
-### Key Principles and Concepts
+In this module (**${moduleAnchor}**), that matters because it affects how you make decisions, choose tools/techniques, and interpret results when working on **${topic}**.
 
-**Theoretical Foundations**: The theoretical basis draws from decades of research and practice.
+### The moving parts
 
-**Practical Implementation**: Moving from theory to practice requires understanding tools, frameworks, and best practices that the community has developed.
-
-**Evaluation and Metrics**: Measuring success requires both quantitative metrics and qualitative assessment.
-
-### Real-World Applications
-
-1. **Technology**: Automated systems leverage these concepts for improved efficiency
-2. **Research**: Academic institutions use these approaches for breakthrough discoveries
-3. **Industry**: Enterprises apply these techniques for competitive advantage
+1. **Inputs / assumptions** — what you need to know (or decide) before you start.
+2. **Mechanism** — how the concept works step-by-step.
+3. **Outputs** — what you should expect to see when it’s working.
+4. **Trade-offs** — what you gain/lose vs. alternatives (cost, time, risk, complexity).
 
 ## Worked Example
 
-Work through one concrete example end-to-end.
+### Scenario
 
-### Example (fill in)
+You’re working on **${topic}** and need to apply **${lessonTitle}** to a realistic situation.
 
-1. Identify the goal and inputs.
-2. Apply the core concept(s) step-by-step.
-3. Show the intermediate outputs.
-4. Verify the result.
+### Steps
+
+1. **Define the goal** (one sentence): what success looks like.
+2. **List the inputs** you have (and any missing information).
+3. **Apply the core idea** from this lesson in 3–6 explicit steps.
+4. **Check the output**: what would convince you the result is correct?
+5. **If it fails**: name 1–2 likely causes and how you’d debug them.
 
 ## Recap
 
-- Summarize the key points in 3-5 bullets.
+- ${lessonTitle} is a tool for making better decisions inside **${topic}**, not just a definition to memorize.
+- If you can state the inputs → mechanism → outputs, you understand the concept well enough to use it.
+- Trade-offs are part of the skill: the “best” choice depends on constraints.
 
 ## Quick Check
 
-1. Question 1
-2. Question 2
-3. Question 3
+1. In one sentence, what problem does **${lessonTitle}** help you solve in **${topic}**?
+2. Name **two inputs/assumptions** you would need before applying it.
+3. What is one **failure mode** (a common mistake), and what would you do to catch it early?
 
 ### Answer Key
 
-1. Answer 1
-2. Answer 2
-3. Answer 3
-
-## Key Takeaways
-
-1. ${lessonTitle} is foundational to understanding ${topic}
-2. The field combines theoretical principles with practical implementation patterns
-3. Evaluation and measurement are critical for assessing progress
-4. Real-world applications demonstrate the value across multiple domains
-5. Staying current with research advances is essential
+1. A correct answer connects **${lessonTitle}** to a concrete goal within **${topic}** (not a generic definition).
+2. Any two relevant prerequisites that would change your approach (e.g., constraints, data, requirements, environment).
+3. A specific mistake plus a check (a test, sanity check, measurement, or review step) that would surface it.
 
 ## Sources
 
@@ -270,7 +268,8 @@ ${sourcesBlock}
 
 ## Next Steps
 
-Continue with the next lesson in this module to deepen your understanding.`,
+- Continue to the next lesson and apply the same pattern: inputs → mechanism → outputs.
+- If you’re practicing hands-on, repeat the worked example with one assumption changed and compare outcomes.`,
     sources: sourceRefs,
   };
 }
@@ -374,10 +373,13 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
   }
 
   // Create minimal shell immediately and return, while generation happens in background.
+  // Keep the default description topic-specific (avoid generic boilerplate phrasing).
   const courseShell: Course = {
     id: courseId,
     title: req.body.title || `Mastering ${topic}`,
-    description: req.body.description || `A comprehensive ${depth}-level course on ${topic}`,
+    description:
+      req.body.description ||
+      `Build practical skill in ${topic} through guided lessons and worked examples (${depth} level).`,
     topic,
     depth,
     authorId: req.user?.sub || 'anonymous',
@@ -421,7 +423,8 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
         message: 'Starting course generation…',
       });
 
-      // Task 1: Content sourcing — crawl real sources for this topic
+      // Task 1: Content sourcing
+      // Stage 1: crawl topic-level sources (used for initial planning + fallback contexts)
       let crawledSources: FirecrawlSource[] = [];
       const _crawlStart = Date.now();
 
@@ -520,10 +523,30 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
         const mod = topicData.modules[mi];
 
         const lessonPromises = (mod.lessons || []).map(async (les, li) => {
+          // Iter72 content quality:
+          // Use per-lesson sourcing threads (Stage 2) so each lesson has its own relevant sources/images,
+          // rather than sharing one topic-wide crawl.
+          let lessonSources: FirecrawlSource[] = crawledSources;
+          if (!fastTestMode) {
+            try {
+              lessonSources = await searchForLesson(topic, mod.title, les.title, les.description, {
+                maxSourcesPerLesson: 6,
+                maxStage2Queries: 6,
+                perQueryLimit: 4,
+              } as any);
+            } catch (err) {
+              console.warn(
+                '[LearnFlow] searchForLesson failed; falling back to topic sources:',
+                err,
+              );
+              lessonSources = crawledSources;
+            }
+          }
+
           const gen = fastTestMode
             ? {
                 markdown: `# ${les.title}\n\n${les.description}\n\n(Generated in test fast mode)\n\n## Learning Objectives\n\n- Understand the goal of this lesson\n\n## Estimated Time\n\n**1 minute**\n\n## Core Concepts\n\n- Core concept placeholder\n\n## Worked Example\n\n1. Step 1\n\n## Recap\n\n- Recap placeholder\n\n## Quick Check\n\n1. Q1\n\n### Answer Key\n\n1. A1\n\n## Sources\n\n_No external sources in test fast mode._\n\n## Next Steps\n\nContinue.`,
-                sources: toStructuredLessonSources(crawledSources, {
+                sources: toStructuredLessonSources(lessonSources, {
                   limit: 4,
                   accessedAt: new Date().toISOString(),
                 }),
@@ -533,12 +556,54 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
                 mod.title,
                 les.title,
                 les.description,
-                crawledSources,
+                lessonSources,
                 { openai: effectiveOpenAi },
               );
 
           const enforced = enforceBiteSizedLesson(gen.markdown, { maxMinutes: 10 });
-          const contentFinal = enforced.content;
+          let contentFinal = enforced.content;
+
+          // Iter72: Embed a license-safe illustration directly into the lesson markdown.
+          // We default to Wikimedia Commons (search) for safety + attribution.
+          if (!fastTestMode) {
+            try {
+              const prompt = `${les.title} ${topic}`;
+              const images: LicenseSafeImageCandidate[] = await searchWikimediaCommonsImages(
+                prompt,
+                { limit: 1 },
+              );
+              const picked = images?.[0];
+              if (picked?.url) {
+                // Persist for later UI use as well.
+                try {
+                  dbIllustrations.create(`${courseId}-m${mi}-l${li}`, 0, prompt, picked.url, {
+                    provider: 'wikimedia_commons',
+                    model: 'search',
+                    license: picked.license || 'unknown',
+                    sourcePageUrl: picked.sourcePageUrl,
+                    attributionText: `Image from Wikimedia Commons · License: ${picked.license || 'unknown'}${picked.author ? ` · Author: ${picked.author}` : ''} · Accessed: ${picked.accessedAt}`,
+                  });
+                } catch {
+                  // best effort
+                }
+
+                const attributionLine = `> **Attribution:** Wikimedia Commons (${picked.license || 'unknown'})${picked.author ? ` — ${picked.author}` : ''}. Source: ${picked.sourcePageUrl}. Accessed: ${picked.accessedAt}.`;
+                const imageBlock = `![${les.title} illustration](${picked.url})\n\n${attributionLine}\n`;
+
+                // Insert after "## Core Concepts" when possible; otherwise after title.
+                if (contentFinal.includes('## Core Concepts')) {
+                  contentFinal = contentFinal.replace(
+                    '## Core Concepts',
+                    `## Core Concepts\n\n${imageBlock}`,
+                  );
+                } else {
+                  contentFinal = `${imageBlock}\n\n${contentFinal}`;
+                }
+              }
+            } catch (err) {
+              console.warn('[LearnFlow] Wikimedia illustration embed failed (non-fatal):', err);
+            }
+          }
           const wordCount = enforced.sizing.wordCount;
           const estimatedMinutes = Math.min(10, enforced.sizing.estimatedMinutes);
 

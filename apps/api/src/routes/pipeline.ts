@@ -636,7 +636,9 @@ async function runPipeline(pipelineId: string) {
   p.moduleCount = modules.length;
   p.lessonCount = totalLessons;
   p.courseTitle = llmTitle || `Mastering ${topic}`;
-  p.courseDescription = llmDesc || `A comprehensive intermediate-level course on ${topic}`;
+  p.courseDescription =
+    llmDesc ||
+    `Build practical skill in ${topic} through guided lessons and worked examples (intermediate level).`;
 
   updatePipeline(p, { progress: 30 });
 

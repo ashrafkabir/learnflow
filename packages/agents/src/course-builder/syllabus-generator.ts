@@ -25,7 +25,7 @@ export function generateSyllabus(topic: string, subtopics: string[]): Syllabus {
   const modules: SyllabusModule[] = subtopics.map((st, i) => ({
     id: `mod-${i}`,
     title: st,
-    description: `Learn about ${st}`,
+    description: `Build working understanding of ${st} in the context of ${topic}`,
     order: i,
     prerequisites: i > 0 ? [`mod-${i - 1}`] : [], // Linear prerequisite chain
     lessons: [`lesson-${i}-1`, `lesson-${i}-2`],
