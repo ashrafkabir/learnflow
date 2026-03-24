@@ -4,7 +4,8 @@ import { useApp, apiGet, apiPost, apiDelete } from '../context/AppContext.js';
 import { useToast } from '../components/Toast.js';
 import { useTheme } from '../design-system/ThemeProvider.js';
 import { Button } from '../components/Button.js';
-import { fetchUsageSummary, type UsageSummary } from '../lib/usage';
+import { type UsageSummary } from '../lib/usage';
+import { UsageDashboard } from '../components/UsageDashboard.js';
 import {
   IconBrainSpark,
   IconChart,
@@ -38,22 +39,12 @@ export function ProfileSettings() {
       lastValidationStatus?: string;
       lastValidationError?: string;
       rotatedAt?: string;
+      active?: boolean;
     }>
   >([]);
 
-  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [_usage, _setUsage] = useState<UsageSummary | null>(null);
   const [serverRole, setServerRole] = useState<string>('');
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const summary = await fetchUsageSummary(apiGet, 7);
-        setUsage(summary);
-      } catch {
-        // best-effort
-      }
-    })();
-  }, [apiGet]);
 
   // Server-driven admin gating (Iter69): trust /profile/context rather than localStorage.
   useEffect(() => {
@@ -297,45 +288,7 @@ export function ProfileSettings() {
           </div>
 
           {/* Usage */}
-          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-3 flex flex-col">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Usage (last 7 days)
-            </h2>
-            <div className="text-sm text-gray-800/80 dark:text-gray-200 flex items-center justify-between">
-              <span>Total tokens</span>
-              <span className="font-mono">{usage ? usage.totalTokens : 0}</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                <div className="text-xs text-gray-500 dark:text-gray-300">Top agents</div>
-                <ul className="mt-2 space-y-1">
-                  {(usage?.topAgents || []).slice(0, 5).map((a) => (
-                    <li key={a.agentName} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-900 dark:text-white">{a.agentName}</span>
-                      <span className="font-mono text-gray-700 dark:text-gray-200">{a.total}</span>
-                    </li>
-                  ))}
-                  {(!usage || (usage.topAgents || []).length === 0) && (
-                    <li className="text-sm text-gray-500 dark:text-gray-300">No usage yet</li>
-                  )}
-                </ul>
-              </div>
-              <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
-                <div className="text-xs text-gray-500 dark:text-gray-300">Top providers</div>
-                <ul className="mt-2 space-y-1">
-                  {(usage?.topProviders || []).slice(0, 5).map((p) => (
-                    <li key={p.provider} className="flex items-center justify-between text-sm">
-                      <span className="text-gray-900 dark:text-white capitalize">{p.provider}</span>
-                      <span className="font-mono text-gray-700 dark:text-gray-200">{p.total}</span>
-                    </li>
-                  ))}
-                  {(!usage || (usage.topProviders || []).length === 0) && (
-                    <li className="text-sm text-gray-500 dark:text-gray-300">No usage yet</li>
-                  )}
-                </ul>
-              </div>
-            </div>
-          </div>
+          <UsageDashboard />
 
           {/* API Keys */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4 flex flex-col">
