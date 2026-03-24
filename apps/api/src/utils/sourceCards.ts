@@ -104,12 +104,30 @@ export function buildSourceCards(
   const safe = dedupeByUrl(sources || []);
 
   return safe.slice(0, limit).map((s) => {
-    const summary = String(s.content || '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 240);
     const provider = normalizeProvider(s);
     const keyConcepts = toKeyConcepts(s, topic);
+
+    const raw = String(s.content || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Simple, non-LLM summary: first ~2 sentences (or ~220 chars), plus a plain-English "why it matters".
+    const firstTwo = raw
+      .replace(/\[(\d+)\]/g, '')
+      .split(/(?<=[.!?])\s+/)
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .slice(0, 2)
+      .join(' ');
+
+    const core = (firstTwo || raw.slice(0, 220)).trim();
+    const why = keyConcepts.length
+      ? `Why it matters: helps you understand ${keyConcepts.slice(0, 2).join(' and ')}.`
+      : `Why it matters: provides practical background for ${topic}.`;
+
+    const punct = /[.!?]$/.test(core) ? '' : '.';
+    const summary = `${core}${punct} ${why}`.slice(0, 360);
+
     const relevance = `Relevant for ${topic} because it covers ${keyConcepts.slice(0, 2).join(' & ') || 'core concepts'}.`;
 
     return {
