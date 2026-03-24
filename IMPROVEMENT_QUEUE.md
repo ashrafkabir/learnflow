@@ -2534,3 +2534,180 @@ Non-goals:
   - Run cleanup execute → confirm harness-origin rows removed; user-origin untouched.
 - Privacy copy audit:
   - `rg -n "AES-256|AES256|session only|never stored" apps/` shows only accurate/qualified mentions.
+
+---
+
+## Iteration 87 — SPEC GAP AUDIT + PRODUCTION POSTURE P0s (SECURITY / RELIABILITY / CONTRACTS)
+
+Status: **PLANNED** (planner run complete)
+
+Planner evidence:
+
+- Spec source-of-truth read end-to-end: `learnflow/LearnFlow_Product_Spec.md` (1105 lines)
+- Code inspected (spot-check):
+  - `apps/api/src/routes/*` (auth/profile/courses/pipeline/notifications/update-agent)
+  - `packages/core/src/orchestrator/*` (intent router, dag planner, system prompt)
+  - `packages/agents/src/*` (course builder, update agent, export)
+- Screenshots captured:
+  - `learnflow/screenshots/iter87/planner-run/` (+ `NOTES.md`)
+
+### Brutally honest: biggest spec deltas that still matter
+
+The MVP now covers most **screen surface area** (spec §5 + §12) and has real “Update Agent” monitoring + data hygiene. The remaining gaps are primarily **trust + production posture** and **deep spec architecture**:
+
+- **Spec §3.1 / §4.3 (internal gRPC, agent mesh, containerized agents, true DAG)** is not implemented as described. The repo has a lightweight in-process orchestrator + agent registry.
+- **Spec §11 API contract** is partial and lacks a published OpenAPI contract; some endpoints are ad-hoc.
+- **Security/ops posture (spec §16–17)** is still MVP: CORS/headers/body limits/log redaction/request IDs/rate limits are inconsistent and not enforced as a platform standard.
+- **Platform matrix (spec §5.1)** is not implemented (no Flutter/React Native/Electron desktop builds). That’s okay for MVP, but it must be explicitly labeled as “web-first MVP” in docs/marketing to avoid over-promise.
+
+### Iter87 goals
+
+1. Lock down **production posture basics**: request validation, payload caps, rate limits, CORS, security headers, log redaction, structured request IDs.
+2. Make the API a **real contract**: OpenAPI + endpoint parity tracker (what exists vs spec).
+3. Clarify **spec vs MVP** in docs/marketing so we don’t over-promise.
+
+Non-goals:
+
+- Re-platforming to the full K8s agent mesh or gRPC.
+- Payment rails (Stripe/IAP) beyond stubs.
+- Rewriting client to Flutter/RN.
+
+### P0 (Must do)
+
+1. **Global API hardening: payload limits + consistent error envelope**
+
+- Acceptance criteria:
+  - Express sets JSON body size limit (e.g., 1–2MB) with clear `413` response.
+  - All routes return a consistent error envelope: `{ error: { code, message, requestId } }`.
+  - Add tests for oversized payload and envelope shape.
+- Likely files:
+  - `apps/api/src/index.ts` or `apps/api/src/app.ts`
+  - `apps/api/src/errors.ts`
+  - `apps/api/src/__tests__/error-envelope.test.ts`
+
+2. **Security headers + CORS production config**
+
+- Acceptance criteria:
+  - `Helmet` (or equivalent) enabled with safe defaults.
+  - CORS locked down by env allowlist (dev: localhost; prod: explicit origins).
+  - Add a small doc snippet describing required env vars.
+- Likely files:
+  - `apps/api/src/app.ts`
+  - `apps/api/src/config.ts`
+  - `apps/docs/pages/privacy-security.md`
+
+3. **No-secrets-in-logs gate (regression tests) + requestId propagation**
+
+- Acceptance criteria:
+  - Every request has a `requestId` (header in/out, included in error envelope and logs).
+  - Add a test that asserts API key material is redacted from logs (at least: `Authorization`, `apiKey` fields).
+  - Add a lint-ish test for redaction helper (unit test).
+- Likely files:
+  - `apps/api/src/app.ts`
+  - `apps/api/src/utils/redact.ts`
+  - `apps/api/src/__tests__/redaction.test.ts`
+
+4. **Rate limiting: enforce spec-tier defaults on chat + course creation**
+
+- Acceptance criteria:
+  - Free tier: 100 req/min; Pro: 500 req/min (spec §11/WS-07).
+  - Rate limit headers returned (`Retry-After` at minimum).
+  - Tests cover both tiers.
+- Likely files:
+  - `apps/api/src/middleware/rateLimit.ts` (or existing)
+  - `apps/api/src/routes/chat.ts`, `apps/api/src/routes/courses.ts`
+  - `apps/api/src/__tests__/rate-limit.test.ts`
+
+5. **OpenAPI contract (published) + endpoint parity tracker**
+
+- Acceptance criteria:
+  - Generate OpenAPI for current REST endpoints (at least auth/profile/courses/lessons/pipeline/notifications/update-agent/export/usage).
+  - Add `apps/docs/pages/api.md` (or `docs/api.md`) with:
+    - link to OpenAPI
+    - “Spec endpoints vs implemented endpoints” table
+    - explicit `501 Not Implemented` stubs for top 3 missing spec endpoints (so clients fail loudly).
+- Likely files:
+  - `apps/api/src/openapi.ts` (or config)
+  - `apps/api/src/routes/*`
+  - `apps/docs/pages/api.md`
+
+6. **WebSocket contract hardening: ids + ordering invariants**
+
+- Acceptance criteria:
+  - Every WS event includes `{ requestId, messageId }` consistently.
+  - Add contract tests for:
+    - invalid JSON
+    - timeout
+    - reconnect does not duplicate `response.end` for the same message
+- Likely files:
+  - `apps/api/src/wsOrchestrator.ts`
+  - `apps/api/src/__tests__/ws-contract.test.ts`
+
+### P1 (Should do)
+
+7. **MVP spec clarity: update marketing/docs to match “web-first MVP” reality**
+
+- Acceptance criteria:
+  - Marketing pages and docs clearly state supported platforms in this repo (web + dev servers), and label mobile/desktop as “future”.
+  - Remove/qualify any claims about Flutter/RN/Electron binaries if not present.
+- Likely files:
+  - `apps/web/src/app/*`
+  - `apps/docs/pages/getting-started.md` (or similar)
+  - `IMPLEMENTED_VS_SPEC.md` (bump iteration number + update §14 summary)
+
+8. **Accessibility pass for drawers/modals (Escape + focus trap + ARIA labels)**
+
+- Acceptance criteria:
+  - Sources drawer and any modals: Escape closes; focus is trapped; `aria-labelledby` set.
+  - Add one RTL test that verifies Escape closes the drawer.
+- Likely files:
+  - `apps/client/src/components/SourcesDrawer.tsx`
+  - `apps/client/src/__tests__/sourcesDrawer.a11y.test.tsx`
+
+9. **Orchestrator transparency (MVP): surface agent results + token usage consistently**
+
+- Acceptance criteria:
+  - Conversation UI shows a consistent “Details” panel per message: agents invoked + provider + token counts (best-effort).
+  - API includes these fields in `response.end`.
+- Likely files:
+  - `packages/core/src/orchestrator/orchestrator.ts`
+  - `apps/api/src/routes/chat.ts`
+  - `apps/client/src/screens/Conversation.tsx`
+
+### P2 (Nice to have)
+
+10. **Crypto modernization for key vault (GCM) + migration**
+
+- Acceptance criteria:
+  - New API key writes use AES-256-GCM (or libsodium sealed boxes), while supporting legacy decrypt.
+  - Add tests for migration behavior.
+- Likely files:
+  - `apps/api/src/crypto.ts`
+  - `apps/api/src/routes/keys.ts`
+
+11. **Observability MVP: structured JSON logs + correlation fields**
+
+- Acceptance criteria:
+  - Logs include `requestId`, `userId` (or hash), `origin`, and route name.
+  - One doc page explains how to grep logs for a given requestId.
+- Likely files:
+  - `apps/api/src/logger.ts`
+  - `apps/docs/pages/ops.md`
+
+### Screenshot checklist (Iter87)
+
+- `app-settings.png` (privacy/usage/update agent panels visible)
+- `app-conversation.png` (WS activity + sources entrypoint)
+- `pipeline-detail.png` (milestones visible)
+- `landing-home.png` (marketing hero + nav)
+
+### Verification checklist (Iter87)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
+- Screenshot run:
+  - `SCREENSHOT_DIR=screenshots/iter87/planner-run node screenshot-all.mjs`
+- OneDrive sync (if available):
+  - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter87/planner-run/`
