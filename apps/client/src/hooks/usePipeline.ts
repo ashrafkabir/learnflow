@@ -26,6 +26,18 @@ export interface PipelineSource {
   author?: string;
   publishDate?: string;
   credibilityScore?: number;
+  provider?: string;
+  summary?: string;
+}
+
+export interface SourceCard {
+  title: string;
+  url: string;
+  provider: string;
+  summary: string;
+  relevance: string;
+  keyConcepts: string[];
+  accessedAt: string;
 }
 
 export interface LessonSynthesis {
@@ -65,6 +77,7 @@ export interface PipelineState {
   logs?: Array<{ ts: string; level: 'info' | 'warn' | 'error'; message: string }>;
   crawlThreads: CrawlThread[];
   sources?: PipelineSource[];
+  sourceCards?: SourceCard[];
   synthesisSummary?: string;
   organizedSources: number;
   deduplicatedCount: number;

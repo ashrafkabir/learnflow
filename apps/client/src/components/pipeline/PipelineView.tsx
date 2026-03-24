@@ -3,6 +3,7 @@ import type { PipelineState, PipelineStage } from '../../hooks/usePipeline.js';
 import { StageColumn } from './StageColumn.js';
 import { CrawlThreadList } from './CrawlThreadList.js';
 import { SourceList } from './SourceList.js';
+import { SourceCards } from './SourceCards.js';
 import { SynthesisList } from './SynthesisList.js';
 import { QualityCheckList } from './QualityCheckList.js';
 import { OrganizingView } from './OrganizingView.js';
@@ -279,7 +280,13 @@ export function PipelineView({
                     <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-1">
                       Sources discovered
                     </p>
-                    <SourceList sources={state.sources} />
+                    <SourceCards cards={state.sourceCards} />
+                    <div className="mt-3">
+                      <p className="text-[11px] font-semibold text-gray-700 dark:text-gray-200 mb-1">
+                        Raw sources
+                      </p>
+                      <SourceList sources={state.sources} />
+                    </div>
                   </div>
                 </div>
               )}

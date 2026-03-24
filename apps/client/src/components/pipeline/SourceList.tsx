@@ -24,11 +24,16 @@ export function SourceList({ sources }: { sources?: PipelineSource[] }) {
             {s.title || s.url}
           </a>
           <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-            {(s.domain || '').toUpperCase()}
+            {(s.provider || s.domain || '').toUpperCase()}
             {s.author ? ` · ${s.author}` : ''}
             {s.publishDate ? ` · ${new Date(s.publishDate).getFullYear()}` : ''}
             {typeof s.credibilityScore === 'number' ? ` · score ${s.credibilityScore}` : ''}
           </div>
+          {s.summary ? (
+            <div className="text-[11px] text-gray-600 dark:text-gray-300 mt-1 line-clamp-3">
+              {s.summary}
+            </div>
+          ) : null}
         </div>
       ))}
       {safe.length > 12 && (

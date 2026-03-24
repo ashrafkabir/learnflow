@@ -35,6 +35,7 @@
   },
   "packageManager": "npm@10.9.4",
   "dependencies": {
+    "openai": "^6.32.0",
     "ws": "^8.19.0"
   }
 }

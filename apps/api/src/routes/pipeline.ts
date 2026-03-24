@@ -14,6 +14,11 @@ import { getAdminSearchConfig } from '../lib/search-config.js';
 import { makeStage1Log, makeStage2Log, makeLayerLog } from '../lib/search-run-log.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
+import {
+  buildSourceCards,
+  selectFurtherReadingCards,
+  formatFurtherReadingBlock,
+} from '../utils/sourceCards.js';
 
 const router = Router();
 
@@ -68,6 +73,19 @@ export interface PipelineSource {
   author?: string;
   publishDate?: string;
   credibilityScore?: number;
+  provider?: string;
+  /** short snippet/summary from search provider or scraped preview */
+  summary?: string;
+}
+
+export interface SourceCard {
+  title: string;
+  url: string;
+  provider: string;
+  summary: string;
+  relevance: string;
+  keyConcepts: string[];
+  accessedAt: string;
 }
 
 export interface PipelineState {
@@ -92,6 +110,8 @@ export interface PipelineState {
   // Stage data
   crawlThreads: CrawlThread[];
   sources?: PipelineSource[];
+  /** Rich per-result source cards (Iter73): shown live in UI + used for Further Reading blocks */
+  sourceCards?: SourceCard[];
   /**
    * Search run documentation for course creation (Iter68):
    * - stage 1: topic trending queries
@@ -450,6 +470,8 @@ async function runAddTopicPipeline(pipelineId: string) {
         author: s.author,
         publishDate: s.publishDate || undefined,
         credibilityScore: s.credibilityScore,
+        provider: (s as any).provider || s.source || s.domain,
+        summary: (s.content || '').slice(0, 240),
       })),
     });
 
@@ -482,6 +504,8 @@ async function runAddTopicPipeline(pipelineId: string) {
         author: s.author,
         publishDate: s.publishDate || undefined,
         credibilityScore: s.credibilityScore,
+        provider: (s as any).provider || s.source || s.domain,
+        summary: (s.content || '').slice(0, 240),
       })),
     });
 
@@ -538,7 +562,11 @@ async function runAddTopicPipeline(pipelineId: string) {
     `A focused, practical introduction to ${topic} for learners already following this course.`,
     uniqueSources.slice(0, 8),
   );
-  const content = gen.markdown;
+  const cards = buildSourceCards(uniqueSources, topic, { accessedAt: p.startedAt, limit: 40 });
+  updatePipeline(p, { sourceCards: cards });
+
+  const further = selectFurtherReadingCards(cards, { min: 2, max: 5 });
+  const content = `${gen.markdown}${formatFurtherReadingBlock(further)}`;
   const wc = content.split(/\s+/).filter((w: string) => w).length;
 
   syntheses[0].status = 'done';
@@ -766,6 +794,8 @@ async function runPipeline(pipelineId: string) {
       author: s.author,
       publishDate: s.publishDate || undefined,
       credibilityScore: s.credibilityScore,
+      provider: (s as any).provider || s.source || s.domain,
+      summary: (s.content || '').slice(0, 240),
     })),
   });
 
@@ -971,6 +1001,18 @@ async function runPipeline(pipelineId: string) {
           lessonSources = uniqueSources.slice(0, 6);
         }
 
+        // Update live source cards for UI and downstream Further Reading blocks.
+        const cards = buildSourceCards(
+          lessonSources,
+          `${topic} / ${modules[mi].title} / ${les.title}`,
+          {
+            accessedAt: p.startedAt,
+            limit: 40,
+          },
+        );
+        updatePipeline(p, { sourceCards: cards });
+        const further = selectFurtherReadingCards(cards, { min: 2, max: 5 });
+
         let content = '';
         let wc = 0;
         const MIN_WORDS = 500;
@@ -993,6 +1035,7 @@ async function runPipeline(pipelineId: string) {
               minWordHint,
               temp,
             );
+            content = `${content}${formatFurtherReadingBlock(further)}`;
           } catch (err: any) {
             const statusCode = extractStatusCode(err);
             const msg = safeErrorMessage(err);
@@ -1024,6 +1067,7 @@ async function runPipeline(pipelineId: string) {
         // If still short after retries, use enhanced fallback
         if (wc < MIN_WORDS) {
           content = generateEnhancedFallback(topic, modules[mi].title, les.title, les.description);
+          content = `${content}${formatFurtherReadingBlock(further)}`;
           wc = content.split(/\s+/).filter((w) => w).length;
         }
 
@@ -1042,12 +1086,15 @@ async function runPipeline(pipelineId: string) {
       } catch {
         syntheses[synthIdx].status = 'failed';
         syntheses[synthIdx].wordCount = 0;
-        const fallback = generateEnhancedFallback(
+        let fallback = generateEnhancedFallback(
           topic,
           modules[mi].title,
           les.title,
           les.description,
         );
+        // best-effort: in case further-reading cards weren't computed (unexpected early failure)
+        const bestEffortFurther = selectFurtherReadingCards(p.sourceCards || []);
+        fallback = `${fallback}${formatFurtherReadingBlock(bestEffortFurther)}`;
         const wc = fallback.split(/\s+/).filter((w) => w).length;
         allLessons.push({
           id: lessonId,

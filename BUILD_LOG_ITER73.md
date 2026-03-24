@@ -67,3 +67,12 @@ P0–P2, in order.
 - Updated fastTestMode lesson markdown to satisfy quality gates deterministically.
 - Added regression tests: `apps/api/src/__tests__/iter73-lesson-quality-gates.test.ts`.
 - Screenshots: `screenshots/iter73/run-1` and `run-2`.
+
+## Iteration 73 - Source Cards + Further Reading (run-4)
+- Added persisted `sourceCards` in pipeline state: title/url/provider/summary/relevance/keyConcepts/accessedAt.
+- UI: Sources tab now renders Source Cards with clickable links + tags; raw source list remains below.
+- Lessons now append a `## Further Reading` block with best 2–5 source cards.
+- Search providers: results carry provider (`r.source`) into crawled sources (`FirecrawlSource.provider`), so Tavily/free providers both attribute properly.
+- Checks: turbo test ✅, npx tsc -b ✅, turbo lint ✅, prettier ✅.
+- Screenshots: `screenshots/iter73/run-4` (pipeline-detail.png updated).
+

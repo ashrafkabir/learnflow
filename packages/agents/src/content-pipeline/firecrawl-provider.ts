@@ -15,6 +15,8 @@ export interface FirecrawlSource {
   recencyScore: number;
   wordCount: number;
   domain: string;
+  /** optional: upstream provider that produced this result (e.g., tavily, wikipedia, reddit) */
+  provider?: string;
 }
 
 export interface FirecrawlSearchResult {
@@ -22,6 +24,8 @@ export interface FirecrawlSearchResult {
   title: string;
   description: string;
   markdown?: string;
+  /** optional: provider id for web-search derived results (e.g., tavily, wikipedia) */
+  source?: string;
 }
 
 export interface FirecrawlConfig {

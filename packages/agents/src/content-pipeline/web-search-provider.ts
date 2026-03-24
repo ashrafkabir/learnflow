@@ -114,6 +114,7 @@ function toSourcesFromSearchResults(
       recencyScore: 0.5,
       wordCount: content.split(/\s+/).filter(Boolean).length,
       domain,
+      provider: r.source,
     };
   });
 }
