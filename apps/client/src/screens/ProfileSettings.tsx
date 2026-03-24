@@ -34,6 +34,9 @@ export function ProfileSettings() {
       label: string;
       usageCount?: number;
       lastUsed?: string;
+      validatedAt?: string;
+      lastValidationStatus?: string;
+      lastValidationError?: string;
     }>
   >([]);
 
@@ -354,25 +357,48 @@ export function ProfileSettings() {
                           {k.maskedKey}
                         </span>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          try {
-                            await apiDelete(`/keys/${k.provider}`);
-                            setSavedKeys(savedKeys.filter((sk) => sk.provider !== k.provider));
-                            toast('Key removed', 'success');
-                          } catch {
-                            toast('Failed to remove key', 'error');
-                          }
-                        }}
-                        className="text-red-700 hover:text-red-800"
-                      >
-                        Remove
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await apiPost('/keys/validate-saved', { provider: k.provider });
+                              // Refresh list to pull latest validatedAt/status
+                              const data = await apiGet('/keys');
+                              if (data?.keys) setSavedKeys(data.keys);
+                              toast('Key validated', 'success');
+                            } catch (err) {
+                              const msg =
+                                err && typeof err === 'object' && 'message' in err
+                                  ? String((err as any).message)
+                                  : 'Failed to validate key';
+                              toast(msg, 'error');
+                            }
+                          }}
+                        >
+                          Validate
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              await apiDelete(`/keys/${k.provider}`);
+                              setSavedKeys(savedKeys.filter((sk) => sk.provider !== k.provider));
+                              toast('Key removed', 'success');
+                            } catch {
+                              toast('Failed to remove key', 'error');
+                            }
+                          }}
+                          className="text-red-700 hover:text-red-800"
+                        >
+                          Remove
+                        </Button>
+                      </div>
                     </div>
                     {/* Usage stats — Task 12 */}
-                    <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-300">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-300">
                       <span className="inline-flex items-center gap-1">
                         <IconChart className="w-4 h-4" />
                         Used {k.usageCount ?? 0} times this month
@@ -384,6 +410,14 @@ export function ProfileSettings() {
                         />
                         Last used:{' '}
                         {k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never'}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <IconCheck className="w-4 h-4" />
+                        {k.lastValidationStatus === 'valid'
+                          ? `Validated ${k.validatedAt ? new Date(k.validatedAt).toLocaleDateString() : ''}`
+                          : k.lastValidationStatus === 'invalid'
+                            ? 'Validation failed'
+                            : 'Not validated'}
                       </span>
                     </div>
                     <div className="mt-1.5 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
@@ -450,6 +484,9 @@ export function ProfileSettings() {
                       label: data.label,
                       usageCount: 0,
                       lastUsed: undefined,
+                      validatedAt: undefined,
+                      lastValidationStatus: undefined,
+                      lastValidationError: undefined,
                     },
                   ]);
                   setApiKey('');

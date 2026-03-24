@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
-import { encrypt } from './crypto.js';
+import { decrypt, encrypt } from './crypto.js';
 import { db, DbApiKey } from './db.js';
 import { sendError } from './errors.js';
 import { validateBody, validateParams } from './validation.js';
@@ -19,6 +19,10 @@ const addKeySchema = z.object({
 const validateKeySchema = z.object({
   provider: z.enum(PROVIDERS),
   apiKey: z.string().min(1),
+});
+
+const validateSavedKeySchema = z.object({
+  provider: z.enum(PROVIDERS),
 });
 
 const deleteKeySchema = z.object({
@@ -105,6 +109,9 @@ router.get('/', (req: Request, res: Response) => {
       createdAt: k.createdAt,
       usageCount,
       lastUsed: lastUsed ? lastUsed.toISOString() : undefined,
+      validatedAt: k.validatedAt ? k.validatedAt.toISOString() : undefined,
+      lastValidationStatus: k.lastValidationStatus || undefined,
+      lastValidationError: k.lastValidationError || undefined,
     };
   });
 
@@ -143,6 +150,91 @@ router.post('/validate', validateBody(validateKeySchema), (req: Request, res: Re
 
   res.status(200).json({ valid: true });
 });
+
+/** POST /api/v1/keys/validate-saved — validate the active saved key for a provider (best-effort network call) */
+router.post(
+  '/validate-saved',
+  validateBody(validateSavedKeySchema),
+  async (req: Request, res: Response) => {
+    const userId = req.user!.sub;
+    const provider = req.body.provider as (typeof PROVIDERS)[number];
+
+    const keys = db.getKeysByUserId(userId);
+    const active = keys.find((k) => k.active && k.provider === provider);
+    if (!active) {
+      sendError(res, req, {
+        status: 404,
+        code: 'not_found',
+        message: 'No active key for provider',
+      });
+      return;
+    }
+
+    // Format validation first.
+    try {
+      // Provider ping requires plaintext. Decrypt server-side only.
+      const plaintext = decrypt(active.encryptedKey, active.iv);
+
+      // reuse existing format patterns
+      const patterns: Record<(typeof PROVIDERS)[number], RegExp | null> = {
+        openai: /^sk-[A-Za-z0-9_-]{20,}$/,
+        anthropic: /^sk-ant-[A-Za-z0-9_-]{20,}$/,
+        google: /^(AI|AIza)[A-Za-z0-9_-]{20,}$/,
+        mistral: /^[A-Za-z0-9_-]{20,}$/,
+        groq: /^gsk_[A-Za-z0-9_-]{20,}$/,
+        ollama: null,
+        tavily: null,
+      };
+
+      const pattern = patterns[provider];
+      if (pattern && !pattern.test(plaintext)) {
+        db.updateApiKeyValidation({
+          userId,
+          keyId: active.id,
+          status: 'invalid',
+          error: 'Invalid key format',
+        });
+        sendError(res, req, {
+          status: 400,
+          code: 'invalid_key',
+          message: `Invalid ${provider} API key format`,
+          details: { reason: 'format' },
+        });
+        return;
+      }
+
+      // Provider-specific ping (minimal, short timeout). Keep best-effort.
+      // In tests, skip network validation for determinism.
+      const startedAt = Date.now();
+      const isTest = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
+
+      if (!isTest && provider === 'openai') {
+        const OpenAI = (await import('openai')).default;
+        const client = new OpenAI({ apiKey: plaintext, timeout: 8000 } as any);
+        // A tiny call: list models (or just retrieve a known model). Some environments restrict this.
+        await client.models.list();
+      }
+
+      db.updateApiKeyValidation({ userId, keyId: active.id, status: 'valid' });
+      res.status(200).json({
+        ok: true,
+        provider,
+        validatedAt: new Date().toISOString(),
+        ms: Date.now() - startedAt,
+        networkValidated: !isTest && provider === 'openai',
+      });
+    } catch (err: any) {
+      const msg = err?.message ? String(err.message) : 'Validation failed';
+      db.updateApiKeyValidation({ userId, keyId: active.id, status: 'invalid', error: msg });
+      sendError(res, req, {
+        status: 400,
+        code: 'validation_failed',
+        message: 'Failed to validate key with provider',
+        details: { provider, error: msg },
+      });
+    }
+  },
+);
 
 /** DELETE /api/v1/keys/:provider — delete a provider key */
 router.delete('/:provider', validateParams(deleteKeySchema), (req: Request, res: Response) => {
