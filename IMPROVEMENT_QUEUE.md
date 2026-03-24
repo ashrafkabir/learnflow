@@ -2560,7 +2560,20 @@ The MVP now covers most **screen surface area** (spec §5 + §12) and has real �
 - **Security/ops posture (spec §16–17)** is still MVP: CORS/headers/body limits/log redaction/request IDs/rate limits are inconsistent and not enforced as a platform standard.
 - **Platform matrix (spec §5.1)** is not implemented (no Flutter/React Native/Electron desktop builds). That’s okay for MVP, but it must be explicitly labeled as “web-first MVP” in docs/marketing to avoid over-promise.
 
-### Iter87 goals
+### Iter87 goals ✅ DONE (2026-03-24)
+
+Evidence:
+
+- Commit: `210694ac3c53baa611968d94b0a32fb1d829f12d`
+- Tests: `npm test` (pass), `npx tsc --noEmit`, `npx eslint .`, `npx prettier --check .`
+- OpenAPI lint: `npm run -w @learnflow/api openapi:lint`
+
+What shipped:
+
+- API hardening: Helmet headers, payload limits, strict CORS allowlist (prod) / permissive (devMode)
+- Error envelope: 413 payload-too-large mapped into standard `{ error, requestId }`
+- Rate limiting hygiene: route-scoped limiter keys; optional extra write rate limiter (env-configured)
+- Contract hygiene: OpenAPI updated for missing endpoints + added parse test
 
 1. Lock down **production posture basics**: request validation, payload caps, rate limits, CORS, security headers, log redaction, structured request IDs.
 2. Make the API a **real contract**: OpenAPI + endpoint parity tracker (what exists vs spec).
