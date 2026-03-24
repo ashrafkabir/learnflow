@@ -25,6 +25,34 @@ function hasColumn(table: string, column: string): boolean {
 // Legacy DBs may miss new columns; add them safely on startup.
 if (!isTest) {
   try {
+    // Iter83: notifications trust-loop columns
+    try {
+      if (!hasColumn('notifications', 'topic')) {
+        sqlite.exec(`ALTER TABLE notifications ADD COLUMN topic TEXT NOT NULL DEFAULT '';`);
+      }
+      if (!hasColumn('notifications', 'sourceUrl')) {
+        sqlite.exec(`ALTER TABLE notifications ADD COLUMN sourceUrl TEXT NOT NULL DEFAULT '';`);
+      }
+      if (!hasColumn('notifications', 'sourceDomain')) {
+        sqlite.exec(`ALTER TABLE notifications ADD COLUMN sourceDomain TEXT NOT NULL DEFAULT '';`);
+      }
+      if (!hasColumn('notifications', 'checkedAt')) {
+        sqlite.exec(`ALTER TABLE notifications ADD COLUMN checkedAt TEXT;`);
+      }
+      if (!hasColumn('notifications', 'explanation')) {
+        sqlite.exec(`ALTER TABLE notifications ADD COLUMN explanation TEXT NOT NULL DEFAULT '';`);
+      }
+      if (!hasColumn('notifications', 'url')) {
+        sqlite.exec(`ALTER TABLE notifications ADD COLUMN url TEXT NOT NULL DEFAULT '';`);
+      }
+      // Index for dedupe (best-effort)
+      sqlite.exec(
+        `CREATE INDEX IF NOT EXISTS idx_notifications_user_url ON notifications(userId, url);`,
+      );
+    } catch {
+      // If notifications doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
     if (!hasColumn('users', 'onboardingCompletedAt')) {
       sqlite.exec(`ALTER TABLE users ADD COLUMN onboardingCompletedAt TEXT;`);
     }
@@ -373,7 +401,7 @@ sqlite.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_collab_messages_group_created ON collaboration_group_messages(groupId, createdAt);
 
-  -- Pro Update Agent notifications (Iter70): durable notification feed
+  -- Pro Update Agent notifications (Iter70+83): durable notification feed + trust loop metadata
   CREATE TABLE IF NOT EXISTS notifications (
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL,
@@ -381,10 +409,43 @@ sqlite.exec(`
     title TEXT NOT NULL,
     body TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL,
-    readAt TEXT
+    readAt TEXT,
+    -- Iter83: trust loop
+    topic TEXT NOT NULL DEFAULT '',
+    sourceUrl TEXT NOT NULL DEFAULT '',
+    sourceDomain TEXT NOT NULL DEFAULT '',
+    checkedAt TEXT,
+    explanation TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(userId, createdAt);
   CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(userId, readAt);
+  CREATE INDEX IF NOT EXISTS idx_notifications_user_url ON notifications(userId, url);
+
+  -- Iter83: Update Agent monitoring configuration
+  CREATE TABLE IF NOT EXISTS update_agent_topics (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    topic TEXT NOT NULL,
+    createdAt TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_update_agent_topics_user ON update_agent_topics(userId);
+
+  CREATE TABLE IF NOT EXISTS update_agent_sources (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    topicId TEXT NOT NULL,
+    url TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    lastCheckedAt TEXT,
+    lastSuccessAt TEXT,
+    lastError TEXT NOT NULL DEFAULT '',
+    lastErrorAt TEXT,
+    lastItemUrlSeen TEXT NOT NULL DEFAULT '',
+    lastItemPublishedAt TEXT
+  );
+  CREATE INDEX IF NOT EXISTS idx_update_agent_sources_user ON update_agent_sources(userId);
+  CREATE INDEX IF NOT EXISTS idx_update_agent_sources_topic ON update_agent_sources(topicId);
 
   CREATE TABLE IF NOT EXISTS token_usage (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -551,7 +612,7 @@ const stmts = {
 
   // Notifications (Update Agent)
   insertNotification: sqlite.prepare(
-    `INSERT OR REPLACE INTO notifications (id, userId, type, title, body, createdAt, readAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO notifications (id, userId, type, title, body, createdAt, readAt, topic, sourceUrl, sourceDomain, checkedAt, explanation, url) VALUES (@id, @userId, @type, @title, @body, @createdAt, @readAt, @topic, @sourceUrl, @sourceDomain, @checkedAt, @explanation, @url)`,
   ),
   listNotificationsByUser: sqlite.prepare(
     `SELECT * FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
@@ -564,6 +625,37 @@ const stmts = {
   ),
   markNotificationRead: sqlite.prepare(
     `UPDATE notifications SET readAt = ? WHERE id = ? AND userId = ?`,
+  ),
+  markAllNotificationsRead: sqlite.prepare(
+    `UPDATE notifications SET readAt = ? WHERE userId = ? AND readAt IS NULL`,
+  ),
+  hasNotificationByUserAndUrl: sqlite.prepare(
+    `SELECT id FROM notifications WHERE userId = ? AND url = ? LIMIT 1`,
+  ),
+
+  // Update Agent
+  upsertUpdateAgentTopic: sqlite.prepare(
+    `INSERT OR REPLACE INTO update_agent_topics (id, userId, topic, createdAt) VALUES (?, ?, ?, ?)`,
+  ),
+  listUpdateAgentTopicsByUser: sqlite.prepare(
+    `SELECT * FROM update_agent_topics WHERE userId = ? ORDER BY createdAt DESC`,
+  ),
+  deleteUpdateAgentTopic: sqlite.prepare(
+    `DELETE FROM update_agent_topics WHERE id = ? AND userId = ?`,
+  ),
+
+  upsertUpdateAgentSource: sqlite.prepare(
+    `INSERT OR REPLACE INTO update_agent_sources (id, userId, topicId, url, createdAt, lastCheckedAt, lastSuccessAt, lastError, lastErrorAt, lastItemUrlSeen, lastItemPublishedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ),
+  listUpdateAgentSourcesByTopic: sqlite.prepare(
+    `SELECT * FROM update_agent_sources WHERE userId = ? AND topicId = ? ORDER BY createdAt DESC`,
+  ),
+  deleteUpdateAgentSource: sqlite.prepare(
+    `DELETE FROM update_agent_sources WHERE id = ? AND userId = ?`,
+  ),
+  updateUpdateAgentSourceStatus: sqlite.prepare(
+    `UPDATE update_agent_sources SET lastCheckedAt = ?, lastSuccessAt = ?, lastError = ?, lastErrorAt = ?, lastItemUrlSeen = ?, lastItemPublishedAt = ? WHERE id = ? AND userId = ?`,
   ),
 
   // Lesson sources
@@ -1049,6 +1141,98 @@ class SqliteDb {
     return row?.total || 0;
   }
 
+  // Update Agent
+  upsertUpdateAgentTopic(row: {
+    id: string;
+    userId: string;
+    topic: string;
+    createdAt: Date;
+  }): void {
+    stmts.upsertUpdateAgentTopic.run(row.id, row.userId, row.topic, row.createdAt.toISOString());
+  }
+
+  listUpdateAgentTopics(userId: string): Array<{ id: string; topic: string; createdAt: string }> {
+    return (stmts.listUpdateAgentTopicsByUser.all(userId) as any[]).map((r) => ({
+      id: String(r.id),
+      topic: String(r.topic || ''),
+      createdAt: String(r.createdAt || ''),
+    }));
+  }
+
+  deleteUpdateAgentTopic(userId: string, id: string): void {
+    stmts.deleteUpdateAgentTopic.run(id, userId);
+  }
+
+  upsertUpdateAgentSource(row: {
+    id: string;
+    userId: string;
+    topicId: string;
+    url: string;
+    createdAt: Date;
+    lastCheckedAt?: Date | null;
+    lastSuccessAt?: Date | null;
+    lastError?: string;
+    lastErrorAt?: Date | null;
+    lastItemUrlSeen?: string;
+    lastItemPublishedAt?: string | null;
+  }): void {
+    stmts.upsertUpdateAgentSource.run(
+      row.id,
+      row.userId,
+      row.topicId,
+      row.url,
+      row.createdAt.toISOString(),
+      row.lastCheckedAt ? row.lastCheckedAt.toISOString() : null,
+      row.lastSuccessAt ? row.lastSuccessAt.toISOString() : null,
+      row.lastError || '',
+      row.lastErrorAt ? row.lastErrorAt.toISOString() : null,
+      row.lastItemUrlSeen || '',
+      row.lastItemPublishedAt || null,
+    );
+  }
+
+  listUpdateAgentSources(userId: string, topicId: string): Array<any> {
+    return (stmts.listUpdateAgentSourcesByTopic.all(userId, topicId) as any[]).map((r) => ({
+      id: String(r.id),
+      userId: String(r.userId),
+      topicId: String(r.topicId),
+      url: String(r.url),
+      createdAt: String(r.createdAt),
+      lastCheckedAt: r.lastCheckedAt ? String(r.lastCheckedAt) : null,
+      lastSuccessAt: r.lastSuccessAt ? String(r.lastSuccessAt) : null,
+      lastError: String(r.lastError || ''),
+      lastErrorAt: r.lastErrorAt ? String(r.lastErrorAt) : null,
+      lastItemUrlSeen: String(r.lastItemUrlSeen || ''),
+      lastItemPublishedAt: r.lastItemPublishedAt ? String(r.lastItemPublishedAt) : null,
+    }));
+  }
+
+  deleteUpdateAgentSource(userId: string, id: string): void {
+    stmts.deleteUpdateAgentSource.run(id, userId);
+  }
+
+  updateUpdateAgentSourceStatus(args: {
+    userId: string;
+    id: string;
+    lastCheckedAt?: Date | null;
+    lastSuccessAt?: Date | null;
+    lastError?: string;
+    lastErrorAt?: Date | null;
+    lastItemUrlSeen?: string;
+    lastItemPublishedAt?: string | null;
+  }): void {
+    stmts.updateUpdateAgentSourceStatus.run(
+      args.lastCheckedAt ? args.lastCheckedAt.toISOString() : null,
+      args.lastSuccessAt ? args.lastSuccessAt.toISOString() : null,
+      args.lastError || '',
+      args.lastErrorAt ? args.lastErrorAt.toISOString() : null,
+      args.lastItemUrlSeen || '',
+      args.lastItemPublishedAt || null,
+      args.id,
+      args.userId,
+    );
+  }
+
   // Notifications (Update Agent)
   addNotification(row: {
     id: string;
@@ -1058,16 +1242,29 @@ class SqliteDb {
     body?: string;
     createdAt: Date;
     readAt?: Date | null;
+    // Iter83 trust loop fields
+    topic?: string;
+    sourceUrl?: string;
+    sourceDomain?: string;
+    checkedAt?: Date | null;
+    explanation?: string;
+    url?: string;
   }): void {
-    stmts.insertNotification.run(
-      row.id,
-      row.userId,
-      row.type || 'update',
-      row.title,
-      row.body || '',
-      row.createdAt.toISOString(),
-      row.readAt ? row.readAt.toISOString() : null,
-    );
+    stmts.insertNotification.run({
+      id: row.id,
+      userId: row.userId,
+      type: row.type || 'update',
+      title: row.title,
+      body: row.body || '',
+      createdAt: row.createdAt.toISOString(),
+      readAt: row.readAt ? row.readAt.toISOString() : null,
+      topic: row.topic || '',
+      sourceUrl: row.sourceUrl || '',
+      sourceDomain: row.sourceDomain || '',
+      checkedAt: row.checkedAt ? row.checkedAt.toISOString() : null,
+      explanation: row.explanation || '',
+      url: row.url || '',
+    });
   }
 
   listNotifications(userId: string, limit = 50): Array<any> {
@@ -1079,11 +1276,26 @@ class SqliteDb {
       body: String(r.body || ''),
       createdAt: String(r.createdAt || ''),
       readAt: r.readAt ? String(r.readAt) : null,
+      topic: String(r.topic || ''),
+      sourceUrl: String(r.sourceUrl || ''),
+      sourceDomain: String(r.sourceDomain || ''),
+      checkedAt: r.checkedAt ? String(r.checkedAt) : null,
+      explanation: String(r.explanation || ''),
+      url: String(r.url || ''),
     }));
   }
 
   markNotificationRead(userId: string, id: string): void {
     stmts.markNotificationRead.run(new Date().toISOString(), id, userId);
+  }
+
+  markAllNotificationsRead(userId: string): void {
+    stmts.markAllNotificationsRead.run(new Date().toISOString(), userId);
+  }
+
+  hasNotificationUrl(userId: string, url: string): boolean {
+    const row = stmts.hasNotificationByUserAndUrl.get(userId, url) as any;
+    return Boolean(row?.id);
   }
 
   clear(): void {

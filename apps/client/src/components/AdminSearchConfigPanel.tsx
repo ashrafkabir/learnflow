@@ -129,7 +129,9 @@ export function AdminSearchConfigPanel() {
     >
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Admin</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Admin Search Config
+          </h2>
           <p className="text-xs text-gray-700 dark:text-gray-300 mt-1">
             Configure the web searches used during course creation.
           </p>

@@ -111,6 +111,14 @@ export interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
+  meta?: {
+    topic?: string;
+    url?: string;
+    sourceUrl?: string;
+    sourceDomain?: string;
+    checkedAt?: string | null;
+    explanation?: string;
+  };
 }
 
 // State
@@ -634,6 +642,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
             message: String(row.title || row.body || ''),
             timestamp: row.createdAt || new Date().toISOString(),
             read: Boolean(row.readAt),
+            meta: {
+              topic: String(row.topic || ''),
+              url: String(row.url || ''),
+              sourceUrl: String(row.sourceUrl || ''),
+              sourceDomain: String(row.sourceDomain || ''),
+              checkedAt: row.checkedAt ? String(row.checkedAt) : null,
+              explanation: String(row.explanation || ''),
+            },
           }));
           dispatch({ type: 'SET_NOTIFICATIONS', notifications: mapped });
         }

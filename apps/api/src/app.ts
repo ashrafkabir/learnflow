@@ -17,6 +17,7 @@ import { searchRouter } from './routes/search.js';
 import { exportRouter } from './routes/export.js';
 import { usageRouter } from './routes/usage.js';
 import { notificationsRouter } from './routes/notifications.js';
+import { updateAgentRouter } from './routes/update-agent.js';
 import { yjsRouter } from './yjsRouter.js';
 import { adminSearchConfigRouter } from './routes/admin-search-config.js';
 import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from './middleware.js';
@@ -120,6 +121,7 @@ export function createApp(options?: { devMode?: boolean }) {
   app.use('/api/v1/analytics', protectedAuth, rateLimiter, analyticsRouter);
   app.use('/api/v1/usage', protectedAuth, rateLimiter, usageRouter);
   app.use('/api/v1/notifications', protectedAuth, rateLimiter, notificationsRouter);
+  app.use('/api/v1/update-agent', protectedAuth, rateLimiter, updateAgentRouter);
   app.use('/api/v1/daily', protectedAuth, rateLimiter, dailyRouter);
   app.use('/api/v1/events', protectedAuth, rateLimiter, eventsRouter);
   app.use('/api/v1/pipeline', protectedAuth, rateLimiter, pipelineRouter);

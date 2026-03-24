@@ -637,8 +637,8 @@ export function Dashboard() {
               ) : (
                 <div className="space-y-2">
                   {state.notifications.slice(0, 5).map((n) => (
-                    <div key={n.id} className="flex items-center gap-3 p-2 text-sm group">
-                      <span className="text-accent" aria-hidden>
+                    <div key={n.id} className="flex items-start gap-3 p-2 text-sm group">
+                      <span className="text-accent mt-0.5" aria-hidden>
                         {n.type === 'agent' ? (
                           <IconBrainSpark size={16} />
                         ) : n.type === 'progress' ? (
@@ -647,24 +647,54 @@ export function Dashboard() {
                           <IconSpark size={16} />
                         )}
                       </span>
-                      <span className="flex-1 text-gray-800/80 dark:text-gray-200">
-                        {n.message}
-                      </span>
-                      <span className="text-xs text-gray-300">
-                        {new Date(n.timestamp).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => dispatch({ type: 'DISMISS_NOTIFICATION', id: n.id })}
-                        className="text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100"
-                        aria-label="Dismiss notification"
-                      >
-                        <IconClose size={14} className="text-current" decorative />
-                      </Button>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-gray-800/90 dark:text-gray-100">{n.message}</div>
+                        {(n as any).meta?.sourceDomain || (n as any).meta?.url ? (
+                          <div className="mt-0.5 text-xs text-gray-500 dark:text-gray-300">
+                            <span>
+                              Checked:{' '}
+                              {(n as any).meta?.sourceDomain ||
+                                (n as any).meta?.sourceUrl ||
+                                'unknown'}
+                            </span>
+                            {(n as any).meta?.checkedAt ? (
+                              <span> · {new Date((n as any).meta.checkedAt).toLocaleString()}</span>
+                            ) : null}
+                            {(n as any).meta?.explanation ? (
+                              <div className="mt-0.5">Why: {(n as any).meta.explanation}</div>
+                            ) : null}
+                            {(n as any).meta?.url ? (
+                              <div className="mt-0.5">
+                                <a
+                                  href={(n as any).meta.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-accent hover:underline break-all"
+                                >
+                                  {(n as any).meta.url}
+                                </a>
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-300">
+                          {new Date(n.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => dispatch({ type: 'DISMISS_NOTIFICATION', id: n.id })}
+                          className="text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100"
+                          aria-label="Dismiss notification"
+                        >
+                          <IconClose size={14} className="text-current" decorative />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   {state.courses.length > 0 && (
