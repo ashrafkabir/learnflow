@@ -25,7 +25,65 @@ function hasColumn(table: string, column: string): boolean {
 // Legacy DBs may miss new columns; add them safely on startup.
 if (!isTest) {
   try {
-    // Iter83: notifications trust-loop columns
+    // Iter84: DB hygiene origin flags
+    try {
+      if (!hasColumn('courses', 'origin')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN origin TEXT NOT NULL DEFAULT 'user';`);
+      }
+    } catch {
+      // If courses doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
+    try {
+      if (!hasColumn('notifications', 'origin')) {
+        sqlite.exec(`ALTER TABLE notifications ADD COLUMN origin TEXT NOT NULL DEFAULT 'user';`);
+      }
+    } catch {
+      // If notifications doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
+    // Iter84: Update Agent topics/sources enable + ordering + backoff
+    try {
+      if (!hasColumn('update_agent_topics', 'enabled')) {
+        sqlite.exec(
+          `ALTER TABLE update_agent_topics ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;`,
+        );
+      }
+      if (!hasColumn('update_agent_topics', 'updatedAt')) {
+        sqlite.exec(`ALTER TABLE update_agent_topics ADD COLUMN updatedAt TEXT;`);
+      }
+    } catch {
+      // If update_agent_topics doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
+    try {
+      if (!hasColumn('update_agent_sources', 'enabled')) {
+        sqlite.exec(
+          `ALTER TABLE update_agent_sources ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1;`,
+        );
+      }
+      if (!hasColumn('update_agent_sources', 'position')) {
+        sqlite.exec(
+          `ALTER TABLE update_agent_sources ADD COLUMN position INTEGER NOT NULL DEFAULT 0;`,
+        );
+      }
+      if (!hasColumn('update_agent_sources', 'sourceType')) {
+        sqlite.exec(
+          `ALTER TABLE update_agent_sources ADD COLUMN sourceType TEXT NOT NULL DEFAULT 'rss';`,
+        );
+      }
+      if (!hasColumn('update_agent_sources', 'nextEligibleAt')) {
+        sqlite.exec(`ALTER TABLE update_agent_sources ADD COLUMN nextEligibleAt TEXT;`);
+      }
+      if (!hasColumn('update_agent_sources', 'failureCount')) {
+        sqlite.exec(
+          `ALTER TABLE update_agent_sources ADD COLUMN failureCount INTEGER NOT NULL DEFAULT 0;`,
+        );
+      }
+    } catch {
+      // If update_agent_sources doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
     try {
       if (!hasColumn('notifications', 'topic')) {
         sqlite.exec(`ALTER TABLE notifications ADD COLUMN topic TEXT NOT NULL DEFAULT '';`);
@@ -186,6 +244,7 @@ sqlite.exec(`
     failedAt TEXT,
     failureReason TEXT NOT NULL DEFAULT '',
     failureMessage TEXT NOT NULL DEFAULT '',
+    origin TEXT NOT NULL DEFAULT 'user',
     createdAt TEXT NOT NULL
   );
 
@@ -416,7 +475,8 @@ sqlite.exec(`
     sourceDomain TEXT NOT NULL DEFAULT '',
     checkedAt TEXT,
     explanation TEXT NOT NULL DEFAULT '',
-    url TEXT NOT NULL DEFAULT ''
+    url TEXT NOT NULL DEFAULT '',
+    origin TEXT NOT NULL DEFAULT 'user'
   );
   CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(userId, createdAt);
   CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(userId, readAt);
@@ -427,7 +487,9 @@ sqlite.exec(`
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL,
     topic TEXT NOT NULL,
-    createdAt TEXT NOT NULL
+    enabled INTEGER NOT NULL DEFAULT 1,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_update_agent_topics_user ON update_agent_topics(userId);
 
@@ -436,14 +498,35 @@ sqlite.exec(`
     userId TEXT NOT NULL,
     topicId TEXT NOT NULL,
     url TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    position INTEGER NOT NULL DEFAULT 0,
+    sourceType TEXT NOT NULL DEFAULT 'rss',
     createdAt TEXT NOT NULL,
     lastCheckedAt TEXT,
     lastSuccessAt TEXT,
     lastError TEXT NOT NULL DEFAULT '',
     lastErrorAt TEXT,
     lastItemUrlSeen TEXT NOT NULL DEFAULT '',
-    lastItemPublishedAt TEXT
+    lastItemPublishedAt TEXT,
+    nextEligibleAt TEXT,
+    failureCount INTEGER NOT NULL DEFAULT 0
   );
+
+
+  CREATE TABLE IF NOT EXISTS update_agent_topic_runs (
+    userId TEXT NOT NULL,
+    topicId TEXT NOT NULL,
+    lockId TEXT NOT NULL DEFAULT '',
+    lockedAt TEXT,
+    lastRunAt TEXT,
+    lastRunOk INTEGER NOT NULL DEFAULT 1,
+    lastRunError TEXT NOT NULL DEFAULT '',
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT
+  );
+
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_update_agent_topic_runs_user_topic
+    ON update_agent_topic_runs(userId, topicId);
   CREATE INDEX IF NOT EXISTS idx_update_agent_sources_user ON update_agent_sources(userId);
   CREATE INDEX IF NOT EXISTS idx_update_agent_sources_topic ON update_agent_sources(topicId);
 
@@ -612,7 +695,7 @@ const stmts = {
 
   // Notifications (Update Agent)
   insertNotification: sqlite.prepare(
-    `INSERT OR REPLACE INTO notifications (id, userId, type, title, body, createdAt, readAt, topic, sourceUrl, sourceDomain, checkedAt, explanation, url) VALUES (@id, @userId, @type, @title, @body, @createdAt, @readAt, @topic, @sourceUrl, @sourceDomain, @checkedAt, @explanation, @url)`,
+    `INSERT OR REPLACE INTO notifications (id, userId, type, title, body, createdAt, readAt, topic, sourceUrl, sourceDomain, checkedAt, explanation, url, origin) VALUES (@id, @userId, @type, @title, @body, @createdAt, @readAt, @topic, @sourceUrl, @sourceDomain, @checkedAt, @explanation, @url, @origin)`,
   ),
   listNotificationsByUser: sqlite.prepare(
     `SELECT * FROM notifications WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
@@ -633,9 +716,48 @@ const stmts = {
     `SELECT id FROM notifications WHERE userId = ? AND url = ? LIMIT 1`,
   ),
 
+  // Iter84: per-user/topic run lock + run state
+  acquireUpdateAgentTopicRunLock: sqlite.prepare(`
+    INSERT INTO update_agent_topic_runs (userId, topicId, lockId, lockedAt, createdAt, updatedAt)
+    VALUES (@userId, @topicId, @lockId, @lockedAt, @createdAt, @updatedAt)
+    ON CONFLICT(userId, topicId) DO UPDATE SET
+      lockId = CASE
+        WHEN lockedAt IS NULL OR lockedAt < @staleBefore THEN excluded.lockId
+        ELSE lockId
+      END,
+      lockedAt = CASE
+        WHEN lockedAt IS NULL OR lockedAt < @staleBefore THEN excluded.lockedAt
+        ELSE lockedAt
+      END,
+      updatedAt = excluded.updatedAt
+    RETURNING lockId
+  `),
+
+  releaseUpdateAgentTopicRunLock: sqlite.prepare(`
+    UPDATE update_agent_topic_runs
+    SET lockedAt = NULL, updatedAt = @updatedAt
+    WHERE userId = @userId AND topicId = @topicId AND lockId = @lockId
+  `),
+
+  updateUpdateAgentTopicRunResult: sqlite.prepare(`
+    INSERT INTO update_agent_topic_runs (userId, topicId, lastRunAt, lastRunOk, lastRunError, createdAt, updatedAt)
+    VALUES (@userId, @topicId, @lastRunAt, @lastRunOk, @lastRunError, @createdAt, @updatedAt)
+    ON CONFLICT(userId, topicId) DO UPDATE SET
+      lastRunAt = excluded.lastRunAt,
+      lastRunOk = excluded.lastRunOk,
+      lastRunError = excluded.lastRunError,
+      updatedAt = excluded.updatedAt
+  `),
+
+  getUpdateAgentTopicRunState: sqlite.prepare(`
+    SELECT userId, topicId, lockId, lockedAt, lastRunAt, lastRunOk, lastRunError
+    FROM update_agent_topic_runs
+    WHERE userId = ? AND topicId = ?
+  `),
+
   // Update Agent
   upsertUpdateAgentTopic: sqlite.prepare(
-    `INSERT OR REPLACE INTO update_agent_topics (id, userId, topic, createdAt) VALUES (?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO update_agent_topics (id, userId, topic, enabled, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)`,
   ),
   listUpdateAgentTopicsByUser: sqlite.prepare(
     `SELECT * FROM update_agent_topics WHERE userId = ? ORDER BY createdAt DESC`,
@@ -645,17 +767,17 @@ const stmts = {
   ),
 
   upsertUpdateAgentSource: sqlite.prepare(
-    `INSERT OR REPLACE INTO update_agent_sources (id, userId, topicId, url, createdAt, lastCheckedAt, lastSuccessAt, lastError, lastErrorAt, lastItemUrlSeen, lastItemPublishedAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO update_agent_sources (id, userId, topicId, url, enabled, position, sourceType, createdAt, lastCheckedAt, lastSuccessAt, lastError, lastErrorAt, lastItemUrlSeen, lastItemPublishedAt, nextEligibleAt, failureCount)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   listUpdateAgentSourcesByTopic: sqlite.prepare(
-    `SELECT * FROM update_agent_sources WHERE userId = ? AND topicId = ? ORDER BY createdAt DESC`,
+    `SELECT * FROM update_agent_sources WHERE userId = ? AND topicId = ? ORDER BY position ASC, createdAt DESC`,
   ),
   deleteUpdateAgentSource: sqlite.prepare(
     `DELETE FROM update_agent_sources WHERE id = ? AND userId = ?`,
   ),
   updateUpdateAgentSourceStatus: sqlite.prepare(
-    `UPDATE update_agent_sources SET lastCheckedAt = ?, lastSuccessAt = ?, lastError = ?, lastErrorAt = ?, lastItemUrlSeen = ?, lastItemPublishedAt = ? WHERE id = ? AND userId = ?`,
+    `UPDATE update_agent_sources SET lastCheckedAt = ?, lastSuccessAt = ?, lastError = ?, lastErrorAt = ?, lastItemUrlSeen = ?, lastItemPublishedAt = ?, nextEligibleAt = ?, failureCount = ? WHERE id = ? AND userId = ?`,
   ),
 
   // Lesson sources
@@ -674,7 +796,7 @@ const stmts = {
 
   // Courses
   insertCourse: sqlite.prepare(
-    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, generationAttempt, generationStartedAt, lastProgressAt, failedAt, failureReason, failureMessage, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, generationAttempt, generationStartedAt, lastProgressAt, failedAt, failureReason, failureMessage, origin, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   updateCourseStatus: sqlite.prepare(`UPDATE courses SET status = ?, error = ? WHERE id = ?`),
   updateCourseBuildTelemetry: sqlite.prepare(
@@ -1146,16 +1268,33 @@ class SqliteDb {
     id: string;
     userId: string;
     topic: string;
+    enabled?: boolean;
     createdAt: Date;
+    updatedAt?: Date | null;
   }): void {
-    stmts.upsertUpdateAgentTopic.run(row.id, row.userId, row.topic, row.createdAt.toISOString());
+    stmts.upsertUpdateAgentTopic.run(
+      row.id,
+      row.userId,
+      row.topic,
+      row.enabled ? 1 : 0,
+      row.createdAt.toISOString(),
+      row.updatedAt ? row.updatedAt.toISOString() : null,
+    );
   }
 
-  listUpdateAgentTopics(userId: string): Array<{ id: string; topic: string; createdAt: string }> {
+  listUpdateAgentTopics(userId: string): Array<{
+    id: string;
+    topic: string;
+    enabled: boolean;
+    createdAt: string;
+    updatedAt: string | null;
+  }> {
     return (stmts.listUpdateAgentTopicsByUser.all(userId) as any[]).map((r) => ({
       id: String(r.id),
       topic: String(r.topic || ''),
+      enabled: Boolean(Number(r.enabled ?? 1)),
       createdAt: String(r.createdAt || ''),
+      updatedAt: r.updatedAt ? String(r.updatedAt) : null,
     }));
   }
 
@@ -1168,6 +1307,9 @@ class SqliteDb {
     userId: string;
     topicId: string;
     url: string;
+    enabled?: boolean;
+    position?: number;
+    sourceType?: string;
     createdAt: Date;
     lastCheckedAt?: Date | null;
     lastSuccessAt?: Date | null;
@@ -1175,12 +1317,17 @@ class SqliteDb {
     lastErrorAt?: Date | null;
     lastItemUrlSeen?: string;
     lastItemPublishedAt?: string | null;
+    nextEligibleAt?: Date | null;
+    failureCount?: number;
   }): void {
     stmts.upsertUpdateAgentSource.run(
       row.id,
       row.userId,
       row.topicId,
       row.url,
+      row.enabled === false ? 0 : 1,
+      Number(row.position || 0),
+      row.sourceType || 'rss',
       row.createdAt.toISOString(),
       row.lastCheckedAt ? row.lastCheckedAt.toISOString() : null,
       row.lastSuccessAt ? row.lastSuccessAt.toISOString() : null,
@@ -1188,6 +1335,8 @@ class SqliteDb {
       row.lastErrorAt ? row.lastErrorAt.toISOString() : null,
       row.lastItemUrlSeen || '',
       row.lastItemPublishedAt || null,
+      row.nextEligibleAt ? row.nextEligibleAt.toISOString() : null,
+      Number(row.failureCount || 0),
     );
   }
 
@@ -1197,6 +1346,9 @@ class SqliteDb {
       userId: String(r.userId),
       topicId: String(r.topicId),
       url: String(r.url),
+      enabled: Boolean(Number(r.enabled ?? 1)),
+      position: Number(r.position || 0),
+      sourceType: String(r.sourceType || 'rss'),
       createdAt: String(r.createdAt),
       lastCheckedAt: r.lastCheckedAt ? String(r.lastCheckedAt) : null,
       lastSuccessAt: r.lastSuccessAt ? String(r.lastSuccessAt) : null,
@@ -1204,11 +1356,75 @@ class SqliteDb {
       lastErrorAt: r.lastErrorAt ? String(r.lastErrorAt) : null,
       lastItemUrlSeen: String(r.lastItemUrlSeen || ''),
       lastItemPublishedAt: r.lastItemPublishedAt ? String(r.lastItemPublishedAt) : null,
+      nextEligibleAt: r.nextEligibleAt ? String(r.nextEligibleAt) : null,
+      failureCount: Number(r.failureCount || 0),
     }));
   }
 
   deleteUpdateAgentSource(userId: string, id: string): void {
     stmts.deleteUpdateAgentSource.run(id, userId);
+  }
+
+  acquireUpdateAgentTopicRunLock(args: {
+    userId: string;
+    topicId: string;
+    lockId: string;
+    lockedAt: Date;
+    staleBefore: Date;
+  }): { lockId: string } | null {
+    const row = stmts.acquireUpdateAgentTopicRunLock.get({
+      userId: args.userId,
+      topicId: args.topicId,
+      lockId: args.lockId,
+      lockedAt: args.lockedAt.toISOString(),
+      staleBefore: args.staleBefore.toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }) as any;
+
+    if (!row) return null;
+    return { lockId: String(row.lockId || '') };
+  }
+
+  releaseUpdateAgentTopicRunLock(args: { userId: string; topicId: string; lockId: string }): void {
+    stmts.releaseUpdateAgentTopicRunLock.run({
+      userId: args.userId,
+      topicId: args.topicId,
+      lockId: args.lockId,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  updateUpdateAgentTopicRunResult(args: {
+    userId: string;
+    topicId: string;
+    lastRunAt: Date;
+    ok: boolean;
+    error?: string;
+  }): void {
+    stmts.updateUpdateAgentTopicRunResult.run({
+      userId: args.userId,
+      topicId: args.topicId,
+      lastRunAt: args.lastRunAt.toISOString(),
+      lastRunOk: args.ok ? 1 : 0,
+      lastRunError: args.error || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  getUpdateAgentTopicRunState(userId: string, topicId: string): any | null {
+    const row = stmts.getUpdateAgentTopicRunState.get(userId, topicId) as any;
+    if (!row) return null;
+    return {
+      userId: String(row.userId),
+      topicId: String(row.topicId),
+      lockId: String(row.lockId || ''),
+      lockedAt: row.lockedAt ? String(row.lockedAt) : null,
+      lastRunAt: row.lastRunAt ? String(row.lastRunAt) : null,
+      lastRunOk: Boolean(Number(row.lastRunOk ?? 1)),
+      lastRunError: String(row.lastRunError || ''),
+    };
   }
 
   updateUpdateAgentSourceStatus(args: {
@@ -1220,6 +1436,8 @@ class SqliteDb {
     lastErrorAt?: Date | null;
     lastItemUrlSeen?: string;
     lastItemPublishedAt?: string | null;
+    nextEligibleAt?: Date | null;
+    failureCount?: number;
   }): void {
     stmts.updateUpdateAgentSourceStatus.run(
       args.lastCheckedAt ? args.lastCheckedAt.toISOString() : null,
@@ -1228,6 +1446,8 @@ class SqliteDb {
       args.lastErrorAt ? args.lastErrorAt.toISOString() : null,
       args.lastItemUrlSeen || '',
       args.lastItemPublishedAt || null,
+      args.nextEligibleAt ? args.nextEligibleAt.toISOString() : null,
+      Number(args.failureCount || 0),
       args.id,
       args.userId,
     );
@@ -1249,6 +1469,7 @@ class SqliteDb {
     checkedAt?: Date | null;
     explanation?: string;
     url?: string;
+    origin?: string;
   }): void {
     stmts.insertNotification.run({
       id: row.id,
@@ -1264,6 +1485,7 @@ class SqliteDb {
       checkedAt: row.checkedAt ? row.checkedAt.toISOString() : null,
       explanation: row.explanation || '',
       url: row.url || '',
+      origin: row.origin || 'user',
     });
   }
 
@@ -1282,6 +1504,7 @@ class SqliteDb {
       checkedAt: r.checkedAt ? String(r.checkedAt) : null,
       explanation: String(r.explanation || ''),
       url: String(r.url || ''),
+      origin: String(r.origin || 'user'),
     }));
   }
 
@@ -1395,6 +1618,7 @@ export const dbCourses = {
       course.failedAt || null,
       course.failureReason || '',
       course.failureMessage || '',
+      course.origin || 'user',
       course.createdAt || new Date().toISOString(),
     );
   },

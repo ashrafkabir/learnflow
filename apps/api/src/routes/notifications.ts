@@ -47,11 +47,36 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
   // If user configured topic + sources, use them. Otherwise fall back to safe defaults.
   const topics = db.listUpdateAgentTopics(userId);
   const matching = topics.find((t) => t.topic.toLowerCase() === topic.toLowerCase());
+  const topicId = matching?.id || null;
+
+  // Iter84: prevent overlapping runs per user/topic
+  if (topicId) {
+    const lockId = `lock-${uuidv4()}`;
+    const acquired = db.acquireUpdateAgentTopicRunLock({
+      userId,
+      topicId,
+      lockId,
+      lockedAt: new Date(),
+      staleBefore: new Date(Date.now() - 3 * 60 * 1000),
+    });
+    if (!acquired || acquired.lockId !== lockId) {
+      return res.status(409).json({ error: 'run already in progress' });
+    }
+    (req as any)._uaLock = { topicId, lockId };
+  }
 
   const sources: Array<{ id?: string; url: string }> = [];
   if (matching) {
     const rows = db.listUpdateAgentSources(userId, matching.id);
-    for (const r of rows) sources.push({ id: r.id, url: String(r.url) });
+    for (const r of rows) {
+      if (r.enabled === false) continue;
+      if (r.nextEligibleAt) {
+        const nextEligible = new Date(String(r.nextEligibleAt));
+        if (Number.isFinite(nextEligible.getTime()) && nextEligible.getTime() > Date.now())
+          continue;
+      }
+      sources.push({ id: r.id, url: String(r.url) });
+    }
   }
 
   if (sources.length === 0) {
@@ -87,6 +112,9 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
             lastErrorAt: null,
             lastItemUrlSeen: items[0]?.url ? normalizeUrl(items[0].url) : '',
             lastItemPublishedAt: items[0]?.publishedAt || null,
+
+            nextEligibleAt: null,
+            failureCount: 0,
           });
         }
         continue;
@@ -111,6 +139,7 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
         checkedAt,
         explanation,
         url: itemUrl,
+        origin: 'update_agent',
       });
       created += 1;
 
@@ -124,11 +153,33 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
           lastErrorAt: null,
           lastItemUrlSeen: itemUrl,
           lastItemPublishedAt: next.publishedAt || null,
+          nextEligibleAt: null,
+          failureCount: 0,
         });
       }
     } catch (e: any) {
       failures.push({ url: srcUrl, error: e?.message || String(e) });
       if (src.id) {
+        // backoff: 30s * 2^n, capped at 1h
+        let prevFailureCount = 0;
+        try {
+          const allTopics = db.listUpdateAgentTopics(userId);
+          for (const t of allTopics) {
+            const rows = db.listUpdateAgentSources(userId, t.id);
+            const match = rows.find((r: any) => r.id === src.id);
+            if (match) {
+              prevFailureCount = Number(match.failureCount || 0);
+              break;
+            }
+          }
+        } catch {
+          // ignore
+        }
+        const nextFailureCount = Math.max(0, prevFailureCount) + 1;
+        const delayMs = Math.min(
+          60 * 60 * 1000,
+          30 * 1000 * Math.pow(2, Math.min(10, nextFailureCount - 1)),
+        );
         db.updateUpdateAgentSourceStatus({
           userId,
           id: src.id,
@@ -136,10 +187,29 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
           lastSuccessAt: null,
           lastError: e?.message || String(e),
           lastErrorAt: now,
+          nextEligibleAt: new Date(Date.now() + delayMs),
+          failureCount: nextFailureCount,
         });
       }
       continue;
     }
+  }
+
+  // Iter84: release lock + persist last run status
+  try {
+    const lock = (req as any)._uaLock as { topicId: string; lockId: string } | undefined;
+    if (lock) {
+      db.updateUpdateAgentTopicRunResult({
+        userId,
+        topicId: lock.topicId,
+        lastRunAt: new Date(),
+        ok: failures.length === 0,
+        error: failures[0]?.error || '',
+      });
+      db.releaseUpdateAgentTopicRunLock({ userId, topicId: lock.topicId, lockId: lock.lockId });
+    }
+  } catch {
+    // ignore
   }
 
   res.status(201).json({ created, failures });

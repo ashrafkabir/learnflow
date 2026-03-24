@@ -78,6 +78,7 @@ describe('Iter83: POST /api/v1/notifications/generate (real monitoring MVP)', ()
     expect(typeof n.sourceUrl).toBe('string');
     expect(typeof n.sourceDomain).toBe('string');
     expect(typeof n.explanation).toBe('string');
+    expect(n.origin).toBe('update_agent');
     expect(n.checkedAt).toBeTruthy();
 
     fetchMock.mockRestore();

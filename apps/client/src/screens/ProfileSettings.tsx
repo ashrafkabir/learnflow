@@ -16,6 +16,7 @@ import {
   IconRobot,
 } from '../components/icons/index.js';
 import { AdminSearchConfigPanel } from '../components/AdminSearchConfigPanel.js';
+import { UpdateAgentSettingsPanel } from '../components/update-agent/UpdateAgentSettingsPanel.js';
 
 export function ProfileSettings() {
   const nav = useNavigate();
@@ -354,6 +355,9 @@ export function ProfileSettings() {
               </div>
             </div>
           </div>
+
+          {/* Update Agent */}
+          <UpdateAgentSettingsPanel />
 
           {/* API Keys */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4 flex flex-col">

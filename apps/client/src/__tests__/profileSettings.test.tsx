@@ -73,4 +73,11 @@ describe('Profile Settings page', () => {
     const html = document.body.innerHTML.toLowerCase();
     expect(html).toMatch(/notif|email|push|preference/);
   });
+
+  it('shows Update Agent section', async () => {
+    renderAt('/settings');
+    await new Promise((r) => setTimeout(r, 500));
+    const html = document.body.innerHTML.toLowerCase();
+    expect(html).toMatch(/update agent/);
+  });
 });

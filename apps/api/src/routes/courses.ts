@@ -350,6 +350,7 @@ interface Course {
   status?: 'CREATING' | 'READY' | 'FAILED';
   error?: string;
   createdAt: string;
+  origin?: string;
 
   // Iter77: build telemetry for stall detection + restartability
   generationAttempt?: number;
@@ -468,6 +469,7 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
     plan: {},
     status: 'CREATING',
     error: '',
+    origin: process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'screenshot' : 'user',
     generationAttempt: 0,
     generationStartedAt: null,
     lastProgressAt: new Date().toISOString(),
@@ -1207,6 +1209,7 @@ Continue.`,
         progress: {},
         status: 'READY',
         error: '',
+        origin: process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'screenshot' : 'user',
         generationAttempt:
           (courses.get(courseId) as any)?.generationAttempt || courseShell.generationAttempt || 0,
         generationStartedAt:
@@ -1525,6 +1528,7 @@ ok
         progress: {},
         status: 'READY',
         error: '',
+        origin: process.env.NODE_ENV === 'test' || Boolean(req.body?.fast) ? 'screenshot' : 'user',
         lastProgressAt: new Date().toISOString(),
         failedAt: null,
         failureReason: '',

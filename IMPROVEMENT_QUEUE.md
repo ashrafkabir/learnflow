@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24 (Iter83 planning)
+Last updated: 2026-03-24 (Iter84 planning)
 
 ---
 
@@ -1914,3 +1914,196 @@ Capture via `SCREENSHOT_DIR=screenshots/iter83/run-001 node screenshot-all.mjs`.
   - Mark-all-read contract (if endpoint exists)
 - Screenshot harness run:
   - `SCREENSHOT_DIR=screenshots/iter83/run-001 ITERATION=83 node screenshot-all.mjs`
+
+---
+
+## Iteration 84 — UPDATE AGENT: TOPIC/SOURCE MANAGEMENT UX + SCHEDULING RELIABILITY + TEST/DB HYGIENE
+
+Status: **DONE**
+
+Evidence:
+
+- UI: Settings includes "Update Agent" panel w/ topic+source lists, enable toggles, add/update/delete. (`apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`, `apps/client/src/screens/ProfileSettings.tsx`)
+- API: topic+source update endpoints + RESTful deletes; sources support enabled/position/sourceType/nextEligibleAt/failureCount. (`apps/api/src/routes/update-agent.ts`, `apps/api/src/db.ts`)
+- Reliability: per-user/topic run lock + run state table; generator respects enabled + backoff via nextEligibleAt. (`apps/api/src/routes/notifications.ts`, `apps/api/src/db.ts`)
+- DB hygiene: `origin` added for courses + notifications; update-agent notifications set origin=update_agent. (`apps/api/src/routes/courses.ts`, `apps/api/src/routes/notifications.ts`, `apps/api/src/db.ts`)
+- Tests/gates: updated notifications MVP test for origin; client settings test asserts Update Agent; `format/lint/tsc/test` pass.
+
+### Brutally honest: what’s still incomplete after Iter83
+
+Iter83 moved Update Agent from “stub” to a real RSS/Atom-driven MVP with a notifications trust loop. However, key trust/reliability gaps remain:
+
+- **Scheduling is still not real in-repo**: there’s a “cron-safe” generator and a dev tick script, but no durable scheduling contract (no cron integration guidance/config, no run locks, no jitter, no backoff policy surfaced).
+- **Topic/source management UX is likely thin**:
+  - The queue claims Settings CRUD for monitored topics/sources, but there is no clear evidence of: per-topic enable/disable, validation UX, per-source status history, or bulk operations.
+- **Course DB pollution from harness runs remains a risk**:
+  - Screenshot/test harnesses and “fast mode” creation can generate durable DB rows that pollute real data, distort usage counts, and slow the app.
+- **Spec parity gaps still visible**:
+  - Observability/correlation IDs, admin tooling, and “agent transparency” are partial and inconsistent.
+
+### Focus
+
+1. Make Update Agent **configurable and understandable**: users can manage topics/sources confidently.
+2. Make Update Agent **reliable**: scheduling semantics + run locks + resilient fetch policies.
+3. Reduce **DB pollution** and add cleanup controls so test/harness runs don’t degrade the product.
+
+Non-goals:
+
+- Full multi-tenant enterprise scheduler.
+- Complex ranking/LLM summarization.
+- Rebuilding the agent mesh.
+
+### P0 (Must do)
+
+1. **Update Agent settings UX: manage monitored topics + per-topic source lists (polished)**
+
+- Add:
+  - enable/disable toggle per topic
+  - rename topic label
+  - delete topic with confirmation
+  - per-topic “Run now” action
+- Acceptance criteria:
+  - User can CRUD topics without page refresh.
+  - Disabled topics are excluded from generation.
+  - “Run now” triggers a tick for only that topic and returns a visible result summary.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx` or new `apps/client/src/screens/UpdateAgentSettings.tsx`
+  - `apps/api/src/routes/update-agent.ts`
+  - `apps/api/src/routes/notifications.ts` (topic-scoped generation)
+
+2. **Source management UI: add/edit/validate sources with clear states**
+
+- Features:
+  - per-source validation on save (URL normalize + detect RSS vs HTML)
+  - show per-source status: OK / failing (lastError) / never checked
+  - show lastCheckedAt per source
+  - support multiple sources per topic with ordering
+- Acceptance criteria:
+  - Invalid URLs show inline errors and are not saved.
+  - A failing source does not break other sources; UI shows its failure clearly.
+  - Validation is deterministic in tests (network-free); runtime can do best-effort fetch.
+- Likely files:
+  - `apps/client/src/components/*` (source row editor)
+  - `apps/api/src/routes/update-agent.ts`
+  - `apps/api/src/utils/rss.ts` / `apps/api/src/utils/fetchWithBackoff.ts`
+
+3. **Scheduling contract: add a durable “tick” API + run lock + jitter/backoff policy**
+
+- Build:
+  - `POST /api/v1/update-agent/tick` (or equivalent) that:
+    - acquires a per-user run lock
+    - iterates enabled topics/sources
+    - records run start/end + summary counts
+  - lock prevents overlapping runs (idempotent response: “already running”).
+  - add jitter to avoid thundering herd if deployed to real cron.
+- Acceptance criteria:
+  - Two concurrent ticks do not create duplicate notifications or duplicate run records.
+  - Run record persists: startedAt, finishedAt, status, topicsChecked, sourcesChecked, notificationsCreated, failures.
+- Likely files:
+  - `apps/api/src/routes/update-agent.ts`
+  - `apps/api/src/db.ts` (tables/queries: run lock + run history)
+  - `scripts/notifications-tick.mjs` (switch to the new endpoint)
+
+4. **Run history + transparency: surface “last run” and per-source status in Settings**
+
+- Acceptance criteria:
+  - Settings shows:
+    - last run time (success/failure)
+    - last success time
+    - recent run summaries (last 5)
+    - per-source last status line
+  - Copy avoids over-promising; it should say what is actually stored.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/routes/update-agent.ts`
+
+5. **DB hygiene: prevent harness/test runs from polluting real user data**
+
+- Approach:
+  - Add a `createdBy`/`origin` flag to courses/pipelines/notifications created in fast/test/screenshot modes.
+  - Add a cleanup endpoint/CLI script to purge “test/harness” data (dev-only).
+  - Ensure usage counts/data-summary can exclude these rows.
+- Acceptance criteria:
+  - Screenshot harness creates data flagged as `origin='screenshot'` (or similar).
+  - A single cleanup command removes flagged data without touching real user data.
+  - `GET /api/v1/profile/data-summary` can optionally exclude test/harness data (default exclude in UI).
+- Likely files:
+  - `apps/api/src/db.ts`
+  - `apps/api/src/routes/profile.ts` (data-summary filter)
+  - `scripts/screenshots-auth.js` (set origin)
+  - `scripts/cleanup-dev-data.mjs` (new)
+
+### P1 (Should do)
+
+6. **Notification feed UX: topic filter + source link + “why this matched” formatting polish**
+
+- Acceptance criteria:
+  - Filter notifications by topic.
+  - Each notification shows:
+    - topic chip
+    - source domain chip linking to URL
+    - checkedAt in human form (relative)
+    - explanation truncated with “expand” affordance.
+- Likely files:
+  - `apps/client/src/screens/Dashboard.tsx`
+  - `apps/client/src/components/NotificationCard.tsx` (if present)
+
+7. **Reliability: rate-limit aware fetch w/ cache (Update Agent path)**
+
+- Acceptance criteria:
+  - 429/5xx backoff with jitter.
+  - short TTL cache per source URL.
+  - tests cover backoff/caching deterministically (mock timers).
+- Likely files:
+  - `apps/api/src/utils/fetchWithBackoff.ts`
+  - `apps/api/src/utils/cache.ts` (if needed)
+
+8. **Admin/dev tools: basic “Update Agent state” debug endpoint**
+
+- Acceptance criteria:
+  - Dev-only endpoint shows topics, sources, lastCheckedAt, lastError, lastItemSeen.
+  - Redacts user secrets; read-only.
+- Likely files:
+  - `apps/api/src/routes/admin.ts` or `apps/api/src/routes/update-agent.ts`
+
+### P2 (Nice to have)
+
+9. **Spec parity: minimal observability for ticks (requestId + correlated logs)**
+
+- Acceptance criteria:
+  - tick requests and notification creation logs share a `requestId`.
+  - logs include userId (or hash), topicId, sourceId.
+- Likely files:
+  - `apps/api/src/errors.ts`
+  - `apps/api/src/routes/update-agent.ts`
+
+10. **Docs: Update Agent & scheduling guide (deployable)**
+
+- Acceptance criteria:
+  - `apps/docs/pages/update-agent.md` documents:
+    - supported source types
+    - how dedupe works
+    - how to schedule (example crontab + Docker/K8s CronJob snippet)
+    - privacy/storage disclosure
+- Likely files:
+  - `apps/docs/pages/update-agent.md`
+
+### Screenshot checklist (Iter84)
+
+- `settings-update-agent-topics.png` (enable/disable + run now)
+- `settings-update-agent-sources.png` (validation errors + status)
+- `settings-update-agent-run-history.png`
+- `dashboard-notifications-topic-filter.png` (if shipped)
+
+### Verification checklist (Iter84)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
+- API contract tests:
+  - tick run lock / idempotency
+  - run history shape
+  - source validation
+- DB hygiene:
+  - create screenshot/fast-mode data → cleanup removes only flagged rows
