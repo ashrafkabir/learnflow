@@ -440,7 +440,26 @@ Non-goals:
 
 ## Iteration 75 — PIPELINE DETAIL MILESTONES UI + SOURCES DRAWER PARITY + SCREENSHOT HARNESS RELIABILITY
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
+
+Evidence:
+
+- Commit: 9854f94
+- Milestones UI + test:
+  - `apps/client/src/screens/PipelineDetail.tsx`
+  - `apps/client/src/__tests__/pipeline.test.tsx` ("renders milestones section when lessonMilestones present")
+- Sources drawer field visibility + test:
+  - `apps/client/src/components/AttributionDrawer.tsx` (renders `sourceType`, `summary`, `whyThisMatters`)
+  - `apps/client/src/__tests__/lessonReader.test.tsx` ("opens Sources & Attribution drawer and shows new fields")
+- Screenshot harness reliability:
+  - `scripts/screenshots.js` now supports `SCREENSHOT_DIR` (+ optional `PIPELINE_ID`)
+  - `scripts/screenshots-auth.js` now supports `SCREENSHOT_DIR`, `LEARNFLOW_API_BASE`, and optional `PIPELINE_ID`
+- Screenshot bundle: `screenshots/iter75/run-001/` (see `NOTES.md`)
+
+Known gaps / follow-ups:
+
+- Screenshot harness did **not** capture lesson-reader with sources drawer open (needs script step to click "See Sources" and save `lesson-reader-sources-drawer.png`).
+- `scripts/screenshots-auth.js` attempted `GET /api/v1/courses/:id/lessons` and received 404 (route mismatch); consider updating to use the correct lesson list endpoint or derive a lesson id from the course payload.
 
 > OneDrive sync requirement (do not skip): after producing the screenshot bundle for this iteration, **sync the screenshots folder to OneDrive** per the team’s standard process. (Planner note: I’m not attempting sync from here; builder will.)
 
