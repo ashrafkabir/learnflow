@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db.js';
 import { validateBody, validateQuery } from '../validation.js';
+import { RealWebSearchProvider, UpdateAgent } from '@learnflow/agents';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -30,43 +32,73 @@ router.post('/read', validateBody(markReadSchema), (req: Request, res: Response)
 const generateSchema = z.object({
   topic: z.string().min(1).max(120),
   source: z.string().optional(),
+  /** optional: allow callers to provide an idempotency key */
+  idempotencyKey: z.string().min(1).max(120).optional(),
 });
 
+function stableNotificationId(userId: string, topic: string, itemUrl: string): string {
+  // Stable per user+topic+URL so repeated ticks don't spam duplicates.
+  const h = crypto
+    .createHash('sha256')
+    .update(`${userId}|${topic.toLowerCase().trim()}|${itemUrl}`)
+    .digest('hex')
+    .slice(0, 24);
+  return `notif-${h}`;
+}
+
 // POST /api/v1/notifications/generate { topic }
-// Cron-friendly: generates a few lightweight notifications. MVP (no actual web crawling).
-router.post('/generate', validateBody(generateSchema), (req: Request, res: Response) => {
+// Cron-friendly: generates lightweight notifications from real web discovery.
+// Requirements (Iter78): strict timeouts, credibility filters, dedupe, graceful failure.
+router.post('/generate', validateBody(generateSchema), async (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const topic = req.body.topic.trim();
-  const now = new Date();
 
-  const payloads = [
-    {
-      id: `notif-${userId}-${now.getTime()}-0`,
-      type: 'update',
-      title: `New items to review: ${topic}`,
-      body: `MVP update feed generated for topic "${topic}"${req.body.source ? ` (source: ${req.body.source})` : ''}.`,
-    },
-    {
-      id: `notif-${userId}-${now.getTime()}-1`,
-      type: 'update',
-      title: `Suggested practice: ${topic}`,
-      body: `Take 10 minutes: summarize a recent development in "${topic}" and add it to your notes.`,
-    },
-  ];
+  try {
+    const provider = new RealWebSearchProvider({ timeoutMs: 6_000, maxResults: 8 });
+    const agent = new UpdateAgent(provider);
+    agent.subscribe(userId, topic, topic);
 
-  for (const p of payloads) {
-    db.addNotification({
-      id: p.id,
-      userId,
-      type: p.type,
-      title: p.title,
-      body: p.body,
-      createdAt: now,
-      readAt: null,
-    });
+    const results = await agent.detectUpdates(userId, topic);
+
+    // Graceful success on empty result.
+    if (!results.length) {
+      console.warn(`[Notifications] No updates found for topic="${topic}" user=${userId}`);
+      return res.status(200).json({ created: 0, deduped: 0 });
+    }
+
+    // Create 1 notification per result (bounded), but stable IDs make it idempotent.
+    const now = new Date();
+    let created = 0;
+    let deduped = 0;
+
+    const prior = db.listNotifications(userId, 200);
+    const priorIds = new Set(prior.map((n: any) => String(n.id)));
+
+    for (const r of results.slice(0, 3)) {
+      const id = stableNotificationId(userId, topic, r.url);
+      if (priorIds.has(id)) {
+        deduped++;
+        continue;
+      }
+
+      db.addNotification({
+        id,
+        userId,
+        type: 'update',
+        title: r.title || `New content for: ${topic}`,
+        body: `${r.snippet || ''}\n\nSource: ${r.url}`.trim(),
+        createdAt: now,
+        readAt: null,
+      });
+      created++;
+    }
+
+    return res.status(201).json({ created, deduped });
+  } catch (err: any) {
+    // Per requirements: return 200 + 0 notifications when providers down.
+    console.error(`[Notifications] generate failed for topic="${topic}" user=${userId}:`, err);
+    return res.status(200).json({ created: 0, deduped: 0 });
   }
-
-  res.status(201).json({ created: payloads.length });
 });
 
 export const notificationsRouter = router;

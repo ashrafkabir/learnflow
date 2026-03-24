@@ -41,7 +41,11 @@ export { CollaborationAgent } from './collaboration-agent/collaboration-agent.js
 export { MindmapAgent } from './mindmap-agent/mindmap-agent.js';
 
 // Update Agent (S10)
-export { UpdateAgent, MockWebSearchProvider } from './update-agent/update-agent.js';
+export {
+  UpdateAgent,
+  MockWebSearchProvider,
+  RealWebSearchProvider,
+} from './update-agent/update-agent.js';
 
 // Types
 export type { ConceptNode } from './course-builder/topic-decomposer.js';
