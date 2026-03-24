@@ -33,6 +33,8 @@ export function ProfileSettings() {
       provider: string;
       maskedKey: string;
       label: string;
+      validationStatus?: 'unknown' | 'valid' | 'invalid';
+      validatedAt?: string;
       usageCount?: number;
       lastUsed?: string;
     }>
@@ -411,6 +413,24 @@ export function ProfileSettings() {
                         Last used:{' '}
                         {k.lastUsed ? new Date(k.lastUsed).toLocaleDateString() : 'Never'}
                       </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            k.validationStatus === 'valid'
+                              ? 'bg-green-500'
+                              : k.validationStatus === 'invalid'
+                                ? 'bg-red-500'
+                                : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                          aria-hidden="true"
+                        />
+                        Key:{' '}
+                        {k.validationStatus === 'valid'
+                          ? 'Validated'
+                          : k.validationStatus === 'invalid'
+                            ? 'Invalid'
+                            : 'Not validated'}
+                      </span>
                     </div>
                     <div className="mt-1.5 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
@@ -466,7 +486,11 @@ export function ProfileSettings() {
               onClick={async () => {
                 if (!apiKey.trim()) return;
                 try {
-                  const data = await apiPost('/keys', { provider: keyProvider, apiKey });
+                  const data = await apiPost('/keys', {
+                    provider: keyProvider,
+                    apiKey,
+                    validate: true,
+                  });
                   setSavedKeys([
                     ...savedKeys,
                     {
@@ -474,6 +498,8 @@ export function ProfileSettings() {
                       provider: data.provider,
                       maskedKey: data.maskedKey,
                       label: data.label,
+                      validationStatus: data.validationStatus,
+                      validatedAt: data.validatedAt,
                       usageCount: 0,
                       lastUsed: undefined,
                     },

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 import { encrypt } from './crypto.js';
+import { validateKeyWithProvider } from './llm/key-validation.js';
 import { db, DbApiKey } from './db.js';
 import { sendError } from './errors.js';
 import { validateBody, validateParams } from './validation.js';
@@ -14,6 +15,7 @@ const addKeySchema = z.object({
   provider: z.enum(PROVIDERS),
   apiKey: z.string().min(1),
   label: z.string().optional(),
+  validate: z.boolean().optional(),
 });
 
 const validateKeySchema = z.object({
@@ -26,12 +28,28 @@ const deleteKeySchema = z.object({
 });
 
 /** POST /api/v1/keys — store an encrypted API key */
-router.post('/', validateBody(addKeySchema), (req: Request, res: Response) => {
-  const { provider, apiKey, label } = req.body;
+router.post('/', validateBody(addKeySchema), async (req: Request, res: Response) => {
+  const { provider, apiKey, label, validate } = req.body;
   const userId = req.user!.sub;
 
   const { encrypted, iv } = encrypt(apiKey);
   const lastFour = apiKey.slice(-4);
+
+  let validationStatus: 'unknown' | 'valid' | 'invalid' = 'unknown';
+  let validatedAt: Date | undefined = undefined;
+
+  // Iter85: validate-on-save for OpenAI + Anthropic (best-effort).
+  // Keep validation permissive; never block saves on network failures.
+  if (validate && (provider === 'openai' || provider === 'anthropic')) {
+    try {
+      const ok = await validateKeyWithProvider({ provider, apiKey });
+      validationStatus = ok ? 'valid' : 'invalid';
+      validatedAt = new Date();
+    } catch {
+      validationStatus = 'unknown';
+      validatedAt = undefined;
+    }
+  }
 
   const keyRecord: DbApiKey = {
     id: uuidv4(),
@@ -42,6 +60,8 @@ router.post('/', validateBody(addKeySchema), (req: Request, res: Response) => {
     label: label || `${provider} key`,
     lastFour,
     active: true,
+    validationStatus,
+    validatedAt,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -65,6 +85,8 @@ router.post('/', validateBody(addKeySchema), (req: Request, res: Response) => {
     label: keyRecord.label,
     maskedKey: `${maskedPrefix}${lastFour}`,
     active: keyRecord.active,
+    validationStatus: keyRecord.validationStatus,
+    validatedAt: keyRecord.validatedAt ? keyRecord.validatedAt.toISOString() : undefined,
     createdAt: keyRecord.createdAt,
   });
 });
@@ -102,6 +124,8 @@ router.get('/', (req: Request, res: Response) => {
       label: k.label,
       maskedKey: `${maskedPrefix}${k.lastFour}`,
       active: k.active,
+      validationStatus: (k as any).validationStatus || 'unknown',
+      validatedAt: (k as any).validatedAt ? (k as any).validatedAt.toISOString() : undefined,
       createdAt: k.createdAt,
       usageCount,
       lastUsed: lastUsed ? lastUsed.toISOString() : undefined,

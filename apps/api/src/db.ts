@@ -124,6 +124,21 @@ if (!isTest) {
     }
 
     // Iter70: lesson_sources gained missingReason
+
+    // Iter85: api_keys gained validationStatus + validatedAt
+    try {
+      if (!hasColumn('api_keys', 'validationStatus')) {
+        sqlite.exec(
+          `ALTER TABLE api_keys ADD COLUMN validationStatus TEXT NOT NULL DEFAULT 'unknown';`,
+        );
+      }
+      if (!hasColumn('api_keys', 'validatedAt')) {
+        sqlite.exec(`ALTER TABLE api_keys ADD COLUMN validatedAt TEXT;`);
+      }
+    } catch {
+      // If api_keys doesn't exist yet, CREATE TABLE below will handle it.
+    }
+
     try {
       if (!hasColumn('lesson_sources', 'missingReason')) {
         sqlite.exec(
@@ -308,6 +323,8 @@ sqlite.exec(`
     label TEXT NOT NULL DEFAULT '',
     lastFour TEXT NOT NULL DEFAULT '',
     active INTEGER NOT NULL DEFAULT 1,
+    validationStatus TEXT NOT NULL DEFAULT 'unknown',
+    validatedAt TEXT,
     expiresAt TEXT,
     createdAt TEXT NOT NULL,
     updatedAt TEXT NOT NULL
@@ -630,7 +647,7 @@ const stmts = {
 
   // API keys
   insertApiKey: sqlite.prepare(
-    `INSERT INTO api_keys (id, userId, provider, encryptedKey, iv, label, lastFour, active, expiresAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO api_keys (id, userId, provider, encryptedKey, iv, label, lastFour, active, validationStatus, validatedAt, expiresAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   getKeysByUserId: sqlite.prepare(`SELECT * FROM api_keys WHERE userId = ?`),
   findApiKeyById: sqlite.prepare(`SELECT * FROM api_keys WHERE id = ?`),
@@ -976,6 +993,8 @@ export interface DbApiKey {
   label: string;
   lastFour: string;
   active: boolean;
+  validationStatus: 'unknown' | 'valid' | 'invalid';
+  validatedAt?: Date;
   expiresAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -1018,6 +1037,8 @@ function rowToApiKey(row: any): DbApiKey {
   return {
     ...row,
     active: !!row.active,
+    validationStatus: (row.validationStatus || 'unknown') as any,
+    validatedAt: row.validatedAt ? new Date(row.validatedAt) : undefined,
     expiresAt: row.expiresAt ? new Date(row.expiresAt) : undefined,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
@@ -1110,6 +1131,8 @@ class SqliteDb {
       key.label,
       key.lastFour,
       key.active ? 1 : 0,
+      (key as any).validationStatus || 'unknown',
+      (key as any).validatedAt ? (key as any).validatedAt.toISOString() : null,
       key.expiresAt?.toISOString() || null,
       key.createdAt.toISOString(),
       key.updatedAt.toISOString(),
