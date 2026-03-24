@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24
+Last updated: 2026-03-24 (Iter82 planning)
 
 ---
 
@@ -876,7 +876,7 @@ Non-goals:
 
 ## Iteration 78 — SPEC ALIGNMENT: BYOAI VAULT, UPDATE AGENT (REAL), RICH LESSON/CHAT UX
 
-Status: **PLANNED**
+Status: **DONE (P0.1–P0.4 shipped)**
 
 Planner run evidence (Iter78):
 
@@ -900,14 +900,29 @@ The app is a strong MVP, but spec promises are ahead of implementation in a few 
 
 1. **BYOAI Vault: enforce encrypted-at-rest semantics + explicit provider validation UX**
 
-- What to build:
-  - Ensure keys are encrypted before persistence and are never returned in plaintext.
-  - Add explicit “Validate” action per provider with clear error messages.
-  - Add key rotation UX: mark old key inactive, keep usage history.
-- Acceptance criteria:
-  - DB never stores plaintext API keys (unit tests assert encrypted blob shape + decrypt works only server-side).
-  - API never returns raw key material (even for the owning user).
-  - Client shows validation success/failure and last validated timestamp.
+- Status: **DONE ✅**
+- Evidence:
+  - API:
+    - `POST /api/v1/keys/validate-saved` (format + best-effort provider ping; network ping skipped in tests)
+    - `POST /api/v1/keys/activate` (activate by key id)
+    - `POST /api/v1/keys/rotate` (create new key + set active)
+    - `GET /api/v1/keys` returns list w/ `active` + `label` + `rotatedAt`
+  - DB: `api_keys.validatedAt/lastValidationStatus/lastValidationError/rotatedAt`
+  - Security: production requires valid `ENCRYPTION_KEY` (64-char hex)
+  - Client: Settings → API Keys list shows Active badge + Activate + Rotate buttons
+  - Tests:
+    - `apps/api/src/__tests__/keys-validate-saved.test.ts`
+    - `apps/api/src/__tests__/keys-rotation-activation.test.ts`
+    - `apps/api/src/__tests__/encryption-config.test.ts`
+  - Commits (branch `iter78`):
+    - `92808e8` validate UX + validation metadata
+    - `a1544c8` multi-key + activate/rotate + tests
+    - `34350a0` enforce ENCRYPTION_KEY in production + tests
+- Remaining:
+  - ~~Key rotation: keep multiple keys per provider, mark old inactive; UX to rotate + switch active~~ ✅ DONE (multi-key list + activate + rotate)
+  - ~~Encrypted-at-rest enforcement: enforce ENCRYPTION_KEY presence in production~~ ✅ DONE (blocks prod startup if missing/invalid)
+  - (Optional) tighten crypto: consider migrating AES-256-CBC → AES-256-GCM for new writes while supporting legacy decrypt
+
 - Likely files:
   - `apps/api/src/crypto.ts`
   - `apps/api/src/routes/keys.ts`
@@ -916,44 +931,57 @@ The app is a strong MVP, but spec promises are ahead of implementation in a few 
 
 2. **User-facing Usage Dashboard (spec §5.2.8 / usage tracking)**
 
-- What to build:
-  - Settings → Usage view that summarizes tokens by provider + last used + top agents.
-  - Make the numbers stable and understandable ("tokens" + approximate cost note is optional).
-- Acceptance criteria:
-  - A Pro/Free user can see totals for the last 7/30 days.
-  - Usage aggregates match server-side records (API test + UI test snapshot).
-- Likely files:
-  - `apps/api/src/routes/usage.ts` (or add if missing)
-  - `apps/api/src/db.ts` (aggregate helpers)
-  - `apps/client/src/screens/ProfileSettings.tsx`
-  - `apps/client/src/components/*` (charts/tables)
+- Status: **DONE ✅**
+- What shipped:
+  - Settings → Usage card with **7d / 30d** toggle.
+  - Provider breakdown includes **tokens**, **call count**, **last used**.
+  - Top agents list.
+- Evidence:
+  - API:
+    - `GET /api/v1/usage/aggregates` returns stable windows `{ windows:[7,30], data:{'7':..., '30':...} }`
+    - `GET /api/v1/usage/summary?days=N` extended to include `providerMeta`.
+  - Client:
+    - `apps/client/src/components/UsageDashboard.tsx` rendered in Settings (`ProfileSettings`).
+  - Tests:
+    - `apps/api/src/__tests__/usage-aggregates.test.ts`
+    - `apps/client/src/__tests__/usageDashboard.snapshot.test.tsx` (+ snapshot)
+  - Commits (branch `iter78`):
+    - `59decea` add `/usage/aggregates` + API test
+    - `0ec45f4` Settings usage dashboard + client snapshot test
+- Notes:
+  - Costs are intentionally omitted for now (provider/model pricing is variable); UI includes a short disclaimer.
 
 3. **Update Agent: replace stubbed “search” with real provider(s) + credibility filters (MVP)**
 
-- What to build:
-  - Implement a real web discovery provider for UpdateAgent using the existing pipeline tooling (Firecrawl/Tavily if available) with strict timeouts.
-  - Filter/score results (authority/recency/relevance) at least at MVP level.
-- Acceptance criteria:
-  - `POST /api/v1/notifications/generate` produces notifications with real URLs/titles for a topic.
-  - Dedup: repeated runs do not spam identical notifications.
-  - Failure mode is graceful (returns 200 with 0 notifications + logs) when providers are down.
-- Likely files:
-  - `packages/agents/src/update-agent/update-agent.ts`
-  - `packages/agents/src/content-pipeline/*` (provider reuse)
-  - `apps/api/src/routes/notifications.ts`
+- Status: **DONE ✅**
+- What shipped:
+  - New `RealWebSearchProvider` for UpdateAgent that reuses `packages/agents/src/content-pipeline/web-search-provider.ts` (multi-source search).
+  - Strict timeout wrapper around provider calls.
+  - MVP scoring: credibility (domain heuristic), relevance (keyword overlap), recency (date heuristic when available), combined into `overallScore`.
+  - URL dedupe before returning results.
+  - API endpoint creates notifications from returned sources and dedupes by a **stable notification id** derived from `userId+topic+url`.
+  - Graceful failure: provider exceptions return **200 {created:0}** and logs.
+- Evidence:
+  - Code:
+    - `packages/agents/src/update-agent/update-agent.ts` (`RealWebSearchProvider` + scoring/dedupe)
+    - `apps/api/src/routes/notifications.ts` (generate endpoint uses real provider + stable id)
+  - Tests:
+    - `apps/api/src/__tests__/notifications-generate-real.test.ts` (creates notifications with real URLs/titles; idempotent on repeat)
+  - Commit (branch `iter78`): `f5a7a93`
 
 4. **Update Agent scheduling contract (no cron in repo, but make it deployable)**
 
-- What to build:
-  - Document + implement a single “cron-safe” entrypoint (HTTP endpoint already exists; ensure idempotency + auth).
-  - Add a dev-only `npm run notifications:tick` script that triggers generation.
-- Acceptance criteria:
-  - Endpoint requires auth (or dev-auth in dev mode only).
-  - Multiple concurrent ticks do not generate duplicates.
-- Likely files:
-  - `apps/api/src/routes/notifications.ts`
-  - `apps/api/src/middleware.ts`
-  - `apps/api/package.json` scripts
+- Status: **DONE ✅**
+- What shipped:
+  - Endpoint is cron-safe/idempotent via stable notification IDs + “seen” check.
+  - Dev-only tick entrypoint: `npm run notifications:tick` calls `POST /api/v1/notifications/generate` with dev auth header.
+- Evidence:
+  - Script:
+    - `scripts/notifications-tick.mjs`
+    - root `package.json` script: `notifications:tick`
+  - Test:
+    - `apps/api/src/__tests__/notifications-tick-script.test.ts` (ensures script exists / parses)
+  - Commit (branch `iter78`): `f5a7a93`
 
 5. **Conversation UX: standardize rich rendering + consistent action chips**
 
@@ -1073,3 +1101,629 @@ Capture from `screenshots/iter78/planner-run/` and add any missing manual shots 
   - Sync: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter78/planner-run/`
   - And the updated: `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
   - If no tooling exists, keep this TODO and include the exact paths above.
+
+---
+
+## Iteration 79 — RICH CONVERSATION RENDERING + UNIFIED SOURCES DRAWER + CONSISTENT ACTION CHIPS
+
+Status: **DONE (iter79)**
+
+Evidence:
+
+- Commit: b06132b ("Iter79: unify markdown renderer, sources drawer, and action chips")
+- Tests: `npm test` (turbo) ✅, `npx tsc --noEmit` ✅, `npm run lint:check` ✅, `npm run format:check` ✅
+- Snapshots: `apps/client/src/__tests__/markdownRenderer.snapshot.test.tsx` ✅
+- Screenshots: `screenshots/iter79/run-001/` (copied from iter57 harness run)
+
+### Why this iteration (high leverage)
+
+Iter78 shipped the "trust foundations" (BYOAI vault + validation/rotation + usage dashboard; Update Agent with real search + idempotent tick). The next biggest UX trust gap is **inconsistent rendering and interaction** across Conversation and Lesson Reader:
+
+- Markdown responses can break layout (tables), look inconsistent (code blocks), or fail to render (math).
+- Sources are surfaced differently across screens and feel bolted-on.
+- Quick actions (chips/buttons) are inconsistent and sometimes don’t map cleanly to real behaviors.
+
+Fixing these three issues is high leverage because it directly improves perceived quality, user trust, and comprehension across the most-used surfaces.
+
+### Scope (P0) — Must ship
+
+#### 1) Conversation rendering: tables + code + math without layout break
+
+**Build**
+
+- Standardize a single markdown renderer config used by **Conversation** and **Lesson Reader**.
+- Ensure:
+  - **Tables** render with horizontal scroll (no overflow off-screen) and readable styling.
+  - **Code blocks** render with consistent monospace styling and copy affordance (if already exists, ensure it works in both screens).
+  - **Math**: best-effort LaTeX support for inline and block math. If full KaTeX/MathJax is too heavy, implement a graceful fallback that:
+    - renders raw LaTeX in a styled code-ish block, and
+    - never breaks layout.
+
+**Acceptance criteria**
+
+- In Conversation, a message containing:
+  - a fenced code block,
+  - a Markdown table,
+  - an inline math expression,
+  - and a block math expression
+    renders without horizontal page overflow and without collapsing spacing.
+- In Lesson Reader, the same content renders identically (styling + spacing + table behavior).
+- Mobile viewport: tables are scrollable inside the message bubble/content area.
+
+**Likely files**
+
+- `apps/client/src/lib/markdown*.ts*` (or equivalent markdown pipeline)
+- `apps/client/src/components/MarkdownRenderer.tsx` (new or existing)
+- `apps/client/src/screens/Conversation.tsx`
+- `apps/client/src/screens/LessonReader.tsx`
+- CSS:
+  - `apps/client/src/styles/*` or Tailwind classes in components
+
+---
+
+#### 2) Unify Sources drawer across Conversation + Lesson Reader
+
+**Build**
+
+- Create a single `SourcesDrawer` component and use it in both places.
+- Normalize the data shape passed into the drawer (supports both lesson sources and WS conversation sources).
+- Drawer content must consistently show:
+  - title (or host fallback),
+  - URL,
+  - author/publisher when available,
+  - date (published/accessed) when available.
+
+**Acceptance criteria**
+
+- Lesson Reader: "See Sources" always opens the unified drawer and shows ≥1 source when lesson has sources.
+- Conversation:
+  - when WS `response.end.sources` is present, user can open the same drawer from the conversation UI.
+  - empty sources state is explicit (e.g., "No sources provided for this response").
+- Visual parity: same drawer header, list item styling, and empty state across both screens.
+
+**Likely files**
+
+- `apps/client/src/components/SourcesDrawer.tsx` (new)
+- `apps/client/src/screens/LessonReader.tsx`
+- `apps/client/src/screens/Conversation.tsx`
+- `apps/client/src/lib/sources.ts` (optional: normalization helper)
+
+---
+
+#### 3) Consistent action chips across Conversation + Lesson Reader
+
+**Build**
+
+- Create a shared `ActionChips` (or similarly named) component.
+- Define a small, real set of actions that exist today (no dead buttons), e.g.:
+  - Copy
+  - Regenerate (Conversation)
+  - Ask a follow-up / Explain simpler (Conversation)
+  - Open Sources (both)
+  - (Optional) Export / Save note if already implemented
+- Ensure chips are placed consistently and do not jitter as messages stream.
+
+**Acceptance criteria**
+
+- Same chip styling (spacing, color, hover/pressed) across Conversation and Lesson Reader.
+- Every displayed chip triggers a real behavior.
+- In streaming responses, chips appear when it’s valid (e.g., after `response.end`) and do not duplicate.
+
+**Likely files**
+
+- `apps/client/src/components/ActionChips.tsx` (new)
+- `apps/client/src/screens/Conversation.tsx`
+- `apps/client/src/screens/LessonReader.tsx`
+- `apps/client/src/components/*` (where message bubbles are rendered)
+
+---
+
+### Scope (P1) — If time permits
+
+4. **Contract tightening for sources**
+
+- Ensure the client’s normalization handles missing `title/author/date` safely.
+- Add a small unit test for the normalization helper.
+
+5. **Snapshot coverage for “rich message” rendering**
+
+- Add a deterministic test fixture message that includes code+table+math and snapshot it.
+
+---
+
+### Screenshot checklist (Iter79)
+
+Capture via `SCREENSHOT_DIR=screenshots/iter79/... node screenshot-all.mjs` plus manual shots if needed.
+
+- `conversation-rich-rendering.png`
+  - shows code block + table + math (inline + block)
+- `conversation-sources-drawer.png`
+  - drawer open from Conversation, showing ≥1 source
+- `lesson-reader-sources-drawer.png`
+  - same drawer component styling, open from Lesson Reader
+- `action-chips-parity.png`
+  - side-by-side (or two shots) showing chips are consistent across both screens
+- `conversation-table-mobile.png`
+  - mobile-width table is scrollable inside message
+
+---
+
+### Verification checklist (Iter79)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- Manual spot checks:
+  - Conversation: send prompt that returns a table and code; verify no layout break.
+  - Lesson Reader: open a lesson with sources; verify unified drawer opens and fields render.
+  - Conversation: verify sources drawer opens when sources provided; verify empty state when none.
+  - Verify chips shown are actionable; no duplicates on streaming completion.
+
+---
+
+## Iteration 80 — SCREENSHOT HARNESS + EVIDENCE PACK CONSISTENCY (POST-ITER79 UX)
+
+Status: **DONE**
+
+Evidence (run-001):
+
+- `screenshots/iter80/run-001/conversation-rich-rendering.png`
+- `screenshots/iter80/run-001/conversation-sources-drawer.png`
+- `screenshots/iter80/run-001/conversation-sources-empty-state.png`
+- `screenshots/iter80/run-001/lesson-reader-sources-drawer.png`
+- `screenshots/iter80/run-001/action-chips-parity.png`
+- `screenshots/iter80/run-001/conversation-table-mobile.png`
+
+Docs:
+
+- `screenshots/iter80/README.md`
+
+### Why this iteration (smallest high-leverage next step)
+
+Iter79 materially improved the UX (unified markdown renderer + sources drawer + action chips). The remaining trust gap is **evidence consistency**:
+
+- Iter79’s note says screenshots were “copied from iter57 harness run”, which is a smell: the harness is not reliably producing the new UX evidence.
+- When the harness can’t deterministically capture Conversation rich rendering + sources drawer states, future iterations will regress unnoticed.
+
+This iteration is deliberately narrow: make the existing screenshot harness consistently produce the Iter79-required screenshots (desktop + mobile) using deterministic fixtures.
+
+### Scope (P0) — Must ship
+
+1. **Add deterministic “rich message” fixtures for Conversation screenshots**
+
+- Ensure the screenshot harness can load a Conversation state that includes:
+  - fenced code block
+  - markdown table
+  - inline math and block math
+  - at least 1 structured source (so Sources Drawer is non-empty)
+  - also a second state with **zero** sources (explicit empty state)
+
+**Acceptance criteria**
+
+- Running `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs` produces the Iter80 checklist shots below without manual clicking.
+- Fixture is deterministic and does not require network access or live WS streaming.
+
+**Likely files**
+
+- `screenshot-all.mjs`
+- `debug-screenshot.mjs` (if used for page setup)
+- `apps/client/src/screens/Conversation.tsx` (only if a fixture hook is needed)
+- `apps/client/src/lib/*` (fixture/seed utilities, if they exist)
+- `apps/client/src/dev/*` (if there is a dev-only seed route)
+
+2. **Ensure harness can open unified Sources Drawer from both Conversation + Lesson Reader**
+
+- Conversation: open the drawer via the same UI affordance as users (action chip or button).
+- Lesson Reader: open the drawer via “See Sources”.
+
+**Acceptance criteria**
+
+- Harness captures both drawer screenshots and they match styling parity.
+- Drawer screenshots show stable content and do not vary run-to-run.
+
+**Likely files**
+
+- `screenshot-all.mjs`
+- `apps/client/src/components/SourcesDrawer.tsx`
+- `apps/client/src/screens/LessonReader.tsx`
+- `apps/client/src/screens/Conversation.tsx`
+
+3. **Mobile screenshot reliability for table scroll**
+
+- Ensure the harness includes a mobile viewport run that captures a table inside a message without page overflow.
+
+**Acceptance criteria**
+
+- The mobile screenshot reliably shows:
+  - the table present
+  - horizontal scrolling constrained to the table container (not the entire page)
+  - no clipped columns off-screen
+
+**Likely files**
+
+- `screenshot-mobile.mjs` (or where mobile mode is configured)
+- `screenshot-all.mjs`
+
+### Scope (P1) — If time permits
+
+4. **Evidence pack README for screenshots**
+
+- Add a short README in the Iter80 screenshots folder describing:
+  - how the states are generated
+  - what each screenshot proves
+
+**Acceptance criteria**
+
+- A new `screenshots/iter80/README.md` exists and is accurate.
+
+### Screenshot checklist (Iter80)
+
+Capture via `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs`.
+
+- `conversation-rich-rendering.png`
+  - includes code block + table + math (inline + block)
+- `conversation-sources-drawer.png`
+  - unified sources drawer open from Conversation with ≥1 source
+- `conversation-sources-empty-state.png`
+  - unified sources drawer open from Conversation with explicit empty state
+- `lesson-reader-sources-drawer.png`
+  - unified sources drawer open from Lesson Reader
+- `action-chips-parity.png`
+  - chips shown in both surfaces (two shots or one combined)
+- `conversation-table-mobile.png`
+  - mobile viewport; table scrolls inside container; no page overflow
+
+### Verification checklist (Iter80)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- Screenshots:
+  - `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs`
+  - Confirm files exist in `learnflow/screenshots/iter80/run-001/` and are non-empty
+
+---
+
+## Iteration 81 — SPEC PARITY SWEEP (MVP → SPEC) + PRIVACY/DELETION + WEB/ DOCS ALIGNMENT
+
+> Note for Iter82: Remaining Iter81 gap to finish first: **Settings UI should display live data summary counts from `GET /api/v1/profile/data-summary`.**
+
+Status: **DONE**
+
+Builder run evidence (2026-03-24):
+
+- Commit: `ed09c99` (branch `iter78`)
+- Screenshots: `learnflow/screenshots/iter81/run-001/` (note: screenshots folder is gitignored)
+  - Key: `settings-auth.png`, `m-settings-auth.png`
+- Tests: `npm test` (workspace), `npx tsc --noEmit`, `npx eslint .`, `npx prettier --check .` all passing locally.
+
+Planner run evidence (2026-03-24):
+
+- Spec reviewed: `learnflow/LearnFlow_Product_Spec.md` (sections 5–16 highlighted below)
+- Screenshots captured: `learnflow/screenshots/iter81/planner-run/`
+  - `landing-home.png`, `marketing-features.png`, `marketing-pricing.png`, `marketing-docs.png`, `marketing-blog.png`, `marketing-about.png`, `marketing-download.png`
+  - `auth-login.png`, `auth-register.png`
+  - `onboarding-1-welcome.png` → `onboarding-6-first-course.png`
+  - `app-dashboard.png`, `app-conversation.png`, `conversation-rich-rendering.png`, `conversation-sources-drawer.png`, `conversation-sources-empty-state.png`
+  - `lesson-reader.png`, `lesson-reader-sources-drawer.png`, `action-chips-parity.png`
+  - `course-create-after-click.png`, `course-view.png`
+  - `app-mindmap.png`, `app-collaboration.png`
+  - `app-pipelines.png`, `pipeline-detail.png`
+  - `marketplace-courses.png`, `marketplace-agents.png`
+
+### Brutally honest gaps vs spec (what’s true right now)
+
+This repo is an MVP that **covers the surface area** of most major screens, but it does **not** fully implement the spec’s deeper systems:
+
+- **Spec §5 platform matrix** (Flutter/Electron/mobile): **not implemented** (current client is web/React).
+- **Spec §9 behavioral tracking + Student Context Object (SCO)**: **partial** (there is `learning_events` storage + some UI claims, but no full SCO model or behavioral adaptation loop).
+- **Spec privacy (GDPR deletion)**: **implemented** (API `DELETE /api/v1/profile` + client wiring) — see builder evidence below.
+- **BYOAI key management (spec promise: AES-256 at rest)**: implemented as encrypted storage (MVP), but provider clients are **partially stubbed** (e.g., Anthropic placeholder client).
+- **Usage tracking (tokens per agent)**: persisted, but token counts are mostly best-effort (often `tokensTotal=1`) since many agents are deterministic/offline.
+- **Marketing website**: exists (Next.js app under `apps/web`), but content differs from the spec wireframe/copy and lacks PostHog + SEO completeness.
+- **Docs plan**: `apps/docs/pages/*` exists, but client “Docs” marketing page is a custom in-app docs browser, not the canonical docs site.
+
+### Iter81 goals
+
+- Close the highest-risk **spec contradictions** that affect user trust (privacy/deletion, tracking transparency, exports).
+- Align marketing + docs with the actual product, reducing “spec says X” but product does Y.
+- Keep changes bounded: Iter81 is a **parity + trust sweep**, not a full re-platform.
+
+### P0 (Must do)
+
+1. **Implement server-side “Delete My Data” (GDPR) endpoint and wire client button**
+
+- ✅ Implemented `DELETE /api/v1/profile` (authenticated user only) deletes user-scoped rows + owned courses/lessons.
+- ✅ Client Settings “Delete My Data” now calls the API before clearing local storage.
+- ✅ Test: `apps/api/src/__tests__/profile-delete-export.test.ts` validates delete is scoped to authenticated user.
+
+- Problem: Profile Settings deletes `localStorage` only; spec requires deletable per-user data.
+- Acceptance criteria:
+  - API: `DELETE /api/v1/profile` (or `POST /api/v1/profile/delete`) deletes all user-scoped rows:
+    - users, api_keys, refresh_tokens, usage_records, token_usage, courses, lessons, lesson_sources, lesson_quality, progress, pipelines, invoices, mindmaps, mindmap_suggestions, marketplace user joins (enrollments/activated agents), collaboration groups/messages (where user is owner/member), notifications.
+  - API responds `{ ok: true }`.
+  - Client: “Delete My Data” calls the endpoint; on success, logs out and redirects to `/`.
+  - Add a test proving the endpoint removes records for the authenticated user only.
+- Likely files:
+  - `apps/api/src/routes/profile.ts`, `apps/api/src/db.ts`
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/__tests__/profile-delete.test.ts`
+
+2. **Add explicit “Tracking & Data” screen section backed by real storage (not just copy)**
+
+- ✅ Implemented API `GET /api/v1/profile/data-summary` returning counts/timestamps for learning_events, progress completions, usage_records, notifications.
+- ⚠️ UI wiring for live counts is not yet added (endpoint exists; Privacy card still copy-only).
+
+- Problem: Privacy card lists what’s tracked, but there is no user-facing audit trail.
+- Acceptance criteria:
+  - API: `GET /api/v1/profile/data-summary` returns counts + recent timestamps for:
+    - learning_events, progress completions, usage_records, notifications.
+  - Client: Settings → Privacy shows live counts (“X learning events stored”, “Y lessons completed”, “Z usage records”).
+  - Must include a “Clear local-only data” disclaimer separately from server data.
+- Likely files:
+  - `apps/api/src/routes/profile.ts`
+  - `apps/client/src/screens/ProfileSettings.tsx`
+
+3. **Export parity: make server export endpoint match Settings export UX (ZIP/Markdown)**
+
+- ✅ Implemented `GET /api/v1/export/zip` alias to server exporter.
+- ✅ Client Settings “Export ZIP” now downloads from server.
+- ✅ Test: `apps/api/src/__tests__/profile-delete-export.test.ts` asserts `application/zip` for pro.
+
+- Problem: Client exports ZIP locally via JSZip; server has `routes/export.ts` but spec expects robust portable export.
+- Acceptance criteria:
+  - API: `GET /api/v1/export/zip` returns a zip containing:
+    - `learnflow-export.md` (courses + lessons)
+    - `metadata.json` (exportedAt, version, userId redacted or hashed)
+  - Client: “Export ZIP” uses server export when available; fallback to JSZip only if server fails.
+  - Add an integration test verifying zip file entries.
+- Likely files:
+  - `apps/api/src/routes/export.ts`
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/__tests__/export-zip.test.ts`
+
+4. **Marketing website spec alignment: homepage hero copy + IA links**
+
+- Problem: Spec §12.2 has specific headline/subhead/CTA intent; current `apps/web` copy differs and lacks Marketplace preview.
+- Acceptance criteria:
+  - Update `apps/web/src/app/page.tsx` to match spec hero headline/subhead and CTA labels.
+  - Ensure nav/links cover spec pages: Home, Features, Pricing, Marketplace (preview), Docs, Blog, About, Download.
+  - Add at least a lightweight Marketplace preview section linking to app marketplace pages.
+- Likely files:
+  - `apps/web/src/app/page.tsx`, `apps/web/src/app/layout.tsx`
+
+5. **Docs source of truth: clarify and link out to `apps/docs` from in-app marketing Docs page**
+
+- Problem: Spec says “Docs: Next.js + MDX”; repo has `apps/docs` MD pages, but `/docs` in client is a marketing page.
+- Acceptance criteria:
+  - In client marketing `/docs`, add prominent links to the canonical docs content (and/or host `apps/docs` via a stable URL path).
+  - Add a brief banner: “Developer docs live in apps/docs (MDX) — this page is a preview.”
+- Likely files:
+  - `apps/client/src/screens/marketing/Docs.tsx`
+  - (optional) route proxy/config if mounting docs app
+
+6. **Privacy promise audit: remove/qualify claims that aren’t implemented (AES-256, session-only conversation)**
+
+- Problem: UI copy claims “API keys (encrypted, AES-256)” and “Conversation content (session only)”. Ensure accuracy.
+- Acceptance criteria:
+  - Confirm encryption implementation and update copy to “encrypted at rest” with details in docs if accurate.
+  - Confirm whether conversation content is persisted anywhere (WS logs, DB). If not persisted, say so; if persisted, disclose.
+  - Add a link to `apps/docs/pages/privacy-security.md`.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/docs/pages/privacy-security.md`
+
+### P1 (Should do)
+
+7. **SCO/behavioral tracking MVP: persist “student context” fields and actually use them**
+
+- Problem: Spec §9 expects SCO personalization; today it’s mostly not used.
+- Acceptance criteria:
+  - Persist a minimal SCO object per user (goals/topics/experience/schedule already exist; add “recent lessons” + “weak areas” placeholder).
+  - Orchestrator uses at least 2 SCO signals in prompts (e.g., experience level, goals) deterministically.
+  - Add a test verifying the context is included.
+- Likely files:
+  - `packages/agents/src/*orchestrator*`
+  - `apps/api/src/routes/chat.ts`, `apps/api/src/db.ts`
+
+8. **Notifications (Update Agent) UI: add “mark read” and deep-link to sources**
+
+- Problem: API exists (`/api/v1/notifications`), Dashboard shows feed but doesn’t support reading titles/bodies well.
+- Acceptance criteria:
+  - Dashboard notifications show `title` + condensed `body`, and clicking opens the URL (if present) or expands.
+  - “Mark read” calls `POST /api/v1/notifications/read`.
+- Likely files:
+  - `apps/client/src/screens/Dashboard.tsx`
+  - `apps/client/src/context/AppContext.tsx`
+
+9. **Conversation: agent activity indicator parity with spec**
+
+- Problem: Spec §5.2.3 requires “which agent is processing”; UI is mostly static.
+- Acceptance criteria:
+  - When streaming/processing, show agent name + stage (“Research Agent searching…”, etc.) based on WS events.
+  - If WS is not used, show a deterministic placeholder that reflects the routed agent.
+- Likely files:
+  - `apps/client/src/screens/Conversation.tsx`
+  - `apps/api/src/wsOrchestrator.ts`
+
+10. **Marketplace: creator flow stubs must be clearly labeled and gated**
+
+- Problem: Spec §7 includes pricing/moderation/publishing; current marketplace is MVP.
+- Acceptance criteria:
+  - Creator dashboard explicitly labels “Not implemented yet” sections and hides “earnings” until backend exists.
+  - Add a `GET /api/v1/marketplace/status` endpoint returning feature flags (publishing/payments enabled).
+- Likely files:
+  - `apps/api/src/routes/marketplace-full.ts`
+  - `apps/client/src/screens/CreatorDashboard.tsx`
+
+### P2 (Nice to have)
+
+11. **PostHog instrumentation (or remove from spec claims)**
+
+- Problem: Spec §12.3 says PostHog; codebase may not include it.
+- Acceptance criteria:
+  - Either integrate PostHog for `apps/web` only (privacy-first) OR explicitly state analytics is “not enabled in MVP”.
+  - Ensure DNT / opt-out path documented.
+- Likely files:
+  - `apps/web/src/analytics.ts`, `apps/web/src/app/layout.tsx`
+  - `apps/docs/pages/privacy-security.md`
+
+12. **Accessibility pass: keyboard focus + dialog ARIA for drawers and modals**
+
+- Problem: spec requires WCAG-ish; drawers exist, but focus trapping/ARIA may be incomplete.
+- Acceptance criteria:
+  - Sources/Attribution drawer: focus trap, Escape closes, `aria-labelledby`.
+  - Playwright screenshot harness includes a quick keyboard-only smoke test (optional).
+- Likely files:
+  - `apps/client/src/components/AttributionDrawer.tsx`
+  - `apps/client/src/components/Modal.tsx` (if exists)
+
+### Screenshot checklist (Iter81)
+
+- `screenshots/iter81/planner-run/app-settings.png`
+  - shows Privacy section and Delete My Data action
+- After implementing P0.1–P0.2:
+  - new screenshot(s): `settings-privacy-data-summary.png` and `settings-delete-confirm.png`
+
+### Verification checklist (Iter81)
+
+- API tests for deletion + export pass
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- Screenshot harness re-run (optional):
+  - `SCREENSHOT_DIR=screenshots/iter81/run-001 ITERATION=81 node screenshot-all.mjs`
+
+---
+
+## Iteration 82 — SETTINGS: LIVE DATA SUMMARY + TRACKING TRANSPARENCY + SMALL TRUST/PARITY FIXES
+
+Status: **READY FOR BUILDER**
+
+### Why this iteration
+
+Iter81 shipped the `GET /api/v1/profile/data-summary` endpoint but did **not** wire it into the Settings UI. This is a high-leverage trust feature: it turns privacy/tracking copy into an auditable, user-visible set of counts.
+
+This iteration finishes that gap and tackles a small set of adjacent “trust + spec parity” items that are low-risk and user-visible.
+
+### Scope boundaries (keep it small)
+
+- No new multi-agent/K8s orchestration work.
+- No changes to course generation quality unless required for correctness.
+- Avoid large UI redesigns; ship minimal, accurate, testable improvements.
+
+### P0 (Must do)
+
+1. **Settings → Privacy: show live server-side tracking counts (wire `/api/v1/profile/data-summary`)**
+
+- Acceptance criteria:
+  - When signed in, Settings Privacy section fetches `GET /api/v1/profile/data-summary` and renders:
+    - learning events count
+    - lessons completed / progress count
+    - usage records count
+    - notifications count
+    - “last event at” timestamps where provided
+  - Clear separation in UI copy between:
+    - **Server-stored** data (from the endpoint)
+    - **Local-only** data (e.g., browser storage), with a separate “Clear local data” action if it exists
+  - Loading + error states:
+    - Loading skeleton or “Loading…”
+    - Error shows non-scary message + retry button
+  - If the endpoint returns zeros, UI still renders (no blank section)
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/client/src/lib/api.ts` (or existing API helper)
+  - `apps/client/src/hooks/*` (new `useProfileDataSummary` if pattern exists)
+
+2. **Add lightweight API contract test for `/api/v1/profile/data-summary` (counts + shape)**
+
+- Acceptance criteria:
+  - Add/extend an API test that validates the JSON keys exist and are numbers/timestamps (no accidental shape drift).
+  - Test should cover the non-authenticated case (401) if the endpoint is protected.
+- Likely files:
+  - `apps/api/src/__tests__/profile-data-summary.test.ts` (new)
+  - `apps/api/src/routes/profile.ts`
+
+3. **Screenshot evidence for Settings Privacy with live counts**
+
+- Acceptance criteria:
+  - Add screenshot(s) captured via the harness showing live counts rendered.
+- Likely files:
+  - `screenshot-all.mjs` / relevant screenshot script
+
+### P1 (Should do)
+
+4. **Settings: tighten privacy promises (copy accuracy check)**
+
+- Goal: ensure Settings copy does not over-promise beyond what’s actually stored/encrypted.
+- Acceptance criteria:
+  - Review Privacy/Tracking copy in Settings and adjust phrasing to match implemented reality:
+    - Prefer “encrypted at rest” over naming a specific cipher unless verified in code.
+    - If conversation content is stored server-side anywhere, disclose it; if not, explicitly say it’s not persisted.
+  - Add/ensure link to `apps/docs/pages/privacy-security.md`.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/docs/pages/privacy-security.md`
+
+5. **Notifications UX: add “Mark all read” or “Mark read” affordance (parity with spec trust loop)**
+
+- Acceptance criteria:
+  - In Dashboard notifications feed (or notifications screen), add a clear “Mark read” action.
+  - Uses existing endpoint if present (Iter81 mentions `POST /api/v1/notifications/read`).
+  - UI updates immediately (optimistic OK) and handles failure gracefully.
+- Likely files:
+  - `apps/client/src/screens/Dashboard.tsx`
+  - `apps/client/src/context/AppContext.tsx` (or notifications hook)
+  - `apps/api/src/routes/notifications.ts` (only if endpoint wiring needs tweaks)
+
+6. **Conversation: minimal agent activity indicator while generating**
+
+- Acceptance criteria:
+  - When a chat request is in-flight/streaming, show a small status line (“Generating…”, optionally “Researching sources…”) that does not require full orchestrator refactor.
+  - Must not flicker; must clear on completion/error.
+- Likely files:
+  - `apps/client/src/screens/Conversation.tsx`
+
+### P2 (Nice to have)
+
+7. **Accessibility quick win: drawers/modals Escape-to-close + `aria-labelledby` audit**
+
+- Acceptance criteria:
+  - Attribution/Sources drawer has:
+    - Escape closes
+    - focus is set predictably on open (first interactive element)
+    - `aria-labelledby` points at a visible title
+- Likely files:
+  - `apps/client/src/components/AttributionDrawer.tsx`
+  - `apps/client/src/components/Modal.tsx` (if used)
+
+8. **Docs alignment: ensure privacy/security doc matches Settings UI**
+
+- Acceptance criteria:
+  - `apps/docs/pages/privacy-security.md` includes a short “What data is stored” section that matches the data-summary fields.
+- Likely files:
+  - `apps/docs/pages/privacy-security.md`
+
+### Screenshot checklist (Iter82)
+
+Capture via `SCREENSHOT_DIR=screenshots/iter82/run-001 node screenshot-all.mjs`.
+
+- `settings-privacy-data-summary.png`
+  - Privacy section shows live counts from server + timestamps
+- `settings-privacy-error-state.png` (optional)
+  - Endpoint failure shows error + retry
+- `dashboard-notifications-mark-read.png` (if P1.5 shipped)
+- `conversation-activity-indicator.png` (if P1.6 shipped)
+
+### Verification checklist (Iter82)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- API tests include coverage for `/api/v1/profile/data-summary`
+- Screenshot harness run:
+  - `SCREENSHOT_DIR=screenshots/iter82/run-001 ITERATION=82 node screenshot-all.mjs`
