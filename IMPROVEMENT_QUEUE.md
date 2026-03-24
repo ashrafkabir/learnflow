@@ -429,6 +429,7 @@ Non-goals:
 
 ### Verification checklist (Iter74)
 
+- ✅ P0.4–P0.6 implemented (commit `bb6d03f`) + new tests
 - `npm test`
 - `npx tsc --noEmit`
 - `npx eslint .`
