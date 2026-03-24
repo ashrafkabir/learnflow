@@ -24,12 +24,22 @@ export function SourceCards({ cards }: { cards?: SourceCard[] }) {
             >
               {c.title || c.url}
             </a>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex-shrink-0">
-              {String(c.provider || 'web').toUpperCase()}
-            </span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+                {String(c.provider || 'web').toUpperCase()}
+              </span>
+              {c.sourceType ? (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-200">
+                  {String(c.sourceType).toUpperCase()}
+                </span>
+              ) : null}
+            </div>
           </div>
           {c.summary ? (
             <p className="text-[11px] text-gray-700 dark:text-gray-200 mt-1">{c.summary}</p>
+          ) : null}
+          {c.whyThisMatters ? (
+            <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1">{c.whyThisMatters}</p>
           ) : null}
           {c.relevance ? (
             <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">{c.relevance}</p>

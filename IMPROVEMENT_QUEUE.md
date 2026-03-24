@@ -280,33 +280,35 @@ Non-goals:
      - Test: `apps/api/src/__tests__/pipeline-course-plan-debug.test.ts`
      - Checks: `npm test`, `npx tsc --noEmit`, `npx eslint .`, `npx prettier --check .` all ✅
 
-2. **Per-lesson “re-search loop” when lesson quality gates fail (topic-aware queries)**
+2. **Per-lesson “re-search loop” when lesson quality gates fail (topic-aware queries)** ✅ DONE
    - Today: regeneration reuses mostly the same sources; add a loop that **broadens / changes** queries when:
      - worked-example gate fails
      - section quotas fail
      - sources are too thin
-   - Acceptance criteria:
-     - On failure, system generates a second set of queries that explicitly target the missing artifact (e.g., “worked example”, “numerical example”, “reference implementation”, “step-by-step”).
-     - The retry stores `missingReason` with a structured reason (e.g., `worked_example_missing`, `sources_thin`).
-   - Likely files:
-     - `apps/api/src/routes/courses.ts` (lesson generation loop)
-     - `packages/agents/src/content-pipeline/*` (query generation)
-   - Tests:
-     - Deterministic test: failing worked-example triggers a query set that contains required hint tokens.
+   - Implemented:
+     - New retry query builder with explicit hint tokens ("worked example", "step-by-step", "reference implementation", "numerical example", etc.)
+     - Re-search attempts actually change inputs to `searchForLesson` via `stage2Templates` override.
+     - Stores structured retry `missingReason` values like: `worked_example_missing`, `section_quota_failed`, `placeholders_present`.
+   - Evidence:
+     - Commit: `ef5f16e` ("Iter74 P0.2 re-search retry + P0.3 richer source cards")
+     - Code: `apps/api/src/utils/stage2Retry.ts`
+     - Code: `apps/api/src/routes/courses.ts` (re-search on quality gate failure)
+     - Test: `apps/api/src/__tests__/iter74-research-retry.test.ts`
 
-3. **Source cards: compute per-result summaries (not just truncation) + ensure UI parity**
+3. **Source cards: compute per-result summaries (not just truncation) + ensure UI parity** ✅ DONE
    - Improve `SourceCard.summary` to be an actual short summary (extractive heuristic OK) and add per-card “why this matters”.
-   - Acceptance criteria:
-     - Summary is 1–2 sentences, not raw leading text.
-     - Card includes `sourceType` (docs/blog/paper/forum) inferred from domain/path heuristics.
-     - Lesson Reader’s “See Sources” view shows these cards when available.
-   - Likely files:
-     - `apps/api/src/utils/sourceCards.ts`
-     - `apps/client/src/components/SourceDrawer.tsx` or `AttributionDrawer.tsx`
-   - Tests:
-     - Unit tests for card summarization/type inference.
+   - Implemented:
+     - `extractiveSummary()` (1–2 sentence extractive)
+     - `inferSourceType()` heuristics (docs/blog/paper/forum)
+     - `whyThisMatters` field (API + UI rendering)
+   - Evidence:
+     - Commit: `ef5f16e` ("Iter74 P0.2 re-search retry + P0.3 richer source cards")
+     - Code: `apps/api/src/utils/sourceCards.ts`
+     - Code: `apps/client/src/components/pipeline/SourceCards.tsx`
+     - Types: `apps/client/src/hooks/usePipeline.ts`
+     - Tests: `apps/api/src/utils/__tests__/sourceCards.test.ts`
    - Screenshots:
-     - `lesson-reader` (sources drawer shows cards with summaries)
+     - TODO: `lesson-reader` (sources drawer shows cards with summaries + whyThisMatters + sourceType)
 
 4. **E-learning narration polish: enforce “worked example is fully worked” + “quick check has answer key”**
    - Strengthen validators to ensure:

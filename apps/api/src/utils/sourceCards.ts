@@ -8,6 +8,8 @@ export type SourceCard = {
   relevance: string;
   keyConcepts: string[];
   accessedAt: string;
+  sourceType?: 'docs' | 'blog' | 'paper' | 'forum';
+  whyThisMatters?: string;
 };
 
 function dedupeByUrl<T extends { url: string }>(arr: T[]): T[] {
@@ -36,6 +38,105 @@ function normalizeProvider(s: FirecrawlSource): string {
   if (lower.includes('quora')) return 'quora';
   if (lower.includes('tavily')) return 'tavily';
   return lower;
+}
+
+export function extractiveSummary(text: string): string {
+  const cleaned = String(text || '')
+    .replace(/\s+/g, ' ')
+    .replace(/\[(\d+)\]/g, '')
+    .trim();
+
+  if (!cleaned) return '';
+
+  const sentences = cleaned
+    .split(/(?<=[.!?])\s+/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+
+  const pick = sentences.slice(0, 2).join(' ').trim();
+  const out = (pick || cleaned).trim();
+
+  return out.length <= 320 ? out : out.slice(0, 317).trimEnd() + '…';
+}
+
+export function inferSourceType(url: string, domain?: string): SourceCard['sourceType'] {
+  const u = String(url || '').toLowerCase();
+  const d = String(domain || '').toLowerCase();
+
+  const isDocs =
+    d.startsWith('docs.') ||
+    u.includes('/docs') ||
+    u.includes('/documentation') ||
+    u.includes('readthedocs') ||
+    d.startsWith('developer.') ||
+    d.startsWith('api.') ||
+    u.includes('/reference');
+  if (isDocs) return 'docs';
+
+  const isPaper =
+    d === 'arxiv.org' ||
+    d.endsWith('.ac.uk') ||
+    d.endsWith('.edu') ||
+    u.includes('doi.org') ||
+    u.includes('acm.org') ||
+    u.includes('ieee.org') ||
+    u.endsWith('.pdf') ||
+    u.includes('/paper') ||
+    u.includes('/papers');
+  if (isPaper) return 'paper';
+
+  const isForum =
+    d === 'stackoverflow.com' ||
+    d.endsWith('stackexchange.com') ||
+    d === 'reddit.com' ||
+    d === 'news.ycombinator.com' ||
+    u.includes('/forum') ||
+    u.includes('/discuss') ||
+    u.includes('/questions/');
+  if (isForum) return 'forum';
+
+  const isBlog =
+    u.includes('/blog') ||
+    u.includes('/posts') ||
+    u.includes('/article') ||
+    d === 'medium.com' ||
+    d.endsWith('substack.com') ||
+    d.endsWith('blogspot.com') ||
+    d.endsWith('wordpress.com');
+  if (isBlog) return 'blog';
+
+  return 'docs';
+}
+
+export function buildWhyThisMatters(params: {
+  topic: string;
+  sourceType: SourceCard['sourceType'];
+  provider: string;
+  keyConcepts: string[];
+}): string {
+  const { topic, sourceType, provider, keyConcepts } = params;
+
+  const concepts = keyConcepts.slice(0, 2).join(' and ');
+  switch (sourceType) {
+    case 'docs':
+      return concepts
+        ? `Good for authoritative definitions and API details (${provider}); clarifies ${concepts}.`
+        : `Good for authoritative definitions and API details (${provider}).`;
+    case 'paper':
+      return concepts
+        ? `Useful for evidence and evaluation (${provider}); grounds ${concepts} in measured results.`
+        : `Useful for evidence and evaluation (${provider}).`;
+    case 'forum':
+      return concepts
+        ? `Shows real-world pitfalls and edge cases (${provider}); helpful when applying ${concepts}.`
+        : `Shows real-world pitfalls and edge cases (${provider}).`;
+    case 'blog':
+      return concepts
+        ? `Often includes step-by-step examples (${provider}); helps you implement ${concepts} (verify against docs).`
+        : `Often includes step-by-step examples (${provider}) (verify against docs).`;
+    default:
+      return `Provides practical background for ${topic}.`;
+  }
 }
 
 function toKeyConcepts(s: FirecrawlSource, topic: string): string[] {
@@ -111,22 +212,17 @@ export function buildSourceCards(
       .replace(/\s+/g, ' ')
       .trim();
 
-    // Simple, non-LLM summary: first ~2 sentences (or ~220 chars), plus a plain-English "why it matters".
-    const firstTwo = raw
-      .replace(/\[(\d+)\]/g, '')
-      .split(/(?<=[.!?])\s+/)
-      .map((x) => x.trim())
-      .filter(Boolean)
-      .slice(0, 2)
-      .join(' ');
+    // Iter74 P0.3: extractive 1–2 sentence summary + separate whyThisMatters.
+    const summary = extractiveSummary(raw);
 
-    const core = (firstTwo || raw.slice(0, 220)).trim();
-    const why = keyConcepts.length
-      ? `Why it matters: helps you understand ${keyConcepts.slice(0, 2).join(' and ')}.`
-      : `Why it matters: provides practical background for ${topic}.`;
-
-    const punct = /[.!?]$/.test(core) ? '' : '.';
-    const summary = `${core}${punct} ${why}`.slice(0, 360);
+    const domain = (s as any)?.domain;
+    const sourceType = inferSourceType(s.url, domain);
+    const whyThisMatters = buildWhyThisMatters({
+      topic,
+      sourceType,
+      provider,
+      keyConcepts,
+    });
 
     const relevance = `Relevant for ${topic} because it covers ${keyConcepts.slice(0, 2).join(' & ') || 'core concepts'}.`;
 
@@ -138,6 +234,8 @@ export function buildSourceCards(
       relevance,
       keyConcepts,
       accessedAt,
+      sourceType,
+      whyThisMatters,
     };
   });
 }

@@ -38,6 +38,8 @@ export interface SourceCard {
   relevance: string;
   keyConcepts: string[];
   accessedAt: string;
+  sourceType?: 'docs' | 'blog' | 'paper' | 'forum';
+  whyThisMatters?: string;
 }
 
 export interface LessonSynthesis {
