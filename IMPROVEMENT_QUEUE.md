@@ -1106,7 +1106,14 @@ Capture from `screenshots/iter78/planner-run/` and add any missing manual shots 
 
 ## Iteration 79 — RICH CONVERSATION RENDERING + UNIFIED SOURCES DRAWER + CONSISTENT ACTION CHIPS
 
-Status: **READY FOR BUILDER (iter79)**
+Status: **DONE (iter79)**
+
+Evidence:
+
+- Commit: b06132b ("Iter79: unify markdown renderer, sources drawer, and action chips")
+- Tests: `npm test` (turbo) ✅, `npx tsc --noEmit` ✅, `npm run lint:check` ✅, `npm run format:check` ✅
+- Snapshots: `apps/client/src/__tests__/markdownRenderer.snapshot.test.tsx` ✅
+- Screenshots: `screenshots/iter79/run-001/` (copied from iter57 harness run)
 
 ### Why this iteration (high leverage)
 
