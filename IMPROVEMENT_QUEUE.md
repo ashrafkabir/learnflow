@@ -2302,7 +2302,27 @@ Required:
 
 ## Iteration 86 — DB HYGIENE (HARNESS POLLUTION) + SAFE CLEANUP CONTROLS + BUILD-RUN GUARDRAILS + PRIVACY COPY AUDIT
 
-Status: **READY FOR BUILDER**
+Status: **DONE** (2026-03-24)
+
+Evidence:
+
+- Merge commit (master): d12699b
+- Feature commits: d031d12, 378df57
+- Key files:
+  - apps/api/src/app.ts (capture req origin)
+  - apps/api/src/config.ts (dev auth explicit opt-in)
+  - apps/api/src/db.ts (origin columns + filters + cleanup helper)
+  - apps/api/src/routes/admin-cleanup.ts (dev-only cleanup API)
+  - apps/api/src/routes/profile.ts (data-summary includeNonUserOrigins=1)
+  - apps/client/src/screens/ProfileSettings.tsx (dev-only cleanup UI)
+  - apps/docs/pages/privacy-security.md (copy corrections)
+
+Gates:
+
+- npm test ✅
+- npx tsc --noEmit ✅
+- npx eslint . ✅
+- npx prettier --check . ✅
 
 ### Why this iteration (next spec-parity trust gaps)
 
