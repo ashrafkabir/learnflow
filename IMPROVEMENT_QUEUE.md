@@ -68,7 +68,7 @@ Iter72 improved “course/lesson generation quality”, but the product spec is 
 
 > Planner note: User interjections to incorporate next planning cycle are tracked in `USER_SUGGESTIONS.md` (must not block current builder progression).
 
-Status: **READY FOR BUILDER (iter73)**
+Status: **IN PROGRESS (iter73)**
 
 Focus:
 
