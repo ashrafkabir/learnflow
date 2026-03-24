@@ -239,7 +239,7 @@ Non-goals:
 
 ## Iteration 74 — E2E COURSE PLANNING (FROM SOURCES) + PER-TOPIC RE-SEARCH LOOP + E-LEARNING NARRATION POLISH
 
-Status: **IN PROGRESS (builder running)**
+Status: **DONE (P0 complete)**
 
 Focus (why this iteration exists):
 
@@ -430,7 +430,8 @@ Non-goals:
 ### Verification checklist (Iter74)
 
 - ✅ P0.4–P0.6 implemented (commit `bb6d03f`) + new tests
-- `npm test`
-- `npx tsc --noEmit`
-- `npx eslint .`
-- `npx prettier --check .`
+- ✅ Screenshots bundle committed: `4d9b4c4` (run-003)
+- `npm test` ✅
+- `npx tsc --noEmit` ✅
+- `npx eslint .` ✅
+- `npx prettier --check .` ✅
