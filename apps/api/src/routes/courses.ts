@@ -15,6 +15,7 @@ import {
   searchWikimediaCommonsImages,
   type FirecrawlSource,
   type LicenseSafeImageCandidate,
+  extractDomain,
 } from '@learnflow/agents';
 import {
   dbCourses,
@@ -547,18 +548,106 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
           // rather than sharing one topic-wide crawl.
           let lessonSources: FirecrawlSource[] = crawledSources;
           if (!fastTestMode) {
+            const baseCfg = {
+              maxSourcesPerLesson: 6,
+              maxStage2Queries: 6,
+              perQueryLimit: 4,
+            } as any;
+
             try {
               lessonSources = await searchForLesson(topic, mod.title, les.title, les.description, {
-                maxSourcesPerLesson: 6,
-                maxStage2Queries: 6,
-                perQueryLimit: 4,
-              } as any);
+                ...baseCfg,
+              });
             } catch (err) {
               console.warn(
                 '[LearnFlow] searchForLesson failed; falling back to topic sources:',
                 err,
               );
               lessonSources = crawledSources;
+            }
+
+            // Iter73 P1: Per-lesson domain diversity gate (enforced).
+            // Require ≥2 sources AND ≥2 distinct domains.
+            // Best-effort override: if we can't achieve it, we keep what we have and persist a missingReason.
+            const distinctDomains = new Set(
+              (lessonSources || []).map((s) => extractDomain(s.url) || s.domain || 'unknown'),
+            );
+
+            if ((lessonSources?.length || 0) < 2 || distinctDomains.size < 2) {
+              try {
+                const broadened = await searchForLesson(
+                  topic,
+                  mod.title,
+                  les.title,
+                  les.description,
+                  {
+                    ...baseCfg,
+                    // widen query breadth best-effort
+                    maxStage2Queries: 10,
+                    perQueryLimit: 6,
+                    enabledSources: {
+                      // keep free sources + broaden to social/tech blog sources for diversity
+                      wikipedia: true,
+                      arxiv: true,
+                      github: true,
+                      reddit: true,
+                      medium: true,
+                      substack: true,
+                      quora: true,
+                      thenewstack: true,
+                      devto: true,
+                      hackernews: true,
+                      stackoverflow: true,
+                      freecodecamp: true,
+                      towardsdatascience: true,
+                      digitalocean: true,
+                      mdn: true,
+                      smashingmag: true,
+                      coursera: true,
+                      baiduscholar: true,
+                      tavily: true,
+                    },
+                  } as any,
+                );
+
+                // Merge + keep top slice.
+                const merged = [...(lessonSources || []), ...(broadened || [])];
+                // Keep a deterministic unique-by-url.
+                const seen = new Set<string>();
+                const uniq: FirecrawlSource[] = [];
+                for (const s of merged) {
+                  if (!s?.url) continue;
+                  if (seen.has(s.url)) continue;
+                  seen.add(s.url);
+                  uniq.push(s);
+                }
+
+                // Prefer results that increase domain diversity.
+                const out: FirecrawlSource[] = [];
+                const domains = new Set<string>();
+                for (const s of uniq) {
+                  if (out.length >= 6) break;
+                  const d = extractDomain(s.url) || s.domain || 'unknown';
+                  // take first occurrences of new domains first
+                  if (!domains.has(d) || out.length < 2) {
+                    out.push(s);
+                    domains.add(d);
+                  }
+                }
+
+                // Fill remaining if needed
+                for (const s of uniq) {
+                  if (out.length >= 6) break;
+                  if (!out.some((x) => x.url === s.url)) out.push(s);
+                }
+
+                lessonSources = out.slice(0, 6);
+              } catch (err) {
+                console.warn(
+                  '[LearnFlow] diversity retry searchForLesson failed (non-fatal):',
+                  err,
+                );
+              }
             }
           }
 
@@ -782,10 +871,16 @@ Continue.`,
           }
 
           const sources = gen.sources || [];
+
+          // Iter73 P1: persist richer missingReason for quality + sourcing gates.
+          const distinctDomains = new Set((sources || []).map((s: any) => String(s?.domain || '')));
           const missingReason =
-            sources.length >= 2
+            sources.length >= 2 && distinctDomains.size >= 2
               ? ''
-              : 'attribution_gate: lesson has fewer than 2 resolvable sources';
+              : sources.length < 2
+                ? 'attribution_gate: lesson has fewer than 2 resolvable sources'
+                : 'domain_diversity_gate: lesson sources lack ≥2 distinct domains';
+
           try {
             dbLessonSources.save(`${courseId}-m${mi}-l${li}`, courseId, sources, missingReason);
           } catch {
