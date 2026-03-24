@@ -1,8 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 
 const fetchMock = vi.fn();
-// @ts-expect-error test-only
-global.fetch = fetchMock;
+(global as any).fetch = fetchMock;
 
 import { AnthropicClient } from '../llm/anthropic.js';
 
