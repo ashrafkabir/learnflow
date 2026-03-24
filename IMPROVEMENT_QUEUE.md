@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24 (Iter82 planning)
+Last updated: 2026-03-24 (Iter83 planning)
 
 ---
 
@@ -1736,3 +1736,172 @@ Capture via `SCREENSHOT_DIR=screenshots/iter82/run-001 node screenshot-all.mjs`.
 - API tests include coverage for `/api/v1/profile/data-summary`
 - Screenshot harness run:
   - `SCREENSHOT_DIR=screenshots/iter82/run-001 ITERATION=82 node screenshot-all.mjs`
+
+---
+
+## Iteration 83 — UPDATE AGENT (REAL MONITORING MVP) + NOTIFICATIONS TRUST LOOP + SPEC-PARITY UX POLISH
+
+Status: **READY FOR BUILDER**
+
+### Why this iteration (highest leverage gaps)
+
+Brutal truth from `IMPLEMENTED_VS_SPEC.md`: the **Update Agent (spec §14)** is still a stub — notifications exist, but generation does **not** crawl/monitor real sources. That’s a user-visible promise gap.
+
+This iteration focuses on shipping a **minimal real monitoring loop** that users can feel:
+
+- they pick topics/sources,
+- the system checks periodically,
+- it generates evidence-backed notifications,
+- the UI explains what was checked and why it thinks it matters.
+
+Scope is intentionally small: no enterprise scheduler, no full agent mesh, no complex ranking model.
+
+### P0 (Must do)
+
+1. **Implement real “Update Agent” monitoring loop (MVP) against configured sources**
+
+- Description:
+  - Replace the current generic notification generator with an MVP that:
+    - fetches a small set of sources per topic (RSS/Atom first; HTML fallback)
+    - extracts new items since last check
+    - generates a notification with a link, title, date, and short summary
+- Acceptance criteria:
+  - `POST /api/v1/notifications/generate` produces notifications that:
+    - include at least 1 real URL per notification (not placeholder)
+    - have deduplication (same URL not re-notified)
+    - are scoped to the authenticated user
+  - System persists “last checked at” per topic/source
+  - If a source fails (429/timeout), it’s recorded and does not abort the whole run
+- Likely files:
+  - `apps/api/src/routes/notifications.ts`
+  - `apps/api/src/utils/*` (new: rss parsing + fetch wrapper)
+  - `apps/api/src/db.ts` (new tables/queries for source state + dedupe)
+
+2. **User-configurable tracking: “Topics I monitor” + per-topic source list (UI + API)**
+
+- Description:
+  - Add a simple Settings section where users can:
+    - add/remove monitored topics
+    - optionally attach one or more sources per topic (RSS URL or website URL)
+- Acceptance criteria:
+  - UI supports CRUD for monitored topics
+  - Default sources exist for a topic if user adds none (minimal, safe defaults)
+  - API validates URLs and stores normalized canonical form
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx` (or a new `UpdateAgentSettings.tsx`)
+  - `apps/api/src/routes/profile.ts` or `apps/api/src/routes/update-agent.ts` (if new)
+  - DB migrations in `apps/api/src/db.ts` (or migration folder, if present)
+
+3. **Notifications trust loop: “Why am I seeing this?” + “What was checked?”**
+
+- Description:
+  - Each notification should expose:
+    - the topic that triggered it
+    - the source used (domain + URL)
+    - a short explanation (“Matched because…”) derived from simple keyword overlap or heuristic rules
+- Acceptance criteria:
+  - Notification detail UI (or drawer) shows:
+    - topic
+    - source domain + link
+    - checkedAt timestamp
+    - explanation string
+  - Explanation is deterministic (no LLM required)
+- Likely files:
+  - `apps/client/src/screens/Dashboard.tsx` (notifications list/detail)
+  - `apps/client/src/components/*` (notification detail drawer/modal)
+  - `apps/api/src/routes/notifications.ts` (schema changes)
+
+4. **API contract tests for Update Agent generation + dedupe + failure handling**
+
+- Acceptance criteria:
+  - Test: first run generates N notifications (>=1) given fixture feeds
+  - Test: second run does not duplicate notifications for same URLs
+  - Test: failed source is captured and other sources still produce notifications
+- Likely files:
+  - `apps/api/src/__tests__/notifications-generate-mvp.test.ts`
+  - fixtures for RSS feeds (local strings) + mocked fetch
+
+5. **Client UX parity: Notifications “Mark all read” + unread badge consistency**
+
+- Acceptance criteria:
+  - Notifications screen/feed has “Mark all read”
+  - Unread badge count updates immediately and matches server on refresh
+  - Does not break on empty list
+- Likely files:
+  - `apps/client/src/screens/Dashboard.tsx`
+  - `apps/client/src/context/*` or notifications hook
+  - `apps/api/src/routes/notifications.ts` (only if endpoint missing)
+
+### P1 (Should do)
+
+6. **RSS/HTML extraction resilience: rate-limit aware fetch + small cache**
+
+- Acceptance criteria:
+  - Implement exponential backoff + jitter for 429/5xx
+  - Cache fetch results for short TTL to avoid refetch storms
+  - Unit test for backoff/caching behavior
+- Likely files:
+  - `apps/api/src/utils/fetchWithBackoff.ts`
+  - `apps/api/src/utils/rss.ts`
+
+7. **Update Agent transparency in Settings: run history + last status**
+
+- Acceptance criteria:
+  - Settings shows last run time, last success time, and per-source last status
+  - Failures show a user-friendly message (“Couldn’t reach source; will retry later”)
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/routes/profile.ts` (data summary extension or dedicated endpoint)
+
+8. **Docs: update Privacy/Security + “Update Agent” behavior disclaimers**
+
+- Acceptance criteria:
+  - Docs page describes:
+    - what sources are fetched
+    - what is stored (topic list, source URLs, last checked timestamps, notification records)
+    - how to delete
+- Likely files:
+  - `apps/docs/pages/privacy-security.md`
+  - `apps/docs/pages/update-agent.md` (new, if docs structure supports it)
+
+### P2 (Nice to have)
+
+9. **Notification quality: basic relevance filter (keyword overlap threshold)**
+
+- Acceptance criteria:
+  - Ignore items that do not contain any topic keywords (configurable threshold)
+  - Tests cover filter behavior
+- Likely files:
+  - `apps/api/src/utils/notificationRelevance.ts`
+
+10. **Admin/dev: debug endpoint to inspect Update Agent state (per topic/source)**
+
+- Acceptance criteria:
+  - Dev-only endpoint returns monitored topics, sources, lastCheckedAt, lastItemSeen, lastError
+- Likely files:
+  - `apps/api/src/routes/admin.ts` or `apps/api/src/routes/notifications.ts`
+
+### Screenshot checklist (Iter83)
+
+Capture via `SCREENSHOT_DIR=screenshots/iter83/run-001 node screenshot-all.mjs`.
+
+- `settings-update-agent-topics.png`
+  - Shows monitored topics list + add/remove
+- `settings-update-agent-sources.png`
+  - Shows sources per topic + validation/error state
+- `dashboard-notifications-why-this.png`
+  - Notification detail/drawer shows topic, source, checkedAt, explanation
+- `dashboard-notifications-unread-badge.png`
+  - Unread count changes after mark-all-read
+
+### Verification checklist (Iter83)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- API tests:
+  - Update Agent generate + dedupe + failure handling
+  - Mark-all-read contract (if endpoint exists)
+- Screenshot harness run:
+  - `SCREENSHOT_DIR=screenshots/iter83/run-001 ITERATION=83 node screenshot-all.mjs`
