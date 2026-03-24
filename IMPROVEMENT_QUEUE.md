@@ -900,7 +900,7 @@ The app is a strong MVP, but spec promises are ahead of implementation in a few 
 
 1. **BYOAI Vault: enforce encrypted-at-rest semantics + explicit provider validation UX**
 
-- Status: **PARTIAL ✅** (validation shipped; rotation shipped; encryption enforcement remaining)
+- Status: **DONE ✅**
 - Evidence:
   - API:
     - `POST /api/v1/keys/validate-saved` (format + best-effort provider ping; network ping skipped in tests)
@@ -908,16 +908,20 @@ The app is a strong MVP, but spec promises are ahead of implementation in a few 
     - `POST /api/v1/keys/rotate` (create new key + set active)
     - `GET /api/v1/keys` returns list w/ `active` + `label` + `rotatedAt`
   - DB: `api_keys.validatedAt/lastValidationStatus/lastValidationError/rotatedAt`
+  - Security: production requires valid `ENCRYPTION_KEY` (64-char hex)
   - Client: Settings → API Keys list shows Active badge + Activate + Rotate buttons
   - Tests:
     - `apps/api/src/__tests__/keys-validate-saved.test.ts`
     - `apps/api/src/__tests__/keys-rotation-activation.test.ts`
+    - `apps/api/src/__tests__/encryption-config.test.ts`
   - Commits (branch `iter78`):
     - `92808e8` validate UX + validation metadata
     - `a1544c8` multi-key + activate/rotate + tests
+    - `34350a0` enforce ENCRYPTION_KEY in production + tests
 - Remaining:
   - ~~Key rotation: keep multiple keys per provider, mark old inactive; UX to rotate + switch active~~ ✅ DONE (multi-key list + activate + rotate)
-  - Encrypted-at-rest enforcement: currently AES-256-CBC; consider tightening to AES-256-GCM + enforce ENCRYPTION_KEY presence in non-dev
+  - ~~Encrypted-at-rest enforcement: enforce ENCRYPTION_KEY presence in production~~ ✅ DONE (blocks prod startup if missing/invalid)
+  - (Optional) tighten crypto: consider migrating AES-256-CBC → AES-256-GCM for new writes while supporting legacy decrypt
 
 - Likely files:
   - `apps/api/src/crypto.ts`
