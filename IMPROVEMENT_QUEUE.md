@@ -125,16 +125,18 @@ Non-goals:
 
 ### P1 (Should do)
 
-7. **Per-lesson domain diversity gate for sources (enforced, not advisory)**
-   - Require ≥2 sources AND ≥2 distinct domains (best-effort override for ultra-niche).
-   - If gate fails: broaden query set or use secondary provider.
+7. **Per-lesson domain diversity gate for sources (enforced, not advisory)** — **DONE (iter73)**
+   - Enforced best-effort gate in API lesson sourcing:
+     - if <2 sources or <2 distinct domains → retry `searchForLesson()` with broader query + expanded providers, merge, and pick sources that increase domain diversity.
+   - Persist `missingReason` as `domain_diversity_gate: ...` when still failing.
 
-8. **Source metadata enrichment (publication/year/title normalization)**
-   - Improve `toStructuredLessonSources()`:
-     - canonicalize titles
-     - attempt publish date extraction
-     - store `publication` consistently
-   - UI should show: title, domain, year, license, accessedAt.
+8. **Source metadata enrichment (publication/year/title normalization)** — **DONE (iter73)**
+   - Improved `toStructuredLessonSources()`:
+     - normalize titles (collapse whitespace/trim)
+     - best-effort year extraction from publishDate/title/url
+     - consistent publication fallback + added `domain` field
+     - expanded license heuristics (best-effort)
+   - Persisted source objects now include: title, domain, year, license, accessedAt (+ publication).
 
 9. **Lesson length control should include section-level quotas**
    - Keep total <10 min, but also prevent 80% of words in “Core Concepts”.
