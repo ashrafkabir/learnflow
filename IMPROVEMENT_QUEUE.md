@@ -871,3 +871,205 @@ Non-goals:
 - Client verification:
   - Failure callout renders with correct message.
   - Restart button triggers restart and UI updates.
+
+---
+
+## Iteration 78 — SPEC ALIGNMENT: BYOAI VAULT, UPDATE AGENT (REAL), RICH LESSON/CHAT UX
+
+Status: **PLANNED**
+
+Planner run evidence (Iter78):
+
+- ✅ Boot: `systemctl --user status learnflow-api learnflow-client learnflow-web`
+- ✅ Screenshots: `SCREENSHOT_DIR=screenshots/iter78/planner-run node screenshot-all.mjs`
+  - Output dir: `learnflow/screenshots/iter78/planner-run/`
+- ✅ `npm test`
+- ✅ `npm run lint:check`
+- ✅ `npx tsc --noEmit`
+- ✅ `npm run format:check`
+
+### Brutally honest spec deltas driving Iter78
+
+The app is a strong MVP, but spec promises are ahead of implementation in a few high-trust areas:
+
+- **BYOAI key vault** is present, but the spec explicitly promises “AES-256 at rest”, rotation UX, and a **usage dashboard surfaced to the user** (not just internal usage records).
+- **Update Agent (Pro)** exists as a stub (`MockWebSearchProvider`). Notifications are real, but there is **no real monitoring/crawling** and no in-repo scheduling.
+- **Conversation + lesson UX** is present, but “rich responses” (citations drawer, consistent quick actions, math/code rendering polish, agent transparency) are **inconsistent** across screens.
+
+### P0 (Must do)
+
+1. **BYOAI Vault: enforce encrypted-at-rest semantics + explicit provider validation UX**
+
+- What to build:
+  - Ensure keys are encrypted before persistence and are never returned in plaintext.
+  - Add explicit “Validate” action per provider with clear error messages.
+  - Add key rotation UX: mark old key inactive, keep usage history.
+- Acceptance criteria:
+  - DB never stores plaintext API keys (unit tests assert encrypted blob shape + decrypt works only server-side).
+  - API never returns raw key material (even for the owning user).
+  - Client shows validation success/failure and last validated timestamp.
+- Likely files:
+  - `apps/api/src/crypto.ts`
+  - `apps/api/src/routes/keys.ts`
+  - `apps/api/src/db.ts`
+  - `apps/client/src/screens/ApiKeys.tsx`
+
+2. **User-facing Usage Dashboard (spec §5.2.8 / usage tracking)**
+
+- What to build:
+  - Settings → Usage view that summarizes tokens by provider + last used + top agents.
+  - Make the numbers stable and understandable ("tokens" + approximate cost note is optional).
+- Acceptance criteria:
+  - A Pro/Free user can see totals for the last 7/30 days.
+  - Usage aggregates match server-side records (API test + UI test snapshot).
+- Likely files:
+  - `apps/api/src/routes/usage.ts` (or add if missing)
+  - `apps/api/src/db.ts` (aggregate helpers)
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/client/src/components/*` (charts/tables)
+
+3. **Update Agent: replace stubbed “search” with real provider(s) + credibility filters (MVP)**
+
+- What to build:
+  - Implement a real web discovery provider for UpdateAgent using the existing pipeline tooling (Firecrawl/Tavily if available) with strict timeouts.
+  - Filter/score results (authority/recency/relevance) at least at MVP level.
+- Acceptance criteria:
+  - `POST /api/v1/notifications/generate` produces notifications with real URLs/titles for a topic.
+  - Dedup: repeated runs do not spam identical notifications.
+  - Failure mode is graceful (returns 200 with 0 notifications + logs) when providers are down.
+- Likely files:
+  - `packages/agents/src/update-agent/update-agent.ts`
+  - `packages/agents/src/content-pipeline/*` (provider reuse)
+  - `apps/api/src/routes/notifications.ts`
+
+4. **Update Agent scheduling contract (no cron in repo, but make it deployable)**
+
+- What to build:
+  - Document + implement a single “cron-safe” entrypoint (HTTP endpoint already exists; ensure idempotency + auth).
+  - Add a dev-only `npm run notifications:tick` script that triggers generation.
+- Acceptance criteria:
+  - Endpoint requires auth (or dev-auth in dev mode only).
+  - Multiple concurrent ticks do not generate duplicates.
+- Likely files:
+  - `apps/api/src/routes/notifications.ts`
+  - `apps/api/src/middleware.ts`
+  - `apps/api/package.json` scripts
+
+5. **Conversation UX: standardize rich rendering + consistent action chips**
+
+- What to build:
+  - Ensure markdown rendering supports:
+    - code blocks with highlighting
+    - tables
+    - (best-effort) LaTeX math blocks
+  - Standardize “quick actions” component across Conversation + Lesson Reader.
+- Acceptance criteria:
+  - Conversation screen renders a message with code block + table without layout break.
+  - Action chips are consistent and map to actual behaviors (no dead buttons).
+- Likely files:
+  - `apps/client/src/screens/Conversation.tsx`
+  - `apps/client/src/components/*`
+  - `apps/client/src/lib/markdown*`
+
+6. **Sources & Attribution: unify the drawer pattern across Lesson Reader and Conversation**
+
+- What to build:
+  - Single sources drawer component used in both places.
+  - Sources include title/url/author/date when available (spec §6.3 provenance).
+- Acceptance criteria:
+  - In Lesson Reader: “See Sources” always opens drawer and shows ≥1 source when lesson has sources.
+  - In Conversation: WS `response.end.sources` shows in the same drawer.
+- Likely files:
+  - `apps/client/src/screens/LessonReader.tsx`
+  - `apps/client/src/screens/Conversation.tsx`
+  - `apps/client/src/components/SourcesDrawer.tsx` (new)
+
+### P1 (Should do)
+
+7. **Orchestrator/WS hardening: request IDs + streaming invariants**
+
+- What to build:
+  - Ensure every WS response includes `requestId` and stable `message_id` mapping across error paths.
+  - Add backpressure-friendly chunking and ensure ordering when multiple agents complete.
+- Acceptance criteria:
+  - WS contract tests cover: invalid JSON, timeout, and multi-agent completion ordering.
+- Likely files:
+  - `apps/api/src/wsOrchestrator.ts`
+  - `apps/api/src/wsContract.ts`
+  - `apps/api/src/__tests__/ws-contract.test.ts`
+
+8. **Mindmap explorer: click actions for key node types (jump-to-lesson / expand)**
+
+- What to build:
+  - Clicking a node either expands (if expandable) or navigates to the best-matching lesson.
+  - Persist accepted suggestions + show confirmation.
+- Acceptance criteria:
+  - At least 2 node behaviors implemented and covered by a UI test.
+- Likely files:
+  - `apps/client/src/screens/MindmapExplorer.tsx`
+  - `apps/api/src/routes/mindmap.ts`
+
+9. **Marketplace: make “creator dashboard” less fake (publish flow clarity)**
+
+- What to build:
+  - Minimum publish workflow: draft → quality check → publish with a clear status.
+  - Show moderation status even if “human review” is not implemented.
+- Acceptance criteria:
+  - Creator can create a draft course listing, run quality checks, and see “Published” status in UI.
+- Likely files:
+  - `apps/client/src/screens/marketplace/*`
+  - `apps/api/src/routes/marketplace.ts`
+
+### P2 (Nice to have)
+
+10. **Export polish: add one “high-fidelity” format path (Markdown or JSON) + test**
+
+- Acceptance criteria:
+  - Exported artifact includes course metadata + modules + lessons + sources.
+- Likely files:
+  - `packages/agents/src/export-agent/*`
+  - `apps/api/src/routes/export.ts`
+
+11. **Observability MVP: structured logs for pipelines + Update Agent ticks**
+
+- Acceptance criteria:
+  - A single request produces correlated logs with `requestId` and `pipelineId`/`topicId`.
+- Likely files:
+  - `apps/api/src/errors.ts`
+  - `apps/api/src/routes/pipeline.ts`
+  - `apps/api/src/routes/notifications.ts`
+
+12. **Docs: update spec-to-implementation truth table (roll forward Iter70 doc)**
+
+- Acceptance criteria:
+  - `IMPLEMENTED_VS_SPEC.md` updated to reflect current iteration and concrete endpoints/screens.
+- Likely files:
+  - `IMPLEMENTED_VS_SPEC.md`
+
+### Screenshot checklist (Iter78)
+
+Capture from `screenshots/iter78/planner-run/` and add any missing manual shots if needed:
+
+- `onboarding-4-api-keys.png` (shows key vault UI)
+- `app-settings.png` (Usage dashboard visible)
+- `app-conversation.png` (action chips + sources drawer entrypoint)
+- `lesson-reader.png` (Sources & Attribution drawer)
+- `app-dashboard.png` (notifications feed populated by Update Agent)
+
+### Verification checklist (Iter78)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- Manual spot checks:
+  - Add a provider key → validate → confirm not retrievable in plaintext.
+  - Trigger `POST /api/v1/notifications/generate` → verify real URLs + no duplicates on re-run.
+  - Open Conversation → send a message → see sources drawer populated (best-effort).
+
+### OneDrive / artifacts
+
+- TODO (if OneDrive sync tooling is available):
+  - Sync: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter78/planner-run/`
+  - And the updated: `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
+  - If no tooling exists, keep this TODO and include the exact paths above.
