@@ -8,6 +8,13 @@ export const config = {
   encryptionKey: process.env.ENCRYPTION_KEY || 'a'.repeat(64), // 32 bytes hex
   port: parseInt(process.env.PORT || '3000', 10),
   yjsPort: parseInt(process.env.YJS_PORT || '3002', 10),
+
+  // API hardening defaults (Iter87)
+  api: {
+    bodyLimit: process.env.API_BODY_LIMIT || '1mb',
+    corsAllowOrigins: process.env.CORS_ALLOW_ORIGINS || '',
+  } as const,
+
   // Dev-mode auth bypass must be explicitly enabled.
   // Never enable in production.
   devMode:

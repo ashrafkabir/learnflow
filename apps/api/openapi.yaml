@@ -1127,6 +1127,63 @@ paths:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
 
+  /api/v1/profile/data-summary:
+    get:
+      summary: Get profile data summary
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Summary
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  coursesCount: { type: integer }
+                  pipelinesCount: { type: integer }
+                  notificationsCount: { type: integer }
+                  lastCourseCreatedAt: { type: string, nullable: true }
+                  lastPipelineCreatedAt: { type: string, nullable: true }
+                  lastNotificationCreatedAt: { type: string, nullable: true }
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/v1/profile/delete:
+    post:
+      summary: Delete user profile data
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
   /api/v1/subscription:
     post:
       summary: Subscribe/upgrade/downgrade
@@ -1251,6 +1308,24 @@ paths:
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
+
+  /api/v1/notifications/read-all:
+    post:
+      summary: Mark all notifications as read
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: OK
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  updated: { type: integer }
 
   /api/v1/notifications/generate:
     post:
@@ -1669,6 +1744,70 @@ paths:
           application/json:
             schema:
               type: object
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/admin/cleanup:
+    post:
+      summary: Admin cleanup
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Cleanup complete
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  deletedNotifications: { type: integer }
+                  deletedCourses: { type: integer }
+                  deletedPipelines: { type: integer }
+
+  /api/v1/update-agent/topics:
+    put:
+      summary: Update agent topics
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [topics]
+              properties:
+                topics:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/sources:
+    put:
+      summary: Update agent sources
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sources]
+              properties:
+                sources:
+                  type: array
+                  items: { type: string }
       responses:
         '200':
           description: Updated

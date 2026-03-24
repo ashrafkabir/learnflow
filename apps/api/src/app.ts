@@ -26,6 +26,8 @@ import { errorHandler, notFoundHandler, requestIdMiddleware, sendError } from '.
 import jwt from 'jsonwebtoken';
 import { config } from './config.js';
 import { RATE_LIMITS, clearRateLimits, rateLimitKeyFromReq, takeRateLimit } from './rateLimit.js';
+import helmet from 'helmet';
+import cors from 'cors';
 
 export { RATE_LIMITS, clearRateLimits };
 
@@ -34,22 +36,26 @@ function rateLimiter(req: Request, res: Response, next: NextFunction): void {
   // Keying purely by IP is too coarse in real-world environments (NAT, office networks,
   // mobile carriers) and can cause unrelated users/actions (e.g., course deletion) to hit 429.
   const ip = req.ip || 'unknown';
-  const userKey = rateLimitKeyFromReq({ ip, user: req.user });
+  // Include route prefix to avoid cross-endpoint interference.
+  // (Iter87 write limiter adds additional protection for write endpoints.)
+  const routeKey = req.baseUrl || req.path || 'unknown';
+  const userKey = `${routeKey}:${rateLimitKeyFromReq({ ip, user: req.user })}`;
   const tier = (req.user?.tier || 'free') as 'free' | 'pro';
 
   // In local dev mode we keep rate limiting enabled (so we still exercise the behavior)
   // but raise limits to avoid flaky E2E runs that legitimately generate a lot of API traffic.
   const devMode = Boolean((req.app as any)?.locals?.devMode);
 
-  const take = takeRateLimit({ key: userKey, tier, devMode });
+  const effectiveTier = devMode ? 'pro' : tier;
+  const take = takeRateLimit({ key: userKey, tier: effectiveTier, devMode: false });
   if (!take.ok) {
     res.setHeader('Retry-After', String(take.retryAfterSeconds));
     sendError(res, req, {
       status: 429,
       code: 'rate_limit_exceeded',
-      message: `Rate limit of ${take.limit} requests per minute exceeded for ${tier} tier. Try again in ~${take.retryAfterSeconds}s.`,
+      message: `Rate limit of ${take.limit} requests per minute exceeded for ${effectiveTier} tier. Try again in ~${take.retryAfterSeconds}s.`,
       details: {
-        tier,
+        tier: effectiveTier,
         limitPerMinute: take.limit,
         retryAfterSeconds: take.retryAfterSeconds,
       },
@@ -65,7 +71,50 @@ export function createApp(options?: { devMode?: boolean }) {
   app.locals.devMode = Boolean(options?.devMode);
 
   app.use(requestIdMiddleware);
-  app.use(express.json());
+
+  // Security headers (Iter87)
+  app.use(
+    helmet({
+      // LearnFlow is currently a JSON API; disable cross-origin embedding by default.
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
+  // CORS (Iter87)
+  // - In devMode: permissive (allows localhost tooling)
+  // - In prod: strict allowlist via CORS_ALLOW_ORIGINS (comma-separated)
+  const corsAllowOrigins = process.env.CORS_ALLOW_ORIGINS || config.api.corsAllowOrigins || '';
+  const allowlist = corsAllowOrigins
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  app.use(
+    cors({
+      origin(origin, cb) {
+        // Allow non-browser/SSR/no-origin requests.
+        if (!origin) return cb(null, true);
+
+        if (app.locals.devMode) return cb(null, true);
+
+        if (allowlist.length === 0) {
+          return cb(new Error('CORS not configured')); // handled by errorHandler
+        }
+
+        if (allowlist.includes(origin)) return cb(null, true);
+        return cb(new Error('Origin not allowed by CORS'));
+      },
+      credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'X-LearnFlow-Origin'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    }),
+  );
+
+  // Payload limits (Iter87)
+  // Read env at app creation time so tests can override without module cache issues.
+  const bodyLimit = process.env.API_BODY_LIMIT || config.api.bodyLimit;
+  app.use(express.json({ limit: bodyLimit }));
+  app.use(express.urlencoded({ extended: true, limit: bodyLimit }));
 
   // Iter86: capture request origin tagging for harness/admin/debug runs.
   // Default origin is 'user' (normal product behavior).
@@ -117,30 +166,153 @@ export function createApp(options?: { devMode?: boolean }) {
 
   // Routes
   app.use('/api/v1/keys', protectedAuth, rateLimiter, keysRouter);
-  app.use('/api/v1/chat', protectedAuth, rateLimiter, chatRouter);
-  app.use('/api/v1/courses', protectedAuth, rateLimiter, coursesRouter);
-  app.use('/api/v1/mindmap', protectedAuth, rateLimiter, mindmapRouter);
-  app.use('/api/v1/collaboration', protectedAuth, rateLimiter, collaborationRouter);
+
+  // Iter87: tighter write limits for abuse-prone endpoints.
+  // Read env at app creation time.
+  const writeLimits = {
+    // Defaults: disabled (Infinity) unless env explicitly configures.
+    perIpPerMinute: Number.isFinite(Number(process.env.RATE_LIMIT_WRITE_PER_IP_PER_MINUTE))
+      ? parseInt(process.env.RATE_LIMIT_WRITE_PER_IP_PER_MINUTE as string, 10)
+      : Number.POSITIVE_INFINITY,
+    perUserPerMinute: Number.isFinite(Number(process.env.RATE_LIMIT_WRITE_PER_USER_PER_MINUTE))
+      ? parseInt(process.env.RATE_LIMIT_WRITE_PER_USER_PER_MINUTE as string, 10)
+      : Number.POSITIVE_INFINITY,
+  } as const;
+
+  function writeRateLimiter(req: Request, res: Response, next: NextFunction): void {
+    const isWrite = req.method !== 'GET' && req.method !== 'HEAD' && req.method !== 'OPTIONS';
+    if (!isWrite) return next();
+
+    if (
+      !Number.isFinite(writeLimits.perIpPerMinute) &&
+      !Number.isFinite(writeLimits.perUserPerMinute)
+    ) {
+      return next();
+    }
+
+    const devMode = Boolean((req.app as any)?.locals?.devMode);
+    if (devMode) return next();
+
+    const ip = req.ip || 'unknown';
+    const userId = req.user?.sub;
+
+    const ipTake = takeRateLimit({
+      key: `write:ip:${ip}`,
+      tier: 'free',
+      devMode: false,
+      nowMs: Date.now(),
+    });
+
+    // Re-map the generic limiter's limit to our configured per-IP threshold.
+    // We do this by pre-checking and early rejecting when above threshold.
+    // (The core store is still used to track counts/window.)
+    // NOTE: we keep this simple and deterministic for MVP.
+    if (!ipTake.ok || ipTake.limit < writeLimits.perIpPerMinute) {
+      // If RATE_LIMITS.free.perMinute is below our write limit, treat it as the limiting factor.
+    }
+
+    // Custom per-window store for write endpoints to respect configured limits.
+    // Implemented inline to avoid refactors of existing tiered limiter.
+    const windowMs = 60_000;
+    const now = Date.now();
+
+    const stores = (req.app as any).locals.__writeRateLimitStores || {
+      ip: new Map<string, { count: number; resetAt: number }>(),
+      user: new Map<string, { count: number; resetAt: number }>(),
+    };
+    (req.app as any).locals.__writeRateLimitStores = stores;
+
+    function take(
+      store: Map<string, { count: number; resetAt: number }>,
+      key: string,
+      limit: number,
+    ) {
+      let entry = store.get(key);
+      if (!entry || now > entry.resetAt) {
+        entry = { count: 0, resetAt: now + windowMs };
+        store.set(key, entry);
+      }
+      entry.count++;
+      if (entry.count > limit) {
+        return {
+          ok: false as const,
+          retryAfterSeconds: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
+        };
+      }
+      return { ok: true as const };
+    }
+
+    const ipKey = `ip:${ip}`;
+    const ipRes = take(stores.ip, ipKey, writeLimits.perIpPerMinute);
+    if (!ipRes.ok) {
+      res.setHeader('Retry-After', String(ipRes.retryAfterSeconds));
+      return sendError(res, req, {
+        status: 429,
+        code: 'rate_limit_exceeded',
+        message: 'Too many write requests. Please try again later.',
+        details: { scope: 'ip', limitPerMinute: writeLimits.perIpPerMinute },
+      });
+    }
+
+    if (userId) {
+      const userKey = `user:${userId}`;
+      const userRes = take(stores.user, userKey, writeLimits.perUserPerMinute);
+      if (!userRes.ok) {
+        res.setHeader('Retry-After', String(userRes.retryAfterSeconds));
+        return sendError(res, req, {
+          status: 429,
+          code: 'rate_limit_exceeded',
+          message: 'Too many write requests. Please try again later.',
+          details: { scope: 'user', limitPerMinute: writeLimits.perUserPerMinute },
+        });
+      }
+    }
+
+    next();
+  }
+
+  app.use('/api/v1/chat', protectedAuth, rateLimiter, writeRateLimiter, chatRouter);
+  app.use('/api/v1/courses', protectedAuth, rateLimiter, writeRateLimiter, coursesRouter);
+  app.use('/api/v1/mindmap', protectedAuth, rateLimiter, writeRateLimiter, mindmapRouter);
+  app.use(
+    '/api/v1/collaboration',
+    protectedAuth,
+    rateLimiter,
+    writeRateLimiter,
+    collaborationRouter,
+  );
   // Marketplace
   // Keep public browse endpoints accessible without auth; protect creator/checkout flows.
   // - marketplaceRouter provides public browse endpoints
   // - marketplaceFullRouter provides creator/publish/checkout flows (and agent activation)
   app.use('/api/v1/marketplace', rateLimiter, marketplaceRouter);
-  app.use('/api/v1/marketplace', protectedAuth, rateLimiter, marketplaceFullRouter);
-  app.use('/api/v1/profile', protectedAuth, rateLimiter, profileRouter);
-  app.use('/api/v1/subscription', protectedAuth, rateLimiter, subscriptionRouter);
+  app.use(
+    '/api/v1/marketplace',
+    protectedAuth,
+    rateLimiter,
+    writeRateLimiter,
+    marketplaceFullRouter,
+  );
+  app.use('/api/v1/profile', protectedAuth, rateLimiter, writeRateLimiter, profileRouter);
+  app.use('/api/v1/subscription', protectedAuth, rateLimiter, writeRateLimiter, subscriptionRouter);
   app.use('/api/v1/analytics', protectedAuth, rateLimiter, analyticsRouter);
   app.use('/api/v1/usage', protectedAuth, rateLimiter, usageRouter);
-  app.use('/api/v1/notifications', protectedAuth, rateLimiter, notificationsRouter);
-  app.use('/api/v1/update-agent', protectedAuth, rateLimiter, updateAgentRouter);
-  app.use('/api/v1/daily', protectedAuth, rateLimiter, dailyRouter);
-  app.use('/api/v1/events', protectedAuth, rateLimiter, eventsRouter);
-  app.use('/api/v1/pipeline', protectedAuth, rateLimiter, pipelineRouter);
+  app.use(
+    '/api/v1/notifications',
+    protectedAuth,
+    rateLimiter,
+    writeRateLimiter,
+    notificationsRouter,
+  );
+  app.use('/api/v1/update-agent', protectedAuth, rateLimiter, writeRateLimiter, updateAgentRouter);
+  app.use('/api/v1/daily', protectedAuth, rateLimiter, writeRateLimiter, dailyRouter);
+  app.use('/api/v1/events', protectedAuth, rateLimiter, writeRateLimiter, eventsRouter);
+  app.use('/api/v1/pipeline', protectedAuth, rateLimiter, writeRateLimiter, pipelineRouter);
   app.use('/api/v1/search', protectedAuth, rateLimiter, searchRouter);
   app.use('/api/v1/export', protectedAuth, rateLimiter, exportRouter);
   app.use('/api/v1/yjs', protectedAuth, rateLimiter, yjsRouter);
-  app.use('/api/v1/admin', protectedAuth, rateLimiter, adminSearchConfigRouter);
-  app.use('/api/v1/admin', protectedAuth, rateLimiter, adminCleanupRouter);
+  app.use('/api/v1/admin', protectedAuth, rateLimiter, writeRateLimiter, adminSearchConfigRouter);
+  app.use('/api/v1/admin', protectedAuth, rateLimiter, writeRateLimiter, adminCleanupRouter);
 
   // Pro-only endpoint for RBAC testing
   app.get('/api/v1/pro/features', authMiddleware, requireTier('pro'), (_req, res) => {

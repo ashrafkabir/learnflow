@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider } from '../design-system/ThemeProvider.js';
@@ -23,6 +23,7 @@ beforeEach(() => {
 
   globalThis.fetch = (async (input: any) => {
     const url = String(input);
+
     if (url.includes('/api/v1/admin/search-config')) {
       return new Response(
         JSON.stringify({
@@ -46,13 +47,47 @@ beforeEach(() => {
     }
 
     if (url.includes('/api/v1/profile/context')) {
-      return new Response(JSON.stringify({ role: 'admin', subscriptionTier: 'pro' }), {
+      return new Response(
+        JSON.stringify({
+          role: 'admin',
+          subscriptionTier: 'pro',
+          goals: [],
+          topics: [],
+          experience: 'beginner',
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
+    // ProfileSettings loads /profile/data-summary as well.
+    if (url.includes('/api/v1/profile/data-summary')) {
+      return new Response(
+        JSON.stringify({
+          coursesCount: 0,
+          pipelinesCount: 0,
+          notificationsCount: 0,
+          lastCourseCreatedAt: null,
+          lastPipelineCreatedAt: null,
+          lastNotificationCreatedAt: null,
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+    }
+
+    if (url.includes('/api/v1/subscription')) {
+      return new Response(JSON.stringify({ tier: 'pro' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
     }
 
-    return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
+    return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -75,9 +110,13 @@ describe('Admin Search Config panel', () => {
       </MemoryRouter>,
     );
 
-    await new Promise((r) => setTimeout(r, 600));
-    expect(document.body.innerHTML).toContain('Admin Search Config');
-    expect(document.body.innerHTML).toContain('Stage 1');
-    expect(document.body.innerHTML).toContain('Stage 2');
+    await waitFor(
+      () => {
+        expect(document.body.innerHTML).toContain('Admin Search Config');
+        expect(document.body.innerHTML).toContain('Stage 1');
+        expect(document.body.innerHTML).toContain('Stage 2');
+      },
+      { timeout: 3000 },
+    );
   });
 });

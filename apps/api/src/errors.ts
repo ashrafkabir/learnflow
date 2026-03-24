@@ -6,6 +6,14 @@ export type ErrorEnvelope = {
   status?: number;
 };
 
+function isBodyParserEntityTooLargeError(err: any): boolean {
+  return Boolean(
+    err &&
+    (err.type === 'entity.too.large' || err.status === 413) &&
+    typeof err?.limit === 'number',
+  );
+}
+
 export type AppErrorOptions = {
   status?: number;
   code: string;
@@ -84,6 +92,18 @@ export function notFoundHandler(req: Request, res: Response): void {
 }
 
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
+  if (isBodyParserEntityTooLargeError(err)) {
+    sendError(res, req, {
+      status: 413,
+      code: 'payload_too_large',
+      message: 'Request payload too large',
+      details: {
+        limitBytes: (err as any).limit,
+      },
+    });
+    return;
+  }
+
   if (err instanceof AppError) {
     sendError(res, req, {
       status: err.status,
