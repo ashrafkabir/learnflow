@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-24 (Iter80 planning)
+Last updated: 2026-03-24 (Iter82 planning)
 
 ---
 
@@ -1388,6 +1388,8 @@ Capture via `SCREENSHOT_DIR=screenshots/iter80/run-001 node screenshot-all.mjs`.
 
 ## Iteration 81 — SPEC PARITY SWEEP (MVP → SPEC) + PRIVACY/DELETION + WEB/ DOCS ALIGNMENT
 
+> Note for Iter82: Remaining Iter81 gap to finish first: **Settings UI should display live data summary counts from `GET /api/v1/profile/data-summary`.**
+
 Status: **DONE**
 
 Builder run evidence (2026-03-24):
@@ -1594,3 +1596,134 @@ This repo is an MVP that **covers the surface area** of most major screens, but 
 - `npm run format:check`
 - Screenshot harness re-run (optional):
   - `SCREENSHOT_DIR=screenshots/iter81/run-001 ITERATION=81 node screenshot-all.mjs`
+
+---
+
+## Iteration 82 — SETTINGS: LIVE DATA SUMMARY + TRACKING TRANSPARENCY + SMALL TRUST/PARITY FIXES
+
+Status: **READY FOR BUILDER**
+
+### Why this iteration
+
+Iter81 shipped the `GET /api/v1/profile/data-summary` endpoint but did **not** wire it into the Settings UI. This is a high-leverage trust feature: it turns privacy/tracking copy into an auditable, user-visible set of counts.
+
+This iteration finishes that gap and tackles a small set of adjacent “trust + spec parity” items that are low-risk and user-visible.
+
+### Scope boundaries (keep it small)
+
+- No new multi-agent/K8s orchestration work.
+- No changes to course generation quality unless required for correctness.
+- Avoid large UI redesigns; ship minimal, accurate, testable improvements.
+
+### P0 (Must do)
+
+1. **Settings → Privacy: show live server-side tracking counts (wire `/api/v1/profile/data-summary`)**
+
+- Acceptance criteria:
+  - When signed in, Settings Privacy section fetches `GET /api/v1/profile/data-summary` and renders:
+    - learning events count
+    - lessons completed / progress count
+    - usage records count
+    - notifications count
+    - “last event at” timestamps where provided
+  - Clear separation in UI copy between:
+    - **Server-stored** data (from the endpoint)
+    - **Local-only** data (e.g., browser storage), with a separate “Clear local data” action if it exists
+  - Loading + error states:
+    - Loading skeleton or “Loading…”
+    - Error shows non-scary message + retry button
+  - If the endpoint returns zeros, UI still renders (no blank section)
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/client/src/lib/api.ts` (or existing API helper)
+  - `apps/client/src/hooks/*` (new `useProfileDataSummary` if pattern exists)
+
+2. **Add lightweight API contract test for `/api/v1/profile/data-summary` (counts + shape)**
+
+- Acceptance criteria:
+  - Add/extend an API test that validates the JSON keys exist and are numbers/timestamps (no accidental shape drift).
+  - Test should cover the non-authenticated case (401) if the endpoint is protected.
+- Likely files:
+  - `apps/api/src/__tests__/profile-data-summary.test.ts` (new)
+  - `apps/api/src/routes/profile.ts`
+
+3. **Screenshot evidence for Settings Privacy with live counts**
+
+- Acceptance criteria:
+  - Add screenshot(s) captured via the harness showing live counts rendered.
+- Likely files:
+  - `screenshot-all.mjs` / relevant screenshot script
+
+### P1 (Should do)
+
+4. **Settings: tighten privacy promises (copy accuracy check)**
+
+- Goal: ensure Settings copy does not over-promise beyond what’s actually stored/encrypted.
+- Acceptance criteria:
+  - Review Privacy/Tracking copy in Settings and adjust phrasing to match implemented reality:
+    - Prefer “encrypted at rest” over naming a specific cipher unless verified in code.
+    - If conversation content is stored server-side anywhere, disclose it; if not, explicitly say it’s not persisted.
+  - Add/ensure link to `apps/docs/pages/privacy-security.md`.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/docs/pages/privacy-security.md`
+
+5. **Notifications UX: add “Mark all read” or “Mark read” affordance (parity with spec trust loop)**
+
+- Acceptance criteria:
+  - In Dashboard notifications feed (or notifications screen), add a clear “Mark read” action.
+  - Uses existing endpoint if present (Iter81 mentions `POST /api/v1/notifications/read`).
+  - UI updates immediately (optimistic OK) and handles failure gracefully.
+- Likely files:
+  - `apps/client/src/screens/Dashboard.tsx`
+  - `apps/client/src/context/AppContext.tsx` (or notifications hook)
+  - `apps/api/src/routes/notifications.ts` (only if endpoint wiring needs tweaks)
+
+6. **Conversation: minimal agent activity indicator while generating**
+
+- Acceptance criteria:
+  - When a chat request is in-flight/streaming, show a small status line (“Generating…”, optionally “Researching sources…”) that does not require full orchestrator refactor.
+  - Must not flicker; must clear on completion/error.
+- Likely files:
+  - `apps/client/src/screens/Conversation.tsx`
+
+### P2 (Nice to have)
+
+7. **Accessibility quick win: drawers/modals Escape-to-close + `aria-labelledby` audit**
+
+- Acceptance criteria:
+  - Attribution/Sources drawer has:
+    - Escape closes
+    - focus is set predictably on open (first interactive element)
+    - `aria-labelledby` points at a visible title
+- Likely files:
+  - `apps/client/src/components/AttributionDrawer.tsx`
+  - `apps/client/src/components/Modal.tsx` (if used)
+
+8. **Docs alignment: ensure privacy/security doc matches Settings UI**
+
+- Acceptance criteria:
+  - `apps/docs/pages/privacy-security.md` includes a short “What data is stored” section that matches the data-summary fields.
+- Likely files:
+  - `apps/docs/pages/privacy-security.md`
+
+### Screenshot checklist (Iter82)
+
+Capture via `SCREENSHOT_DIR=screenshots/iter82/run-001 node screenshot-all.mjs`.
+
+- `settings-privacy-data-summary.png`
+  - Privacy section shows live counts from server + timestamps
+- `settings-privacy-error-state.png` (optional)
+  - Endpoint failure shows error + retry
+- `dashboard-notifications-mark-read.png` (if P1.5 shipped)
+- `conversation-activity-indicator.png` (if P1.6 shipped)
+
+### Verification checklist (Iter82)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npm run lint:check`
+- `npm run format:check`
+- API tests include coverage for `/api/v1/profile/data-summary`
+- Screenshot harness run:
+  - `SCREENSHOT_DIR=screenshots/iter82/run-001 ITERATION=82 node screenshot-all.mjs`
