@@ -234,3 +234,193 @@ Non-goals:
   - `packages/agents/src/course-builder/domain-profiles/quantum.ts`
   - `apps/api/src/utils/lessonQuality.ts` (worked example quality checks)
 - Screenshots: `learnflow/screenshots/iter73/planner-run/`
+
+---
+
+## Iteration 74 — E2E COURSE PLANNING (FROM SOURCES) + PER-TOPIC RE-SEARCH LOOP + E-LEARNING NARRATION POLISH
+
+Status: **READY FOR BUILDER (iter74)**
+
+Focus (why this iteration exists):
+
+- Make course creation feel like a real e-learning platform (narration + worked examples + quick checks), per `USER_SUGGESTIONS.md`.
+- Tighten the **end-to-end** generation loop so the system can:
+  1. create an outline,
+  2. **search per topic/lesson**,
+  3. synthesize lessons,
+  4. detect gaps,
+  5. re-search and patch,
+  6. deliver stable source cards + provenance.
+- Increase reliability and transparency (progress, retries, no “stuck mid-generation”).
+
+Non-goals:
+
+- Rebuilding into the full multi-agent K8s mesh described in the spec.
+- Making LearnFlow publicly accessible on the Internet **unless explicitly approved** (see P2 task).
+
+### P0 (Must do)
+
+1. **Course Planning stage: build a “course plan” from sources before writing lessons**
+   - Add an explicit planning artifact that links: topic → extracted subtopics → modules/lessons → target sources.
+   - Acceptance criteria:
+     - Creating a course persists a plan object (even in degraded / test mode).
+     - Each lesson in the plan has 3–6 “planned queries” and a target source mix (e.g., docs + blog + academic).
+     - Plan is visible in the pipeline detail API response (debug view).
+   - Likely files:
+     - `packages/agents/src/course-builder/*` (new plan builder)
+     - `apps/api/src/routes/courses.ts`, `apps/api/src/routes/pipeline.ts`
+     - DB: extend `courses` or add `course_plans` table
+   - Tests:
+     - New API integration test: creating a course returns/produces plan with per-lesson queries.
+
+2. **Per-lesson “re-search loop” when lesson quality gates fail (topic-aware queries)**
+   - Today: regeneration reuses mostly the same sources; add a loop that **broadens / changes** queries when:
+     - worked-example gate fails
+     - section quotas fail
+     - sources are too thin
+   - Acceptance criteria:
+     - On failure, system generates a second set of queries that explicitly target the missing artifact (e.g., “worked example”, “numerical example”, “reference implementation”, “step-by-step”).
+     - The retry stores `missingReason` with a structured reason (e.g., `worked_example_missing`, `sources_thin`).
+   - Likely files:
+     - `apps/api/src/routes/courses.ts` (lesson generation loop)
+     - `packages/agents/src/content-pipeline/*` (query generation)
+   - Tests:
+     - Deterministic test: failing worked-example triggers a query set that contains required hint tokens.
+
+3. **Source cards: compute per-result summaries (not just truncation) + ensure UI parity**
+   - Improve `SourceCard.summary` to be an actual short summary (extractive heuristic OK) and add per-card “why this matters”.
+   - Acceptance criteria:
+     - Summary is 1–2 sentences, not raw leading text.
+     - Card includes `sourceType` (docs/blog/paper/forum) inferred from domain/path heuristics.
+     - Lesson Reader’s “See Sources” view shows these cards when available.
+   - Likely files:
+     - `apps/api/src/utils/sourceCards.ts`
+     - `apps/client/src/components/SourceDrawer.tsx` or `AttributionDrawer.tsx`
+   - Tests:
+     - Unit tests for card summarization/type inference.
+   - Screenshots:
+     - `lesson-reader` (sources drawer shows cards with summaries)
+
+4. **E-learning narration polish: enforce “worked example is fully worked” + “quick check has answer key”**
+   - Strengthen validators to ensure:
+     - worked example is not vague (“consider…”, “imagine…”) and includes concrete artifacts by domain
+     - quick check includes answers (no placeholders)
+   - Acceptance criteria:
+     - Builder can point to explicit validation reasons when failing.
+     - Regeneration uses a “strict” prompt variant that demands numeric/code/table outputs.
+   - Likely files:
+     - `apps/api/src/utils/lessonQuality.ts`
+     - `apps/api/src/utils/lessonStructure.ts`
+   - Tests:
+     - Add failing fixtures and verify reasons + retry behavior.
+
+5. **Pipeline/course progress: visible milestones for plan → sources → lesson drafts → finalize**
+   - Make progress granular and monotonic so UI never feels stuck.
+   - Acceptance criteria:
+     - Pipeline logs contain milestones per lesson (e.g., `plan_ready`, `sources_ready`, `draft_ready`, `quality_passed`).
+     - Client pipeline detail shows a per-lesson checklist/progress list.
+   - Likely files:
+     - `apps/api/src/routes/pipeline.ts`
+     - `apps/client/src/screens/PipelineDetail.tsx`
+   - Tests:
+     - API test asserts logs include milestone messages.
+   - Screenshots:
+     - `pipeline-detail` shows milestones
+
+6. **Course creation must not end early: add “completion fence” and restartability for course builds**
+   - Ensure that background course generation cannot silently stop mid-way.
+   - Acceptance criteria:
+     - If a course is left `CREATING` beyond a timeout, it transitions to `FAILED(stalled)` with an explanation.
+     - UI shows a “Resume/Restart build” action.
+   - Likely files:
+     - `apps/api/src/routes/courses.ts`, `apps/api/src/routes/pipeline.ts`
+     - `apps/client/src/screens/PipelineDetail.tsx`
+   - Tests:
+     - Similar to pipeline stall test, but for course creation status.
+
+### P1 (Should do)
+
+7. **Topic-specific curriculum patterns library (more than domain profiles)**
+   - Move beyond domain-only patterns and introduce topic-family templates (e.g., “cert prep”, “hands-on project”, “conceptual survey”).
+   - Acceptance criteria:
+     - At least 3 templates selectable via deterministic classifier.
+     - Templates change number of modules/lessons and cadence (not just titles).
+   - Likely files:
+     - `packages/agents/src/course-builder/*`
+   - Tests:
+     - Regression: 3 distinct topics map to 3 different templates.
+
+8. **Search thread spawning model (internal): per lesson, per modality (text + image)**
+   - Implement an internal structure to run lesson search as two tracks:
+     - text sources
+     - image candidates (Wikimedia)
+   - Acceptance criteria:
+     - Each lesson stores separate logs for text-search and image-search.
+     - Image candidates include `imageReason` matching a section (“Core Concepts diagram”, “Worked Example flowchart”).
+   - Likely files:
+     - `packages/agents/src/content-pipeline/*`
+     - `apps/api/src/lib/search-run-log.ts`
+   - Tests:
+     - Unit test: image search logs are present and do not block text sourcing on failure.
+
+9. **Improve lesson-source selection: add simple “coverage” scoring vs lesson objectives**
+   - Reduce irrelevant sources by checking overlap with lesson goals/subtopics.
+   - Acceptance criteria:
+     - Persist per-source `coverageScore` and pick top N with diversity.
+     - Expose `coverageScore` in debug view.
+   - Likely files:
+     - `apps/api/src/utils/sourcesStructured.ts`
+     - `packages/agents/src/content-pipeline/*`
+   - Tests:
+     - Unit test for scoring + selection behavior.
+
+10. **Quality telemetry UI (finish Iter73 partial): show per-lesson quality pill + reasons**
+
+- Acceptance criteria:
+  - Lesson Reader shows a dev-only “Quality” pill (e.g., in header) with pass/fail + reasons.
+  - Pipeline detail shows count of lessons that required retries.
+- Likely files:
+  - `apps/client/src/screens/LessonReader.tsx`
+  - `apps/client/src/screens/PipelineDetail.tsx`
+- Tests:
+  - Client test asserts pill renders in dev/test mode.
+- Screenshots:
+  - `lesson-reader` shows quality pill
+
+### P2 (Nice to have / Conditional)
+
+11. **External accessibility plan (ONLY IF USER EXPLICITLY APPROVES)**
+
+- Prepare a minimal “public access” checklist without deploying it by default.
+- Acceptance criteria:
+  - Documented steps to expose web+api safely (CORS, cookies/JWT, rate limits, config).
+  - Add a config flag (default off) to bind to non-localhost.
+- Likely files:
+  - `apps/api/src/server.ts` / config
+  - `apps/client` and `apps/web` deploy notes
+  - `docs/*`
+
+12. **Lesson polish pass: de-template language rewrite tuned per domain**
+
+- Build on `hardenLessonStyle` to remove generic e-learning filler.
+- Acceptance criteria:
+  - Adds a set of domain-specific banned phrases.
+  - Produces measurable reduction in “generic phrase” hits in a unit test.
+- Likely files:
+  - `apps/api/src/utils/styleHardening.ts`
+- Tests:
+  - Extend `styleHardening.test.ts` with domain fixtures.
+
+### Screenshot checklist (Iter74)
+
+- `course-create-after-click`
+- `pipeline-detail` (milestones visible)
+- `lesson-reader` (sources drawer shows cards + summaries; quality pill if implemented)
+- `app-pipelines` (no stuck state)
+
+### Verification checklist (Iter74)
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
