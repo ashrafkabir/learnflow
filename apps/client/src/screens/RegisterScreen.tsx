@@ -2,13 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiPost } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
-import {
-  IconApple,
-  IconBrainSpark,
-  IconEye,
-  IconEyeOff,
-  IconGitHub,
-} from '../components/icons/index.js';
+import { IconBrainSpark, IconEye, IconEyeOff } from '../components/icons/index.js';
 
 export function RegisterScreen() {
   const nav = useNavigate();
@@ -128,60 +122,11 @@ export function RegisterScreen() {
             {loading ? 'Creating account...' : 'Create Account'}
           </Button>
 
-          {/* Social OAuth divider */}
-          <div className="flex items-center gap-3 my-2">
-            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-            <span className="text-xs text-gray-700/80 dark:text-gray-200">or continue with</span>
-            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-          </div>
-
-          {/* Social login buttons */}
-          <div className="space-y-2">
-            <Button
-              type="button"
-              variant="secondary"
-              fullWidth
-              onClick={() =>
-                alert(
-                  'Social login is not yet available in this MVP. Use email + password for now.',
-                )
-              }
-              className="flex items-center justify-center gap-2"
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"
-                aria-hidden="true"
-              />
-              Continue with Google
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              fullWidth
-              onClick={() =>
-                alert(
-                  'Social login is not yet available in this MVP. Use email + password for now.',
-                )
-              }
-              className="flex items-center justify-center gap-2"
-            >
-              <IconGitHub size={18} className="text-gray-800 dark:text-gray-100" title="GitHub" />
-              Continue with GitHub
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              fullWidth
-              onClick={() =>
-                alert(
-                  'Social login is not yet available in this MVP. Use email + password for now.',
-                )
-              }
-              className="flex items-center justify-center gap-2"
-            >
-              <IconApple size={18} className="text-gray-800 dark:text-gray-100" title="Apple" />
-              Continue with Apple
-            </Button>
+          <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/20 p-3">
+            <div className="text-xs text-gray-700/80 dark:text-gray-200">
+              Social sign-in (Google/GitHub/Apple) is not available in this MVP. Use email +
+              password.
+            </div>
           </div>
         </form>
 

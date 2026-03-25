@@ -151,7 +151,7 @@ const QUICK_START_STEPS = [
   {
     step: 2,
     title: 'Create an Account',
-    desc: 'Sign up with email and password (OAuth providers are planned but not yet implemented).',
+    desc: 'Sign up with email and password. Social sign-in (OAuth) is not available in this MVP.',
   },
   {
     step: 3,

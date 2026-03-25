@@ -4,7 +4,10 @@ import { chromium } from 'playwright';
 const BASE = process.env.BASE_URL || 'http://localhost:3001';
 const ITER = process.env.ITERATION || process.env.ITER || '61';
 const DATE = new Date().toISOString().slice(0, 10);
-const DIR = process.env.SCREENSHOT_DIR || `learnflow/screenshots/iter${ITER}-${DATE}`;
+const DIR =
+  process.env.SCREENSHOT_DIR ||
+  process.env.SCREENSHOT_OUT ||
+  `learnflow/screenshots/iter${ITER}-${DATE}`;
 
 const PUBLIC_PAGES = [
   ['/', 'landing-home'],
@@ -158,4 +161,4 @@ const browser = await chromium.launch();
 }
 
 await browser.close();
-console.log('Done!');
+console.log(`Done! Saved to ${DIR}`);

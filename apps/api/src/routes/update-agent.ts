@@ -11,7 +11,17 @@ const router = Router();
 // Topics
 router.get('/topics', (req: Request, res: Response) => {
   const userId = req.user!.sub;
-  const topics = db.listUpdateAgentTopics(userId);
+  const topics = db.listUpdateAgentTopics(userId).map((t) => {
+    const run = db.getUpdateAgentTopicRunState(userId, t.id);
+    return {
+      ...t,
+      lockId: run?.lockId || '',
+      lockedAt: run?.lockedAt || null,
+      lastRunAt: run?.lastRunAt || null,
+      lastRunOk: typeof run?.lastRunOk === 'boolean' ? run.lastRunOk : true,
+      lastRunError: run?.lastRunError || '',
+    };
+  });
   res.json({ topics });
 });
 

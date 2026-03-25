@@ -9,6 +9,13 @@ type TopicRow = {
   enabled?: boolean;
   createdAt?: string;
   updatedAt?: string | null;
+
+  // Update Agent trust-loop run state (best-effort)
+  lockedAt?: string | null;
+  lockId?: string;
+  lastRunAt?: string | null;
+  lastRunOk?: boolean;
+  lastRunError?: string;
 };
 
 type SourceRow = {
@@ -79,6 +86,51 @@ export function UpdateAgentSettingsPanel() {
 
   const selectedTopic = topics.find((t) => t.id === selectedTopicId);
 
+  const topicStatus = React.useMemo(() => {
+    if (!selectedTopic) {
+      return {
+        lastRunAt: null as string | null,
+        lastRunOk: true,
+        lastRunError: '',
+        lockedAt: null as string | null,
+        nextEligibleAt: null as string | null,
+        failureCount: 0,
+        lastError: '',
+      };
+    }
+
+    const nextEligibleAt = sources
+      .map((s) => (s.nextEligibleAt ? new Date(String(s.nextEligibleAt)).getTime() : NaN))
+      .filter((t) => Number.isFinite(t))
+      .sort((a, b) => a - b)[0];
+
+    const failureCount = sources.reduce(
+      (acc, s) => acc + (Number.isFinite(s.failureCount) ? Number(s.failureCount) : 0),
+      0,
+    );
+
+    const lastError =
+      sources
+        .filter((s) => Boolean(s.lastError))
+        .sort((a, b) => {
+          const ta = a.lastErrorAt ? new Date(String(a.lastErrorAt)).getTime() : 0;
+          const tb = b.lastErrorAt ? new Date(String(b.lastErrorAt)).getTime() : 0;
+          return tb - ta;
+        })[0]?.lastError || '';
+
+    return {
+      lastRunAt: selectedTopic.lastRunAt ?? null,
+      lastRunOk: selectedTopic.lastRunOk !== false,
+      lastRunError: selectedTopic.lastRunError || '',
+      lockedAt: selectedTopic.lockedAt ?? null,
+      nextEligibleAt: Number.isFinite(nextEligibleAt)
+        ? new Date(nextEligibleAt).toISOString()
+        : null,
+      failureCount,
+      lastError,
+    };
+  }, [selectedTopic, sources]);
+
   return (
     <section
       aria-label="Update Agent"
@@ -89,6 +141,10 @@ export function UpdateAgentSettingsPanel() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Update Agent</h2>
           <p className="text-sm text-gray-600 dark:text-gray-300">
             Monitor topics via RSS/Atom sources and receive a notification feed.
+          </p>
+          <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
+            Scheduling is external in this MVP (cron/systemd/K8s). Use{' '}
+            <span className="font-semibold">Run now</span> to trigger a one-off check.
           </p>
         </div>
         <Button
@@ -113,6 +169,88 @@ export function UpdateAgentSettingsPanel() {
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Trust loop summary */}
+        <div className="md:col-span-2 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                Topic status
+              </div>
+              <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
+                Selected: <span className="font-semibold">{selectedTopic?.topic || '—'}</span>
+              </div>
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                <div className="text-xs text-gray-700 dark:text-gray-200">
+                  <span className="text-gray-600 dark:text-gray-300">Last run:</span>{' '}
+                  <span className="font-semibold">{fmt(topicStatus.lastRunAt)}</span>
+                </div>
+                <div className="text-xs text-gray-700 dark:text-gray-200">
+                  <span className="text-gray-600 dark:text-gray-300">Last run status:</span>{' '}
+                  <span
+                    className={
+                      topicStatus.lastRunOk
+                        ? 'font-semibold text-green-700 dark:text-green-300'
+                        : 'font-semibold text-red-700 dark:text-red-300'
+                    }
+                  >
+                    {topicStatus.lastRunOk ? 'Success' : 'Failure'}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-700 dark:text-gray-200">
+                  <span className="text-gray-600 dark:text-gray-300">Next eligible:</span>{' '}
+                  <span className="font-semibold">{fmt(topicStatus.nextEligibleAt)}</span>
+                </div>
+                <div className="text-xs text-gray-700 dark:text-gray-200">
+                  <span className="text-gray-600 dark:text-gray-300">Failures (sources):</span>{' '}
+                  <span className="font-semibold">{topicStatus.failureCount}</span>
+                </div>
+              </div>
+              {topicStatus.lockedAt ? (
+                <div className="text-xs text-gray-700 dark:text-gray-200 mt-2">
+                  <span className="text-gray-600 dark:text-gray-300">Run lock:</span>{' '}
+                  <span className="font-semibold">In progress</span> (locked{' '}
+                  {fmt(topicStatus.lockedAt)})
+                </div>
+              ) : null}
+              {topicStatus.lastRunError ? (
+                <div className="text-xs text-red-700 dark:text-red-300 mt-2">
+                  Last run error: {topicStatus.lastRunError}
+                </div>
+              ) : null}
+              {!topicStatus.lastRunError && topicStatus.lastError ? (
+                <div className="text-xs text-red-700 dark:text-red-300 mt-2">
+                  Last source error: {topicStatus.lastError}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col items-end gap-2">
+              <Button
+                size="sm"
+                disabled={!selectedTopic?.topic || loading}
+                onClick={async () => {
+                  if (!selectedTopic?.topic) return;
+                  setLoading(true);
+                  try {
+                    await apiPost('/notifications/generate', { topic: selectedTopic.topic });
+                    await loadTopics();
+                    await loadSources(selectedTopicId);
+                    toast('Update Agent run started', 'success');
+                  } catch (e: any) {
+                    toast(String(e?.message || 'Failed to run Update Agent'), 'error');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                Run now
+              </Button>
+              <div className="text-[11px] text-gray-600 dark:text-gray-300 text-right max-w-[220px]">
+                Tip: “Run already in progress” means a lock is active (prevents overlapping runs).
+              </div>
+            </div>
+          </div>
+        </div>
         {/* Topics */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
