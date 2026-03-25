@@ -3636,7 +3636,22 @@ Primary planning source:
 
 ## Iteration 92 — REAL-TIME AGENT ACTIVITY (TRUTHFUL) + PROVENANCE CREDIBILITY SURFACE + PRO/SUBSCRIPTION COHERENCE
 
-Status: **PLANNED** (needs builder)
+Status: **DONE** (builder complete)
+
+Builder evidence (Iter92):
+
+- Commits:
+  - d5bc0ac `Iter92: activity events + source credibility + unified plan matrix`
+  - f0b3d41 `Iter92: add source credibility scoring + shared plan capabilities`
+- Gates:
+  - `npm test` ✅ (all workspaces; 10 tasks successful)
+  - `npx tsc --noEmit` ✅
+  - `npx eslint .` ✅
+  - `npx prettier --check .` ✅
+  - `npm run -w @learnflow/api openapi:lint` ✅
+- Screenshots (gitignored):
+  - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter92/run-001/`
+  - Notes: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter92/run-001/NOTES.md`
 
 Planner evidence (Iter92):
 
