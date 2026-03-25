@@ -4460,7 +4460,9 @@ Non-goals:
 
 ---
 
-## Iter96 — Planner pass (Spec mismatch focus: real collaboration, Update Agent observability, subscription reality)
+## Iteration 96 — REAL COLLABORATION (SHARED MINDMAPS) + UPDATE AGENT OBSERVABILITY + SUBSCRIPTION REALITY
+
+Status: **READY FOR BUILDER**
 
 Planner artifacts:
 
