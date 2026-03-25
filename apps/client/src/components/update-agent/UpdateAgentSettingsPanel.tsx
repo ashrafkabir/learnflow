@@ -143,16 +143,22 @@ export function UpdateAgentSettingsPanel() {
             Monitor topics via RSS/Atom sources and receive a notification feed.
           </p>
           <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-            This is an MVP trust-loop: best-effort checks, with backoff and locks. It may miss
-            updates.
+            This is an MVP trust-loop: best-effort checks with backoff + locks. It may miss updates.
+            Backoff increases the delay after failures, and locks prevent overlapping runs.
           </p>
           <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
             Important: it does <span className="font-semibold">not</span> crawl the open web or
             follow sites automatically — it only checks the sources you add here.
           </p>
           <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-            Scheduling is external in this MVP (cron/systemd/K8s). Use{' '}
-            <span className="font-semibold">Run now</span> to trigger a one-off check.
+            Scheduling is external in this MVP (cron/systemd/K8s).{' '}
+            <a
+              href="/docs/update-agent-scheduling"
+              className="text-accent hover:underline font-semibold"
+            >
+              See scheduling guidance
+            </a>
+            . Use <span className="font-semibold">Run now</span> to trigger a one-off check.
           </p>
         </div>
         <Button

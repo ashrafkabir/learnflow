@@ -677,9 +677,9 @@ export function Conversation() {
             <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
             <span
               className="text-xs text-gray-600 dark:text-gray-300"
-              title="AI assistant is ready to help"
+              title="Status indicator (preview)"
             >
-              Online
+              Online (preview)
             </span>
           </div>
         </div>

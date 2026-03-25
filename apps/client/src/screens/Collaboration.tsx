@@ -261,7 +261,7 @@ export function Collaboration() {
                             {p.displayName || p.name}
                           </span>
                           <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">
-                            {p.source === 'synthetic' ? 'Suggested' : 'Match'}
+                            {p.source === 'synthetic' ? 'Suggested (preview)' : 'Match'}
                           </span>
                           {/* Online indicator is decorative in preview mode; do not imply real-time presence. */}
                           <span className="text-xs text-gray-500">{p.level || 'Intermediate'}</span>
@@ -283,9 +283,9 @@ export function Collaboration() {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => notify('Connect request sent.')}
+                        onClick={() => notify('Connect request sent (preview).')}
                       >
-                        Connect
+                        Connect (preview)
                       </Button>
                     </div>
                   ))

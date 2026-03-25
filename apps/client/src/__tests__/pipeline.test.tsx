@@ -72,6 +72,32 @@ describe('PipelineDetail screen', () => {
           : input instanceof URL
             ? input.href
             : (input as Request).url;
+      if (url.includes('/api/v1/profile/context')) {
+        return new Response(
+          JSON.stringify({
+            goals: [],
+            topics: [],
+            experience: 'beginner',
+            subscriptionTier: 'free',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+
+      if (url.includes('/api/v1/subscription')) {
+        return new Response(JSON.stringify({ tier: 'free' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (url.includes('/api/v1/notifications')) {
+        return new Response(JSON.stringify({ notifications: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       if (url.includes('/api/v1/pipeline/test-id')) {
         return new Response(
           JSON.stringify({

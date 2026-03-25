@@ -1,16 +1,72 @@
 import { Router, Request, Response } from 'express';
 import JSZip from 'jszip';
-import { dbCourses, db, dbNotes } from '../db.js';
+import { dbCourses, db, dbNotes, dbLessonSources } from '../db.js';
 import { sendError } from '../errors.js';
 
 const router = Router();
 
-function coursesToMarkdown(courses: any[]): string {
+function sourcesToMarkdown(sources: any[]): string {
+  if (!Array.isArray(sources) || sources.length === 0) return '';
+
+  const rows = sources
+    .filter(Boolean)
+    .map((s: any, i: number) => {
+      const id = Number.isFinite(s?.id) ? Number(s.id) : i + 1;
+      const author = s?.author ? String(s.author) : 'Unknown';
+      const title = s?.title ? String(s.title) : `Reference ${id}`;
+      const publication = s?.publication
+        ? String(s.publication)
+        : s?.domain
+          ? String(s.domain)
+          : '';
+      const year = s?.year ? String(s.year) : '';
+      const url = s?.url ? String(s.url) : '';
+      const credibilityLabel = s?.credibilityLabel ? String(s.credibilityLabel) : '';
+      const credibilityScore =
+        typeof s?.credibilityScore === 'number' ? s.credibilityScore.toFixed(2) : '';
+      const credibility = [credibilityLabel, credibilityScore ? `(${credibilityScore})` : '']
+        .filter(Boolean)
+        .join(' ');
+      const why = s?.whyCredible ? String(s.whyCredible) : '';
+      const accessed = s?.accessedAt ? String(s.accessedAt) : '';
+
+      const meta = [publication, year].filter(Boolean).join(' · ');
+      const extras = [
+        credibility ? `Credibility: ${credibility}` : '',
+        why ? `Why trusted: ${why}` : '',
+        accessed ? `Accessed: ${accessed}` : '',
+      ]
+        .filter(Boolean)
+        .join(' — ');
+
+      return `${id}. ${author}. "${title}"${meta ? ` (${meta})` : ''}. ${url}${
+        extras ? `\n   ${extras}` : ''
+      }`;
+    })
+    .join('\n');
+
+  return `## Sources\n\n${rows}`;
+}
+
+function coursesToMarkdown(
+  courses: any[],
+  lessonSourcesByLessonId: Record<string, { sources: any[]; missingReason?: string }>,
+): string {
   return courses
     .map((c) => {
       const lessons = (c.modules || [])
         .map((m: any) =>
-          (m.lessons || []).map((l: any) => `### ${l.title}\n\n${l.content || ''}`).join('\n\n'),
+          (m.lessons || [])
+            .map((l: any) => {
+              const persisted = lessonSourcesByLessonId?.[String(l.id)] || { sources: [] };
+              const srcMd = sourcesToMarkdown(persisted.sources || []);
+              const missing = persisted?.missingReason
+                ? `\n\n> Sources note: ${String(persisted.missingReason)}`
+                : '';
+              const extra = srcMd ? `\n\n${srcMd}` : missing;
+              return `### ${l.title}\n\n${l.content || ''}${extra}`;
+            })
+            .join('\n\n'),
         )
         .join('\n\n');
       return `# ${c.title}\n\n${c.description || ''}\n\n${lessons}`;
@@ -26,11 +82,21 @@ router.get('/', async (req: Request, res: Response) => {
   const courses = dbCourses.getAll().filter((c: any) => c.authorId === userId);
   const user = db.findUserById(userId);
   const notesByLessonId: Record<string, any> = {};
+  const lessonSourcesByLessonId: Record<string, { sources: any[]; missingReason?: string }> = {};
+
   for (const c of courses as any[]) {
     for (const m of c.modules || []) {
       for (const l of m.lessons || []) {
         const n = dbNotes.get(String(l.id), userId);
         if (n) notesByLessonId[String(l.id)] = n;
+
+        // Iter95: include persisted structured sources (+ credibility fields) in exports.
+        try {
+          lessonSourcesByLessonId[String(l.id)] = dbLessonSources.get(String(l.id));
+        } catch {
+          // best-effort
+          lessonSourcesByLessonId[String(l.id)] = { sources: [] };
+        }
       }
     }
   }
@@ -48,12 +114,13 @@ router.get('/', async (req: Request, res: Response) => {
     },
     courses,
     notesByLessonId,
+    lessonSourcesByLessonId,
   };
 
   const tier = (req.user?.tier || user?.tier || 'free') as string;
 
   if (format === 'md' || format === 'markdown') {
-    const md = coursesToMarkdown(courses);
+    const md = coursesToMarkdown(courses, lessonSourcesByLessonId);
     res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="learnflow-export.md"');
     res.status(200).send(md);
@@ -77,7 +144,7 @@ router.get('/', async (req: Request, res: Response) => {
   if (format === 'zip') {
     const zip = new JSZip();
     zip.file('learnflow-export.json', JSON.stringify(payload, null, 2));
-    zip.file('learnflow-export.md', coursesToMarkdown(courses));
+    zip.file('learnflow-export.md', coursesToMarkdown(courses, lessonSourcesByLessonId));
     zip.file(
       'metadata.json',
       JSON.stringify({ exportedAt: payload.exportedAt, version: payload.version }, null, 2),
