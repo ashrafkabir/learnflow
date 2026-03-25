@@ -3631,3 +3631,217 @@ Primary planning source:
   - `/home/aifactory/.openclaw/workspace/learnflow/ITERATION_91_PLAN.md`
 
 (Planner did not perform OneDrive sync from this session.)
+
+---
+
+## Iteration 92 — REAL-TIME AGENT ACTIVITY (TRUTHFUL) + PROVENANCE CREDIBILITY SURFACE + PRO/SUBSCRIPTION COHERENCE
+
+Status: **PLANNED** (needs builder)
+
+Planner evidence (Iter92):
+
+- Boot:
+  - `systemctl --user restart learnflow-api learnflow-client learnflow-web`
+- Screenshots:
+  - `SCREENSHOT_DIR=screenshots/iter92/planner-run node screenshot-all.mjs`
+  - Notes: `learnflow/screenshots/iter92/planner-run/NOTES.md`
+  - Repo note: `screenshots/**` is gitignored; do not expect these to be in git history.
+
+Thesis (Iter92): Iter91 added the WS events and some UI affordances, but the **system is still not “agentic” in the way the spec promises**. The next step is to (1) make real-time agent activity **accurate and non-misleading**, (2) make provenance/credibility **visible and defensible**, and (3) ensure Free/BYOAI vs Pro messaging and behavior are **internally consistent** across onboarding → marketing → settings → API.
+
+Brutally honest gaps observed vs `LearnFlow_Product_Spec.md`:
+
+- Spec §11.2 expects `agent.spawned/agent.complete` to reflect _actual_ agent work. Today, WS emits a generic Orchestrator spawn, then completes based on returned `agentResults`—but **there is no deeper streaming trace** for pipeline stages or sub-agent tool calls.
+- Spec §6.3 expects a provenance + credibility index surfaced for sources; current credibility is only shown in Pipeline source cards, while Conversation SourceDrawer does **not** show score, accessedAt, or why the source is trusted.
+- Pro/Sub messaging is closer to coherent than earlier iterations, but **upgrade semantics and feature flags** still need a single “source of truth” (UI copy + API routes).
+
+### P0 (Must do)
+
+#### 1) Make agent activity truthful: explicit “Orchestrator routing” vs “Agent executing” states
+
+- Problem: Conversation currently sets `activeAgent` on `agent.spawned` (generic) and clears on `agent.complete`. This can imply agent work even when we only routed to a deterministic handler.
+- Acceptance criteria:
+  - WS `agent.spawned` payload includes a structured `kind` field: `routing` | `agent_call` | `pipeline_stage`.
+  - Client Conversation renders:
+    - “Routing…” when `kind=routing`
+    - “<AgentName> working…” when `kind=agent_call`
+    - “Pipeline: <stage>…” when `kind=pipeline_stage`
+  - If only routing occurs, do **not** show “Agent completed” notifications as if real work happened; show a low-key “Response ready” (or nothing).
+- Likely files:
+  - `apps/api/src/wsOrchestrator.ts`
+  - `apps/api/src/wsContract.ts` (event typing)
+  - `apps/client/src/screens/Conversation.tsx`
+- Screenshot checklist:
+  - `app-conversation.png` showing routing state and agent_call state.
+- Verification checklist:
+  - Unit test: client reducer/UI handles kinds deterministically.
+
+#### 2) Emit real agent trace for multi-agent runs (MVP): per-agent start/end with duration
+
+- Problem: `agent.complete` is emitted, but there’s no duration or start-to-end pairing; no way to debug perceived slowness.
+- Acceptance criteria:
+  - WS emits:
+    - `agent.spawned { agent_name, task_summary, startedAt, kind=agent_call }`
+    - `agent.complete { agent_name, result_summary, durationMs }`
+  - Client displays duration in the agent completion notification (e.g., “Exam Agent completed (1.2s)”).
+- Likely files:
+  - `apps/api/src/wsOrchestrator.ts`
+  - `packages/core/src/orchestrator/*` (if timing needs to be captured centrally)
+  - `apps/client/src/screens/Conversation.tsx`
+- Screenshot checklist:
+  - `app-conversation.png` shows an agent completion item with duration.
+- Verification checklist:
+  - API test: durationMs is a number and non-negative.
+
+#### 3) Conversation SourceDrawer: upgrade from “toy” to credibility/provenance surface
+
+- Problem: SourceDrawer today shows title/author/publication/year/url only, and it often uses placeholder values.
+- Acceptance criteria:
+  - WS `response.end` includes structured sources with (best-effort):
+    - `title`, `url`, `domain/provider`, `author` (optional), `publishDate` (optional)
+    - `accessedAt` timestamp
+    - `credibilityScore` (0–1) + label (e.g., High/Med/Low)
+    - `whyCredible` short string (heuristic explanation)
+  - SourceDrawer renders credibility label and accessedAt.
+  - No placeholders like `Author` / `Source` unless explicitly unknown (render “Unknown”).
+- Likely files:
+  - `apps/api/src/orchestratorShared.ts` (sources mapping)
+  - `apps/api/src/utils/sourceCards.ts` or `apps/api/src/utils/sourcesStructured.ts` (if exists)
+  - `apps/client/src/components/SourceDrawer.tsx`
+- Screenshot checklist:
+  - `app-conversation.png` with Sources drawer open showing credibility label.
+- Verification checklist:
+  - Deterministic unit test of credibility label mapping.
+
+#### 4) Credibility scoring: single shared function used across Pipeline + LessonReader + Conversation
+
+- Problem: credibility appears inconsistently (Pipeline has it; other surfaces don’t).
+- Acceptance criteria:
+  - Introduce one shared scoring helper (server-side) used by:
+    - pipeline sources
+    - lesson sources
+    - chat/WS sources
+  - Add “whyCredible” string from the same function.
+- Likely files:
+  - `apps/api/src/utils/sourceCredibility.ts` (new)
+  - Call sites in `apps/api/src/routes/pipeline.ts`, `apps/api/src/routes/courses.ts`, `apps/api/src/wsOrchestrator.ts`
+- Screenshot checklist:
+  - `pipeline-detail.png` shows same scoring style as conversation.
+- Verification checklist:
+  - Unit tests for known domains (wikipedia, arxiv, random blog) produce expected ordering.
+
+#### 5) Pro/subscription coherence: define and enforce one tier capability matrix
+
+- Problem: Spec §8 defines Free vs Pro features, but current implementation is MVP and risks contradictory UX.
+- Acceptance criteria:
+  - Define a single capability matrix (TS) used by client to gate:
+    - export formats
+    - update agent availability messaging
+    - marketplace paid publishing (if not supported, explicitly disabled)
+  - Marketing pricing page and onboarding subscription screen both reference the same capability copy (no drift).
+- Likely files:
+  - `packages/core/src/*` or `apps/client/src/lib/capabilities.ts` (new)
+  - `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`
+  - `apps/client/src/screens/marketing/Pricing.tsx`
+  - `apps/api/src/routes/subscription.ts`
+- Screenshot checklist:
+  - `onboarding-5-subscription.png` and `marketing-pricing.png` show aligned feature bullets.
+- Verification checklist:
+  - Snapshot/RTL tests assert identical strings in both screens (imported shared copy).
+
+#### 6) “BYOAI vs Managed” truth: settings should show what is actually used for the last 7 days
+
+- Problem: Spec §4.4 expects usage dashboards; current usage tracking is best-effort and provider attribution is sometimes “unknown”.
+- Acceptance criteria:
+  - Settings page shows a compact chart/table:
+    - per-provider usage totals (7d)
+    - per-agent usage totals (7d)
+    - % of “unknown provider” records
+  - Include a short disclaimer when attribution is unknown.
+- Likely files:
+  - `apps/api/src/routes/analytics.ts` (or add missing rollup)
+  - `apps/client/src/screens/ProfileSettings.tsx`
+- Screenshot checklist:
+  - `app-settings.png` shows usage rollups + disclaimer.
+- Verification checklist:
+  - API test: rollup returns stable shape even with empty DB.
+
+### P1 (Should do)
+
+#### 7) Add pipeline stage events to WS (MVP) so “agentic” feels real during course creation
+
+- Problem: Pipeline progress exists (SSE + progress.update), but Conversation doesn’t reflect it.
+- Acceptance criteria:
+  - When course creation is running, WS emits `pipeline.stage` events or uses `agent.spawned kind=pipeline_stage`.
+  - Client shows “Pipeline: scraping/organizing/synthesizing…” in the agent activity strip.
+- Likely files:
+  - `apps/api/src/routes/pipeline.ts` (broadcast bridge) and/or `apps/api/src/websocket/*`
+  - `apps/client/src/screens/Conversation.tsx`
+- Screenshot checklist:
+  - `course-create-after-click.png` showing pipeline stage indicator.
+- Verification checklist:
+  - E2E: start course creation and assert at least 2 distinct stages arrive.
+
+#### 8) Message envelope parity: document _actual_ WS contract and align naming with spec
+
+- Problem: Spec uses `agent_name`, `message_id`, etc. We have partial parity but no single canonical doc.
+- Acceptance criteria:
+  - Update docs page to include:
+    - all WS events and payloads currently emitted
+    - where we diverge from spec and why
+- Likely files:
+  - `apps/client/src/screens/marketing/Docs.tsx` (if this is the docs content)
+  - `apps/api/src/wsContract.ts`
+- Verification checklist:
+  - `npm test` + docs build passes.
+
+#### 9) Provenance chain MVP: link “source → lesson section” instead of flat list
+
+- Problem: sources are currently a flat list; spec implies a provenance chain.
+- Acceptance criteria:
+  - Lesson markdown citations map to specific sources (even if heuristic) and SourceDrawer can show “Referenced in: <section>”.
+- Likely files:
+  - `apps/api/src/utils/sourceCards.ts` / lesson rendering utilities
+  - `apps/client/src/components/SourceDrawer.tsx`
+- Screenshot checklist:
+  - `lesson-reader.png` showing source entries with “Referenced in …”.
+
+### P2 (Nice to have / hygiene)
+
+#### 10) Screenshot harness: capture proof of agent activity + sources credibility UI
+
+- Acceptance criteria:
+  - Update screenshot harness to:
+    - open Sources drawer in Conversation
+    - capture during an in-flight agent activity state (forced delay is acceptable in harness)
+- Likely files:
+  - `learnflow/screenshot-all.mjs`
+- Verification checklist:
+  - `node screenshot-all.mjs` completes and produces updated shots.
+
+#### 11) Refresh `IMPLEMENTED_VS_SPEC.md` for Iter92 (truthful gaps)
+
+- Acceptance criteria:
+  - Update spec mapping for:
+    - §11.2 WS events
+    - §6.3 credibility/provenance
+    - §8 subscription reality
+- Likely files:
+  - `IMPLEMENTED_VS_SPEC.md`
+
+#### 12) OneDrive sync (planner artifacts) — add explicit TODO with paths
+
+- Acceptance criteria:
+  - Document a step-by-step sync checklist and include required paths:
+    - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter92/planner-run/`
+    - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter92/planner-run/NOTES.md`
+    - `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
+- Notes:
+  - Planner did not perform OneDrive sync from this session.
+
+### Global Iter92 verification checklist
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
