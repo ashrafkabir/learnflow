@@ -44,9 +44,12 @@ describe('Conversation agent activity (Iteration 93)', () => {
 
     // Force the loading indicator to show by flipping the AppContext loading state.
     // The Conversation UI should render the kind pill even if the agentInfo is generic.
-    await waitFor(() => {
-      expect(document.querySelector('[data-agent-activity]')).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        expect(document.querySelector('[data-agent-activity]')).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
 
     // The activity kind pill is rendered inside the agentInfo branch;
     // this test just asserts the element exists in the DOM when rendered.

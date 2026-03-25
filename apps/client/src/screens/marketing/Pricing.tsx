@@ -187,7 +187,7 @@ export function PricingPage() {
           ))}
         </motion.div>
 
-        {/* Money-back guarantee */}
+        {/* Billing note (MVP honesty) */}
         <div className="flex justify-center mb-16">
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/40">
             <span className="text-green-700 dark:text-green-300 inline-flex items-center">
@@ -195,10 +195,10 @@ export function PricingPage() {
             </span>
             <div>
               <p className="text-sm font-semibold text-green-800 dark:text-green-300">
-                30-day money-back guarantee
+                Billing is deployment-dependent (MVP)
               </p>
               <p className="text-xs text-green-700 dark:text-green-400">
-                Not happy? Get a full refund, no questions asked.
+                LearnFlow&apos;s checkout/refunds are not fully implemented in this build.
               </p>
             </div>
           </div>

@@ -14,7 +14,7 @@ import {
   IconSettings,
 } from '../components/icons/index.js';
 
-const TABS = ['Find Study Partners', 'My Groups', 'Shared Mindmaps'] as const;
+const TABS = ['Study Partners (Preview)', 'My Groups', 'Shared Mindmaps'] as const;
 
 const INTEREST_TAGS = [
   'Machine Learning',
@@ -41,7 +41,7 @@ const INTEREST_TAGS = [
 
 export function Collaboration() {
   const { dispatch } = useApp();
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Find Study Partners');
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>('Study Partners (Preview)');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [groupName, setGroupName] = useState('');
@@ -175,8 +175,8 @@ export function Collaboration() {
           <span className="inline-flex items-center">
             <IconRocket className="w-4 h-4" />
           </span>
-          Collaboration is live (MVP): groups + messages are persisted. Matching/shared mindmaps
-          remain in progress.
+          Collaboration is live (MVP): groups + messages are persisted. Study partner suggestions
+          are topic-based previews (not verified). Shared mindmaps remain in progress.
         </div>
 
         {/* Tabs */}
@@ -193,8 +193,8 @@ export function Collaboration() {
           ))}
         </div>
 
-        {/* Find Study Partners */}
-        {activeTab === 'Find Study Partners' && (
+        {/* Study Partners (Preview) */}
+        {activeTab === 'Study Partners (Preview)' && (
           <div className="space-y-6">
             <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
               <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-white inline-flex items-center gap-2">
@@ -202,7 +202,8 @@ export function Collaboration() {
                 Select Your Interests
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                Choose topics to match with study partners who share your goals.
+                Preview: study partner suggestions are generated from your selected topics. They are
+                not verified accounts or real-time availability.
               </p>
               <div className="flex flex-wrap gap-2 mb-4">
                 {INTEREST_TAGS.map((tag) => (
@@ -225,19 +226,23 @@ export function Collaboration() {
                 disabled={selectedTags.length === 0}
                 onClick={() =>
                   notify(
-                    `Matching you with partners for: ${selectedTags.slice(0, 5).join(', ')} (Mock)`,
+                    `Generating topic-based suggestions for: ${selectedTags.slice(0, 5).join(', ')} (Preview)`,
                   )
                 }
               >
-                Find Partners ({selectedTags.length} topics selected)
+                Generate suggestions ({selectedTags.length} topics selected)
               </Button>
             </div>
 
             <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white inline-flex items-center gap-2">
+              <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white inline-flex items-center gap-2">
                 <IconHandshake className="w-5 h-5 text-accent" />
-                Suggested Partners
+                Suggested Partners (Preview)
               </h2>
+              <p className="text-xs text-gray-600 dark:text-gray-300 mb-4">
+                These are suggestions based on your topics. Availability/identity is not verified in
+                this MVP.
+              </p>
               <div className="space-y-3">
                 {matches.length === 0 ? (
                   <div className="text-sm text-gray-600 dark:text-gray-300">No matches yet.</div>
@@ -255,10 +260,14 @@ export function Collaboration() {
                           <span className="font-medium text-gray-900 dark:text-white">
                             {p.displayName || p.name}
                           </span>
-                          <span
-                            className={`w-2 h-2 rounded-full ${p.online ? 'bg-green-500' : 'bg-gray-400'}`}
-                          />
+                          <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold">
+                            {p.source === 'synthetic' ? 'Suggested' : 'Match'}
+                          </span>
+                          {/* Online indicator is decorative in preview mode; do not imply real-time presence. */}
                           <span className="text-xs text-gray-500">{p.level || 'Intermediate'}</span>
+                        </div>
+                        <div className="mt-1 text-[11px] text-gray-500 dark:text-gray-300">
+                          Suggested based on topics (preview)
                         </div>
                         <div className="flex gap-1 mt-1">
                           {(p.topics || []).slice(0, 3).map((t: string) => (

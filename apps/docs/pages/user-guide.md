@@ -105,7 +105,8 @@ Marketplace UI flows exist for MVP/testing, but publishing, monetization, and th
 - **Profile & Goals**: Learning objectives and preferences
 - **API Keys**: Manage BYOK keys (encrypted at rest with AES-256-CBC)
 - **Subscription**: Free/Pro plan management
-- **Privacy & Export**: GDPR data export, account deletion
+- **Privacy & Export**: Server-generated data export, account deletion
+- **Update Agent**: RSS monitoring + external scheduling (see: [Update Agent scheduling](./update-agent-scheduling))
 
 ## Keyboard Shortcuts
 

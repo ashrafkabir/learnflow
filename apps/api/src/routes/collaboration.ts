@@ -17,6 +17,8 @@ collaborationRouter.get('/matches', (req: Request, res: Response) => {
     topics: [String(t)],
     level: 'intermediate',
     online: idx % 2 === 0,
+    // Iter94 truth pass: matching is NOT a real-time/verified system yet.
+    source: 'synthetic' as const,
   }));
   res.status(200).json({ matches });
 });

@@ -17,6 +17,7 @@ import { searchRouter } from './routes/search.js';
 import { exportRouter } from './routes/export.js';
 import { usageRouter } from './routes/usage.js';
 import { notificationsRouter } from './routes/notifications.js';
+import { deleteMyDataRouter } from './routes/delete-my-data.js';
 import { updateAgentRouter } from './routes/update-agent.js';
 import { yjsRouter } from './yjsRouter.js';
 import { adminSearchConfigRouter } from './routes/admin-search-config.js';
@@ -303,6 +304,13 @@ export function createApp(options?: { devMode?: boolean }) {
     rateLimiter,
     writeRateLimiter,
     notificationsRouter,
+  );
+  app.use(
+    '/api/v1/delete-my-data',
+    protectedAuth,
+    rateLimiter,
+    writeRateLimiter,
+    deleteMyDataRouter,
   );
   app.use('/api/v1/update-agent', protectedAuth, rateLimiter, writeRateLimiter, updateAgentRouter);
   app.use('/api/v1/daily', protectedAuth, rateLimiter, writeRateLimiter, dailyRouter);

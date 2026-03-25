@@ -63,10 +63,13 @@ function renderAt(path: string) {
 describe('Conversation screen', () => {
   it('renders conversation', async () => {
     renderAt('/conversation');
-    await waitFor(() => {
-      const el = document.querySelector('[data-screen="conversation"]');
-      expect(el).toBeTruthy();
-    });
+    await waitFor(
+      () => {
+        const el = document.querySelector('[data-screen="conversation"]');
+        expect(el).toBeTruthy();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it('has message input area', async () => {

@@ -1692,6 +1692,129 @@ class SqliteDb {
     return Boolean(row?.id);
   }
 
+  // Iter94: server-first delete-my-data.
+  // Removes all user-associated rows across tables we own in the MVP.
+  deleteUserData(userId: string): void {
+    // Order matters for FK constraints.
+    try {
+      sqlite.prepare(`DELETE FROM refresh_tokens WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM api_keys WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM token_usage WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM usage_records WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM learning_events WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM progress WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM notes WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM illustrations WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM annotations WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM notifications WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM update_agent_sources WHERE userId = ?`).run(userId);
+      sqlite.prepare(`DELETE FROM update_agent_topics WHERE userId = ?`).run(userId);
+      sqlite.prepare(`DELETE FROM update_agent_topic_runs WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      // Collaboration
+      sqlite.prepare(`DELETE FROM collaboration_group_messages WHERE userId = ?`).run(userId);
+      // Groups where user is owner.
+      sqlite.prepare(`DELETE FROM collaboration_groups WHERE ownerId = ?`).run(userId);
+      // Best-effort: removing the user from memberIds JSON is out of scope for MVP.
+    } catch {
+      // ignore
+    }
+
+    try {
+      // Courses authored by the user (cascades lessons via FK)
+      sqlite.prepare(`DELETE FROM courses WHERE authorId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM invoices WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    try {
+      sqlite.prepare(`DELETE FROM mindmaps WHERE userId = ?`).run(userId);
+      sqlite.prepare(`DELETE FROM mindmap_suggestions WHERE userId = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+
+    // Marketplace (best-effort)
+    try {
+      sqlite.prepare(`DELETE FROM marketplace_agents_activated WHERE userId = ?`).run(userId);
+      sqlite.prepare(`DELETE FROM marketplace_enrollments WHERE userId = ?`).run(userId);
+      sqlite.prepare(`DELETE FROM marketplace_payment_intents WHERE userId = ?`).run(userId);
+      sqlite.prepare(`DELETE FROM marketplace_payouts WHERE userId = ?`).run(userId);
+      sqlite.prepare(`DELETE FROM marketplace_agent_submissions WHERE userId = ?`).run(userId);
+      sqlite.prepare(`DELETE FROM marketplace_course_reviews WHERE userId = ?`).run(userId);
+      // marketplace_courses are creator-owned; we do not currently model ownership.
+    } catch {
+      // ignore
+    }
+
+    // Finally delete the user row.
+    try {
+      sqlite.prepare(`DELETE FROM users WHERE id = ?`).run(userId);
+    } catch {
+      // ignore
+    }
+  }
+
   clear(): void {
     sqlite.exec(
       `DELETE FROM users; DELETE FROM api_keys; DELETE FROM refresh_tokens; DELETE FROM token_usage; DELETE FROM usage_records; DELETE FROM courses; DELETE FROM lessons; DELETE FROM lesson_sources; DELETE FROM lesson_quality; DELETE FROM progress; DELETE FROM pipelines; DELETE FROM invoices; DELETE FROM mindmaps; DELETE FROM mindmap_suggestions; DELETE FROM marketplace_agents_activated; DELETE FROM marketplace_courses; DELETE FROM marketplace_enrollments; DELETE FROM marketplace_payment_intents; DELETE FROM marketplace_payouts; DELETE FROM marketplace_agent_submissions; DELETE FROM marketplace_course_reviews; DELETE FROM collaboration_groups; DELETE FROM collaboration_group_messages; DELETE FROM notifications;`,
