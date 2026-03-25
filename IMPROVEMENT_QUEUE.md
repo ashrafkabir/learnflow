@@ -2,7 +2,174 @@
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-25 (Iter91 READY FOR BUILDER)
+Last updated: 2026-03-25 (Iter94 READY FOR BUILDER)
+
+---
+
+## Iteration 94 — REALITY PASSES: COLLABORATION (MATCHING/TRUTH), EXPORT/PRIVACY FLOWS, UPDATE-AGENT SCHEDULING, BILLING HONESTY
+
+Status: **READY FOR BUILDER**
+
+### Planner evidence (Iter94)
+
+- Spec reviewed: `learnflow/LearnFlow_Product_Spec.md`
+- Screenshots captured:
+  - `learnflow/screenshots/iter94/planner-run/` (see `NOTES.md`)
+
+### Brutally honest: what’s most mismatched vs spec _right now_
+
+1. **Collaboration**
+
+- Groups + messages are real/persisted, but “study partner matching” appears to be **not clearly real** and likely still **topic-derived/synthetic**.
+- UI banner currently says: “Collaboration is live (MVP): groups + messages are persisted. Matching/shared mindmaps remain in progress.” This is closer to truth than earlier, but the tab still says “Find Study Partners” and renders matches, which can still mislead.
+
+2. **Export / Privacy**
+
+- Server export exists (`GET /api/v1/export?format=...`) with Pro gating, but Settings still includes **client-side** export flows (JSON/Markdown/ZIP) that can diverge from server truth and Pro gating.
+- Privacy language is improved (AES-256-CBC at rest), data summary exists, delete-my-data exists, but flows aren’t consistently “trustworthy” unless the UI uses server endpoints as the source of truth for export + deletion confirmations.
+
+3. **Update Agent scheduling reliability**
+
+- Update Agent itself is now real (RSS/HTML monitoring MVP), and the Settings panel exposes run state.
+- But **scheduling is still external**; it needs a first-class deployable guide + a consistent “tick” endpoint contract (and clarity on run locks/409/backoff) so it doesn’t feel like “it sometimes runs”.
+
+4. **Subscription/billing reality**
+
+- Marketing + Settings imply billing realities (e.g., “Next billing: Aug 21, 2025”, money-back guarantee) while backend subscription is **MVP/mock**.
+- This is a trust risk: users see billing UI that can’t be true.
+
+### P0 (Must ship)
+
+1. **Collaboration truth pass: make study partner matching explicitly “preview/suggestions”**
+   - Acceptance criteria:
+     - Collaboration screen text must clearly label “Study partners” as **suggestions** (topic-based) unless there is a real matching service.
+     - If matches are returned, each card includes an explicit “Suggested based on topics” line.
+     - No copy implies real-time availability or verified identity.
+   - Likely files:
+     - `apps/client/src/screens/Collaboration.tsx`
+     - `apps/api/src/routes/collaboration.ts` (if it currently returns synthetic matches)
+   - Screenshot checklist:
+     - `app-collaboration.png` shows the preview label on the matching tab.
+
+2. **Export source-of-truth: Settings must use server export endpoints (and enforce Pro gating correctly)**
+   - Acceptance criteria:
+     - Settings export buttons call server export endpoints by default:
+       - Markdown: `GET /api/v1/export?format=md`
+       - JSON (Pro): `GET /api/v1/export?format=json`
+       - ZIP (Pro): `GET /api/v1/export?format=zip`
+     - Client-side fallback export is allowed only when server is unreachable (explicit toast).
+     - Free tier must not offer JSON/ZIP exports (or must show “Upgrade required” and do not download).
+   - Likely files:
+     - `apps/client/src/screens/ProfileSettings.tsx`
+     - `apps/api/src/routes/export.ts`
+     - `apps/client/src/screens/marketing/Pricing.tsx` (copy must match gating)
+   - Screenshot checklist:
+     - `app-settings.png` shows export options with correct Pro lock state.
+
+3. **Privacy flow hardening: Delete My Data + Data Summary must be consistent and audited**
+   - Acceptance criteria:
+     - Settings shows the live server-side data summary (`/profile/data-summary`) and includes “last updated” timestamp.
+     - Delete-my-data flow shows a confirmation modal with a typed phrase (friction) and calls `DELETE /api/v1/profile`.
+     - After deletion, user is logged out and redirected to landing.
+   - Likely files:
+     - `apps/client/src/screens/ProfileSettings.tsx`
+     - `apps/api/src/routes/profile.ts`
+   - Screenshot checklist:
+     - `app-settings.png` (privacy section shows counts)
+     - `settings-delete-confirm.png` (confirmation friction)
+
+4. **Update Agent scheduling contract: create a single canonical tick endpoint + docs**
+   - Acceptance criteria:
+     - Provide a dedicated endpoint for schedulers (cron/systemd/K8s): `POST /api/v1/update-agent/tick` (or document the canonical existing one).
+     - Endpoint is idempotent/lock-safe (second concurrent tick returns 409 with standard envelope).
+     - Docs include copy-paste examples for:
+       - cron
+       - systemd user timer
+       - K8s CronJob
+     - UI explains: “Scheduling is external in MVP; LearnFlow provides the tick endpoint.”
+   - Likely files:
+     - `apps/api/src/routes/update-agent.ts`
+     - `apps/api/src/routes/notifications.ts`
+     - `apps/docs/pages/update-agent.md`
+     - `scripts/*tick*.mjs`
+   - Verification checklist:
+     - Manual: run tick twice concurrently → second returns 409.
+
+5. **Billing honesty pass: remove hardcoded billing dates and label subscription as mock where appropriate**
+   - Acceptance criteria:
+     - Remove hardcoded “Next billing: Aug 21, 2025” unless it is backed by real invoice/subscription data.
+     - Marketing pricing page must not promise refunds/guarantees unless implemented; otherwise label as “planned” or remove.
+     - Subscription endpoints must be clearly documented as MVP/mock in docs and UI.
+   - Likely files:
+     - `apps/client/src/screens/ProfileSettings.tsx`
+     - `apps/client/src/screens/marketing/Pricing.tsx`
+     - `apps/api/src/routes/subscription.ts`
+     - `apps/docs/pages/*` (pricing/subscription docs)
+   - Screenshot checklist:
+     - `marketing-pricing.png` shows truthful billing copy.
+
+### P1 (Should do)
+
+6. **Collaboration API contract: align matches with an explicit schema (and add “synthetic” flag)**
+   - Acceptance criteria:
+     - `/collaboration/matches` includes an explicit `source: 'synthetic' | 'real'` field per match.
+     - Client renders “Suggested” badge for synthetic matches.
+   - Likely files:
+     - `apps/api/src/routes/collaboration.ts`
+     - `apps/client/src/screens/Collaboration.tsx`
+
+7. **Export completeness: include notes + sources in JSON/ZIP exports**
+   - Acceptance criteria:
+     - Export JSON includes: courses, lessons, lesson_sources, notes, and minimal metadata.
+     - ZIP includes both MD and JSON plus `metadata.json`.
+   - Likely files:
+     - `apps/api/src/routes/export.ts`
+     - `apps/api/src/db.ts`
+
+8. **Privacy/security doc alignment: one canonical page linked from Settings**
+   - Acceptance criteria:
+     - Settings links to `apps/docs/pages/privacy-security.md`.
+     - Doc explicitly lists what is stored (and what isn’t), including Update Agent topic/source storage.
+   - Likely files:
+     - `apps/docs/pages/privacy-security.md`
+     - `apps/client/src/screens/ProfileSettings.tsx`
+
+9. **Update Agent: “Run now” UX should show result summary (topics checked / notifications created / failures)**
+   - Acceptance criteria:
+     - After running tick, UI shows a compact summary and a link to recent notifications.
+   - Likely files:
+     - `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`
+     - `apps/api/src/routes/update-agent.ts`
+
+### P2 (Nice to have)
+
+10. **Subscription realism: implement a minimal invoice display based on stored invoices**
+
+- Acceptance criteria:
+  - If invoices exist (SQLite), show them and derive “next billing” only when backed by data.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/routes/subscription.ts`
+
+11. **Screenshots: add explicit shots for trust states (sources drawer open, delete confirm, update-agent run summary)**
+
+- Acceptance criteria:
+  - Screenshot harness captures:
+    - `lesson-reader-sources-drawer.png`
+    - `conversation-sources-drawer.png`
+    - `settings-delete-confirm.png`
+    - `settings-update-agent-run-now.png`
+- Likely files:
+  - `screenshot-all.mjs`
+
+### Verification checklist (Iter94)
+
+- `npm test`
+- `npm run lint:check`
+- `npm run format:check`
+- `cd apps/api && npm run openapi:lint`
+- Screenshots:
+  - `SCREENSHOT_DIR=screenshots/iter94/run-001 node screenshot-all.mjs`
 
 ---
 
