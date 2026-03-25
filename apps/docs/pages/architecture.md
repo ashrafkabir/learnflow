@@ -8,7 +8,7 @@ LearnFlow is a monorepo-based platform with a multi-agent architecture.
 ┌─────────────────────────────────────────────────────┐
 │                    Client Apps                       │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
-│  │ React Web│  │ iOS App  │  │ Android App      │  │
+│  │ React Web│  │ (future) │  │ (future)         │  │
 │  └────┬─────┘  └────┬─────┘  └────┬─────────────┘  │
 │       └──────────────┼─────────────┘                │
 │                      │ REST + WebSocket              │

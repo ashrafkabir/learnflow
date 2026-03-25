@@ -4,25 +4,23 @@
 
 - **Node.js 18+** (for self-hosting the API)
 - **An AI API key**: OpenAI, Anthropic, or Google AI
-- **LearnFlow app**: Download from [learnflow.ai/download](https://learnflow.ai/download)
+- **LearnFlow**: Web-first MVP — open in your browser at [app.learnflow.ai](https://app.learnflow.ai)
 
 ## Setup
 
-### 1. Download and Install
+### 1. Open the Web App
 
-Download LearnFlow for your platform:
+LearnFlow is a **web-first MVP** — no installation required.
 
-- **macOS**: `.dmg` installer
-- **Windows**: `.exe` installer
-- **iOS**: App Store
-- **Android**: Play Store
 - **Web**: [app.learnflow.ai](https://app.learnflow.ai)
+
+> Native iOS/Android and desktop apps may be offered in a future release.
 
 ### 2. Create an Account
 
 1. Open LearnFlow
 2. Click "Get Started"
-3. Enter your email and create a password (or use Google/GitHub OAuth)
+3. Enter your email and create a password (OAuth providers are not part of the current MVP)
 
 ### 3. Configure Your AI API Key
 
@@ -36,7 +34,7 @@ LearnFlow uses a "Bring Your Own Key" (BYOK) model on the free tier:
 
 Your key is sent over TLS and encrypted server-side with AES-256-CBC.
 
-> **Pro Tip**: Upgrade to Pro ($20/mo) to use managed API keys — no configuration needed.
+> **Note**: "Managed API keys" are not part of the current MVP. LearnFlow currently uses a Bring Your Own Key (BYOK) model.
 
 ### 4. Create Your First Course
 
@@ -79,7 +77,7 @@ Environment variables (see `.env.example`):
 
 - `DATABASE_URL` — PostgreSQL connection string
 - `REDIS_URL` — Redis for caching and rate limiting
-- `ENCRYPTION_KEY` — AES-256 key for API key encryption
+- `ENCRYPTION_KEY` — **Required in production**. 32-byte (64 hex chars) key used for API key encryption at rest (AES-256-CBC).
 - `JWT_SECRET` — Secret for JWT token signing
 - `FIRECRAWL_API_KEY` — For web content sourcing
 

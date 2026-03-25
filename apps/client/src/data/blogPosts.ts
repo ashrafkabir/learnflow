@@ -156,16 +156,15 @@ LearnFlow lets you bring your own API keys. Here's why:
 
 ### You Control Your Keys
 
-Your API keys are encrypted with AES-256-CBC before storage:
+Your API keys are encrypted at rest server-side (AES-256-CBC) before storage:
 
 \`\`\`typescript
-// Server-side encryption
-const encrypted = crypto.createCipheriv('aes-256-gcm', derivedKey, iv);
-// Keys are NEVER stored in plaintext
-// Keys are NEVER sent to our servers unencrypted
+// Server-side encryption (MVP)
+const { encrypted, iv } = encrypt(plaintextKey); // aes-256-cbc
+// Keys are NEVER returned in plaintext
 \`\`\`
 
-We store the encrypted key and IV. Only authenticated requests can decrypt and use them.
+We store the encrypted key and IV. Only authenticated requests can decrypt and use them. Keys are transmitted over TLS.
 
 ### You Control Your Costs
 
@@ -186,7 +185,7 @@ Want to use Claude instead of GPT-4? Prefer a local model via Ollama? LearnFlow'
 
 ### The Pro Tier
 
-Don't want to manage API keys? Our Pro tier ($20/month) includes managed API keys, priority agent processing, and unlimited mindmap nodes. But the free tier with BYOAI is a first-class experience — not a trial.
+Don't want to manage API keys? Managed keys are planned for a future release. Today, LearnFlow uses a BYOK model (Free and Pro). Pro focuses on higher limits and features like proactive update notifications.
 
 ### Trust Through Transparency
 

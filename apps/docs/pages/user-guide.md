@@ -93,23 +93,12 @@ Visualize learning connections:
 
 - Interactive graph with clickable nodes
 - Mastery indicators per node
-- CRDT-powered collaborative editing
+- Collaborative editing is planned (not part of the current MVP)
 - SVG export
 
-### Marketplace
+### Marketplace (MVP/mock)
 
-**Course Marketplace**:
-
-- Browse community-created courses
-- Filter by topic, difficulty, price
-- Enroll and rate courses
-- Revenue split: 85/15 (BYOAI), 80/20 (Pro)
-
-**Agent Marketplace**:
-
-- Browse and activate custom agents
-- Agent sandbox for security
-- SDK for building custom agents
+Marketplace UI flows exist for MVP/testing, but publishing, monetization, and third-party agent distribution are not yet implemented.
 
 ### Settings
 

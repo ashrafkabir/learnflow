@@ -11,7 +11,7 @@ const SECTIONS = [
       {
         title: 'Installation',
         content:
-          'Download LearnFlow for your platform from the Download page. Available on macOS, Windows, Linux, iOS, and Android. The web version requires no installation.',
+          'LearnFlow is a web-first MVP that runs in any modern browser. No installation required. Native iOS/Android and desktop apps may be offered in a future release.',
       },
       {
         title: 'Creating Your First Course',
@@ -145,8 +145,8 @@ const SECTIONS = [
 const QUICK_START_STEPS = [
   {
     step: 1,
-    title: 'Download & Install',
-    desc: 'Get LearnFlow for your platform from the Download page. Web, macOS, Windows, Linux, iOS, and Android.',
+    title: 'Open the Web App',
+    desc: 'LearnFlow is a web-first MVP. Open it in your browser — no installation required.',
   },
   {
     step: 2,

@@ -25,7 +25,7 @@ For California residents:
 
 Your AI API keys are secured with:
 
-- **AES-256-CBC encryption** for API keys at rest (server-side)
+- **AES-256-CBC encryption** for API keys at rest (server-side; CBC is not AEAD—GCM/HMAC hardening is planned)
 - **Single server-side encryption key** (from `ENCRYPTION_KEY` env var)
 - **Keys never logged** in application logs
 - **Keys sent only over TLS**; never logged in plaintext
@@ -43,7 +43,7 @@ Your AI API keys are secured with:
 
 - **Passwords**: Hashed with bcrypt (cost factor 12)
 - **JWTs**: Short-lived access tokens (15 min), longer refresh tokens (7 days)
-- **OAuth**: Google and GitHub SSO support
+- **OAuth**: Not part of the current MVP (a mock Google callback endpoint exists for testing only).
 - **Rate limiting**: Protection against brute force attacks
 
 ## Agent Sandbox

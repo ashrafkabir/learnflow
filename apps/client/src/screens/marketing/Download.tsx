@@ -3,13 +3,7 @@ import { MarketingLayout } from './MarketingLayout.js';
 import { SEO } from '../../components/SEO.js';
 import { Button } from '../../components/Button.js';
 import { motion } from 'framer-motion';
-import {
-  IconRobot,
-  IconApple,
-  IconLinux,
-  IconSparkles,
-  IconWindows,
-} from '../../components/icons/index.js';
+import { IconSparkles } from '../../components/icons/index.js';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -18,52 +12,17 @@ const fadeUp = {
 
 const PLATFORMS = [
   {
-    icon: <IconApple className="w-7 h-7" />,
-    name: 'macOS',
-    key: 'mac',
-    req: 'Requires macOS 12 or later',
-    formats: ['Universal (.dmg)', 'Apple Silicon (.dmg)'],
-  },
-  {
-    icon: <IconWindows className="w-7 h-7" />,
-    name: 'Windows',
-    key: 'windows',
-    req: 'Requires Windows 10 or later',
-    formats: ['Installer (.exe)', 'Portable (.zip)'],
-  },
-  {
-    icon: <IconLinux className="w-7 h-7" />,
-    name: 'Linux',
-    key: 'linux',
-    req: 'Ubuntu 20.04+, Fedora 36+',
-    formats: ['AppImage', '.deb package', '.rpm package'],
-  },
-  {
-    icon: <IconApple className="w-7 h-7" />,
-    name: 'iOS',
-    key: 'ios',
-    req: 'Requires iOS 16 or later',
-    formats: ['App Store'],
-  },
-  {
-    icon: <IconRobot className="w-7 h-7" />,
-    name: 'Android',
-    key: 'android',
-    req: 'Requires Android 12 or later',
-    formats: ['Google Play', 'APK download'],
+    icon: <IconSparkles className="w-7 h-7" />,
+    name: 'Web (recommended)',
+    key: 'web',
+    req: 'Works in any modern browser',
+    formats: ['Open Web App'],
   },
 ];
 
 function detectOS(): string {
-  if (typeof navigator === 'undefined') return '';
-  const ua = navigator.userAgent.toLowerCase();
-  const platform = (navigator.platform || '').toLowerCase();
-  if (/iphone|ipad|ipod/.test(ua)) return 'ios';
-  if (/android/.test(ua)) return 'android';
-  if (/mac/.test(platform) || /macintosh/.test(ua)) return 'mac';
-  if (/win/.test(platform) || /windows/.test(ua)) return 'windows';
-  if (/linux/.test(platform) || /linux/.test(ua)) return 'linux';
-  return '';
+  // Web-first MVP: always recommend the browser app.
+  return 'web';
 }
 
 export function DownloadPage() {
@@ -79,7 +38,7 @@ export function DownloadPage() {
     <MarketingLayout>
       <SEO
         title="Download"
-        description="Download LearnFlow on macOS, Windows, Linux, iOS, and Android. Learn anywhere, anytime."
+        description="Use LearnFlow in your browser. This web-first MVP requires no installation; native apps may be offered in a future release."
         path="/download"
       />
       <section className="max-w-4xl mx-auto px-6 py-20">
@@ -89,9 +48,9 @@ export function DownloadPage() {
           animate="visible"
           variants={fadeUp}
         >
-          <h1 className="text-4xl font-extrabold tracking-tight mb-4">Download LearnFlow</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight mb-4">Get LearnFlow</h1>
           <p className="text-lg text-gray-500 dark:text-gray-300">
-            Available on all major platforms. Learn anywhere, anytime.
+            LearnFlow is a web-first MVP. Use it in your browser — no installation required.
           </p>
         </motion.div>
 
@@ -103,11 +62,15 @@ export function DownloadPage() {
             animate="visible"
             variants={fadeUp}
           >
-            <Button variant="primary" size="large">
-              Download for {recommendedPlatform.name}
+            <Button
+              variant="primary"
+              size="large"
+              onClick={() => (window.location.href = '/register')}
+            >
+              Open LearnFlow in your browser
             </Button>
             <p className="text-xs text-gray-500 dark:text-gray-300 mt-2">
-              Auto-detected based on your device
+              Web-first MVP — works everywhere
             </p>
           </motion.div>
         )}
@@ -144,6 +107,7 @@ export function DownloadPage() {
                     variant={p.key === recommended ? 'primary' : 'secondary'}
                     fullWidth
                     size="sm"
+                    onClick={() => (window.location.href = '/register')}
                   >
                     {f}
                   </Button>
@@ -154,9 +118,10 @@ export function DownloadPage() {
         </div>
 
         <div className="text-center p-8 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-          <h3 className="font-bold text-lg mb-2">Or use the web version</h3>
+          <h3 className="font-bold text-lg mb-2">Use the web app</h3>
           <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
-            No download required. Works in any modern browser.
+            No download required. Works in any modern browser. Native apps may be offered in a
+            future release.
           </p>
           <a
             href="/register"

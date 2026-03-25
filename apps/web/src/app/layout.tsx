@@ -34,8 +34,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               '@type': 'SoftwareApplication',
               name: 'LearnFlow',
               applicationCategory: 'EducationalApplication',
-              operatingSystem: 'macOS, Windows, iOS, Android',
-              description: 'AI-powered personalized learning platform',
+              // MVP is web-first. Native apps may be offered in future releases.
+              operatingSystem: 'Web',
+              description: 'AI-powered personalized learning platform (web-first MVP)',
             }),
           }}
         />

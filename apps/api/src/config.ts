@@ -5,6 +5,8 @@ export const config = {
   jwtExpiresIn: '1h',
   jwtRefreshExpiresIn: '7d',
   bcryptRounds: 12,
+  // NOTE: do not rely on the fallback in production.
+  // CBC requires a strong, secret key (32 bytes hex). See boot-time validation in src/index.ts.
   encryptionKey: process.env.ENCRYPTION_KEY || 'a'.repeat(64), // 32 bytes hex
   port: parseInt(process.env.PORT || '3000', 10),
   yjsPort: parseInt(process.env.YJS_PORT || '3002', 10),

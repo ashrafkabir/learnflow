@@ -72,13 +72,9 @@ describe('S11-A04: Pricing comparison', () => {
 
 // S11-A05: Download page — platform auto-detection
 describe('S11-A05: Download page', () => {
-  it('has platform detection data and all platforms', () => {
+  it('has platform detection data and the web app entry', () => {
     const page = readFile('src/app/download/page.tsx');
     expect(page).toContain('platform-auto-detect');
-    expect(page).toContain('macos');
-    expect(page).toContain('windows');
-    expect(page).toContain('ios');
-    expect(page).toContain('android');
     expect(page).toContain('web');
   });
 });

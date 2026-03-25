@@ -144,7 +144,7 @@ export function ProfileSettings() {
               <p className="text-2xl font-bold">{state.subscription === 'pro' ? 'Pro' : 'Free'}</p>
               <p className="text-sm opacity-75 mt-1">
                 {state.subscription === 'pro'
-                  ? 'Unlimited courses · Priority agents · Managed keys'
+                  ? 'Unlimited courses · Priority agents · Proactive updates'
                   : '3 courses · Basic agents · Bring your own keys'}
               </p>
             </div>

@@ -218,12 +218,12 @@ export function AboutPage() {
           <div className="max-w-2xl mx-auto text-sm text-gray-600 dark:text-gray-300 leading-relaxed space-y-3">
             <p>
               Your learning data is yours. Period. We encrypt API keys at rest (AES-256-CBC) and use
-              TLS in transit. API keys are stored encrypted and never leave your device in our BYOAI
-              model.
+              TLS in transit. API keys are stored encrypted at rest on the server (AES-256-CBC) and
+              are never returned in plaintext.
             </p>
             <p>
-              We are SOC 2 compliant and GDPR ready. You can export or delete all your data at any
-              time from Settings. We never sell your data or use it to train models.
+              We aim to follow security best practices and provide user controls like export and
+              deletion from Settings. We never sell your data or use it to train models.
             </p>
             <p>Our open-source codebase means you can verify our privacy practices yourself.</p>
           </div>

@@ -17,7 +17,8 @@ export default function AboutPage() {
         <section style={{ padding: 18, border: '1px solid #e5e7eb', borderRadius: 16 }}>
           <h2 style={{ margin: 0, fontSize: 18 }}>Privacy commitment</h2>
           <p style={{ margin: '8px 0 0', color: '#374151', lineHeight: 1.6 }}>
-            BYOAI keys are encrypted at rest. We track usage for transparency. No keys are logged.
+            BYOAI keys are encrypted at rest (AES-256-CBC in the current MVP). We track usage for
+            transparency. No keys are logged.
           </p>
         </section>
       </div>

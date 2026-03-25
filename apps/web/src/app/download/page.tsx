@@ -1,25 +1,19 @@
 import React from 'react';
 
-/** S11-A05: Download page with platform auto-detection */
+/** S11-A05: Download page (web-first MVP) */
 export default function DownloadPage() {
   // Platform detection happens client-side; we render all platforms
   // with a data attribute for the test to verify auto-detection logic
-  const platforms = [
-    { id: 'macos', name: 'macOS', icon: '🍎', ext: '.dmg', ua: 'Mac' },
-    { id: 'windows', name: 'Windows', icon: '🪟', ext: '.exe', ua: 'Win' },
-    { id: 'ios', name: 'iOS', icon: '📱', ext: 'App Store', ua: 'iPhone' },
-    { id: 'android', name: 'Android', icon: '🤖', ext: 'Play Store', ua: 'Android' },
-    { id: 'web', name: 'Web App', icon: '🌐', ext: 'Browser', ua: '' },
-  ];
+  const platforms = [{ id: 'web', name: 'Web App', icon: '🌐', ext: 'Browser', ua: '' }];
 
   return (
     <div
       data-page="download"
       style={{ maxWidth: 700, margin: '0 auto', padding: '60px 24px', textAlign: 'center' }}
     >
-      <h1 style={{ fontSize: 40, fontWeight: 800, marginBottom: 16 }}>Download LearnFlow</h1>
+      <h1 style={{ fontSize: 40, fontWeight: 800, marginBottom: 16 }}>Use LearnFlow</h1>
       <p style={{ fontSize: 18, color: '#6b7280', marginBottom: 48 }}>
-        Available on all major platforms.
+        LearnFlow is a web-first MVP. Open the web app in your browser — no installation required.
       </p>
 
       {/* Auto-detection script placeholder */}
@@ -60,7 +54,7 @@ export default function DownloadPage() {
       </div>
 
       <p style={{ marginTop: 48, fontSize: 14, color: '#9ca3af' }}>
-        LearnFlow is free to download. Requires macOS 12+, Windows 10+, iOS 16+, or Android 12+.
+        Native iOS/Android and desktop apps may be offered in a future release.
       </p>
     </div>
   );

@@ -385,9 +385,9 @@ export function HomePage() {
           {[
             {
               icon: <IconLock className="w-4 h-4" />,
-              label: 'API key encryption at rest (AES-256-CBC)',
+              label: 'API key encryption at rest (AES-256-CBC; no AEAD in MVP)',
             },
-            { icon: <IconShield className="w-4 h-4" />, label: 'SOC 2 Compliant' },
+            { icon: <IconShield className="w-4 h-4" />, label: 'Security-first (MVP)' },
             { icon: <IconGlobe className="w-4 h-4" />, label: 'GDPR Ready' },
             { icon: <IconShieldKey className="w-4 h-4" />, label: 'BYOK — Your Keys, Your Data' },
           ].map((b) => (

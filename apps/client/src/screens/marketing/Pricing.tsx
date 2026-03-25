@@ -71,7 +71,7 @@ const FAQ = [
   },
   {
     q: 'Is there a mobile app?',
-    a: 'Yes! LearnFlow is available on iOS, Android, and desktop (Mac, Windows, Linux).',
+    a: 'Not yet. LearnFlow is a web-first MVP that runs in any modern browser. Native iOS/Android and desktop apps may be offered in a future release.',
   },
   {
     q: 'Can I export my data?',

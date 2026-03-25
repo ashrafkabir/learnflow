@@ -16,6 +16,34 @@ import { createWebSocketServer } from './websocket.js';
 import { attachYjsMindmapServer } from './yjsServer.js';
 import { WebSocketServer } from 'ws';
 
+// Boot-time env validation / warnings (Iter89)
+(function validateEnv() {
+  const isProd = process.env.NODE_ENV === 'production';
+
+  // ENCRYPTION_KEY: required in prod and must be 64 hex chars (32 bytes)
+  const key = String(process.env.ENCRYPTION_KEY || '').trim();
+  const looksHex64 = /^[0-9a-fA-F]{64}$/.test(key);
+  if (isProd && !looksHex64) {
+    console.error(
+      '[LearnFlow][CONFIG] ENCRYPTION_KEY is required in production and must be 64 hex characters (32 bytes). Refusing to start.',
+    );
+    process.exit(1);
+  }
+  if (!isProd && key && !looksHex64) {
+    console.warn(
+      '[LearnFlow][CONFIG] ENCRYPTION_KEY is set but does not look like 64 hex characters. Encryption may fail at runtime.',
+    );
+  }
+
+  // CORS allowlist: warn if empty in prod (API will reject browser requests)
+  const corsAllowOrigins = String(process.env.CORS_ALLOW_ORIGINS || '').trim();
+  if (isProd && corsAllowOrigins.length === 0) {
+    console.warn(
+      '[LearnFlow][CONFIG] CORS_ALLOW_ORIGINS is empty in production. Browser requests will be blocked by CORS.',
+    );
+  }
+})();
+
 const app = createApp({ devMode: config.devMode });
 const server = http.createServer(app);
 

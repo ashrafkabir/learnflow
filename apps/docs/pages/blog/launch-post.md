@@ -78,7 +78,7 @@ LearnFlow is built on a modern stack:
 
 ## Start Learning Today
 
-LearnFlow is free to use with your own AI API key. For those who want a hands-off experience, our Pro plan ($20/month) includes managed API keys, unlimited courses, and proactive content updates.
+LearnFlow is free to use with your own AI API key (BYOK). Some Pro features (e.g., proactive updates) are supported in the app, while others like managed API keys are planned for a future release.
 
 [Download LearnFlow →](https://learnflow.ai/download)
 
