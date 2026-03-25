@@ -3172,15 +3172,25 @@ Required:
 
 ## Iteration 90 — UPDATE AGENT TRUST LOOP + AUTH REALITY + COURSE BUILD CLEANUP + SCREENSHOT/EVIDENCE HARNESS
 
-Status: **PLANNED**
+Status: **DONE**
 
-Planner evidence (Iter90):
+Builder evidence (Iter90):
 
-- ✅ Services running:
-  - `learnflow-api` (3000), `learnflow-client` (3001), `learnflow-web` (3003)
-- ✅ Screenshots captured (script):
-  - Command: `SCREENSHOT_DIR=screenshots/iter90/planner-run node screenshot-all.mjs`
-  - Output: `learnflow/screenshots/iter90/planner-run/` (see `NOTES.md`)
+- ✅ Trust-loop UI: Settings → Update Agent now shows per-topic last run status, next eligible, failures, last error + “Run now”
+- ✅ Auth reality pass: Social OAuth CTAs removed/disabled; copy aligned across Login/Register and Docs
+- ✅ Dev cleanup: already present in Settings (admin-only) with dry-run + confirm friction (unchanged)
+- ✅ Screenshot harness:
+  - Command: `ITERATION=90 SCREENSHOT_DIR=learnflow/screenshots/iter90/run-001 node screenshot-all.mjs`
+  - Output: `learnflow/screenshots/iter90/run-001/` (notably `app-settings.png`, `auth-login.png`, `auth-register.png`)
+- ✅ Tests:
+  - Client: `apps/client/src/__tests__/updateAgentTrustLoop.test.tsx`
+  - API: `apps/api/src/__tests__/update-agent-topics-run-state.test.ts`
+- ✅ Gates:
+  - `npm test` ✅
+  - `npm run lint:check` ✅
+  - `npm run format:check` ✅
+  - `npm run openapi:lint --workspaces --if-present` ✅
+- ✅ Commit: `8944af5` (pushed to `master`)
 
 ### Brutally honest Iter90 thesis
 
