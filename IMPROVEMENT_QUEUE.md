@@ -3860,3 +3860,200 @@ Brutally honest gaps observed vs `LearnFlow_Product_Spec.md`:
 - `npx tsc --noEmit`
 - `npx eslint .`
 - `npx prettier --check .`
+
+---
+
+## Iteration 93 — ACTIVITY + CREDIBILITY UX COHERENCE (NO MISLEADING SIGNALS) + EVIDENCE SCREENSHOT HARNESS
+
+Status: **READY FOR BUILDER** (planner)
+
+Planner evidence (Iter93):
+
+- Spec reviewed: `learnflow/LearnFlow_Product_Spec.md`
+- Screenshots captured (Playwright harness):
+  - App/client: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter93/planner-run/`
+  - Marketing web: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter93/planner-run/web/`
+  - Notes: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter93/planner-run/NOTES.md`
+
+Brutally honest Iter93 thesis:
+
+- Iter92 introduced **activity events** + **source credibility scoring**, but the UX is still at high risk of feeling **misleading** because:
+  1. "Online"/status signals can read as “agents are working” even when there’s no visible in-flight trace.
+  2. “Real sources” is claimed in Conversation, but sources/provenance are not obviously discoverable.
+  3. Settings has plan/BYOAI/Pro feature gating and “Update Agent (MVP)” semantics that need to be consistent and error-free.
+  4. Evidence screenshots do not yet prove the critical states (sources drawer open; in-flight activity; pipeline milestones).
+
+Focus (what to fix next):
+
+- Make **agent activity** accurate and clearly labeled (routing vs agent work vs pipeline stage).
+- Make **sources + credibility** visible wherever we promise them (Conversation + Lesson Reader, not only pipeline).
+- Make **subscription/BYOAI messaging** coherent across onboarding, marketing pricing, and settings.
+- Make screenshot harness produce deterministic proof of the above.
+
+Non-goals:
+
+- Full K8s agent mesh as described in spec §4
+- Payments/monetization
+- Major visual redesign
+
+### P0 (Must do)
+
+#### 1) Conversation: replace ambiguous header icons with explicit “Sources” affordance
+
+- Problem: Conversation copy promises research “with real sources”, but sources discoverability is weak/ambiguous.
+- Acceptance criteria:
+  - Conversation header has an explicit “Sources” button (label + icon) with tooltip.
+  - When sources exist for the last assistant response, button shows a count badge (e.g., “Sources (4)”).
+  - When no sources exist, button shows disabled/empty state ("No sources for this message").
+- Likely files:
+  - `apps/client/src/screens/Conversation.tsx`
+  - `apps/client/src/components/SourceDrawer.tsx`
+- Screenshot checklist:
+  - `app-conversation-sources-open.png` (drawer visible with credibility label + accessedAt)
+
+#### 2) Conversation: unify credibility/provenance rendering with LessonReader/AttributionDrawer
+
+- Problem: credibility fields exist in WS payloads, but UI surfaces differ across screens.
+- Acceptance criteria:
+  - SourceDrawer shows: domain/publication, accessedAt, credibility label + score, whyCredible.
+  - No placeholder strings like “Author”/“Source”; show “Unknown” where missing.
+  - Clicking a source always opens original URL (new tab) and is keyboard accessible.
+- Likely files:
+  - `apps/client/src/components/SourceDrawer.tsx`
+  - `apps/client/src/components/CitationTooltip.tsx`
+  - `apps/client/src/components/AttributionDrawer.tsx`
+- Verification checklist:
+  - RTL test covers rendering of credibility fields.
+
+#### 3) Agent activity strip: make states explicit and non-misleading
+
+- Problem: Users misinterpret “Online” + generic activity as real agent work.
+- Acceptance criteria:
+  - Activity strip shows one of:
+    - “Routing…” (kind=routing)
+    - “Agent: <name> working…” (kind=agent_call)
+    - “Pipeline: <stage>…” (kind=pipeline_stage)
+  - No “Agent completed” toast for routing-only interactions.
+  - Duration appears in completion toast when available.
+- Likely files:
+  - `apps/client/src/screens/Conversation.tsx`
+  - `apps/api/src/wsOrchestrator.ts` (ensure kind + durationMs emitted consistently)
+- Screenshot checklist:
+  - `app-conversation-routing.png`
+  - `app-conversation-agent-call.png`
+
+#### 4) Pipeline list: fix progress/status inconsistencies + add drill-in affordance
+
+- Problem: Pipeline cards can show contradictory metadata (e.g., 0 modules/lessons but >0% progress).
+- Acceptance criteria:
+  - Progress % is derived from a documented, consistent formula (and never contradicts counts).
+  - Each pipeline row has a clear “View details” affordance.
+  - Failed pipelines show a one-line error summary + primary action (“Retry” / “View logs”).
+- Likely files:
+  - `apps/client/src/screens/PipelineView.tsx`
+  - `apps/api/src/routes/pipeline.ts`
+- Screenshot checklist:
+  - `app-pipelines.png` (no contradictory counts; failed item shows error hint)
+
+#### 5) Pipeline detail: milestones visible and match spec §11.2/agent transparency intent
+
+- Problem: We need proof that milestones are visible (not just logged).
+- Acceptance criteria:
+  - PipelineDetail shows per-lesson milestones list with done/pending states.
+  - Includes timestamps/durations where possible.
+  - Missing milestones show a non-empty fallback UI.
+- Likely files:
+  - `apps/client/src/screens/PipelineDetail.tsx`
+  - `apps/client/src/hooks/usePipeline.ts`
+- Screenshot checklist:
+  - `pipeline-detail-milestones.png`
+
+#### 6) Settings: fix privacy panel “[object Object]” and clarify BYOAI vs Managed usage tracking
+
+- Problem: user-facing bug + trust gap about usage analytics.
+- Acceptance criteria:
+  - Privacy panel errors render as human-readable text; no raw object dump.
+  - Usage (7d) clearly states whether metrics include BYO keys, managed keys, or both.
+  - Plan banner + Pro features list align with what is actually enabled.
+- Likely files:
+  - `apps/client/src/screens/ProfileSettings.tsx`
+  - `apps/api/src/routes/analytics.ts`
+- Screenshot checklist:
+  - `app-settings.png` (no object dump; clear usage disclaimer)
+
+#### 7) Screenshot harness: capture proof states (sources drawer open, in-flight activity, milestones)
+
+- Problem: current harness captures routes but not key interactive proof.
+- Acceptance criteria:
+  - Harness opens:
+    - Conversation → open Sources drawer → screenshot
+    - LessonReader → open Sources & Attribution drawer → screenshot
+    - PipelineDetail → milestone section visible → screenshot
+  - Harness includes a deterministic “in-flight” capture (acceptable to add a forced delay) to show activity strip.
+- Likely files:
+  - `learnflow/screenshot-all.mjs`
+- Output checklist:
+  - `lesson-reader-sources-open.png`
+  - `app-conversation-sources-open.png`
+  - `pipeline-detail-milestones.png`
+
+### P1 (Should do)
+
+#### 8) Marketing + onboarding + settings: single source of truth for tier capability copy
+
+- Acceptance criteria:
+  - A shared capability matrix/copy module drives:
+    - onboarding subscription screen
+    - marketing pricing
+    - settings plan banner
+  - Text does not drift (RTL test checks shared strings).
+- Likely files:
+  - `apps/client/src/lib/capabilities.ts` (or `packages/core`)
+  - `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`
+  - `apps/client/src/screens/marketing/Pricing.tsx`
+
+#### 9) Provenance chain MVP: show “Referenced in section” for each source
+
+- Acceptance criteria:
+  - Source entries include “Referenced in: Core Concepts / Worked Example / Next Steps” (best-effort heuristic OK).
+- Likely files:
+  - `apps/api/src/utils/sourceCards.ts` (or equivalent)
+  - `apps/client/src/components/SourceDrawer.tsx`
+
+#### 10) Activity + credibility accessibility pass
+
+- Acceptance criteria:
+  - Keyboard navigation works for Sources drawer + tooltips.
+  - Screen reader labels exist for activity strip states and credibility labels.
+- Likely files:
+  - `apps/client/src/screens/Conversation.tsx`
+  - `apps/client/src/components/SourceDrawer.tsx`
+
+### P2 (Nice to have)
+
+#### 11) Document actual WS contract + divergence from spec §11.2
+
+- Acceptance criteria:
+  - Docs page lists all events/payloads currently emitted + known divergences.
+- Likely files:
+  - `apps/docs/pages/api.md` (or `apps/web` docs)
+  - `apps/api/src/wsContract.ts`
+
+#### 12) OneDrive sync (planner artifacts) — Iter93
+
+- TODO (planner did not sync):
+  - Sync screenshots:
+    - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter93/planner-run/`
+    - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter93/planner-run/web/`
+  - Sync notes:
+    - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter93/planner-run/NOTES.md`
+  - Sync queue update:
+    - `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
+
+### Global Iter93 verification checklist
+
+- `npm test`
+- `npx tsc --noEmit`
+- `npx eslint .`
+- `npx prettier --check .`
+- `node learnflow/screenshot-all.mjs` (or `cd learnflow && node screenshot-all.mjs`)
