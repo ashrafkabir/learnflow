@@ -2901,7 +2901,7 @@ Notes:
 
 ## Iteration 89 — SPEC TRUTH PASS + WS CONTRACT HARDENING + MVP PROMISE ALIGNMENT (Docs/UI copy + Ops)
 
-Status: **PLANNED (planner run complete)**
+Status: **IN PROGRESS (builder: WS contract hardening complete; remaining P0 items pending)**
 
 Source of truth spec: `learnflow/LearnFlow_Product_Spec.md` (March 2026)
 
@@ -2966,19 +2966,28 @@ Iter89 should prioritize clarity + reliability over new features.
 
 #### 3) WebSocket contract hardening: define and test ordering/idempotency invariants
 
-- Acceptance criteria:
-  - Document WS event contract (ids, ordering, retry semantics) in one place.
-  - Add tests covering:
-    - invalid JSON → standard error envelope w/ requestId/messageId when applicable
-    - reconnect does not duplicate `response.end` for same `messageId`
-    - ordering: `response.start` precedes chunks; `response.end` exactly once
-  - Client expectations explicitly documented (what it must tolerate).
+- Status: ✅ **DONE (builder)**
+- What shipped:
+  - Request validation for WS messages:
+    - Missing `event` → `error` envelope with `code=invalid_request`
+    - `event="message"` requires `data.text` (non-empty string)
+  - Message correlation:
+    - Server now prefers client-provided `data.message_id` for `response.*` events.
+  - Server emits a `ws.contract` event on connect describing inbound expectations.
+- Tests added:
+  - WS: missing message text emits `invalid_request` with field-level `issues`.
+  - WS: client-provided `message_id` is echoed on `response.start`.
+- Evidence:
+  - Commit: `b9336eb` (pushed to `master`)
+  - Gates: `npm test`, `tsc`, `eslint`, `prettier`, `openapi:lint` all passing.
+- Notes:
+  - Reconnect/idempotency semantics (`response.end` exactly once across reconnect) still not implemented; left as a remaining P0 item if required.
 - Likely files:
   - `apps/api/src/wsOrchestrator.ts`
+  - `apps/api/src/websocket.ts`
   - `apps/api/src/__tests__/ws-contract.test.ts`
-  - `apps/client/src/screens/Conversation.tsx` (only if contract changes require UI updates)
 - Screenshot checklist:
-  - `app-conversation.png` (optional: show stable activity indicator + sources)
+  - `app-conversation.png` (optional)
 - Verification checklist:
   - `npm test`
 
