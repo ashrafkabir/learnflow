@@ -77,8 +77,33 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
         return;
       }
 
+      const event = String((msg as any)?.event || '').trim();
+      if (!event) {
+        sendWsError(ws, createRequestId(), {
+          code: 'invalid_request',
+          message: 'Missing event',
+        });
+        return;
+      }
+
       const clientRequestId = (msg as any)?.data?.requestId;
       const requestId = (clientRequestId && String(clientRequestId).trim()) || createRequestId();
+
+      // Minimal request validation (Iter89): avoid silent no-ops and give clients a stable error shape.
+      if (event === 'message') {
+        const text = (msg as any)?.data?.text;
+        if (typeof text !== 'string' || text.trim().length === 0) {
+          sendWsError(ws, requestId, {
+            code: 'invalid_request',
+            message: 'Missing required field: data.text',
+            details: {
+              issues: [{ path: ['data', 'text'], message: 'Required string' }],
+            },
+            message_id: (msg as any)?.data?.message_id,
+          });
+          return;
+        }
+      }
 
       const take = takeRateLimit({ key, tier, devMode });
       if (!take.ok) {
@@ -99,6 +124,17 @@ export function createWebSocketServer(server: HttpServer): WebSocketServer {
     });
 
     sendEvent(ws, 'connected', { userId: user.sub });
+
+    // Tell clients what this server expects for inbound envelopes.
+    // Keeping it explicit helps avoid silent drift across iterations.
+    sendEvent(ws, 'ws.contract', {
+      inbound: {
+        message: {
+          required: ['text'],
+          optional: ['requestId', 'message_id', 'courseId', 'lessonId'],
+        },
+      },
+    });
   });
 
   return wss;

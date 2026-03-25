@@ -62,7 +62,10 @@ export async function handleWsMessage(
 ): Promise<void> {
   if (msg.event !== 'message') return;
 
-  const messageId = `msg-${Date.now()}`;
+  const clientMessageId: string | undefined = msg?.data?.message_id;
+  const messageId =
+    (clientMessageId && String(clientMessageId).trim()) ||
+    `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const text: string = msg?.data?.text || '';
   const clientRequestId: string | undefined = msg?.data?.requestId;
   const requestId = (clientRequestId && String(clientRequestId).trim()) || createRequestId();

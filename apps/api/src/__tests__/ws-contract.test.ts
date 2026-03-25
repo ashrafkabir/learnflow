@@ -60,7 +60,12 @@ describe('WS contract (Spec §11.2)', () => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=dev`);
     await waitForWsOpen(ws);
 
-    ws.send(JSON.stringify({ event: 'message', data: { text: 'Hello', requestId: 'ws-req-1' } }));
+    ws.send(
+      JSON.stringify({
+        event: 'message',
+        data: { text: 'Hello', requestId: 'ws-req-1', message_id: 'msg-client-1' },
+      }),
+    );
 
     const events = await collectWsEvents(ws);
 
@@ -74,11 +79,15 @@ describe('WS contract (Spec §11.2)', () => {
     expect(names).toContain('response.chunk');
     expect(names).toContain('response.end');
 
-    const firstStart = names.indexOf('response.start');
+    // Ensure message correlation is stable (client-provided message_id is echoed).
+    const firstStart = events.find((e) => e?.event === 'response.start');
+    expect(firstStart?.data?.message_id).toBe('msg-client-1');
+
+    const startIndex = names.indexOf('response.start');
     const firstChunk = names.indexOf('response.chunk');
     const firstEnd = names.indexOf('response.end');
-    expect(firstStart).toBeGreaterThanOrEqual(0);
-    expect(firstChunk).toBeGreaterThan(firstStart);
+    expect(startIndex).toBeGreaterThanOrEqual(0);
+    expect(firstChunk).toBeGreaterThan(startIndex);
     expect(firstEnd).toBeGreaterThan(firstChunk);
   });
 
@@ -108,5 +117,33 @@ describe('WS contract (Spec §11.2)', () => {
     expect(err.data?.requestId).toBeTruthy();
     expect(err.data?.error?.code).toBe('invalid_json');
     expect(typeof err.data?.error?.message).toBe('string');
+  });
+
+  it('missing message text emits invalid_request with field-level issues', async () => {
+    const app = createApp();
+    const httpServer = createServer(app);
+    createWebSocketServer(httpServer);
+
+    await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+    const addr = httpServer.address();
+    if (!addr || typeof addr === 'string') throw new Error('Expected numeric address');
+    const port = addr.port;
+
+    process.env.LEARNFLOW_DEV_AUTH = '1';
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=dev`);
+    await waitForWsOpen(ws);
+
+    ws.send(JSON.stringify({ event: 'message', data: { requestId: 'ws-req-missing-text' } }));
+
+    const events = await collectWsEvents(ws, 10, 1200);
+
+    ws.close();
+    await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+
+    const err = events.find((e) => e?.event === 'error');
+    expect(err).toBeTruthy();
+    expect(err.data?.requestId).toBe('ws-req-missing-text');
+    expect(err.data?.error?.code).toBe('invalid_request');
+    expect(err.data?.error?.details?.issues?.[0]?.path).toEqual(['data', 'text']);
   });
 });
