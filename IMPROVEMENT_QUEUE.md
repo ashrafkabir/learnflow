@@ -2901,7 +2901,7 @@ Notes:
 
 ## Iteration 89 — SPEC TRUTH PASS + WS CONTRACT HARDENING + MVP PROMISE ALIGNMENT (Docs/UI copy + Ops)
 
-Status: **IN PROGRESS (builder: WS contract hardening complete; remaining P0 items pending)**
+Status: **DONE (Iter89 P0: WS contract hardening + MVP promise alignment + ops guardrails shipped)**
 
 Source of truth spec: `learnflow/LearnFlow_Product_Spec.md` (March 2026)
 
@@ -2924,11 +2924,11 @@ The repo is now a solid **web-first MVP** with real course generation, lesson re
 - **Marketplace + billing** are MVP/stubbed; UI can still imply production economics.
 - **Content provenance** is much stronger than earlier iterations (structured sources + attribution drawer), but still lacks: credibility scoring, dedupe guarantees, and a durable provenance chain model described in spec §6.3.
 
-Iter89 should prioritize clarity + reliability over new features.
+Iter89 prioritized clarity + reliability over new features and is now complete for the scoped P0s (truth pass + WS contract + ops guardrails).
 
 ---
 
-### P0 (Must do) — 10–15 tasks for Iter89
+### P0 (Must do) — Iter89 outcomes
 
 #### 1) Update `IMPLEMENTED_VS_SPEC.md` to reflect current iteration reality (Iter89)
 
@@ -2951,18 +2951,16 @@ Iter89 should prioritize clarity + reliability over new features.
 
 #### 2) MVP truth pass: ensure marketing + docs do not over-promise platform support
 
-- Acceptance criteria:
-  - `apps/web` pages (Home/Download/Pricing) clearly state current supported platform is **Web**.
-  - Any references to macOS/Windows installers, iOS/Android apps are labeled “planned/future”.
-  - `apps/docs` Getting Started and/or FAQ includes a short “Supported platforms” section.
-- Likely files:
-  - `apps/web/src/app/page.tsx`
-  - `apps/web/src/app/download/page.tsx`
-  - `apps/docs/pages/*` (or docs index)
+- Status: ✅ **DONE (Iter89)**
+- What shipped:
+  - Marketing + docs now explicitly state **web-first MVP**.
+  - Removed/qualified claims about iOS/Android/macOS/Windows/Linux apps; labeled as “planned/future”.
+  - Updated structured data `operatingSystem` to `Web`.
+- Evidence:
+  - Commit: `200b5fe`
+  - Gates: `npm test`, `npm run lint`, `prettier --check`, `tsc -p . --noEmit` all passing.
 - Screenshot checklist:
-  - `landing-home.png`, `marketing-download.png` reflect updated copy.
-- Verification checklist:
-  - Run screenshot harness after changes.
+  - Not re-run in this change set (copy-only). Use existing screenshot harness if needed.
 
 #### 3) WebSocket contract hardening: define and test ordering/idempotency invariants
 
@@ -3006,18 +3004,14 @@ Iter89 should prioritize clarity + reliability over new features.
 
 #### 5) Privacy/security copy audit (again): ensure UI + docs match implementation exactly
 
-- Acceptance criteria:
-  - Settings + docs disclose what’s stored:
-    - course content, sources, learning events, notifications
-  - API key storage: state “encrypted at rest” and link to doc; do **not** claim specific cipher unless proven.
-  - Clarify what is excluded by default from analytics (non-user origins).
-- Likely files:
-  - `apps/client/src/screens/ProfileSettings.tsx`
-  - `apps/docs/pages/privacy-security.md`
-- Screenshot checklist:
-  - `app-settings.png` (privacy copy visible)
-- Verification checklist:
-  - Grep for stale promises (cipher/session-only/etc.) and remove/qualify.
+- Status: ✅ **DONE (Iter89)**
+- What shipped:
+  - Security copy now consistently states **AES-256-CBC at rest** (no GCM/AEAD claims) and “never returned in plaintext”.
+  - Removed misleading SOC 2 compliance claims.
+  - Docs updated to clarify OAuth not part of MVP and to qualify planned cryptographic hardening (GCM/HMAC).
+- Evidence:
+  - Commit: `200b5fe`
+  - Gates: `npm test`, `npm run lint`, `prettier --check`, `tsc -p . --noEmit` all passing.
 
 #### 6) Course/Lesson UX: make the “<10 min” spec promise testable and enforced
 
