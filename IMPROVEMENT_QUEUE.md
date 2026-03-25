@@ -3167,3 +3167,214 @@ Required:
   - `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
 
 (Planner did not perform OneDrive sync from this session.)
+
+---
+
+## Iteration 90 — UPDATE AGENT TRUST LOOP + AUTH REALITY + COURSE BUILD CLEANUP + SCREENSHOT/EVIDENCE HARNESS
+
+Status: **PLANNED**
+
+Planner evidence (Iter90):
+
+- ✅ Services running:
+  - `learnflow-api` (3000), `learnflow-client` (3001), `learnflow-web` (3003)
+- ✅ Screenshots captured (script):
+  - Command: `SCREENSHOT_DIR=screenshots/iter90/planner-run node screenshot-all.mjs`
+  - Output: `learnflow/screenshots/iter90/planner-run/` (see `NOTES.md`)
+
+### Brutally honest Iter90 thesis
+
+Now that contracts/copy are more stable (Iter88–89), the highest business leverage is **trust + clarity loops**:
+
+- Update Agent is valuable but currently feels like a **settings form + invisible cron**. Users need: “what happens next”, “did it run”, “why did it fail”, “how often”, and “what did you look at”.
+- Auth/UI currently implies social login, but it is **explicitly disabled via alerts**, while the API contains a **mock Google callback**. This mismatch erodes trust and invites support load.
+- Collaboration is present, but server matching is **synthetic** (topic-derived). The product should either clearly label it “preview” or ship a minimally-real flow.
+- The screenshot harness captures screens but not **trust states** (sources drawer open, notification feed states, update-agent debug state), limiting our ability to prove quality quickly.
+
+---
+
+### P0 (Must do)
+
+#### 1) Update Agent “trust loop” UI: show run status + next run + failures (no more black box)
+
+- Problem:
+  - Update Agent works via `POST /api/v1/notifications/generate` (tick/cron), but the app doesn’t communicate _when it will run_, _when it last ran_, or _why it failed/backed off_.
+- Acceptance criteria:
+  - In Settings → Update Agent panel, show per-topic:
+    - lastRunAt, lastRunOk, lastRunError
+    - per-source: lastCheckedAt/lastSuccessAt/lastError/nextEligibleAt/failureCount (already returned)
+    - an explicit explanation: “Scheduling is external (cron) in MVP; here’s how to enable it.”
+  - Clear empty states:
+    - “No topics” + CTA to add one
+    - “No sources” + suggest defaults (copy only is OK)
+- Likely files:
+  - `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`
+  - `apps/api/src/db.ts` (if topic run fields are missing from list endpoints)
+  - `apps/api/src/routes/update-agent.ts`
+- Screenshot checklist:
+  - `app-settings.png` shows Update Agent section with “Last run” + “Next eligible” info.
+- Verification checklist:
+  - `npm test`
+
+#### 2) Update Agent scheduling guide (deployable): cron + systemd timer + K8s CronJob templates
+
+- Acceptance criteria:
+  - New doc with copy-paste examples for:
+    - cron
+    - systemd user timer
+    - K8s CronJob
+  - Must document:
+    - run lock behavior (409 conflict)
+    - backoff / nextEligibleAt
+    - recommended cadence (daily/weekly) + warning about too-frequent checks
+    - security note: use a dedicated “service account” user
+- Likely files:
+  - `apps/docs/pages/update-agent.md` (or create under docs equivalent)
+  - `scripts/update-agent-tick.mjs` (reference)
+- Screenshot checklist:
+  - N/A
+- Verification checklist:
+  - Docs links render (if docs site exists) or markdown is lint-clean.
+
+#### 3) Auth reality pass: remove misleading social login UI OR make mock OAuth actually usable end-to-end
+
+- Current truth:
+  - Client buttons for Google/GitHub/Apple show `alert('not yet available')`.
+  - API has `GET /api/v1/auth/google/callback` as **mock** OAuth.
+- Acceptance criteria (choose one path):
+  - Path A (recommended for MVP trust):
+    - Remove social buttons or label them “Coming soon” (no alert on click).
+    - Remove/disable mock OAuth callback route or document it as internal test-only.
+  - Path B:
+    - Make “Continue with Google” hit a real client flow (still mock provider OK) and log the user in.
+- Likely files:
+  - `apps/client/src/screens/LoginScreen.tsx`
+  - `apps/client/src/screens/RegisterScreen.tsx`
+  - `apps/api/src/auth.ts`
+  - `apps/docs/pages/*` (auth docs)
+- Screenshot checklist:
+  - `auth-login.png`, `auth-register.png` show correct labeling (no misleading CTA).
+- Verification checklist:
+  - `npm test`
+
+#### 4) Collaboration reality check: label as preview + add “what it is / isn’t” truth in UI
+
+- Current truth:
+  - `/collaboration/matches` returns synthetic “Study Partner 1..N” derived from user topics.
+- Acceptance criteria:
+  - Collaboration screen contains explicit copy:
+    - “Preview: suggestions are topic-based; availability/matching is not live yet.”
+  - Remove any implication of real-time matchmaking if not implemented.
+- Likely files:
+  - `apps/client/src/screens/Collaboration.tsx` (or wherever collaboration UI lives)
+  - `apps/api/src/routes/collaboration.ts`
+- Screenshot checklist:
+  - `app-collaboration.png` shows preview label.
+- Verification checklist:
+  - `npm test`
+
+#### 5) Screenshot/evidence harness upgrade: capture trust states deterministically
+
+- Acceptance criteria:
+  - `screenshot-all.mjs` additionally captures:
+    - LessonReader with Attribution/Sources drawer open (if accessible)
+    - Conversation with sources drawer open / empty state
+    - Settings with Update Agent panel scrolled into view
+  - Harness writes/updates a `NOTES.md` in the output dir every run.
+- Likely files:
+  - `screenshot-all.mjs`
+  - `debug-screenshot.mjs`
+- Screenshot checklist:
+  - New files exist, e.g.:
+    - `lesson-reader-sources-open.png`
+    - `conversation-sources-open.png`
+    - `conversation-sources-empty.png`
+- Verification checklist:
+  - Run harness twice; outputs stable.
+
+---
+
+### P1 (Should do)
+
+#### 6) Course build cleanup tools: admin “reset my demo data” and “delete course” paths documented and safe
+
+- Goal: reduce friction while iterating course creation and demos.
+- Acceptance criteria:
+  - Document (or surface in admin UI) the safe cleanup endpoints/tools already in repo.
+  - Ensure destructive actions are behind admin checks and have clear confirmation copy.
+- Likely files:
+  - `apps/api/src/routes/admin-cleanup.ts`
+  - `apps/client/src/screens/*` (if admin UI exists)
+  - `apps/docs/pages/dev-harness.md` (or similar)
+- Screenshot checklist:
+  - Optional: admin cleanup UI state.
+- Verification checklist:
+  - `npm test`
+
+#### 7) Update Agent API contract completeness: return per-topic run status via `/update-agent/topics`
+
+- Problem:
+  - The UI can’t show “Last run” unless the endpoint returns it.
+- Acceptance criteria:
+  - `GET /api/v1/update-agent/topics` includes:
+    - lastRunAt, lastRunOk, lastRunError (if stored)
+    - lockedAt/lockId (optional; mostly for debugging)
+- Likely files:
+  - `apps/api/src/db.ts`
+  - `apps/api/src/routes/update-agent.ts`
+- Verification checklist:
+  - Unit/integration tests around the new fields.
+
+#### 8) OpenAPI/doc parity pass for Update Agent + Notifications tick workflow
+
+- Acceptance criteria:
+  - OpenAPI includes:
+    - `GET /update-agent/topics`, `POST /update-agent/topics`, `POST /update-agent/sources`, etc.
+    - `POST /notifications/generate`
+  - Docs include the intended usage pattern (cron) and expected responses/failures.
+- Likely files:
+  - `apps/api/openapi.yaml`
+  - `apps/docs/pages/api.md`
+- Verification checklist:
+  - `npm -w @learnflow/api run openapi:lint`
+
+#### 9) UX copy polish: “Update Agent” naming, expectations, and privacy disclosure in Settings
+
+- Acceptance criteria:
+  - Clear explanation:
+    - what is stored (topics, feed URLs, notification items)
+    - what is not stored (raw API keys etc.)
+    - how often we check, and who triggers it
+- Likely files:
+  - `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`
+  - `apps/docs/pages/privacy-security.md` (if exists)
+
+---
+
+### P2 (Nice to have)
+
+#### 10) Magic link vs password: pick an explicit MVP stance and update UI accordingly
+
+- Acceptance criteria:
+  - Either:
+    - keep password auth and remove “Forgot password” fake alert, or
+    - implement a simple magic-link flow (even mock) and document it.
+- Likely files:
+  - `apps/client/src/screens/LoginScreen.tsx`
+  - `apps/api/src/auth.ts`
+
+#### 11) Collaboration roadmap stub: “Coming soon” list tied to spec sections
+
+- Acceptance criteria:
+  - One short doc section mapping collaboration/mindmap plans to spec §§, clearly marked future.
+- Likely files:
+  - `IMPLEMENTED_VS_SPEC.md` or docs page.
+
+#### 12) OneDrive / artifacts (TODO)
+
+- Sync screenshots:
+  - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter90/planner-run/`
+- Sync planning doc updates:
+  - `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
+
+(Planner did not perform OneDrive sync from this session.)
