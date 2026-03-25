@@ -3865,7 +3865,14 @@ Brutally honest gaps observed vs `LearnFlow_Product_Spec.md`:
 
 ## Iteration 93 — ACTIVITY + CREDIBILITY UX COHERENCE (NO MISLEADING SIGNALS) + EVIDENCE SCREENSHOT HARNESS
 
-Status: **READY FOR BUILDER** (planner)
+Status: **DONE** (builder)
+
+Builder evidence (Iter93):
+
+- PR/commit: eca1820 (master)
+- Screenshots captured (Playwright harness):
+  - App/client: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter93/run-001/`
+  - Notes: `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter93/run-001/NOTES.md`
 
 Planner evidence (Iter93):
 
