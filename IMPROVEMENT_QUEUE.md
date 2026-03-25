@@ -4457,3 +4457,232 @@ Non-goals:
 - `npx eslint .`
 - `npx prettier --check .`
 - `node learnflow/screenshot-all.mjs` (or `cd learnflow && node screenshot-all.mjs`)
+
+---
+
+## Iter96 — Planner pass (Spec mismatch focus: real collaboration, Update Agent observability, subscription reality)
+
+Planner artifacts:
+
+- Screenshots: `learnflow/screenshots/iter96/planner-run/`
+- Notes: `learnflow/screenshots/iter96/planner-run/NOTES.md`
+
+### P0 (Must do)
+
+#### 1) Collaboration: shared mindmaps must be truly multi-user (rooms cannot be user-owned)
+
+**Spec reference:** §5.2.6 Collaboration + §4.2 Collaboration Agent + §11.2 `mindmap.update`
+
+**Problem (current):** Yjs room is `mindmap:<userId>:<courseId>` (private per user). This prevents actual shared mindmaps between peers/study groups.
+
+**Acceptance criteria:**
+
+- A user can create a study group and generate a shareable mindmap link/code.
+- Two different users opening the shared mindmap see edits in real time.
+- Rooms are group-owned (`mindmap:group:<groupId>:<courseId>` or similar) with explicit ACL.
+- Server persists Yjs state per shared room and enforces membership checks.
+
+**Likely files:**
+
+- `apps/api/src/yjsServer.ts`
+- `apps/api/src/yjsRouter.ts`
+- `apps/api/src/routes/collaboration.ts`
+- `apps/client/src/hooks/useMindmapYjs.ts`
+- `apps/client/src/screens/Collaboration.tsx`
+
+**Screenshot checklist:**
+
+- `app-collaboration.png` (new: “Shared mindmap” CTA + share link UI)
+- `app-mindmap.png` (new: shared room badge + participants/presence)
+
+**Verification checklist:**
+
+- E2E: two Playwright contexts/users editing same room converge.
+- API: unauthorized user cannot connect to room.
+
+#### 2) Collaboration: presence + activity indicators (minimum viable transparency)
+
+**Spec reference:** §5.2.3 Agent activity indicator + collaboration experience expectations
+
+**Acceptance criteria:**
+
+- Mindmap view shows number of connected collaborators and basic presence (name/avatar placeholders OK).
+- Real-time join/leave updates via WS/Yjs awareness.
+
+**Likely files:**
+
+- `apps/client/src/hooks/useMindmapYjs.ts`
+- `apps/client/src/screens/MindmapExplorer.tsx`
+- `apps/api/src/yjsServer.ts`
+
+**Screenshot checklist:**
+
+- `app-mindmap.png` with presence UI visible.
+
+#### 3) Update Agent: “Proactive updates” must be tied to tier gating and surfaced end-to-end
+
+**Spec reference:** §4.2 Update Agent (Pro), §8 subscription matrix
+
+**Problem (current):** Update Agent is effectively an RSS watcher with manual “Run now” and external scheduling. Tier gating is mostly copy/flags; Pro does not feel meaningfully different.
+
+**Acceptance criteria:**
+
+- Free tier cannot add topics/sources or run Update Agent (read-only explanation allowed).
+- Pro tier can add topics/sources and run now.
+- Notifications created by Update Agent are labeled as “Update Agent (Pro)” with provenance + checkedAt.
+
+**Likely files:**
+
+- `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`
+- `apps/api/src/routes/updateAgent.ts` (or equivalent)
+- `apps/api/src/routes/notifications.ts`
+- `apps/api/src/routes/subscription.ts`
+
+**Screenshot checklist:**
+
+- `app-settings.png` (tier-gated Update Agent panel states)
+- `app-dashboard.png` (notifications feed shows Update Agent items)
+
+#### 4) Subscription: replace “mock billing” language with explicit MVP disclaimers + eliminate fake invoices UI claims
+
+**Spec reference:** §8 Subscription & Monetization
+
+**Problem (current):** API records synthetic invoices; implies a billing system that doesn’t exist (Stripe/IAP is mocked). This creates trust risk.
+
+**Acceptance criteria:**
+
+- Subscription screens clearly state: “Billing is simulated in this MVP” (or remove invoice history UI).
+- Invoices list is hidden behind a “Demo data” label OR removed from primary UI surfaces.
+- Docs page explains current billing status + next steps for real Stripe/IAP.
+
+**Likely files:**
+
+- `apps/api/src/routes/subscription.ts`
+- `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`
+- `apps/client/src/screens/Settings.tsx`
+- `apps/web/src/app/pricing/*` (if web uses shared copy)
+
+**Screenshot checklist:**
+
+- `marketing-pricing.png` (no false claims)
+- `onboarding-5-subscription.png` (clear disclaimers)
+
+#### 5) WebSocket contract: align emitted events with spec §11.2 or document divergence (source of truth)
+
+**Acceptance criteria:**
+
+- A single doc page lists:
+  - events currently implemented
+  - events promised by spec but not implemented
+  - payload examples
+- Tests assert schema stability for at least: `response.start`, `response.chunk`, `response.end`, `mindmap.update`.
+
+**Likely files:**
+
+- `apps/api/src/websocket.ts`
+- `learnflow/apps/web` docs or `learnflow/docs`
+
+### P1 (Should do)
+
+#### 6) Collaboration Agent: replace synthetic “Study Partner” matches with real, labeled matching inputs
+
+**Problem (current):** matches are synthetic and might be mistaken as real users.
+
+**Acceptance criteria:**
+
+- Matches section is either:
+  - replaced with “Invite code/share link” flow, OR
+  - real matches from real users who opted-in, OR
+  - clearly labeled “Demo suggestions” and disabled by default.
+
+**Likely files:**
+
+- `apps/api/src/routes/collaboration.ts`
+- `apps/client/src/screens/Collaboration.tsx`
+
+#### 7) Shared mindmaps: connect Collaboration “Shared Mindmaps” tab to actual shared rooms
+
+**Acceptance criteria:**
+
+- “Shared Mindmaps” lists group-owned mindmaps the user has access to.
+- Clicking opens MindmapExplorer in the correct shared room.
+
+**Likely files:**
+
+- `apps/client/src/screens/Collaboration.tsx`
+- `apps/client/src/screens/MindmapExplorer.tsx`
+- `apps/api/src/routes/collaboration.ts`
+
+#### 8) Update Agent: add monitoring/health UX (last run, errors, backoff) to dashboard notifications feed
+
+**Acceptance criteria:**
+
+- Dashboard shows a compact Update Agent status card (last run, last error, next eligible).
+- Links to settings panel.
+
+**Likely files:**
+
+- `apps/client/src/screens/Dashboard.tsx`
+- `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`
+
+#### 9) Mindmap spec parity: “mastery color coding” must include node-level mastery beyond completion
+
+**Spec reference:** §5.2.5 mastery levels
+
+**Acceptance criteria:**
+
+- Node coloring reflects mastery levels (not started / in progress / mastered) for concepts (not only course/module/lesson completion).
+- At minimum: persist per-node mastery state and allow toggling.
+
+**Likely files:**
+
+- `packages/agents/src/mindmap-agent/mindmap-agent.ts`
+- `apps/api/src/routes/mindmap.ts`
+- `apps/client/src/screens/MindmapExplorer.tsx`
+
+### P2 (Nice to have)
+
+#### 10) Marketplace truth pass: ensure agent/course marketplace clearly indicates “demo” vs real publish/purchase
+
+**Acceptance criteria:**
+
+- No UI suggests real payments/revenue share unless implemented.
+- Listing cards show “Demo catalog” when applicable.
+
+**Likely files:**
+
+- `apps/client/src/screens/MarketplaceAgents.tsx`
+- `apps/client/src/screens/MarketplaceCourses.tsx`
+- `apps/web/*` marketing copy
+
+#### 11) Screenshot harness: add Iter96 proof states for shared-mindmap + tier gating
+
+**Acceptance criteria:**
+
+- Harness captures:
+  - Collaboration tab “Shared mindmaps” list
+  - Mindmap presence UI
+  - Settings Update Agent locked/disabled state when Free tier
+
+**Likely files:**
+
+- `learnflow/screenshot-all.mjs`
+
+### OneDrive sync (planner artifacts) — Iter96
+
+TODO (planner did not sync):
+
+- Sync screenshots:
+  - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter96/planner-run/`
+- Sync notes:
+  - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter96/planner-run/NOTES.md`
+- Sync queue update:
+  - `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
+
+### Global Iter96 verification checklist
+
+- `cd learnflow && npm test`
+- `cd learnflow && npx tsc --noEmit`
+- `cd learnflow && npx eslint .`
+- `cd learnflow && npx prettier --check .`
+- `cd learnflow && node screenshot-all.mjs` (ensure new proof shots exist)
