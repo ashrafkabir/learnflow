@@ -45,30 +45,54 @@ export function SourceDrawer({ open, onClose, sources }: SourceDrawerProps) {
                 </span>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 dark:text-white text-sm">{s.title}</p>
+
                   <p className="text-xs text-gray-500 mt-1">
                     {[s.author || 'Unknown', s.publication || s.domain || 'Unknown', s.year]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    <span className="font-medium text-gray-700 dark:text-gray-200">
-                      {s.credibilityLabel || 'Unknown'}
-                    </span>
-                    {typeof s.credibilityScore === 'number'
-                      ? ` (${s.credibilityScore.toFixed(2)})`
-                      : ''}
-                    {s.accessedAt
-                      ? ` · Accessed ${new Date(s.accessedAt).toLocaleString()}`
-                      : ' · Accessed: Unknown'}
-                  </p>
-                  {s.whyCredible ? (
-                    <p className="text-xs text-gray-500 mt-1">{s.whyCredible}</p>
-                  ) : null}
+
+                  <div className="text-xs text-gray-500 mt-2 space-y-1">
+                    <p>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">
+                        Credibility
+                      </span>
+                      :{' '}
+                      <span className="text-gray-700 dark:text-gray-200">
+                        {s.credibilityLabel || 'Unknown'}
+                      </span>
+                      {typeof s.credibilityScore === 'number'
+                        ? ` (${s.credibilityScore.toFixed(2)})`
+                        : ''}
+                    </p>
+
+                    <p>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">Accessed</span>
+                      :{' '}
+                      {s.accessedAt
+                        ? new Date(s.accessedAt).toLocaleString(undefined, {
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : 'Unknown'}
+                    </p>
+
+                    <p>
+                      <span className="font-medium text-gray-700 dark:text-gray-200">
+                        Why we trust it
+                      </span>
+                      : {s.whyCredible || 'Unknown'}
+                    </p>
+                  </div>
+
                   <a
                     href={s.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-xs text-accent hover:underline mt-1 block truncate"
+                    className="text-xs text-accent hover:underline mt-2 block truncate"
                   >
                     {s.url}
                   </a>

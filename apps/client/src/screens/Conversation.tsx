@@ -12,6 +12,7 @@ import { SourceDrawer } from '../components/SourceDrawer.js';
 import type { Source } from '../components/CitationTooltip.js';
 import { useWebSocket } from '../hooks/useWebSocket.js';
 import { Button } from '../components/Button.js';
+import { elapsedMsSince, kindLabel } from '../lib/agentActivity.js';
 import {
   IconClose,
   IconMindmap,
@@ -374,10 +375,10 @@ export function Conversation() {
     }
   }, [searchParams]);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
-  const [_activeAgentKind, setActiveAgentKind] = useState<
+  const [activeAgentKind, setActiveAgentKind] = useState<
     'routing' | 'agent_call' | 'pipeline_stage' | null
   >(null);
-  const [_activeAgentStartedAt, setActiveAgentStartedAt] = useState<string | null>(null);
+  const [activeAgentStartedAt, setActiveAgentStartedAt] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSources, setDrawerSources] = useState<Source[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
@@ -562,9 +563,17 @@ export function Conversation() {
     [state.activeCourse?.id, state.activeLesson?.id],
   );
 
+  const [activityTick, setActivityTick] = useState(0);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
   }, [state.chat]);
+
+  // Update the in-flight duration label while an activity is running.
+  useEffect(() => {
+    if (!activeAgentStartedAt) return;
+    const id = window.setInterval(() => setActivityTick((t) => t + 1), 250);
+    return () => window.clearInterval(id);
+  }, [activeAgentStartedAt]);
 
   const send = async (text?: string) => {
     const msg = text || input.trim();
@@ -925,6 +934,22 @@ export function Conversation() {
                         {agentInfo.label}
                       </span>
                       <span className="text-gray-500 dark:text-gray-300">{agentInfo.activity}</span>
+                      <span
+                        className="ml-2 text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300"
+                        data-testid="activity-kind"
+                        title="What the assistant is doing"
+                      >
+                        {kindLabel(activeAgentKind)}
+                      </span>
+                      <span
+                        className="text-[10px] text-gray-400 dark:text-gray-400"
+                        data-testid="activity-elapsed"
+                      >
+                        {activeAgentStartedAt
+                          ? `${Math.max(0, Math.round(elapsedMsSince(activeAgentStartedAt) / 100) / 10).toFixed(1)}s`
+                          : ''}
+                        {activityTick ? '' : ''}
+                      </span>
                     </>
                   ) : (
                     <>
