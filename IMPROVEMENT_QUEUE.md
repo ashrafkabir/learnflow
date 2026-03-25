@@ -216,7 +216,22 @@ Status: **DONE**
 
 ## Iteration 95 — TRUST UX COHERENCE: EXPORT/SOURCES, PRIVACY, UPDATE-AGENT, BILLING, COLLAB MATCHING
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
+
+### Builder evidence (Iter95)
+
+- Commit: `2961217` (pushed to `master`)
+- Screenshots (run-001):
+  - `learnflow/screenshots/iter95/run-001/01-settings.png`
+  - `learnflow/screenshots/iter95/run-001/02-conversation.png`
+  - `learnflow/screenshots/iter95/run-001/collaborate.png`
+  - Notes: `learnflow/screenshots/iter95/run-001/NOTES.md`
+- Gates:
+  - `npm test` ✅
+  - `npm run build` ✅ (includes typecheck via package builds)
+  - `npm run lint` ✅
+  - `npm run format:check` ✅
+  - `apps/api` openapi lint test ✅ (`npm -w apps/api test -- src/__tests__/openapi-lint.test.ts`)
 
 ### Planner evidence (Iter95)
 
