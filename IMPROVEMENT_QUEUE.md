@@ -3395,7 +3395,18 @@ Now that contracts/copy are more stable (Iter88–89), the highest business leve
 
 ## Iteration 91 — AGENT TRANSPARENCY + ORCHESTRATION UX + PROVENANCE TRUST + UPDATE AGENT REALITY
 
-Status: **READY FOR BUILDER**
+Status: **DONE** (builder)
+
+Evidence:
+
+- Commit: feacf8c (pushed to `master`)
+- Gates:
+  - `npm test` ✅
+  - `npm run lint` ✅
+  - `npm run build` ✅
+  - `npm run format:check` ✅
+  - `cd apps/api && npm run openapi:lint` ✅
+- Notes: `screenshots/iter91/run-001/NOTES.md`
 
 Thesis (Iter91): Close the **largest remaining mismatches** vs `LearnFlow_Product_Spec.md` v1.0 (March 2026) by tightening (1) **agent transparency + orchestration UX**, (2) **source/provenance integrity** (incl. MVP credibility index), and (3) **Update Agent / notifications reality** (disclaimers + contracts + docs).
 
