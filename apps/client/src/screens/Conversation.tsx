@@ -374,6 +374,10 @@ export function Conversation() {
     }
   }, [searchParams]);
   const [activeAgent, setActiveAgent] = useState<string | null>(null);
+  const [_activeAgentKind, setActiveAgentKind] = useState<
+    'routing' | 'agent_call' | 'pipeline_stage' | null
+  >(null);
+  const [_activeAgentStartedAt, setActiveAgentStartedAt] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerSources, setDrawerSources] = useState<Source[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
@@ -385,9 +389,21 @@ export function Conversation() {
   const { connected: wsConnected, send: wsSend } = useWebSocket(
     (evt) => {
       switch (evt.event) {
-        case 'agent.spawned':
-          setActiveAgent(evt.data?.agent_name?.toLowerCase()?.split(' ')[0] || 'orchestrator');
+        case 'agent.spawned': {
+          const kind = (evt.data as any)?.kind as
+            | 'routing'
+            | 'agent_call'
+            | 'pipeline_stage'
+            | undefined;
+          setActiveAgentKind(kind || null);
+          setActiveAgentStartedAt((evt.data as any)?.startedAt || null);
+
+          // Keep a simple agent key for the existing icon/label map.
+          const rawName = String((evt.data as any)?.agent_name || 'orchestrator');
+          const key = rawName.toLowerCase().split(' ')[0];
+          setActiveAgent(key || 'orchestrator');
           break;
+        }
         case 'response.start':
           // Reset streaming buffer for a new assistant message
           setStreamingContent('');
@@ -422,32 +438,59 @@ export function Conversation() {
             setDrawerSources(
               evt.data.sources.map((s: any, i: number) => ({
                 id: i + 1,
-                title: s.title || `Source ${i + 1}`,
-                author: s.author || 'Source',
-                publication: s.publication || '',
-                year: s.year || 2024,
+                title: s.title || s.url || `Source ${i + 1}`,
+                author: s.author || 'Unknown',
+                publication: s.publication || s.domain || 'Unknown',
+                year: typeof s.year === 'number' ? s.year : new Date().getFullYear(),
                 url: s.url || '#',
+                accessedAt: s.accessedAt,
+                credibilityScore: s.credibilityScore,
+                credibilityLabel: s.credibilityLabel,
+                whyCredible: s.whyCredible,
+                sourceType: s.sourceType,
+                domain: s.domain,
               })),
             );
           }
           setWsActions(Array.isArray(evt.data?.actions) ? evt.data.actions : []);
           setActiveAgent(null);
+          setActiveAgentKind(null);
+          setActiveAgentStartedAt(null);
           dispatch({ type: 'SET_LOADING', key: 'chat', value: false });
           break;
         }
-        case 'agent.complete':
+        case 'agent.complete': {
+          const kind = (evt.data as any)?.kind as
+            | 'routing'
+            | 'agent_call'
+            | 'pipeline_stage'
+            | undefined;
+          const durationMs = (evt.data as any)?.durationMs;
+
           setActiveAgent(null);
+          setActiveAgentKind(null);
+          setActiveAgentStartedAt(null);
+
+          // If only routing happened, avoid a misleading “agent completed” toast.
+          if (kind === 'routing') break;
+
+          const durationSuffix =
+            typeof durationMs === 'number' && Number.isFinite(durationMs)
+              ? ` (${(durationMs / 1000).toFixed(1)}s)`
+              : '';
+
           dispatch({
             type: 'ADD_NOTIFICATION',
             notification: {
               id: `notif-${Date.now()}`,
               type: 'agent',
-              message: `${evt.data?.agent_name || 'Agent'} completed: ${evt.data?.result_summary || 'Task finished'}`,
+              message: `${evt.data?.agent_name || 'Agent'} completed${durationSuffix}: ${evt.data?.result_summary || 'Task finished'}`,
               timestamp: new Date().toISOString(),
               read: false,
             },
           });
           break;
+        }
         case 'connected':
           // Ask server for mindmap suggestions on connect.
           wsSend('mindmap.subscribe', {

@@ -46,8 +46,24 @@ export function SourceDrawer({ open, onClose, sources }: SourceDrawerProps) {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 dark:text-white text-sm">{s.title}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {s.author} · {s.publication} · {s.year}
+                    {[s.author || 'Unknown', s.publication || s.domain || 'Unknown', s.year]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    <span className="font-medium text-gray-700 dark:text-gray-200">
+                      {s.credibilityLabel || 'Unknown'}
+                    </span>
+                    {typeof s.credibilityScore === 'number'
+                      ? ` (${s.credibilityScore.toFixed(2)})`
+                      : ''}
+                    {s.accessedAt
+                      ? ` · Accessed ${new Date(s.accessedAt).toLocaleString()}`
+                      : ' · Accessed: Unknown'}
+                  </p>
+                  {s.whyCredible ? (
+                    <p className="text-xs text-gray-500 mt-1">{s.whyCredible}</p>
+                  ) : null}
                   <a
                     href={s.url}
                     target="_blank"

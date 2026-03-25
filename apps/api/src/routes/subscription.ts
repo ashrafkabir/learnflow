@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { db, dbInvoices } from '../db.js';
 import { sendError } from '../errors.js';
 import { validateBody } from '../validation.js';
+import { CAPABILITY_MATRIX } from '../lib/capabilities.js';
 
 const router = Router();
 
@@ -18,21 +19,14 @@ interface FeatureFlags {
 }
 
 function getFeatureFlags(tier: string): FeatureFlags {
-  if (tier === 'pro') {
-    return {
-      proactiveUpdates: true,
-      unlimitedMindmap: true,
-      priorityAgents: true,
-      managedApiKeys: true,
-      advancedAnalytics: true,
-    };
-  }
+  // MVP mapping: keep existing response shape, but derive it from the shared capability matrix.
+  const enabled = tier === 'pro' ? CAPABILITY_MATRIX.pro.enabled : CAPABILITY_MATRIX.free.enabled;
   return {
-    proactiveUpdates: false,
-    unlimitedMindmap: false,
-    priorityAgents: false,
-    managedApiKeys: false,
-    advancedAnalytics: false,
+    proactiveUpdates: Boolean(enabled.update_agent),
+    unlimitedMindmap: Boolean(enabled['courses.unlimited']),
+    priorityAgents: Boolean(enabled['agents.priority']),
+    managedApiKeys: Boolean(enabled['keys.managed']),
+    advancedAnalytics: Boolean(enabled['analytics.advanced']),
   };
 }
 

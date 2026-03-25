@@ -2,11 +2,20 @@ import React, { useState } from 'react';
 
 export interface Source {
   id: number;
-  author: string;
   title: string;
-  publication: string;
-  year: number;
   url: string;
+
+  author?: string;
+  publication?: string;
+  year?: number;
+
+  // Iter92: credibility/provenance surface (best-effort; may be missing)
+  accessedAt?: string;
+  sourceType?: 'docs' | 'blog' | 'paper' | 'forum';
+  domain?: string;
+  credibilityScore?: number;
+  credibilityLabel?: 'High' | 'Medium' | 'Low' | 'Unknown';
+  whyCredible?: string;
 }
 
 interface CitationTooltipProps {
@@ -33,7 +42,9 @@ export function CitationTooltip({ num, source }: CitationTooltipProps) {
             {source.title}
           </p>
           <p className="text-gray-500">
-            {source.author} · {source.publication} · {source.year}
+            {[source.author || 'Unknown', source.publication || 'Unknown', source.year]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
           <a
             href={source.url}

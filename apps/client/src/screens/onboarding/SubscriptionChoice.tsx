@@ -5,29 +5,24 @@ import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { IconCheck, IconRocket } from '../../components/icons/index.js';
 
+import { CAPABILITY_MATRIX } from '../../lib/capabilities.js';
+
 const PLANS = [
   {
     id: 'free',
-    name: 'Free',
-    price: '$0',
+    name: CAPABILITY_MATRIX.free.label,
+    price: `$${CAPABILITY_MATRIX.free.priceMonthlyUsd}`,
     period: 'forever',
-    features: ['3 courses', 'Basic AI agents', 'Bring your own API keys', 'Community support'],
+    features: CAPABILITY_MATRIX.free.features,
     cta: 'Start Free',
     highlight: false,
   },
   {
     id: 'pro',
-    name: 'Pro',
-    price: '$19',
+    name: CAPABILITY_MATRIX.pro.label,
+    price: `$${CAPABILITY_MATRIX.pro.priceMonthlyUsd}`,
     period: '/month',
-    features: [
-      'Unlimited courses',
-      'Priority AI agents',
-      'Managed API keys (when available)',
-      'Update Agent',
-      'Advanced analytics',
-      'Priority support',
-    ],
+    features: CAPABILITY_MATRIX.pro.features,
     cta: 'Start Pro',
     highlight: true,
   },
@@ -161,12 +156,10 @@ export function SubscriptionChoice() {
               <div className="text-4xl mb-3 text-accent inline-flex justify-center">
                 <IconRocket className="w-10 h-10" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                Pro Coming Soon!
-              </h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Pro Upgrade</h2>
               <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
-                Payment integration is being finalized. Leave your email and we'll notify you when
-                Pro is ready.
+                This is a sandbox flow in the MVP. Enter an email if you'd like product updates,
+                then continue.
               </p>
             </div>
             <input
@@ -181,7 +174,7 @@ export function SubscriptionChoice() {
                 Cancel
               </Button>
               <Button variant="primary" fullWidth onClick={continueAfterModal}>
-                {email ? 'Notify Me & Continue' : 'Continue with Free'}
+                Continue
               </Button>
             </div>
           </div>

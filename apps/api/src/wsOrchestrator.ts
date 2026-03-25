@@ -8,6 +8,7 @@ import {
   mapActions,
   makeSourcesFromLesson,
 } from './orchestratorShared.js';
+import { scoreSourceCredibility } from './utils/sourceCredibility.js';
 import { db } from './db.js';
 import { createRequestId } from './errors.js';
 
@@ -85,8 +86,11 @@ export async function handleWsMessage(
   (context as any).currentLessonId = lesson?.id;
 
   send(ws, 'response.start', { message_id: messageId, agent_name: 'orchestrator' });
+  const routingStartedAt = new Date().toISOString();
   send(ws, 'agent.spawned', {
     agent_name: 'Orchestrator',
+    kind: 'routing',
+    startedAt: routingStartedAt,
     task_summary: context.preferredAgents?.length
       ? `Routing message with activated marketplace agents (${context.preferredAgents.join(', ')}): "${text.slice(0, 120)}"`
       : `Routing message via orchestrator: "${text.slice(0, 120)}"`,
@@ -142,17 +146,57 @@ export async function handleWsMessage(
       // ignore usage persistence failures
     }
 
-    // Iter66: emit one agent.complete per executed agent (multi-agent orchestration trace).
+    // Iter92: emit real agent trace (MVP): per-agent start/end with duration.
+    // We don't have per-task timestamps from the orchestrator today, so we measure best-effort here.
+    const agentStartedAtByName = new Map<string, number>();
+    const uniqueAgents: string[] = Array.from(
+      new Set(
+        (result.agentResults || [])
+          .map((ar: any) => String(ar?.agentName || ''))
+          .map((x: string) => x.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    // Close out routing phase (low-key completion).
+    if (routingStartedAt) {
+      const routingStartMs = Date.parse(routingStartedAt);
+      const routingDurationMs = Number.isFinite(routingStartMs) ? Date.now() - routingStartMs : 0;
+      send(ws, 'agent.complete', {
+        agent_name: 'Orchestrator',
+        kind: 'routing',
+        result_summary: 'Routed request',
+        durationMs: Math.max(0, routingDurationMs),
+      });
+    }
+
+    // Announce that downstream agents are executing.
+    for (const agentName of uniqueAgents) {
+      const startedAt = new Date().toISOString();
+      agentStartedAtByName.set(agentName, Date.parse(startedAt));
+      send(ws, 'agent.spawned', {
+        agent_name: agentName,
+        kind: 'agent_call',
+        startedAt,
+        task_summary: `Executing ${agentName}`,
+      });
+    }
+
     const completedAgents = new Set<string>();
     for (const ar of result.agentResults || []) {
       if (!ar?.agentName) continue;
       if (completedAgents.has(ar.agentName)) continue;
       completedAgents.add(ar.agentName);
 
+      const startMs = agentStartedAtByName.get(ar.agentName) || Date.now();
+      const durationMs = Math.max(0, Date.now() - startMs);
+
       send(ws, 'agent.complete', {
         agent_name: ar.agentName,
+        kind: 'agent_call',
         result_summary:
           ar.status === 'success' ? `Completed via ${ar.agentName}` : `Error in ${ar.agentName}`,
+        durationMs,
       });
     }
 
@@ -160,15 +204,44 @@ export async function handleWsMessage(
     if (completedAgents.size === 0) {
       send(ws, 'agent.complete', {
         agent_name: routedAgentName,
+        kind: 'agent_call',
         result_summary: `Completed via ${routedAgentName}`,
+        durationMs: 0,
       });
     }
+
+    const rawLessonSources = lesson?.content ? makeSourcesFromLesson(lesson.content) : [];
+    const enrichedSources = rawLessonSources.map((s: any) => {
+      const url = String(s?.url || '');
+      const domain = (() => {
+        try {
+          return new URL(url).hostname.replace(/^www\./i, '');
+        } catch {
+          return undefined;
+        }
+      })();
+      const cred = url
+        ? scoreSourceCredibility({ url, domain, publication: s?.publication })
+        : null;
+      return {
+        title: String(s?.title || url),
+        url,
+        domain,
+        author: s?.author || undefined,
+        publication: s?.publication || undefined,
+        year: typeof s?.year === 'number' ? s.year : undefined,
+        accessedAt: new Date().toISOString(),
+        credibilityScore: cred?.credibilityScore ?? 0,
+        credibilityLabel: cred?.credibilityLabel ?? 'Unknown',
+        whyCredible: cred?.whyCredible ?? 'Credibility unknown (heuristic).',
+        sourceType: cred?.sourceType,
+      };
+    });
 
     send(ws, 'response.end', {
       message_id: messageId,
       actions: mapActions(suggestedActions),
-      // Best-effort sources: if user is currently in a lesson, extract sources from it.
-      sources: lesson?.content ? makeSourcesFromLesson(lesson.content) : [],
+      sources: enrichedSources,
     });
   } catch (err: any) {
     const message = err?.message || 'Orchestrator error';

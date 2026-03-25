@@ -6,6 +6,7 @@ import { Button } from '../../components/Button.js';
 import { apiPost } from '../../context/AppContext.js';
 import { motion } from 'framer-motion';
 import { IconCheck, IconShield, IconX } from '../../components/icons/index.js';
+import { CAPABILITY_MATRIX } from '../../lib/capabilities.js';
 
 const scaleIn = {
   hidden: { opacity: 0, scale: 0.95 },
@@ -15,46 +16,22 @@ const stagger = { visible: { transition: { staggerChildren: 0.15 } } };
 
 const PLANS = [
   {
-    name: 'Free',
-    monthly: 0,
-    annual: 0,
-    desc: 'Perfect for getting started',
-    features: [
-      '3 courses',
-      'Basic AI agents',
-      'Bring your own API keys',
-      'Cornell notes & flashcards',
-      'Knowledge mindmap',
-      'Community support',
-    ],
-    missing: [
-      'Priority AI agents',
-      'Managed API keys (when available)',
-      'Update Agent',
-      'Advanced analytics',
-      'Priority support',
-    ],
+    name: CAPABILITY_MATRIX.free.label,
+    monthly: CAPABILITY_MATRIX.free.priceMonthlyUsd,
+    annual: CAPABILITY_MATRIX.free.priceAnnualUsd,
+    desc: CAPABILITY_MATRIX.free.tagline,
+    features: CAPABILITY_MATRIX.free.features,
+    missing: CAPABILITY_MATRIX.free.missing || [],
     cta: 'Get Started Free',
     highlight: false,
   },
   {
-    name: 'Pro',
-    monthly: 19,
-    annual: 15,
-    desc: 'For serious learners',
-    features: [
-      'Unlimited courses',
-      'Priority AI agents',
-      'Managed API keys',
-      'Update Agent',
-      'Cornell notes & flashcards',
-      'Knowledge mindmap',
-      'Advanced analytics',
-      'Priority support',
-      'Course marketplace publishing',
-      'Data export',
-    ],
-    missing: [],
+    name: CAPABILITY_MATRIX.pro.label,
+    monthly: CAPABILITY_MATRIX.pro.priceMonthlyUsd,
+    annual: CAPABILITY_MATRIX.pro.priceAnnualUsd,
+    desc: CAPABILITY_MATRIX.pro.tagline,
+    features: CAPABILITY_MATRIX.pro.features,
+    missing: CAPABILITY_MATRIX.pro.missing || [],
     cta: 'Start Pro',
     highlight: true,
   },

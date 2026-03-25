@@ -31,15 +31,37 @@ export type WsServerEvent =
         actions: Array<{ type: string; label: string }>;
         sources: Array<{
           title: string;
+          url: string;
+          domain?: string;
           author?: string;
           publication?: string;
           year?: number;
-          url: string;
+          accessedAt?: string;
+          sourceType?: 'docs' | 'blog' | 'paper' | 'forum';
+          credibilityScore?: number;
+          credibilityLabel?: 'High' | 'Medium' | 'Low' | 'Unknown';
+          whyCredible?: string;
         }>;
       };
     }
-  | { event: 'agent.spawned'; data: { agent_name: string; task_summary: string } }
-  | { event: 'agent.complete'; data: { agent_name: string; result_summary: string } }
+  | {
+      event: 'agent.spawned';
+      data: {
+        agent_name: string;
+        task_summary: string;
+        kind?: 'routing' | 'agent_call' | 'pipeline_stage';
+        startedAt?: string;
+      };
+    }
+  | {
+      event: 'agent.complete';
+      data: {
+        agent_name: string;
+        result_summary: string;
+        kind?: 'routing' | 'agent_call' | 'pipeline_stage';
+        durationMs?: number;
+      };
+    }
   | {
       event: 'mindmap.update';
       data:

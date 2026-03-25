@@ -42,7 +42,7 @@ function collectWsEvents(ws: WebSocket, max = 50, timeoutMs = 2500): Promise<any
 }
 
 describe('WS contract (Spec §11.2)', () => {
-  it('emits response.start → response.chunk → response.end for a message', async () => {
+  it('emits response.start → response.chunk → response.end for a message (with activity fields)', async () => {
     const app = createApp();
     const httpServer = createServer(app);
     createWebSocketServer(httpServer);
@@ -82,6 +82,21 @@ describe('WS contract (Spec §11.2)', () => {
     // Ensure message correlation is stable (client-provided message_id is echoed).
     const firstStart = events.find((e) => e?.event === 'response.start');
     expect(firstStart?.data?.message_id).toBe('msg-client-1');
+
+    // Iter92: agent activity events include kind + timestamps/duration.
+    const spawned = events.find((e) => e?.event === 'agent.spawned');
+    if (spawned) {
+      expect(typeof spawned.data?.agent_name).toBe('string');
+      expect(['routing', 'agent_call', 'pipeline_stage', undefined]).toContain(spawned.data?.kind);
+      if (spawned.data?.kind) expect(typeof spawned.data?.startedAt).toBe('string');
+    }
+
+    const complete = events.find((e) => e?.event === 'agent.complete');
+    if (complete) {
+      expect(typeof complete.data?.agent_name).toBe('string');
+      expect(['routing', 'agent_call', 'pipeline_stage', undefined]).toContain(complete.data?.kind);
+      if (complete.data?.kind) expect(typeof complete.data?.durationMs).toBe('number');
+    }
 
     const startIndex = names.indexOf('response.start');
     const firstChunk = names.indexOf('response.chunk');
