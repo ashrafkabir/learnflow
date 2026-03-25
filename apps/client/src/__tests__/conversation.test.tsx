@@ -64,7 +64,9 @@ describe('Conversation screen', () => {
   it('shows agent activity indicator markup', async () => {
     renderAt('/conversation');
     await waitFor(() => {
-      expect(document.querySelector('[data-screen="conversation"]')).toBeTruthy();
+      // The indicator is driven by websocket agent.spawned/agent.complete events;
+      // assert the container exists to ensure the UI has a stable hook.
+      expect(document.querySelector('[data-agent-activity]')).toBeTruthy();
     });
   });
 

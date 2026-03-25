@@ -64,6 +64,12 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+
+  /** Agent transparency (Iter91): best-effort metadata about how the message was generated. */
+  meta?: {
+    generatedBy?: string;
+    sourcesCount?: number;
+  };
 }
 
 export interface Notes {
@@ -728,6 +734,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           role: 'assistant',
           content: data.reply || data.message || 'I can help you with that!',
           timestamp: new Date().toISOString(),
+          meta: {
+            generatedBy: data.agent || data.agent_name || data.generatedBy || undefined,
+            sourcesCount: Array.isArray(data.sources) ? data.sources.length : undefined,
+          },
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', message: assistantMsg });
       } catch (err: any) {
@@ -743,6 +753,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           role: 'assistant',
           content: msg,
           timestamp: new Date().toISOString(),
+          meta: {
+            generatedBy: 'system',
+          },
         };
         dispatch({ type: 'ADD_CHAT_MESSAGE', message: errMsg });
       } finally {

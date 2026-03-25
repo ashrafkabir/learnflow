@@ -105,6 +105,7 @@ describe('Update Agent trust loop UI', () => {
     await new Promise((r) => setTimeout(r, 50));
 
     expect(ui.getByText(/Topic status/i)).toBeInTheDocument();
+    expect(ui.getByText(/crawl the open web/i)).toBeInTheDocument();
     expect(ui.getAllByText(/AI Safety/i).length).toBeGreaterThan(0);
     expect(ui.getAllByText(/^Failure$/i).length).toBeGreaterThan(0);
     expect(ui.getByText(/Last run error/i)).toBeInTheDocument();
