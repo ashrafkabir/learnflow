@@ -8,7 +8,48 @@ Last updated: 2026-03-25 (Iter94 READY FOR BUILDER)
 
 ## Iteration 94 — REALITY PASSES: COLLABORATION (MATCHING/TRUTH), EXPORT/PRIVACY FLOWS, UPDATE-AGENT SCHEDULING, BILLING HONESTY
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
+
+### Builder evidence (Iter94)
+
+- PR/Commit: `57d666d` (pushed to `master`)
+- Screenshots:
+  - `learnflow/screenshots/iter94/run-001/conversation.png`
+  - `learnflow/screenshots/iter94/run-001/lesson-sources-drawer.png`
+  - `learnflow/screenshots/iter94/run-001/pipeline-detail.png`
+  - Notes: `learnflow/screenshots/iter94/run-001/NOTES.md`
+- Gates:
+  - `npm test` ✅
+  - `npm run lint` ✅
+  - `npm run format:check` ✅
+  - `npx tsc -b` ✅
+  - `cd apps/api && npm run openapi:lint` ✅
+
+### What shipped (summary)
+
+1. **Collaboration truth pass**
+
+- Matching UI now explicitly labeled **Preview/Suggestions** and avoids implying verified identity/real-time presence.
+- API `/api/v1/collaboration/matches` adds `source: 'synthetic'` per match.
+- Added API test: `apps/api/src/__tests__/collaboration-matches-truth.test.ts`.
+
+2. **Export/privacy single source of truth**
+
+- Settings export buttons now hit server export endpoints only:
+  - `/api/v1/export?format=md|json|zip` with Pro gating on JSON/ZIP in UI.
+- Added **server-first** delete-my-data endpoint: `DELETE /api/v1/delete-my-data`.
+- Settings “Delete My Data” now calls server endpoint first, then clears local storage.
+- Added test: `apps/api/src/__tests__/delete-my-data.test.ts`.
+
+3. **Update Agent scheduling clarity**
+
+- Added canonical docs page: `apps/docs/pages/update-agent-scheduling.md`.
+- Linked from user guide.
+
+4. **Billing honesty**
+
+- Removed hardcoded next billing date.
+- Removed money-back guarantee copy in pricing (replaced with MVP billing note).
 
 ### Planner evidence (Iter94)
 
