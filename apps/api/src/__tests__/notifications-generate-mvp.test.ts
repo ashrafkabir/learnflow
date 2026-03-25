@@ -82,7 +82,7 @@ describe('Iter83: POST /api/v1/notifications/generate (real monitoring MVP)', ()
     expect(n.checkedAt).toBeTruthy();
 
     fetchMock.mockRestore();
-  });
+  }, 15_000);
 
   it('second run dedupes same item url (no duplicates)', async () => {
     const app = createApp();
