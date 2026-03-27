@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { dbCollaboration } from '../db.js';
 import { sendError } from '../errors.js';
 import { validateBody } from '../validation.js';
@@ -35,7 +36,7 @@ collaborationRouter.post(
   validateBody(createGroupSchema),
   (req: Request, res: Response) => {
     const ownerId = req.user!.sub;
-    const id = `cg-${Date.now()}`;
+    const id = `cg-${uuidv4()}`;
     const createdAt = new Date().toISOString();
     const memberIds = Array.from(new Set([ownerId, ...(req.body.memberIds || [])].filter(Boolean)));
 
@@ -63,16 +64,23 @@ collaborationRouter.post(
 
 // GET /api/v1/collaboration/groups
 collaborationRouter.get('/groups', (req: Request, res: Response) => {
-  const groups = dbCollaboration.listGroupsForUser(req.user!.sub).map((g: any) => ({
-    ...g,
-    memberIds: (() => {
+  const groups = dbCollaboration.listGroupsForUser(req.user!.sub).map((g: any) => {
+    const memberIds = (() => {
       try {
         return JSON.parse(g.memberIds || '[]');
       } catch {
         return [];
       }
-    })(),
-  }));
+    })();
+
+    return {
+      ...g,
+      memberIds,
+      // For shared mindmaps: we mint a stable group invite code.
+      // MVP: code == groupId; can be replaced with separate secrets later.
+      inviteCode: g.id,
+    };
+  });
   res.status(200).json({ groups });
 });
 
@@ -102,7 +110,7 @@ collaborationRouter.post(
       return;
     }
 
-    const id = `cgm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    const id = `cgm-${uuidv4()}`;
     const createdAt = new Date().toISOString();
     dbCollaboration.addMessage({
       id,

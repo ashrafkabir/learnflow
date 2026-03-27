@@ -14,7 +14,7 @@ import * as buffer from 'lib0/buffer';
 
 import { config } from './config.js';
 import type { AuthUser } from './middleware.js';
-import { dbMindmaps } from './db.js';
+import { dbCollaboration, dbMindmaps } from './db.js';
 
 /**
  * Minimal Yjs websocket server for mindmap collaboration.
@@ -124,6 +124,15 @@ function onMessage(room: string, ws: WebSocket, data: Uint8Array) {
 
   if (type === messageAwareness) {
     const update = decoding.readVarUint8Array(decoder);
+    // Track per-connection awareness client id for proper cleanup.
+    try {
+      const dec2 = decoding.createDecoder(update);
+      const _numClients = decoding.readVarUint(dec2);
+      const firstClientId = decoding.readVarUint(dec2);
+      (ws as any).__awarenessClientId = firstClientId;
+    } catch {
+      // ignore
+    }
     awarenessProtocol.applyAwarenessUpdate(entry.awareness, update, ws);
 
     const enc = encoding.createEncoder();
@@ -148,9 +157,15 @@ export function handleYjsConnection(ws: WebSocket, req: IncomingMessage): void {
 
   const token = url.searchParams.get('token');
   const courseId = url.searchParams.get('courseId');
+  const groupId = url.searchParams.get('groupId');
 
   if (!courseId || typeof courseId !== 'string') {
     ws.close(4400, 'Missing courseId');
+    return;
+  }
+
+  if (groupId && typeof groupId !== 'string') {
+    ws.close(4400, 'Invalid groupId');
     return;
   }
 
@@ -175,9 +190,38 @@ export function handleYjsConnection(ws: WebSocket, req: IncomingMessage): void {
     return;
   }
 
-  // User-owned room: keeps mindmaps private per user even when courseIds overlap.
-  // (MVP durability: persisted snapshot keyed by this room string.)
-  const room = `mindmap:${user.sub}:${courseId}`;
+  // Room ownership:
+  // - default: user-owned room keeps mindmaps private per user.
+  // - shared: when groupId is provided, room is group-owned and requires membership.
+  let room = `mindmap:${user.sub}:${courseId}`;
+
+  if (groupId) {
+    // Dev auth path: allow any groupId for harness/testing.
+    if ((user as any).origin !== 'harness') {
+      try {
+        const group = dbCollaboration.getGroupById(String(groupId));
+        if (!group) {
+          ws.close(4404, 'Group not found');
+          return;
+        }
+        let memberIds: string[] = [];
+        try {
+          memberIds = JSON.parse((group as any).memberIds || '[]');
+        } catch {
+          memberIds = [];
+        }
+        if (!memberIds.includes(user.sub)) {
+          ws.close(4403, 'Forbidden');
+          return;
+        }
+      } catch {
+        ws.close(1011, 'ACL check failed');
+        return;
+      }
+    }
+
+    room = `mindmap:group:${String(groupId)}:${courseId}`;
+  }
   const entry = getOrCreate(room);
   entry.conns.add(ws);
 
@@ -214,7 +258,8 @@ export function handleYjsConnection(ws: WebSocket, req: IncomingMessage): void {
   ws.on('close', () => {
     entry.conns.delete(ws);
     try {
-      awarenessProtocol.removeAwarenessStates(entry.awareness, [entry.awareness.clientID], null);
+      const clientId = (ws as any).__awarenessClientId ?? entry.awareness.clientID;
+      awarenessProtocol.removeAwarenessStates(entry.awareness, [clientId], null);
     } catch {
       // ignore
     }

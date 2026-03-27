@@ -15,6 +15,8 @@ beforeEach(() => {
     'learnflow-token',
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
   );
+  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+
   globalThis.fetch = (async () =>
     new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
       status: 200,

@@ -12,6 +12,8 @@ import { App } from '../App.js';
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem('learnflow-token', 'test-token');
+  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+
   globalThis.fetch = (async () =>
     new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 5 }), {
       status: 200,

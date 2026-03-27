@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 // Iter49 Task 5 MVP: two sessions see the same mindmap state via Yjs CRDT server.
 
-test('mindmap CRDT syncs between two clients', async ({ browser, baseURL }) => {
+test('mindmap CRDT syncs between two clients (shared group room)', async ({ browser, baseURL }) => {
   const ctx1 = await browser.newContext();
   const ctx2 = await browser.newContext();
   const p1 = await ctx1.newPage();
@@ -11,19 +11,24 @@ test('mindmap CRDT syncs between two clients', async ({ browser, baseURL }) => {
   // Ensure dev auth path for websocket token
   await p1.addInitScript(() => {
     localStorage.setItem('learnflow-token', 'dev');
-    localStorage.setItem('learnflow-origin', 'harness');
   });
   await p2.addInitScript(() => {
     localStorage.setItem('learnflow-token', 'dev');
-    localStorage.setItem('learnflow-origin', 'harness');
   });
 
   // Bypass onboarding and route guards
   await p1.addInitScript(() => localStorage.setItem('learnflow-onboarding-complete', 'true'));
   await p2.addInitScript(() => localStorage.setItem('learnflow-onboarding-complete', 'true'));
 
-  await p1.goto(`${baseURL}/mindmap`);
-  await p2.goto(`${baseURL}/mindmap`);
+  // Shared room: groupId + courseId.
+  const groupId = `cg-e2e-${Date.now()}`;
+  const courseId = `shared-course-${Date.now()}`;
+  await p1.goto(
+    `${baseURL}/mindmap?groupId=${encodeURIComponent(groupId)}&courseId=${encodeURIComponent(courseId)}`,
+  );
+  await p2.goto(
+    `${baseURL}/mindmap?groupId=${encodeURIComponent(groupId)}&courseId=${encodeURIComponent(courseId)}`,
+  );
 
   await expect(p1.locator('[data-screen="mindmap"]')).toBeVisible();
 

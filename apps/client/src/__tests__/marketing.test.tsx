@@ -28,6 +28,8 @@ beforeEach(() => {
 
   localStorage.removeItem('learnflow-token');
   localStorage.removeItem('learnflow-onboarding-complete');
+  // Ensure the app doesn't take an env-gated auth bypass path in marketing tests.
+  delete (globalThis as any).__LEARNFLOW_ENV__;
   globalThis.fetch = (async () =>
     new Response(JSON.stringify({}), {
       status: 200,

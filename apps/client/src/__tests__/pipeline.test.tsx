@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
 import { render, screen, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -38,6 +38,9 @@ if (typeof globalThis.EventSource === 'undefined') {
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem('learnflow-token', 'test-token');
+  // OnboardingGuard now requires an explicit, env-gated bypass for deterministic tests.
+  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+
   globalThis.fetch = (async () =>
     new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
       status: 200,
@@ -62,6 +65,17 @@ function renderAt(path: string) {
 }
 
 describe('PipelineDetail screen', () => {
+  // Avoid flakiness from parallel tests mutating global fetch.
+  let fetchSpy: any;
+
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(globalThis, 'fetch');
+  });
+
+  afterEach(() => {
+    fetchSpy?.mockRestore?.();
+  });
+
   it('renders milestones section when lessonMilestones present', async () => {
     localStorage.setItem('learnflow-token', 'test-token');
 

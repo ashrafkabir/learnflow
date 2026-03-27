@@ -15,6 +15,10 @@ beforeEach(() => {
     'learnflow-token',
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
   );
+  // OnboardingGuard now requires an explicit, env-gated bypass for deterministic tests.
+  // Provide it via runtime global so we don't depend on process env.
+  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes('/api/v1/profile/context')) {

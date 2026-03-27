@@ -5,9 +5,7 @@ import { apiGet, apiPost, useApp } from '../context/AppContext.js';
 import {
   IconBrainSpark,
   IconCourse,
-  IconDocument,
   IconHandshake,
-  IconMail,
   IconMap,
   IconPeople,
   IconRocket,
@@ -37,7 +35,7 @@ const INTEREST_TAGS = [
 
 // Partner matches are now returned by API (Iter70).
 
-// Shared mindmaps/notes remain a placeholder in this iteration.
+// Shared mindmaps/notes: Iter96 implements group-owned Yjs rooms + invite links.
 
 export function Collaboration() {
   const { dispatch } = useApp();
@@ -54,6 +52,11 @@ export function Collaboration() {
   const [newMessage, setNewMessage] = useState('');
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+
+  // Shared mindmaps
+  const [shareGroupId, setShareGroupId] = useState<string | null>(null);
+  const [shareCourseId, setShareCourseId] = useState<string>('');
+  const [joinCode, setJoinCode] = useState('');
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -147,6 +150,22 @@ export function Collaboration() {
     void apiGet('/collaboration/matches')
       .then((res) => setMatches(res?.matches || []))
       .catch(() => undefined);
+  }, []);
+
+  // Shared mindmap deep-link handling.
+  // URL: /collaborate?tab=Shared%20Mindmaps&groupId=...&courseId=...
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      const gid = params.get('groupId');
+      const cid = params.get('courseId');
+      if (tab && (TABS as any).includes(tab)) setActiveTab(tab as any);
+      if (gid) setJoinCode(gid);
+      if (cid) setShareCourseId(cid);
+    } catch {
+      // ignore
+    }
   }, []);
 
   useEffect(() => {
@@ -441,100 +460,117 @@ export function Collaboration() {
         {/* Shared Mindmaps & Collaboration Hub */}
         {activeTab === 'Shared Mindmaps' && (
           <div className="space-y-6">
-            {/* Active Collaborators */}
             <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white inline-flex items-center gap-2">
-                <IconPeople className="w-5 h-5 text-accent" />
-                Active Collaborators
-              </h2>
-              <div className="flex flex-wrap gap-3">
-                {ACTIVE_COLLABORATORS.map((c) => (
-                  <div
-                    key={c.name}
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gray-50 dark:bg-gray-800"
-                  >
-                    <span className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-                      <IconPeople className="w-4 h-4 text-gray-600 dark:text-gray-200" />
-                    </span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{c.name}</p>
-                      <p className="text-xs text-gray-500">{c.status}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Shared Notes */}
-            <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
-                  <IconDocument className="w-5 h-5 text-accent" />
-                  Shared Notes
-                </h2>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => notify('Share a note... (Mock)')}
-                >
-                  + Share Note
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {SHARED_NOTES.map((note) => (
-                  <div
-                    key={note.id}
-                    className="flex items-center justify-between p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-accent/30 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {note.title}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        by {note.author} · {note.shared} · {note.collaborators} collaborators
-                      </p>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Invite Peer */}
-            <div className="rounded-2xl border border-accent/30 bg-accent/5 p-6 text-center">
-              <span className="text-accent block mb-2 inline-flex justify-center">
-                <IconMail className="w-8 h-8" />
-              </span>
-              <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Invite a Peer</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                Share your learning journey — invite friends to collaborate on mindmaps and notes.
-              </p>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => notify('Invite link copied! (Mock)')}
-              >
-                Copy Invite Link
-              </Button>
-            </div>
-
-            {/* Shared Mindmaps preview */}
-            <div className="text-center py-10 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
-              <span className="text-accent block mb-3 inline-flex justify-center">
-                <IconMap className="w-10 h-10" />
-              </span>
-              <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">
+              <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white inline-flex items-center gap-2">
+                <IconMap className="w-5 h-5 text-accent" />
                 Shared Mindmaps
               </h2>
-              <p className="text-sm text-gray-600 dark:text-gray-300 max-w-md mx-auto mb-4">
-                Collaborate on knowledge graphs in real-time. See what your peers know, identify
-                complementary strengths, and fill gaps together.
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Shared mindmaps are group-owned rooms. Anyone with access to the group can open the
+                same mindmap and collaborate live.
               </p>
-              <span className="inline-block px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-medium">
-                Coming Soon
-              </span>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                MVP note: invite code = group id (not a secret). ACL is enforced by group
+                membership.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                  Create a share link
+                </h3>
+
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Group
+                </label>
+                <select
+                  value={shareGroupId || ''}
+                  onChange={(e) => setShareGroupId(e.target.value || null)}
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                >
+                  <option value="">Select a group…</option>
+                  {groups.map((g: any) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mt-3 mb-1">
+                  Course ID (room namespace)
+                </label>
+                <input
+                  value={shareCourseId}
+                  onChange={(e) => setShareCourseId(e.target.value)}
+                  placeholder="e.g., course-123 (or any shared key)"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    disabled={!shareGroupId || !shareCourseId.trim()}
+                    onClick={async () => {
+                      const gid = shareGroupId;
+                      const cid = shareCourseId.trim();
+                      if (!gid || !cid) return;
+                      const link = `${window.location.origin}/mindmap?groupId=${encodeURIComponent(gid)}&courseId=${encodeURIComponent(cid)}`;
+                      try {
+                        await navigator.clipboard.writeText(link);
+                        notify('Share link copied.');
+                      } catch {
+                        notify(link);
+                      }
+                    }}
+                  >
+                    Copy share link
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
+                  Join a shared mindmap
+                </h3>
+
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Invite code
+                </label>
+                <input
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                  placeholder="Paste group invite code"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mt-3 mb-1">
+                  Course ID (room namespace)
+                </label>
+                <input
+                  value={shareCourseId}
+                  onChange={(e) => setShareCourseId(e.target.value)}
+                  placeholder="Same courseId used by the group"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                />
+
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={!joinCode.trim() || !shareCourseId.trim()}
+                    onClick={() => {
+                      const gid = joinCode.trim();
+                      const cid = shareCourseId.trim();
+                      if (!gid || !cid) return;
+                      window.location.href = `/mindmap?groupId=${encodeURIComponent(gid)}&courseId=${encodeURIComponent(cid)}`;
+                    }}
+                  >
+                    Open mindmap
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         )}

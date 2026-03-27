@@ -4462,7 +4462,13 @@ Non-goals:
 
 ## Iteration 96 — REAL COLLABORATION (SHARED MINDMAPS) + UPDATE AGENT OBSERVABILITY + SUBSCRIPTION REALITY
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
+
+Evidence (builder Iter96):
+
+- Gates passed: `npm test`, `npx tsc --noEmit`, `npx eslint .`, `npx prettier --check .`, `npm run -w @learnflow/api openapi:lint`.
+- Notes: `learnflow/screenshots/iter96/run-001/NOTES.md`.
+- Key changes: group-owned Yjs rooms + ACL, share link includes `groupId` + `courseId`, presence count in MindmapExplorer, e2e updated for shared room convergence.
 
 Planner artifacts:
 

@@ -56,7 +56,35 @@ export function MindmapExplorer() {
   // Yjs-backed shared mindmap state (room per course)
   // Tie mindmap room to the user's current context when possible.
   const activeCourseId = state.activeCourse?.id || state.courses?.[0]?.id || 'dev-course';
-  const { nodes: yNodes } = useMindmapYjs(activeCourseId);
+
+  // Shared mindmaps: allow overriding courseId/groupId via query params.
+  const [sharedParams, setSharedParams] = useState<{ courseId: string; groupId?: string | null }>(
+    () => {
+      try {
+        const p = new URLSearchParams(window.location.search);
+        const courseId = p.get('courseId') || activeCourseId;
+        const groupId = p.get('groupId');
+        return { courseId, groupId };
+      } catch {
+        return { courseId: activeCourseId, groupId: null };
+      }
+    },
+  );
+
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const courseId = p.get('courseId') || activeCourseId;
+      const groupId = p.get('groupId');
+      setSharedParams({ courseId, groupId });
+    } catch {
+      // ignore
+    }
+  }, [activeCourseId]);
+
+  const { nodes: yNodes, peers } = useMindmapYjs(sharedParams.courseId, {
+    groupId: sharedParams.groupId,
+  });
 
   // Dev/test hook: expose the shared Yjs nodes array for Playwright assertions.
   // (vis-network renders to canvas so DOM text isn't stable.)
@@ -753,6 +781,34 @@ export function MindmapExplorer() {
                   </div>
                 </div>
               )}
+              {/* Presence */}
+              <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-card z-10 text-xs flex items-center gap-2">
+                <span className="text-gray-600 dark:text-gray-300">
+                  Here now: <span className="font-semibold">{peers.length + 1}</span>
+                </span>
+                {peers.length === 0 ? (
+                  <span className="text-gray-500 dark:text-gray-400">Just you</span>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    {peers.slice(0, 5).map((p) => (
+                      <span
+                        key={p.id}
+                        title={p.name || 'Anonymous'}
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
+                        style={{ background: p.color || '#6366F1' }}
+                      >
+                        {(p.name || 'A').slice(0, 1).toUpperCase()}
+                      </span>
+                    ))}
+                    {peers.length > 5 && (
+                      <span className="text-gray-600 dark:text-gray-300 ml-1">
+                        +{peers.length - 5}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Mastery legend */}
               <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-3 shadow-card z-10 text-xs space-y-1.5">
                 <div className="font-semibold text-gray-700 dark:text-gray-200 mb-1">
