@@ -4694,3 +4694,246 @@ TODO (planner did not sync):
 - `cd learnflow && npx eslint .`
 - `cd learnflow && npx prettier --check .`
 - `cd learnflow && node screenshot-all.mjs` (ensure new proof shots exist)
+
+---
+
+## Iteration 97 — PROOF OF MULTI-USER COLLAB + UPDATE AGENT TIER GATING/OBSERVABILITY + PROVENANCE DURABILITY + BILLING HONESTY
+
+Status: **PLANNED** (planner)
+
+Planner evidence (Iter97):
+
+- Screenshots captured: `learnflow/screenshots/iter97/planner-run/`
+- Notes: `learnflow/screenshots/iter97/planner-run/NOTES.md`
+
+### Brutally honest current state (based on code + Iter97 screenshots)
+
+1. **Shared mindmaps exist in code (Yjs + group-owned rooms)** but the standard screenshot harness does **not prove** multi-user presence or convergence. We need deterministic evidence (two users, same room, edits propagate).
+
+2. **Update Agent** has a decent “trust-loop” UI (locks/backoff), and server has locking, but **tier gating is not enforced end-to-end** in a way that is obviously true from UI + API behavior. “Run now” currently hits `/api/v1/notifications/generate` and appears available regardless of tier.
+
+3. **Subscription/billing** remains simulated (SQLite invoices). That’s OK for MVP, but only if the UI/marketing/docs are explicit and never imply real Stripe/IAP.
+
+4. **Provenance**: there is a Sources drawer UI, but there’s no hard evidence that the platform maintains a **durable, immutable attribution chain** across regenerations/exports.
+
+### P0 (Must ship)
+
+#### 1) E2E proof: two-user shared mindmap convergence + presence changes
+
+**Spec reference:** §5.2.6 Collaboration, §11.2 `mindmap.update`, WS-06.
+
+**Acceptance criteria:**
+
+- Create Group (User A), open “Shared Mindmaps” link with `groupId` + `courseId` in **two separate browser contexts** (User A + User B).
+- User A adds a mindmap node → User B sees it within 2 seconds.
+- Presence UI updates (Here now count increases; avatars/initials visible).
+- Unauthorized user (User C not in group) is rejected (WS close code/message or explicit UI error).
+
+**Likely files:**
+
+- `apps/client/src/hooks/useMindmapYjs.ts`
+- `apps/client/src/screens/MindmapExplorer.tsx`
+- `apps/client/src/screens/Collaboration.tsx`
+- `apps/api/src/yjsServer.ts`
+- `apps/api/src/routes/collaboration.ts`
+
+**Screenshot checklist:**
+
+- `app-collaboration.png` (group created + share link visible)
+- `app-mindmap-userA.png` (User A presence + new node)
+- `app-mindmap-userB.png` (User B presence + sees same node)
+- `app-mindmap-unauthorized.png` (forbidden state)
+
+**Verification checklist:**
+
+- Playwright test passes in CI.
+- Manual: open share link in two browsers, observe convergence.
+
+#### 2) Mindmap share-link UX truth pass: “Shared” badge + explicit room identifiers
+
+**Acceptance criteria:**
+
+- Mindmap screen clearly indicates whether you are in:
+  - private room (`mindmap:<user>:<course>`) vs
+  - shared group room (`mindmap:group:<groupId>:<course>`)
+- The UI surfaces the `groupId` (or group name) and courseId in a small “Room” pill for debugging/trust.
+
+**Likely files:**
+
+- `apps/client/src/screens/MindmapExplorer.tsx`
+- `apps/client/src/hooks/useMindmapYjs.ts`
+
+**Screenshot checklist:**
+
+- `app-mindmap.png` shows “Shared room: <group>” badge and “Here now” panel.
+
+#### 3) Update Agent: enforce tier gating server-side (not just UI) for write/run actions
+
+**Spec reference:** §4.2 Update Agent (Pro), WS-10.
+
+**Acceptance criteria:**
+
+- If user tier is Free:
+  - Cannot `POST /api/v1/update-agent/topics`, `POST /sources`, or run `/api/v1/notifications/generate` with `origin=update_agent` (or equivalent); returns 403 with clear error.
+  - UI shows read-only explainer + upgrade CTA; controls disabled.
+- If user tier is Pro:
+  - All actions work.
+
+**Likely files:**
+
+- `apps/api/src/routes/update-agent.ts`
+- `apps/api/src/routes/notifications.ts`
+- `apps/api/src/middleware.ts` (tier extraction)
+- `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`
+- `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`
+
+**Screenshot checklist:**
+
+- `app-settings-free.png` (Update Agent locked)
+- `app-settings-pro.png` (Update Agent enabled)
+
+**Verification checklist:**
+
+- API tests: Free tier returns 403 for write/run endpoints.
+
+#### 4) Update Agent: canonical scheduler endpoint (tick) + consistent lock semantics
+
+**Acceptance criteria:**
+
+- Provide a single canonical endpoint for schedulers, e.g. `POST /api/v1/update-agent/tick` (or document the canonical existing one).
+- Idempotent/lock-safe: concurrent ticks return 409 with a stable error envelope.
+- Returns a summary payload: topicsChecked, sourcesChecked, notificationsCreated, failures.
+
+**Likely files:**
+
+- `apps/api/src/routes/update-agent.ts` (or new route)
+- `apps/api/src/routes/notifications.ts` (refactor so tick calls internal generator)
+- `apps/docs/pages/update-agent-scheduling.md`
+
+**Verification checklist:**
+
+- Manual: call tick twice concurrently → second returns 409.
+
+#### 5) Billing honesty: remove/label simulated invoices everywhere user can see billing
+
+**Spec reference:** WS-10; spec implies real Stripe/IAP later.
+
+**Acceptance criteria:**
+
+- Any invoice history / billing dates are labeled “Simulated billing (MVP)” or removed from primary UX.
+- Pricing + onboarding subscription screen never implies real refunds/guarantees or real Stripe unless implemented.
+- Docs contain a single canonical “Billing status (MVP)” section.
+
+**Likely files:**
+
+- `apps/client/src/screens/marketing/Pricing.tsx`
+- `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`
+- `apps/client/src/screens/Settings.tsx` or `ProfileSettings.tsx`
+- `apps/web/src/app/pricing/*` (if marketing site copy diverges)
+- `apps/docs/pages/*billing*` or `apps/docs/pages/subscription.md`
+
+**Screenshot checklist:**
+
+- `marketing-pricing.png` (truthful copy)
+- `onboarding-5-subscription.png` (truthful copy)
+- `app-settings.png` (billing section labels)
+
+### P1 (Should do)
+
+#### 6) Provenance durability: define “source record” immutability + show it in UI
+
+**Spec reference:** §533, §876 attribution tracker.
+
+**Acceptance criteria:**
+
+- Each lesson’s sources drawer displays:
+  - source URL
+  - capturedAt timestamp
+  - content hash (or stable sourceId)
+  - “Snapshot” vs “Live link” indicator
+- Regenerating lesson content does not orphan citations; citations map to durable source records.
+
+**Likely files:**
+
+- `apps/api/src/routes/courses.ts` (lesson/source storage)
+- `apps/api/src/routes/export.ts`
+- `apps/client/src/screens/LessonReader.tsx` (or equivalent)
+- `packages/agents/src/course-builder/*`
+
+**Screenshot checklist:**
+
+- `lesson-reader-sources-drawer.png` showing timestamp + sourceId/hash.
+
+#### 7) Export truth: exports must include provenance metadata (and match UI)
+
+**Acceptance criteria:**
+
+- Export JSON/ZIP includes a `sources[]` section with stable IDs, capturedAt, and hash.
+- Export MD includes citations that reference the same stable source IDs.
+
+**Likely files:**
+
+- `apps/api/src/routes/export.ts`
+- `apps/api/src/db.ts`
+
+#### 8) Collaboration UX: “Shared Mindmaps” tab should list actual accessible shared rooms
+
+**Acceptance criteria:**
+
+- Collaboration → Shared Mindmaps lists group-owned mindmaps the user can access (group name + course name + lastUpdated).
+- Clicking opens correct `groupId` + `courseId` link.
+
+**Likely files:**
+
+- `apps/client/src/screens/Collaboration.tsx`
+- `apps/api/src/routes/collaboration.ts`
+
+#### 9) Update Agent observability: dashboard card shows last run + last error + next eligible
+
+**Acceptance criteria:**
+
+- Dashboard shows Update Agent status summary that matches server truth.
+- Clicking goes to Settings → Update Agent.
+
+**Likely files:**
+
+- `apps/client/src/screens/Dashboard.tsx`
+- `apps/api/src/routes/update-agent.ts`
+
+### P2 (Nice to have)
+
+#### 10) “Dev auth” vs real auth clarity in UI/docs
+
+**Acceptance criteria:**
+
+- Docs explicitly describe `learnflow-token=dev` mode and its security implications.
+- UI does not accidentally show “real user identity” claims when running in dev auth.
+
+**Likely files:**
+
+- `apps/docs/pages/dev-auth.md` (new)
+- `apps/api/src/yjsServer.ts` (comments)
+
+#### 11) Screenshot harness upgrade: add multi-context proof harness for Iter97
+
+**Acceptance criteria:**
+
+- Add a Playwright script that launches two contexts and saves:
+  - presence proof
+  - convergence proof
+  - forbidden proof
+
+**Likely files:**
+
+- `learnflow/screenshot-all.mjs` (or a new `screenshot-collab-proof.mjs`)
+
+### OneDrive sync (planner artifacts) — Iter97
+
+TODO (planner did not sync):
+
+- Sync screenshots:
+  - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter97/planner-run/`
+- Sync notes:
+  - `/home/aifactory/.openclaw/workspace/learnflow/screenshots/iter97/planner-run/NOTES.md`
+- Sync queue update:
+  - `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
