@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
+import { useToast } from '../../components/Toast.js';
 import {
   IconCheck,
   IconKey,
@@ -132,6 +133,7 @@ const AGENTS: Agent[] = [
 /** Spec §5.2.6, §7.2 — Agent Marketplace with activation flow, categories, search, sort */
 export function AgentMarketplace() {
   const nav = useNavigate();
+  const { toast } = useToast();
   const [activatedIds, setActivatedIds] = useState<Set<string>>(new Set());
   const [activating, setActivating] = useState<string | null>(null);
   const [loading, setLoading] = useState(!AGENTS.length);
@@ -169,20 +171,32 @@ export function AgentMarketplace() {
         next.delete(agent.id);
         return next;
       });
+      toast(`Deactivated "${agent.name}"`, 'info');
       return;
     }
+
     setActivating(agent.id);
     try {
       const token = localStorage.getItem('learnflow-token');
-      if (token) {
-        await fetch(`/api/v1/marketplace/agents/${agent.id}/activate`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        });
+      if (!token) {
+        toast('Please log in to activate agents.', 'error');
+        return;
       }
+
+      const res = await fetch(`/api/v1/marketplace/agents/${agent.id}/activate`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) {
+        toast(`Could not activate "${agent.name}". Please try again.`, 'error');
+        return;
+      }
+
       setActivatedIds((prev) => new Set([...prev, agent.id]));
+      toast(`Activated "${agent.name}"`, 'success');
     } catch {
-      // silent fail
+      toast(`Could not activate "${agent.name}". Please try again.`, 'error');
     } finally {
       setActivating(null);
     }

@@ -2,7 +2,7 @@
 
 Owner: Builder  
 Planner: Ash (main session)  
-Last updated: 2026-03-27 (Iteration 97 READY)
+Last updated: 2026-03-27 (Iteration 99 READY FOR BUILDER)
 
 ---
 
@@ -794,3 +794,251 @@ Sync:
 - `/home/aifactory/.openclaw/workspace/learnflow/learnflow/screenshots/iter98/planner-run/`
 - Mirror location:
   - `/home/aifactory/onedrive-learnflow/learnflow/learnflow/screenshots/iter98/planner-run/`
+
+---
+
+## Iteration 99 — SPEC-TRUTH HARDENING: API STABILITY, MARKETPLACE AGENTS REALITY, EXPORT MATRIX, SCO COVERAGE
+
+Status: **DONE**
+
+### Screenshot evidence (planner-run)
+
+- Local: `learnflow/screenshots/iter99/planner-run/` (desktop + mobile)
+- OneDrive mirror: `/home/aifactory/onedrive-learnflow/learnflow/screenshots/iter99/planner-run/`
+- Notes/commands: `learnflow/screenshots/iter99/planner-run/NOTES.md`
+
+### Brutally honest spec-vs-impl gaps (Iteration 99 focus)
+
+1. **API can boot “active” but not listen (crash loop risk).** `journalctl --user -u learnflow-api` showed `TypeError: Router.use() requires a middleware function but got a undefined` and stack at `apps/api/src/app.ts:169` (mounting `keysRouter`). After restart it recovered, which suggests a brittle import/compile/runtime mismatch.
+
+2. **Agent Marketplace is partially real, partially demo, and silently ignores failures.** UI (`apps/client/src/screens/marketplace/AgentMarketplace.tsx`) uses a hard-coded `AGENTS` list and activation calls that swallow errors (`catch { // silent fail }`). Spec requires SDK/manifest submission + safety review + capability routing.
+
+3. **Student Context Object is far thinner than spec §9.1.** API `/api/v1/profile/context` (`apps/api/src/routes/profile.ts`) returns a subset and hard-coded defaults (e.g., strengths/weaknesses empty, learningStyle fixed, quizScores empty) and doesn’t include activated agents list even though orchestration uses it (`apps/api/src/orchestratorShared.ts:60`).
+
+4. **Export matrix doesn’t match spec tier table.** Spec §8 says Free=Markdown only; Pro adds PDF/SCORM/Notion/Obsidian. Current API export (`apps/api/src/routes/export.ts`) enforces Free=MD only and Pro=JSON/ZIP + stubs PDF/SCORM (501), but Notion/Obsidian are UI-only placeholders (see `apps/client/src/screens/ProfileSettings.tsx` export modal).
+
+5. **Marketplace creator flow is “MVP plausible” but missing paid-course moderation/billing truth.** Creator dashboard publishes courses via `/api/v1/marketplace/courses` (implemented in `apps/api/src/routes/marketplace-full.ts`), but Stripe is mocked and the moderation queue is just status assignment from `qualityCheck()` (no human review lane).
+
+---
+
+### P0 (Must fix to avoid regressions / spec lies)
+
+#### 1) P0 — Fix API startup crash: ensure `keysRouter` can never be undefined (build/ESM correctness)
+
+**Acceptance criteria**
+
+- API service consistently binds to :3000 on cold start (10 consecutive restarts) without fatal crash.
+- Add a unit/integration test that imports app and hits `/api/v1/health` (or existing endpoint) without throwing.
+- If `keysRouter` is absent, fail fast with a descriptive error at boot (not mid-request).
+
+**Likely files**
+
+- `apps/api/src/app.ts` (crash observed at line ~169)
+- `apps/api/src/keys.ts` (router export)
+- `apps/api/src/index.ts` (server boot)
+- Build config: `apps/api/tsconfig.json`, `apps/api/package.json` (module/exports)
+
+**Verification checklist**
+
+- `systemctl --user restart learnflow-api` x10 and confirm `ss -ltnp | grep :3000` each time.
+- Run API test suite: `npm test` (or `npm run test:api` if present).
+- Re-run screenshot harness (desktop) to ensure routes used by UI don’t 500.
+
+#### 2) P0 — Make Agent Marketplace “honest”: load agents from API + do not silently fall back
+
+**Acceptance criteria**
+
+- `AgentMarketplace` fetches `/api/v1/marketplace/agents` and renders returned agents (keep seed list only as a skeleton fallback behind explicit “demo mode” banner).
+- Activation flow surfaces errors (toast) and reverts optimistic UI on failure.
+- If user is not authenticated, activation CTA prompts login.
+
+**Likely files**
+
+- `apps/client/src/screens/marketplace/AgentMarketplace.tsx`
+- `apps/api/src/routes/marketplace-full.ts` (`GET /agents`, `GET /agents/activated`, `POST /agents/:id/activate`)
+- `apps/client/src/lib/api.ts` (helper)
+
+**Verification checklist**
+
+- Screenshot: marketplace-agents shows server agents.
+- Simulate 401 from API: user sees clear prompt.
+- Add/adjust test: basic render with mocked fetch.
+
+#### 3) P0 — Align SCO source-of-truth: `/profile/context` must include activated agents + behavioral fields used by Orchestrator
+
+**Acceptance criteria**
+
+- `/api/v1/profile/context` returns `preferredAgents` (activated marketplace agents) and key fields from spec §9.1 (interests/browseHistory/searchQueries/bookmarks, subscription/apiKeyProvider, collaboration settings).
+- Client hydration uses the API SCO as canonical (no divergence between core orchestrator context and UI context).
+
+**Likely files**
+
+- `apps/api/src/routes/profile.ts`
+- `apps/api/src/orchestratorShared.ts`
+- `apps/client/src/context/AppContext.tsx` (hydration)
+- `packages/core/src/context/student-context.ts`
+
+**Verification checklist**
+
+- Contract test: `GET /api/v1/profile/context` contains `preferredAgents: string[]` and `subscriptionTier`.
+- WS: `agent.spawned.task_summary` reflects activated agents.
+- Screenshot: Settings → Data summary shows expanded fields (if UI exists).
+
+#### 4) P0 — Export tier matrix: enforce spec and remove misleading UI options
+
+**Acceptance criteria**
+
+- Free tier: Markdown export works.
+- Pro tier: JSON + ZIP work; PDF/SCORM show “Coming soon” but only if spec allows; Notion/Obsidian options are either removed or clearly labeled as “Planned (not yet available)”.
+- UI export modal matches server reality (no dead buttons).
+
+**Likely files**
+
+- `apps/client/src/screens/ProfileSettings.tsx` (export UI)
+- `apps/api/src/routes/export.ts` (capabilities + error messages)
+
+**Verification checklist**
+
+- Screenshots: Settings export modal for free vs pro.
+- API: `GET /api/v1/export?format=zip` as free returns 403 upgrade_required.
+
+---
+
+### P1 (High leverage spec coverage)
+
+#### 5) P1 — Agent SDK submission path: manifest validation + basic “security review” stub
+
+**Acceptance criteria**
+
+- `/api/v1/marketplace/agents/submit` validates a minimal manifest schema (name, version, capabilities, provider requirements).
+- Store submissions with statuses: pending/approved/rejected with reason.
+- Admin-only approve endpoint (even if only dev-admin) so flow is testable.
+
+**Likely files**
+
+- `apps/api/src/routes/marketplace-full.ts` (agent submissions exist but validation/review depth is shallow)
+- `packages/core/src/agents/types.ts` (capabilities typing)
+
+**Verification checklist**
+
+- API tests for submit→approve→list.
+- UI: Agent marketplace can show community vs official badge (optional).
+
+#### 6) P1 — Marketplace course “paid” truth table: gate paid-course publishing to Pro tier
+
+**Acceptance criteria**
+
+- If `price > 0`, only Pro creators can publish (spec §8: Free courses only on free tier).
+- Response includes clear error `upgrade_required` for free tier.
+
+**Likely files**
+
+- `apps/api/src/routes/marketplace-full.ts` (publish route)
+- `apps/client/src/screens/marketplace/CreatorDashboard.tsx` (publish step copy)
+
+**Verification checklist**
+
+- API test: free tier publish paid course -> 403.
+- Screenshot: publish form shows gating message.
+
+#### 7) P1 — Moderation queue UX (minimal): show “Under review” state + admin approve
+
+**Acceptance criteria**
+
+- Creator dashboard shows “Under Review” for courses with status `review`.
+- Add admin screen or admin action to approve/reject.
+
+**Likely files**
+
+- `apps/client/src/screens/marketplace/CreatorDashboard.tsx`
+- `apps/api/src/routes/marketplace-full.ts`
+
+**Verification checklist**
+
+- E2E: publish course failing QC -> appears as under_review.
+
+#### 8) P1 — Privacy spec hooks: “view everything tracked” screen should reflect server data
+
+**Acceptance criteria**
+
+- Profile → Data (or equivalent) renders `/api/v1/profile/data-summary` output (exists today), including origins.
+- Add “Delete my data” confirmation flow if not already wired.
+
+**Likely files**
+
+- `apps/api/src/routes/profile.ts` (`/data-summary` exists)
+- `apps/api/src/routes/delete-my-data.ts`
+- `apps/client/src/screens/ProfileSettings.tsx`
+
+**Verification checklist**
+
+- Screenshot: Settings → Data Summary populated.
+- API: data-summary returns expected counts.
+
+---
+
+### P2 (Polish / reduce drift)
+
+#### 9) P2 — Fix screenshots harness determinism: ensure dev auth toggles are documented and consistent
+
+**Acceptance criteria**
+
+- `LEARNFLOW_DEV_AUTH` behavior clearly documented for REST + WS.
+- Harness scripts set env explicitly so runs don’t depend on user shell state.
+
+**Likely files**
+
+- `apps/api/src/websocket.ts` (dev token requires LEARNFLOW_DEV_AUTH)
+- `screenshot-all.mjs`, `screenshot-mobile.mjs`
+- `DEV_PORTS.md` / README
+
+**Verification checklist**
+
+- Fresh shell: run screenshot harness and confirm it completes.
+
+#### 10) P2 — Spec cleanup: annotate planned vs implemented for exports + marketplace billing
+
+**Acceptance criteria**
+
+- Add “Implemented in MVP” vs “Planned” notes to spec sections §7–§9 and §8 export table.
+
+**Likely files**
+
+- `LearnFlow_Product_Spec.md`
+
+**Verification checklist**
+
+- Reviewer can reconcile UI/API behavior with spec in <5 minutes.
+
+#### 11) P2 — Marketing site parity: ensure all pages listed in spec §12 exist and nav is consistent
+
+**Acceptance criteria**
+
+- Pages exist: Home/Features/Pricing/Marketplace/Docs/Blog/About/Download.
+- No dead links; basic responsive.
+
+**Likely files**
+
+- `apps/web/*`
+
+**Verification checklist**
+
+- Screenshot harness already covers key pages; add any missing routes.
+
+#### 12) P2 — WS contract alignment: confirm event payloads match spec §11.2 or document differences
+
+**Acceptance criteria**
+
+- Update WS contract tests if spec expects fields not present.
+- Document any deltas (e.g., `ws.contract` event).
+
+**Likely files**
+
+- `apps/api/src/websocket.ts`
+- `apps/api/src/__tests__/ws-contract.test.ts`
+- `LearnFlow_Product_Spec.md`
+
+**Verification checklist**
+
+- `npm test` passes.
+- Manual WS smoke: Conversation shows streaming + agent activity pills.
