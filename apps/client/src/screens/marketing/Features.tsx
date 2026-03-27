@@ -34,11 +34,11 @@ const FEATURES = [
   {
     icon: <IconCourse className="w-6 h-6" />,
     title: 'AI Course Generation',
-    desc: 'Enter any topic and our multi-agent pipeline researches the web, synthesizes content, and builds a structured course with modules, lessons, and citations.',
+    desc: 'Enter a topic and our multi-agent pipeline synthesizes a structured course with modules, lessons, and citations. Source availability varies by topic and deployment configuration.',
     benefits: [
-      'Real web sources with citations',
+      'Best-effort sources with citations',
       'Quality-gated content',
-      'Retry logic for comprehensive coverage',
+      'Retry logic for broader coverage',
     ],
   },
   {
@@ -171,7 +171,7 @@ export function FeaturesPage() {
                 step: '1',
                 icon: <IconChat className="w-8 h-8" />,
                 title: 'Tell Us What to Learn',
-                desc: 'Enter any topic or paste a URL. Our AI agents begin researching from real web sources — academic papers, docs, tutorials, and more.',
+                desc: 'Enter a topic. Our AI agents begin researching from public web sources and synthesize a structured course with citations (URL ingestion is planned).',
               },
               {
                 step: '2',

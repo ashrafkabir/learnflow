@@ -25,7 +25,7 @@ For California residents:
 
 Your AI API keys are secured with:
 
-- **AES-256-CBC encryption** for API keys at rest (server-side; CBC is not AEAD—GCM/HMAC hardening is planned)
+- **AES-256-GCM (AEAD)** encryption for API keys at rest (server-side)
 - **Single server-side encryption key** (from `ENCRYPTION_KEY` env var)
 - **Keys never logged** in application logs
 - **Keys sent only over TLS**; never logged in plaintext
@@ -34,7 +34,7 @@ Your AI API keys are secured with:
 ### How It Works
 
 1. You enter your API key in the app
-2. The key is transmitted over TLS, then encrypted server-side with AES-256-CBC
+2. The key is transmitted over TLS, then encrypted server-side with AES-256-GCM
 3. The encrypted blob is stored in our database
 4. When needed, the key is decrypted server-side in memory only
 5. After use, the plaintext key is immediately discarded

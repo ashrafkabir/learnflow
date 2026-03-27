@@ -66,6 +66,9 @@ const CreatorDashboard = React.lazy(() =>
 const ProfileSettings = React.lazy(() =>
   import('./screens/ProfileSettings.js').then((m) => ({ default: m.ProfileSettings })),
 );
+const NotificationsScreen = React.lazy(() =>
+  import('./screens/Notifications.js').then((m) => ({ default: m.NotificationsScreen })),
+);
 const PipelineDetail = React.lazy(() =>
   import('./screens/PipelineDetail.js').then((m) => ({ default: m.PipelineDetail })),
 );
@@ -378,6 +381,14 @@ export function App() {
                     element={
                       <ErrorBoundary>
                         <ProfileSettings />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/notifications"
+                    element={
+                      <ErrorBoundary>
+                        <NotificationsScreen />
                       </ErrorBoundary>
                     }
                   />

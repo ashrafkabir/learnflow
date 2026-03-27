@@ -125,11 +125,16 @@ export function calculateRevenueSplit(
 // ─── Schemas ───
 
 const publishCourseSchema = z.object({
+  // Optional linkage to a real course in the user's library. When provided, QC fields are computed server-side.
+  courseId: z.string().optional(),
+
   title: z.string().min(1),
   topic: z.string().min(1),
   description: z.string().min(10),
   difficulty: z.enum(['beginner', 'intermediate', 'advanced']),
   price: z.number().min(0),
+
+  // QC fields (legacy / client-provided). If courseId is present and the course is found, these are ignored.
   lessonCount: z.number().min(1),
   attributionCount: z.number().min(0).default(0),
   readabilityScore: z.number().min(0).max(1).default(0.7),
@@ -189,30 +194,70 @@ router.post(
     }
 
     const data = req.body;
+
     // Map client payloads (`lessonCount`, `attributionCount`, `readabilityScore`) if present; otherwise rely on defaults.
-    const lessonCount =
+    // Iter110 P1: Prefer server-computed QC values when the client provides a courseId.
+    let lessonCount =
       typeof (req.body as any)?.lessonCount === 'number'
         ? (req.body as any).lessonCount
         : data.lessonCount;
-    const attributionCount =
+    let attributionCount =
       typeof (req.body as any)?.attributionCount === 'number'
         ? (req.body as any).attributionCount
         : data.attributionCount;
-    const readabilityScore =
+    let readabilityScore =
       typeof (req.body as any)?.readabilityScore === 'number'
         ? (req.body as any).readabilityScore
         : data.readabilityScore;
 
-    const qc = qualityCheck({
-      lessonCount,
-      attributionCount,
-      readabilityScore,
-    });
+    const requestedCourseId = String((req.body as any)?.courseId || '').trim();
+    if (requestedCourseId) {
+      const libCourse = dbCourses.getById(requestedCourseId);
+      if (libCourse && String(libCourse.authorId || '') === String(req.user!.sub)) {
+        // Lessons are currently stored inside the course.modules JSON.
+        const lessons = (libCourse.modules || []).flatMap((m: any) => m.lessons || []);
+        lessonCount = lessons.length || lessonCount;
+
+        // Best-effort: count source attributions from structured lesson.sources (if present) and legacy inline citation markers.
+        const uniqueSourceUrls = new Set<string>();
+        for (const l of lessons) {
+          const structured = (l as any)?.sources;
+          if (Array.isArray(structured)) {
+            for (const s of structured) {
+              const url = String((s as any)?.url || '').trim();
+              if (url) uniqueSourceUrls.add(url);
+            }
+          }
+        }
+        if (uniqueSourceUrls.size > 0) {
+          attributionCount = uniqueSourceUrls.size;
+        } else {
+          const combined = lessons.map((l: any) => String(l.content || '')).join('\n');
+          const citationMatches = combined.match(/\[\d+\]/g) || [];
+          // QC wants a rough count of attributions; unique bracketed markers is a reasonable proxy.
+          attributionCount = new Set(citationMatches).size;
+        }
+
+        // Best-effort readability: map pipeline heuristic (0..100) into the marketplace 0..1 scale.
+        // This is not a true readability metric, but prevents spoofed extremes.
+        const totalWords = lessons
+          .map((l: any) => String(l.content || '').split(/\s+/).filter(Boolean).length)
+          .reduce((a: number, b: number) => a + b, 0);
+        const objectivesAny = lessons.some((l: any) => /^- .+$/m.test(String(l.content || '')));
+        const approx = Math.min(100, Math.max(40, 60 + (totalWords > 2500 ? 20 : 0) + (objectivesAny ? 10 : 0)));
+        readabilityScore = Math.max(0, Math.min(1, approx / 100));
+      }
+    }
+
+    const qc = qualityCheck({ lessonCount, attributionCount, readabilityScore });
 
     const course: PublishedCourse = {
       id: `pub-${Date.now()}`,
       ...data,
       creatorId: req.user!.sub,
+      lessonCount,
+      attributionCount,
+      readabilityScore,
       status: qc.passed ? 'published' : 'review',
       rating: 0,
       enrollmentCount: 0,

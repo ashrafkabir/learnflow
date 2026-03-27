@@ -3,12 +3,13 @@ import { chromium } from 'playwright';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const BASE = process.env.BASE_URL || 'http://localhost:3001';
 function readArg(name) {
   const idx = process.argv.indexOf(`--${name}`);
   if (idx === -1) return undefined;
   return process.argv[idx + 1];
 }
+
+const BASE = process.env.BASE_URL || readArg('base') || 'http://localhost:3001';
 
 const ITER = process.env.ITERATION || process.env.ITER || readArg('iter') || '102';
 const DATE = new Date().toISOString().slice(0, 10);
@@ -49,6 +50,7 @@ const AUTHED_PAGES = [
   ['/marketplace/agents', 'marketplace-agents'],
   ['/collaborate', 'app-collaboration'],
   ['/settings', 'app-settings'],
+  ['/notifications', 'app-notifications'],
   ['/pipelines', 'app-pipelines'],
   // Stable seeded routes for deterministic coverage
   ['/courses/c-1', 'course-view'],

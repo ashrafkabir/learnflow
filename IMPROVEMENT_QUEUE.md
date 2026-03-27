@@ -8,7 +8,7 @@ Last updated: 2026-03-27 (Iteration 110 READY FOR BUILDER)
 
 ## Iteration 110 — SPEC ↔ IMPLEMENTATION PARITY AUDIT + PRIORITIZED FIX LIST
 
-Status: **IN PROGRESS (Builder) — Task 1 DONE; remaining tasks pending**
+Status: **DONE (Builder)**
 
 ### Planner evidence (Iter110)
 

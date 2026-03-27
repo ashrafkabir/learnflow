@@ -35,6 +35,16 @@ import { WebSocketServer } from 'ws';
     );
   }
 
+  // JWT_SECRET: required in prod; must not be the dev fallback.
+  const jwt = String(process.env.JWT_SECRET || '').trim();
+  const devJwtFallback = 'learnflow-dev-secret-change-in-production';
+  if (isProd && (!jwt || jwt === devJwtFallback)) {
+    console.error(
+      '[LearnFlow][CONFIG] JWT_SECRET is required in production and must not be the dev fallback. Refusing to start.',
+    );
+    process.exit(1);
+  }
+
   // CORS allowlist: warn if empty in prod (API will reject browser requests)
   const corsAllowOrigins = String(process.env.CORS_ALLOW_ORIGINS || '').trim();
   if (isProd && corsAllowOrigins.length === 0) {

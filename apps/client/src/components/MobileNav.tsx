@@ -11,6 +11,7 @@ import {
   IconMenu,
   IconMindmap,
   IconSettings,
+  IconSpark,
 } from './icons/index.js';
 
 const NAV_ITEMS = [
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { icon: IconMindmap, label: 'Mind Map', path: '/mindmap' },
   { icon: IconHandshake, label: 'Collaborate', path: '/collaborate' },
   { icon: IconMarketplace, label: 'Marketplace', path: '/marketplace' },
+  { icon: IconSpark, label: 'Notifications', path: '/notifications' },
   { icon: IconSettings, label: 'Settings', path: '/settings' },
 ];
 

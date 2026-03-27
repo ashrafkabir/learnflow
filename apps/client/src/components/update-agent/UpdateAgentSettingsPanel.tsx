@@ -173,7 +173,7 @@ export function UpdateAgentSettingsPanel() {
               Upgrade to Pro
             </Button>
           </a>
-          <a href="/docs/update-agent-scheduling" className="text-xs text-accent hover:underline">
+          <a href="/docs" className="text-xs text-accent hover:underline">
             Scheduling docs
           </a>
         </div>
@@ -202,10 +202,7 @@ export function UpdateAgentSettingsPanel() {
           </p>
           <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
             Scheduling is external in this MVP (cron/systemd/K8s).{' '}
-            <a
-              href="/docs/update-agent-scheduling"
-              className="text-accent hover:underline font-semibold"
-            >
+            <a href="/docs" className="text-accent hover:underline font-semibold">
               See scheduling guidance
             </a>
             . Use <span className="font-semibold">Run now</span> to trigger a one-off check.
@@ -321,9 +318,9 @@ export function UpdateAgentSettingsPanel() {
             <div className="flex flex-col items-end gap-2">
               <Button
                 size="sm"
-                disabled={!selectedTopic?.topic || loading}
+                disabled={loading}
                 onClick={async () => {
-                  // Canonical "tick" endpoint (runs all enabled topics/sources).
+                  // Canonical scheduler entrypoint (runs all enabled topics/sources).
                   setLoading(true);
                   try {
                     await apiPost('/update-agent/tick', {});
@@ -340,6 +337,31 @@ export function UpdateAgentSettingsPanel() {
               >
                 Run now
               </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={loading}
+                onClick={async () => {
+                  // Advanced: run *only* the selected topic via the legacy one-topic endpoint.
+                  // This is useful for quick debugging, but does not exercise the full tick loop.
+                  setLoading(true);
+                  try {
+                    await apiPost('/notifications/generate', { topic: selectedTopic?.topic });
+                    await loadTopics();
+                    await loadSources(selectedTopicId);
+                    await loadRuns();
+                    toast('Selected topic check started', 'success');
+                  } catch (e: any) {
+                    toast(String(e?.message || 'Failed to run selected topic'), 'error');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                Run selected topic only
+              </Button>
+
               <div className="text-[11px] text-gray-600 dark:text-gray-300 text-right max-w-[220px]">
                 Tip: “Run already in progress” means a lock is active (prevents overlapping runs).
               </div>

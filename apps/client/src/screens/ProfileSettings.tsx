@@ -783,7 +783,7 @@ export function ProfileSettings() {
               </div>
             ) : null}
 
-            {['PDF', 'SCORM', 'Notion', 'Obsidian'].map((fmt) => (
+            {['Notion', 'Obsidian', 'PDF', 'SCORM'].map((fmt) => (
               <div
                 key={fmt}
                 className="flex items-center justify-between opacity-60 cursor-not-allowed"
@@ -793,7 +793,7 @@ export function ProfileSettings() {
                   <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Export as {fmt}
                   </p>
-                  <p className="text-xs text-gray-800/80 dark:text-gray-200">{fmt} format export</p>
+                  <p className="text-xs text-gray-800/80 dark:text-gray-200">{fmt} export</p>
                 </div>
                 <span className="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">
                   PRO

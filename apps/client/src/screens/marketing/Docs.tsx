@@ -21,7 +21,7 @@ const SECTIONS = [
       {
         title: 'Configuring API Keys',
         content:
-          'Go to Settings → API Vault to add your own OpenAI, Anthropic, or Google API keys. Keys are encrypted at rest. Some deployments may also enable managed keys for Pro users (not guaranteed).',
+          'Go to Settings → API Vault to add your own OpenAI, Anthropic, or Google API keys. Keys are encrypted at rest. Some deployments may also provide managed keys for Pro users via server configuration (not guaranteed in OSS/dev).',
       },
     ],
   },
@@ -51,7 +51,7 @@ const SECTIONS = [
       {
         title: 'Profile & Settings',
         content:
-          'Configure your API keys in the secure API Vault, toggle dark mode, manage notification preferences, and export your data in Markdown or JSON format. All API keys are encrypted at rest on the server (AES-256-GCM, AEAD).',
+          'Configure your API keys in the secure API Vault, toggle dark mode, manage notification preferences, and export your data in Markdown or JSON format. API keys are encrypted at rest on the server (AES-256-GCM, AEAD).',
       },
       {
         title: 'Collaboration',

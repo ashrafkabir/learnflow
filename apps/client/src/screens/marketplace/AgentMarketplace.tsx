@@ -216,6 +216,16 @@ export function AgentMarketplace() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* Disclosure */}
+        <div className="mb-5 text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
+          <p className="font-semibold text-gray-900 dark:text-white mb-1">MVP disclosure</p>
+          <p className="text-gray-600 dark:text-gray-300">
+            Marketplace agents in this MVP influence routing and UI, but runtime still executes
+            LearnFlow’s built-in agents. Activation controls which capabilities are preferred for
+            your requests.
+          </p>
+        </div>
+
         {/* My Activated Agents */}
         {activatedIds.size > 0 && (
           <div className="mb-6 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5">

@@ -53,6 +53,7 @@ const pages = [
   ['/conversation', 'conversation'],
   ['/mindmap', 'mindmap'],
   ['/settings', 'settings'],
+  ['/notifications', 'notifications'],
   ['/marketplace/courses', 'marketplace-courses'],
   ['/marketplace/agents', 'marketplace-agents'],
 ];

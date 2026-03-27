@@ -35,7 +35,7 @@ const FEATURES = [
   {
     icon: <IconCourse className="w-6 h-6" />,
     title: 'AI-Generated Courses',
-    desc: 'Paste a topic and get a full, structured course in minutes — sourced from the real web.',
+    desc: 'Enter a topic and get a full, structured course in minutes — synthesized from public web sources with citations (best-effort).',
   },
   {
     icon: <IconLesson className="w-6 h-6" />,
@@ -292,7 +292,7 @@ export function HomePage() {
                 step: '1',
                 icon: <IconChat className="w-6 h-6" />,
                 title: 'Tell us what to learn',
-                desc: 'Type any topic. Our AI agents research, curate, and build a full course from real web sources.',
+                desc: 'Type any topic. Our AI agents research public web sources and synthesize a structured course with citations (best-effort; availability varies by topic).',
               },
               {
                 step: '2',
