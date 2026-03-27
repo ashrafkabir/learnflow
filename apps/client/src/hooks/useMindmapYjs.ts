@@ -36,6 +36,7 @@ function wsBaseUrl() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
   // If we're on localhost, default to the dedicated Yjs port.
+  // API runs Yjs on 3002 by default.
   const host = window.location.hostname;
   if (host === 'localhost' || host === '127.0.0.1') {
     return `${protocol}//${host}:3002/yjs`;

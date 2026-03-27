@@ -55,7 +55,17 @@ export function MindmapExplorer() {
   const mindmapRef = useRef<HTMLDivElement | null>(null);
   // Yjs-backed shared mindmap state (room per course)
   // Tie mindmap room to the user's current context when possible.
-  const activeCourseId = state.activeCourse?.id || state.courses?.[0]?.id || 'dev-course';
+  // If a courseId is provided via query params, allow mindmap collaboration even
+  // when the local client state has no courses loaded yet.
+  const queryCourseId = (() => {
+    try {
+      return new URLSearchParams(window.location.search).get('courseId');
+    } catch {
+      return null;
+    }
+  })();
+  const activeCourseId =
+    queryCourseId || state.activeCourse?.id || state.courses?.[0]?.id || 'dev-course';
 
   // Shared mindmaps: allow overriding courseId/groupId via query params.
   const [sharedParams, setSharedParams] = useState<{ courseId: string; groupId?: string | null }>(
@@ -565,7 +575,7 @@ export function MindmapExplorer() {
           className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card overflow-hidden"
           style={{ height: 'calc(100vh - 80px)', position: 'relative' }}
         >
-          {state.courses.length === 0 ? (
+          {state.courses.length === 0 && !sharedParams.courseId ? (
             <div className="flex items-center justify-center h-full text-center">
               <div>
                 <div className="flex justify-center mb-4">

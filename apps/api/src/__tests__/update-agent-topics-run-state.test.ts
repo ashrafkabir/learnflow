@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import request from 'supertest';
 import { createApp, clearRateLimits } from '../app.js';
 import { db } from '../db.js';
+import jwt from 'jsonwebtoken';
+import { config } from '../config.js';
 
 let token = '';
 
@@ -20,6 +22,14 @@ describe('GET /api/v1/update-agent/topics includes run state', () => {
       .post('/api/v1/auth/register')
       .send({ email, password: 'password123', displayName: 'UA' });
     token = res.body.accessToken;
+
+    // Iter97: Update Agent write actions are Pro-only.
+    // Easiest: mint a Pro token for this same user id.
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+    const userId = String(payload.sub || '');
+    token = jwt.sign({ sub: userId, email, role: 'student', tier: 'pro' }, config.jwtSecret, {
+      expiresIn: '1h',
+    });
     // store for later
     (globalThis as any).__uaEmail = email;
   });

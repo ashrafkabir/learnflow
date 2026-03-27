@@ -1,9 +1,62 @@
 import { Router, Request, Response } from 'express';
 import JSZip from 'jszip';
+import crypto from 'crypto';
 import { dbCourses, db, dbNotes, dbLessonSources } from '../db.js';
 import { sendError } from '../errors.js';
+import { scoreSourceCredibility } from '../utils/sourceCredibility.js';
 
 const router = Router();
+
+function stableSourceId(s: any): string {
+  const url = String(s?.url || '').trim();
+  const title = String(s?.title || '').trim();
+  const publication = String(s?.publication || '').trim();
+  const author = String(s?.author || '').trim();
+  const year = s?.year ? String(s.year) : '';
+  const key = [url, title, publication, author, year].join('|');
+  return crypto.createHash('sha1').update(key).digest('hex');
+}
+
+function normalizeLessonSourcesRow(row: { sources: any[]; missingReason?: string }): {
+  sources: any[];
+  missingReason?: string;
+} {
+  const accessedAt = new Date().toISOString();
+  const sources = (row?.sources || []).map((s: any) => {
+    const url = String(s?.url || '');
+    const domain = s?.domain
+      ? String(s.domain)
+      : (() => {
+          try {
+            return new URL(url).hostname.replace(/^www\./i, '');
+          } catch {
+            return undefined;
+          }
+        })();
+
+    const sourceType = s?.sourceType;
+    const cred = url
+      ? scoreSourceCredibility({ url, domain, publication: s?.publication, sourceType })
+      : null;
+
+    return {
+      ...s,
+      id: String(s?.id || stableSourceId(s)),
+      accessedAt: String(s?.accessedAt || accessedAt),
+      capturedAt: s?.capturedAt ? String(s.capturedAt) : undefined,
+      credibilityScore:
+        typeof s?.credibilityScore === 'number'
+          ? s.credibilityScore
+          : (cred?.credibilityScore ?? 0),
+      credibilityLabel: s?.credibilityLabel || cred?.credibilityLabel || 'Unknown',
+      whyCredible: s?.whyCredible || cred?.whyCredible || 'Credibility unknown (heuristic).',
+      sourceType: s?.sourceType || cred?.sourceType,
+      domain: domain || s?.domain,
+    };
+  });
+
+  return { sources, missingReason: row?.missingReason || '' };
+}
 
 function sourcesToMarkdown(sources: any[]): string {
   if (!Array.isArray(sources) || sources.length === 0) return '';
@@ -90,9 +143,11 @@ router.get('/', async (req: Request, res: Response) => {
         const n = dbNotes.get(String(l.id), userId);
         if (n) notesByLessonId[String(l.id)] = n;
 
-        // Iter95: include persisted structured sources (+ credibility fields) in exports.
+        // Iter95/97: include persisted structured sources (+ stable ids, timestamps, credibility fields) in exports.
         try {
-          lessonSourcesByLessonId[String(l.id)] = dbLessonSources.get(String(l.id));
+          lessonSourcesByLessonId[String(l.id)] = normalizeLessonSourcesRow(
+            dbLessonSources.get(String(l.id)),
+          );
         } catch {
           // best-effort
           lessonSourcesByLessonId[String(l.id)] = { sources: [] };
