@@ -429,7 +429,7 @@ The agent marketplace enables developers to publish specialized agents that exte
 | ----------------- | -------------------------------- | ------------------------------------------------------------ |
 | **Feature**       | **Free (BYOAI)**                 | **Pro ($19/mo)**                                             |
 | API Key           | Student provides their own       | Student provides their own (managed keys: coming soon)       |
-| Course Creation   | Unlimited                        | Unlimited + priority generation                              |
+| Course Creation   | 3 active (limit)                 | Unlimited + priority generation                              |
 | Agent Access      | All marketplace agents           | All + Pro-exclusive agents                                   |
 | Proactive Updates | None                             | Daily/weekly skill refresh alerts                            |
 | Mindmap           | Basic (100 nodes)                | Advanced (unlimited nodes, export)                           |

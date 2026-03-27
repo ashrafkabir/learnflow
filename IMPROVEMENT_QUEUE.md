@@ -1,212 +1,154 @@
-# LearnFlow — Improvement Queue (Iter106)
+# LearnFlow — Improvement Queue (Iter108)
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-27 (Iteration 106 READY FOR BUILDER)
+Last updated: 2026-03-27 (Iteration 108 READY FOR BUILDER)
 
 ---
 
-## Iteration 106 — SPEC ↔ IMPLEMENTATION PARITY AUDIT + PRIORITIZED FIX LIST
+## Iteration 108 — SPEC ↔ IMPLEMENTATION PARITY AUDIT + PRIORITIZED FIX LIST
 
 Status: **DONE**
 
-### Summary (Iter106)
+### Recent shipped (for continuity)
 
-Planner label: `iter106/planner-run` (desktop + key mobile screenshots captured).
+- **Iter105 (commit b8364ad)** — marketplace manifest-based routing (activation affects orchestrator intent routing) + WebSocket first-time marketplace agent disclosure + pricing copy updated to explicitly say billing is mock.
+- **Iter106 (commit a19a672)** — *per prior queue note*: parity audit + fix list baseline.
+- **Iter107 (commit 1cadf8e)** — shipped since last audit (see git history); include in release notes / changelog.
 
-**What shipped recently**
+### Planner evidence (Iter108)
 
-- **Iter104 (commit a8ee923)**: server-driven subscription (remove client tier cache), shared plan definitions, `billingMode: 'mock'` boundary across subscription/checkout surfaces.
-- **Iter105 (commit b8364ad)**: marketplace manifest-based routing (activation affects orchestrator intent routing) + WebSocket first-time marketplace agent disclosure + pricing copy updated to explicitly say billing is mock.
+Screenshots + notes captured into:
+- `learnflow/screenshots/iter108/planner-run/`
+  - `NOTES.md` (includes harness anomalies + what was captured)
 
-**3 biggest gaps found (brutally honest)**
+> Note: screenshot harness scripts appear to still write into hardcoded/date-named dirs (then we copied into iter108). This is itself a P0.
 
-1. **Spec still describes a production architecture (Postgres/Redis/S3/gRPC/Kong) but implementation is single-process Express + SQLite + WS/Yjs**. This mismatch will mislead anyone reading the spec as an implementation contract. (Spec §3, §11)
-2. **Update Agent is real but only RSS/Atom “best-effort” + manual tick; Pro feature is not truly “proactive updates” in the spec sense (web monitoring + pushes)**. It creates notifications, but there’s no scheduler in repo and no breadth beyond RSS parsing. (Spec §4.2 Update Agent, §8 Proactive Updates)
-3. **Conversation/Orchestrator is deterministic keyword routing (not an LLM orchestrator) and does not use BYOAI keys for actual generation in most flows**. This is fine for MVP stability, but the spec promises an LLM-driven multi-agent system with citations and adaptive behavior. (Spec §4, §10)
+### Brutally honest: top spec gaps (Iter108)
 
-### Screenshot evidence (Iter106)
+1) **Subscription spec contradicts current implementation**: Spec §8 says **Free course creation is unlimited**, but API enforces **Free plan limited to 3 courses**.
+   - Evidence: `apps/api/src/routes/pipeline.ts` and `apps/api/src/routes/courses.ts` enforce `FREE_LIMIT = 3` when `tier !== 'pro'`.
+   - Impact: trust-breaker; users will hit paywall unexpectedly relative to spec.
 
-- Desktop: `learnflow/screenshots/iter106/planner-run/*.png`
-- Mobile: `learnflow/screenshots/iter106/planner-run/mobile/*.png`
-- Notes/commands: `learnflow/screenshots/iter106/planner-run/NOTES.md`
+2) **Agent Marketplace is largely “UI demo data”**: The client marketplace screen is seeded static `AGENTS` array; it does not fetch `/api/v1/marketplace/agents` submissions nor support submission/review UI.
+   - Evidence: `apps/client/src/screens/marketplace/AgentMarketplace.tsx` defines `const AGENTS: Agent[] = [...]` and only calls activation endpoints.
+   - Impact: spec §7.2 (submission/review/mod pipeline) is not delivered in product UX.
+
+3) **Update Agent is real but still not “proactive”**: Implementation exists (routes + RSS parsing), and client hydrates notifications feed, but there is **no in-repo scheduler** and it is largely manual.
+   - Evidence: `apps/api/src/routes/update-agent.ts`, `apps/api/src/utils/updateAgent/runTopic.ts`, UI panel `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`, notification hydration in `apps/client/src/context/AppContext.tsx`.
 
 ---
 
-## Iter106 — Top tasks (10–15) READY FOR BUILDER
+## Iter108 — Top tasks (10–15) READY FOR BUILDER
 
-### P0 — Trust / spec contradictions / user-visible correctness
+### P0 — Correctness, trust, and user-visible contradictions
 
-1. **P0 — Fix screenshot mobile harness output directory bug (blocks repeatable evidence)**
+1) **P0 — Fix screenshot harness output directory behavior (desktop + mobile)**
 
-**Problem**: `node screenshot-mobile.mjs --outDir ...` ignores `--outDir` and writes to a fixed path (`evals/screenshots/iter45-mobile`). This breaks iteration evidence capture and CI-style artifact collection.
+- **Problem**: Iter108 capture required copying from other folders; harnesses appear to ignore the intended output dir.
+- **Evidence**: `learnflow/screenshots/iter108/planner-run/NOTES.md`.
+- **Acceptance**:
+  - `node screenshot-all.mjs <outDir>` writes to exactly `<outDir>`.
+  - `node screenshot-mobile.mjs <outDir>` writes to exactly `<outDir>`.
+  - Scripts print the resolved output dir.
+- **Likely files**: `screenshot-all.mjs`, `screenshot-mobile.mjs`.
 
-**Evidence**: Iter106 NOTES — `learnflow/screenshots/iter106/planner-run/NOTES.md`.
+2) **P0 — Resolve Spec §8 “Unlimited course creation” vs implementation “Free=3 courses”**
 
-**Acceptance criteria**
+- **Problem**: hard contradiction.
+- **Evidence**:
+  - Spec: `LearnFlow_Product_Spec.md` §8 table row “Course Creation: Unlimited”.
+  - Code: `apps/api/src/routes/pipeline.ts` + `apps/api/src/routes/courses.ts` (`FREE_LIMIT = 3`).
+- **Acceptance (choose one)**:
+  - (A) Remove/raise free limit in API, OR
+  - (B) Update spec + all UI/marketing copy to reflect “Free: 3 courses” and ensure upgrade CTAs are consistent.
 
-- `screenshot-mobile.mjs --outDir <path>` actually writes to `<path>`.
-- Script prints final output directory used.
+3) **P0 — Update Agent: make “proactive updates” truthful + add scheduler option**
 
-**Likely files**
+- **Problem**: Feature exists but not truly proactive; spec promises daily/weekly refresh.
+- **Evidence**: `apps/api/src/routes/update-agent.ts`, `apps/api/src/utils/updateAgent/runTopic.ts`, `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`.
+- **Acceptance**:
+  - Add a minimal scheduler path (documented cron; optional dev interval) that triggers `/api/v1/update-agent/tick` for Pro users, and/or
+  - Update UI + docs to clearly say “manual tick / RSS-only monitoring” until scheduler exists.
 
-- `screenshot-mobile.mjs`
+4) **P0 — Agent Marketplace: stop shipping static demo agents as “real marketplace”**
 
-2. **P0 — Update Agent: align Pro gating + UI claims with actual behavior (RSS-only, manual tick)**
+- **Problem**: Marketplace agents list is hardcoded; spec calls for submissions/review.
+- **Evidence**: `apps/client/src/screens/marketplace/AgentMarketplace.tsx`.
+- **Acceptance**:
+  - Client fetches from `GET /api/v1/marketplace/agents` and renders returned agents, and
+  - Add “Submit Agent” flow calling `POST /api/v1/marketplace/agents/submit` (even if admin review is manual).
 
-**Problem**: Spec says proactive updates (daily/weekly) + topic monitoring. Implementation exists (`POST /api/v1/update-agent/tick`, topics/sources CRUD) but no scheduler in repo; notifications generation is RSS-only (`runUpdateAgentForTopic`) and best-effort.
+5) **P0 — BYOAI key setup parity: add Tavily to onboarding UI or remove it from “supported providers”**
 
-**Evidence**
+- **Evidence**:
+  - API supports `tavily`: `apps/api/src/keys.ts`.
+  - Onboarding UI currently focused on OpenAI/Anthropic/Gemini: `apps/client/src/screens/onboarding/ApiKeys.tsx`.
+- **Acceptance**: Tavily is either (A) selectable in onboarding with correct placeholder/validation, or (B) explicitly “advanced / later” with docs.
 
-- API: `apps/api/src/routes/update-agent.ts`, `apps/api/src/utils/updateAgent/runTopic.ts`
-- Notifications: `apps/api/src/routes/notifications.ts`
+### P1 — Capability completeness and cohesion
 
-**Acceptance criteria**
+6) **P1 — Agent Marketplace: wire “activation affects orchestrator tools” end-to-end**
 
-- Either (A) add a simple in-repo scheduler (dev-only + documented production cron example) that calls `/api/v1/update-agent/tick` for Pro users, OR
-- (B) harden all user-facing copy to say “manual / on-demand tick; RSS-only; push notifications planned”.
-- Client surface shows run history (`GET /api/v1/update-agent/runs`) and clear failure states.
+- **Problem**: activation persists (`/marketplace/agents/:id/activate`) but UI does not show what actually changes at runtime.
+- **Evidence**:
+  - API: `apps/api/src/routes/marketplace-full.ts` activation routes.
+  - Orchestrator mapping: `packages/core/src/orchestrator/intent-router.ts` (intent routing).
+- **Acceptance**:
+  - After activation, Conversation UI shows “Available agents” list updated, and
+  - One-time disclosure clarifies whether execution is built-in vs 3rd-party (current reality).
 
-**Likely files**
+7) **P1 — Marketplace course publishing: connect real course content + QC inputs (not placeholders)**
 
-- `apps/client/src/screens/ProfileSettings.tsx` (or wherever Update Agent UI lives)
-- `apps/api/src/routes/update-agent.ts`
-- `apps/docs/pages/*` docs or `LearnFlow_Product_Spec.md`
+- **Problem**: CreatorDashboard publishes with placeholder `lessonCount/attributionCount/readabilityScore`.
+- **Evidence**: `apps/client/src/screens/marketplace/CreatorDashboard.tsx` posts static QC inputs.
+- **Acceptance**:
+  - Compute QC inputs from actual course in DB, or require selecting a course to publish.
+  - QC “review vs publish” status is understandable and consistent.
 
-3. **P0 — Orchestrator truth-in-advertising: disclose deterministic routing + ‘no external browsing’ mode in UI**
+8) **P1 — Subscription/billing mock boundaries: ensure every paid CTA is labeled “mock”**
 
-**Problem**: Orchestrator is keyword-based intent router (`packages/core/src/orchestrator/intent-router.ts`). Content pipeline can use network in some modes, but much behavior is deterministic/test-friendly. Spec implies full LLM agentic behavior.
+- **Evidence**: paid enroll route returns `billingMode: 'mock'` in `apps/api/src/routes/marketplace-full.ts`; client surfaces vary by screen.
+- **Acceptance**:
+  - All pricing/enroll/payout surfaces include consistent “Mock billing” label.
 
-**Acceptance criteria**
+9) **P1 — Notifications/Update feed: add “mark read” and “view all” UX**
 
-- In Conversation UI, add a small “System mode” disclosure: e.g., “MVP mode: deterministic routing; sources may be simulated unless you connect keys and enable browsing”.
-- Docs page describing what is real today (agents, routing, marketplace mapping) vs planned.
+- **Problem**: Dashboard shows top 5; no clear “see all / mark all read”.
+- **Evidence**: `apps/client/src/screens/Dashboard.tsx` notifications section; API `apps/api/src/routes/notifications.ts`.
+- **Acceptance**:
+  - Add route/UI for pagination and mark-read actions, or clearly explain limitations.
 
-**Likely files**
+10) **P1 — Spec alignment doc update: refresh `IMPLEMENTED_VS_SPEC.md`**
 
-- `packages/core/src/orchestrator/intent-router.ts`
-- `apps/client/src/screens/Conversation.tsx`
-- `apps/docs/pages/architecture.md` / marketing docs copy
+- **Problem**: parity doc is stale relative to marketplace/update-agent/subscription realities.
+- **Acceptance**:
+  - Update with precise references to actual endpoints/screens and explicitly list “mock/demo vs real”.
 
-4. **P0 — BYOAI provider selection completeness: client onboarding missing Tavily key support**
+### P2 — Quality, documentation, and tests
 
-**Problem**: API key vault supports provider `tavily` (for search) (`apps/api/src/keys.ts`) but onboarding UI provider dropdown does not include Tavily.
+11) **P2 — Add WS contract tests for payload names + ignored fields**
 
-**Acceptance criteria**
+- **Evidence**: REST chat accepts `attachments/context_overrides/apiKey/provider` in `apps/api/src/routes/chat.ts`; WS has its own schema in `apps/api/src/wsOrchestrator.ts`.
+- **Acceptance**:
+  - Tests cover `completion_percent` naming, ignored fields behavior, and no-crash guarantee.
 
-- Onboarding API Keys screen supports Tavily (label + placeholder `tvly_...`) OR
-- Remove `tavily` from supported providers surfaced to user (if intentionally hidden).
+12) **P2 — Documentation: “What’s real today” page**
 
-**Likely files**
+- **Acceptance**:
+  - A short doc page listing current MVP architecture (Express + SQLite + WS/Yjs) vs spec’s future architecture.
 
-- `apps/client/src/screens/onboarding/ApiKeys.tsx`
-- `apps/api/src/keys.ts`
+13) **P2 — Course limit messaging: match server enforcement in all client flows**
 
-5. **P0 — WebSocket spec parity: document payload deltas (completion_percent, attachments ignored)**
-
-**Problem**: Spec §11.2 uses `completion%` (invalid identifier) but implementation uses `completion_percent` and ignores `attachments/context_overrides` (accepted but unused) in `wsOrchestrator.ts`.
-
-**Acceptance criteria**
-
-- Update docs/spec to show actual payload names and which fields are ignored.
-- Add a WS contract test that sends attachments/context_overrides and ensures no error.
-
-**Likely files**
-
-- `apps/api/src/wsOrchestrator.ts`
-- `apps/api/src/__tests__/ws-contract.test.ts`
-- `LearnFlow_Product_Spec.md` §11.2
-
-### P1 — Product quality + capability coherence
-
-6. **P1 — Update `IMPLEMENTED_VS_SPEC.md` (it is stale on Update Agent + subscription/billingMode + marketplace disclosure)**
-
-**Problem**: `IMPLEMENTED_VS_SPEC.md` is labeled Iter70 and inaccurately claims Update Agent is a stub generator; it now does RSS runs + locks + run history.
-
-**Acceptance criteria**
-
-- Update the doc to reflect current truth (Iter106): Update Agent routes, billingMode mock boundary, marketplace routing/disclosure semantics.
-
-**Likely files**
-
-- `IMPLEMENTED_VS_SPEC.md`
-
-7. **P1 — Spec §3 architecture cleanup: add “MVP architecture” appendix + mark production stack as future**
-
-**Acceptance criteria**
-
-- Add a short “MVP architecture (this repo)” section: Express/WS, SQLite, Yjs, no gRPC, no Kong.
-- Mark Postgres/Redis/S3/vector DB as planned.
-
-**Likely files**
-
-- `LearnFlow_Product_Spec.md`
-
-8. **P1 — Export Agent consistency: agent says exports are via Settings buttons; add deep-link or action chip**
-
-**Problem**: `packages/agents/src/export-agent/export-agent.ts` punts to Settings; Conversation action chips don’t guide user reliably.
-
-**Acceptance criteria**
-
-- When user asks “export”, assistant returns a UI action that navigates to Settings → Export (or triggers export endpoint selection).
-
-**Likely files**
-
-- `packages/agents/src/export-agent/export-agent.ts`
-- `apps/client/src/screens/Conversation.tsx` (action handling)
-
-9. **P1 — Marketplace agent disclosure copy: include mapping semantics (‘routes to built-in agent’) once per session**
-
-**Problem**: Current disclosure says “using an activated marketplace agent”, but in reality it maps to built-in runtime agents (no third-party code loading). Spec §10 even notes this, but user-facing disclosure should be more explicit.
-
-**Acceptance criteria**
-
-- Disclosure: “Activated marketplace agent selected; execution is currently routed to built-in agent: X.”
-
-**Likely files**
-
-- `apps/api/src/wsOrchestrator.ts`
-- `packages/core/src/orchestrator/intent-router.ts`
-
-10. **P1 — Course marketplace paid flow: keep mock billing boundaries consistent across all CTAs**
-
-**Acceptance criteria**
-
-- Any paid/enroll CTA that implies payment must say “Mock” and never suggest real purchase.
-- `billingMode` surfaced in client consistently.
-
-**Likely files**
-
-- `apps/client/src/screens/marketplace/CourseDetail.tsx`
-- `apps/api/src/routes/marketplace-full.ts`
-- shared plan defs
-
-### P2 — Fit/finish and tests
-
-11. **P2 — Add a regression test that `screenshot-mobile.mjs --outDir` works**
-
-**Acceptance criteria**
-
-- Lightweight node script test that asserts output path is respected.
-
-12. **P2 — Add docs: “How to run screenshot harnesses” + ports**
-
-**Acceptance criteria**
-
-- A short markdown doc in repo root or `apps/docs` describing `node screenshot-all.mjs`, `node screenshot-mobile.mjs`, required env vars, and expected output.
-
-13. **P2 — Mindmap collaboration truth: document what is real-time (Yjs) vs what is WS ‘suggestions’**
-
-**Acceptance criteria**
-
-- A small doc section that distinguishes:
-  - Yjs CRDT mindmap sync
-  - mindmap.update suggestion events
+- **Evidence**: client has FREE_COURSE_LIMIT=3 in `apps/client/src/screens/Dashboard.tsx`, but other creation entry points may not warn.
+- **Acceptance**:
+  - Any create-course entry point warns and links to Pricing.
 
 ---
 
-## Prior iterations (compressed)
+## Prior iterations (history — keep below)
 
-- **Iter105 DONE** — marketplace manifest routing + WS disclosure + pricing mock copy (commit `b8364ad`).
-- **Iter104 DONE** — server-driven subscription + shared plan defs + billingMode mock boundary (commit `a8ee923`).
-- **Iter101 DONE** — parity audit + fix list (superseded by Iter106).
+- **Iter107 DONE** — commit `1cadf8e` (see git for shipped items).
+
+- **Iter106 DONE** — parity audit + fix list baseline (commit `a19a672`).
+  - Note: Iter106 tasks may still apply; Iter108 supersedes priority ordering.

@@ -28,12 +28,14 @@ const CATEGORIES = ['All', 'Study', 'Research', 'Assessment', 'Creative', 'Produ
 type Category = (typeof CATEGORIES)[number];
 type SortOption = 'popularity' | 'rating' | 'newest';
 
-const AGENTS: Agent[] = [
+// NOTE: These are only used as UI fallbacks when the marketplace API returns no agents.
+// Real marketplace agents are fetched from `GET /api/v1/marketplace/agents`.
+const AGENTS_FALLBACK: Agent[] = [
   {
     id: 'a1',
-    name: 'Code Tutor',
+    name: 'Code Tutor (Demo)',
     description:
-      'Reviews and explains code with detailed feedback. Supports Python, JavaScript, TypeScript, Rust, and Go.',
+      'Demo agent. Reviews and explains code with detailed feedback. Supports Python, JavaScript, TypeScript, Rust, and Go.',
     capabilities: ['code_review', 'explain_code'],
     tier: 'free',
     rating: 4.7,
@@ -44,8 +46,8 @@ const AGENTS: Agent[] = [
   },
   {
     id: 'a2',
-    name: 'Research Pro',
-    description: 'Deep research with academic paper access and citation generation.',
+    name: 'Research Pro (Demo)',
+    description: 'Demo agent. Deep research with academic paper access and citation generation.',
     capabilities: ['deep_research', 'paper_analysis'],
     tier: 'pro',
     rating: 4.9,
@@ -53,80 +55,6 @@ const AGENTS: Agent[] = [
     requiredProvider: 'OpenAI',
     category: 'Research',
     official: true,
-  },
-  {
-    id: 'a3',
-    name: 'Math Solver',
-    description: 'Step-by-step math problem solving with visual proof checking.',
-    capabilities: ['math_solve', 'proof_check'],
-    tier: 'free',
-    rating: 4.5,
-    usageCount: 2500,
-    requiredProvider: 'OpenAI',
-    category: 'Study',
-    official: true,
-  },
-  {
-    id: 'a4',
-    name: 'Language Coach',
-    description: 'Personalized language learning with real-time conversation practice.',
-    capabilities: ['translation', 'grammar_check', 'conversation'],
-    tier: 'pro',
-    rating: 4.6,
-    usageCount: 1200,
-    requiredProvider: 'Anthropic',
-    category: 'Study',
-    official: false,
-  },
-  {
-    id: 'a5',
-    name: 'Quiz Master',
-    description:
-      'Generates adaptive quizzes from any learning material with spaced repetition scheduling.',
-    capabilities: ['quiz_generation', 'spaced_repetition'],
-    tier: 'free',
-    rating: 4.4,
-    usageCount: 980,
-    requiredProvider: 'OpenAI',
-    category: 'Assessment',
-    official: true,
-  },
-  {
-    id: 'a6',
-    name: 'Creative Writer',
-    description: 'Helps with essays, stories, and creative writing with style feedback.',
-    capabilities: ['creative_writing', 'style_analysis'],
-    tier: 'free',
-    rating: 4.3,
-    usageCount: 760,
-    requiredProvider: 'Anthropic',
-    category: 'Creative',
-    official: false,
-  },
-  {
-    id: 'a7',
-    name: 'Study Planner',
-    description:
-      'Creates personalized study schedules based on goals, deadlines, and learning pace.',
-    capabilities: ['scheduling', 'goal_tracking'],
-    tier: 'free',
-    rating: 4.2,
-    usageCount: 1450,
-    requiredProvider: 'OpenAI',
-    category: 'Productivity',
-    official: true,
-  },
-  {
-    id: 'a8',
-    name: 'Data Analyst',
-    description: 'Analyzes datasets, creates visualizations, and explains statistical concepts.',
-    capabilities: ['data_analysis', 'visualization'],
-    tier: 'pro',
-    rating: 4.8,
-    usageCount: 620,
-    requiredProvider: 'OpenAI',
-    category: 'Research',
-    official: false,
   },
 ];
 
@@ -136,16 +64,64 @@ export function AgentMarketplace() {
   const { toast } = useToast();
   const [activatedIds, setActivatedIds] = useState<Set<string>>(new Set());
   const [activating, setActivating] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!AGENTS.length);
+  const [loading, setLoading] = useState(true);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [agentsError, setAgentsError] = useState<string>('');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<Category>('All');
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
 
+  // Load marketplace agents from API. If none are returned, fall back to demo agents.
   useEffect(() => {
-    if (!loading) return;
-    const t = setTimeout(() => setLoading(false), 400);
-    return () => clearTimeout(t);
-  }, [loading]);
+    const token = localStorage.getItem('learnflow-token');
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    setLoading(true);
+    setAgentsError('');
+    fetch('/api/v1/marketplace/agents', { headers })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return await r.json();
+      })
+      .then((data) => {
+        const rows = Array.isArray(data?.agents) ? data.agents : [];
+
+        const normalized: Agent[] = rows.map((a: any) => {
+          const name = String(a?.name || 'Untitled Agent');
+          const description = String(a?.description || '');
+
+          // Best-effort: derive lightweight labels from manifest when possible.
+          const manifest = (a?.manifest && typeof a.manifest === 'object') ? a.manifest : {};
+          const capabilities = Array.isArray((manifest as any)?.capabilities)
+            ? (manifest as any).capabilities.map((c: any) => String(c))
+            : [];
+          const requiredProvider =
+            String((manifest as any)?.provider || (manifest as any)?.requiredProvider || '') ||
+            'BYOAI';
+
+          return {
+            id: String(a?.id || ''),
+            name,
+            description,
+            capabilities,
+            tier: String((manifest as any)?.tier || 'pro'),
+            rating: Number((manifest as any)?.rating || 0),
+            usageCount: Number((manifest as any)?.usageCount || 0),
+            requiredProvider,
+            category: 'All',
+            official: false,
+          };
+        });
+
+        setAgents(normalized.length ? normalized : AGENTS_FALLBACK);
+      })
+      .catch((_e) => {
+        setAgentsError('Could not load marketplace agents.');
+        setAgents(AGENTS_FALLBACK);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   // Load activated agents for this user from the API (so activation affects runtime).
   useEffect(() => {
@@ -203,8 +179,10 @@ export function AgentMarketplace() {
   };
 
   const filteredAgents = useMemo(() => {
-    const filtered = AGENTS.filter((a) => {
-      if (category !== 'All' && a.category !== category) return false;
+    const filtered = agents.filter((a) => {
+      // Some agents fetched from the API won't have a category; treat as All.
+      const effectiveCategory = (a.category || 'All') as Category;
+      if (category !== 'All' && effectiveCategory !== category) return false;
       if (search) {
         const q = search.toLowerCase();
         return a.name.toLowerCase().includes(q) || a.description.toLowerCase().includes(q);
@@ -217,7 +195,7 @@ export function AgentMarketplace() {
     // newest: reverse order by id
     else sorted.sort((a, b) => b.id.localeCompare(a.id));
     return sorted;
-  }, [search, category, sortBy]);
+  }, [agents, search, category, sortBy]);
 
   return (
     <section
@@ -248,7 +226,7 @@ export function AgentMarketplace() {
               </span>
             </h2>
             <div className="flex flex-wrap gap-2">
-              {AGENTS.filter((a) => activatedIds.has(a.id)).map((a) => (
+              {agents.filter((a) => activatedIds.has(a.id)).map((a) => (
                 <span
                   key={a.id}
                   className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-sm"
@@ -309,6 +287,11 @@ export function AgentMarketplace() {
           <SkeletonMarketplace />
         ) : (
           <>
+            {agentsError && (
+              <div className="mb-4 text-sm text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/30 rounded-xl px-4 py-3">
+                {agentsError} Showing demo agents.
+              </div>
+            )}
             {filteredAgents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
                 <IconSearch className="w-10 h-10 text-gray-400" />
@@ -411,7 +394,7 @@ export function AgentMarketplace() {
         {/* Agent count summary */}
         <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           <p>
-            Showing {filteredAgents.length} of {AGENTS.length} agents
+            Showing {filteredAgents.length} of {agents.length} agents
             {category !== 'All' && ` in ${category}`}
             {search && ` matching "${search}"`}
           </p>

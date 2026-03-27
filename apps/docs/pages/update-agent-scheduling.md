@@ -4,6 +4,8 @@ The **Update Agent** checks your configured RSS/Atom sources and creates notific
 
 In this MVP, **LearnFlow does not schedule runs by itself**. Scheduling is **external** (you run a job that calls the API).
 
+For local development only, you can enable an **in-process dev scheduler** via environment variables (see below).
+
 ## What runs
 
 Call the canonical Update Agent tick endpoint:
@@ -19,8 +21,18 @@ curl -X POST \
 Notes:
 
 - Runs are **best-effort** and may miss updates.
+- The endpoint is **Pro-only**.
 - LearnFlow applies a **global per-user lock** to avoid overlapping runs. If a tick is already in progress, the API returns **409 Conflict**.
 - Sources can be configured under **Settings → Update Agent**.
+
+## Dev-only scheduler toggle
+
+If you want the API process to _attempt_ periodic ticks during local development, start the API with:
+
+- `UPDATE_AGENT_DEV_SCHEDULER=true`
+- `UPDATE_AGENT_DEV_INTERVAL_MS=900000` (15 minutes)
+
+This is intentionally **dev-only**. In production, use an external scheduler (cron/systemd/Kubernetes).
 
 ## Cron (Linux)
 

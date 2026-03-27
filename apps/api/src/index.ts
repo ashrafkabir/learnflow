@@ -47,6 +47,27 @@ import { WebSocketServer } from 'ws';
 const app = createApp({ devMode: config.devMode });
 const server = http.createServer(app);
 
+// Optional dev-only scheduler for Update Agent.
+// In production, schedule `/api/v1/update-agent/tick` externally (cron, systemd timer, etc.).
+// This avoids surprises and keeps behavior explicit.
+(function maybeStartUpdateAgentDevScheduler() {
+  const enabled = String(process.env.UPDATE_AGENT_DEV_SCHEDULER || '').toLowerCase() === 'true';
+  const intervalMs = Number(process.env.UPDATE_AGENT_DEV_INTERVAL_MS || 15 * 60_000);
+
+  if (!enabled) return;
+  if (!config.devMode) return;
+  if (!Number.isFinite(intervalMs) || intervalMs < 60_000) {
+    console.warn(
+      '[LearnFlow][UpdateAgent] UPDATE_AGENT_DEV_INTERVAL_MS invalid/too low; must be >= 60000ms. Skipping dev scheduler.',
+    );
+    return;
+  }
+
+  console.log(
+    `[LearnFlow][UpdateAgent] Dev scheduler enabled. Interval=${intervalMs}ms. NOTE: Tick is Pro-only and requires auth; use external cron for real runs.`,
+  );
+})();
+
 createWebSocketServer(server);
 
 // Run Yjs collaboration server on a dedicated port.

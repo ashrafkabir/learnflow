@@ -25,6 +25,8 @@ const DRY_RUN =
 const DIR =
   process.env.SCREENSHOT_DIR ||
   process.env.SCREENSHOT_OUT_DIR ||
+  // Preferred: positional first arg (node screenshot-mobile.mjs <outDir>)
+  process.argv[2] ||
   readArg('outDir') ||
   readArg('out') ||
   (AUTHED ? 'evals/screenshots/iter45-mobile-authed' : 'evals/screenshots/iter45-mobile');

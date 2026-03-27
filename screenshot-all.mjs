@@ -1,5 +1,7 @@
 /* eslint-disable no-undef */
 import { chromium } from 'playwright';
+import fs from 'node:fs';
+import path from 'node:path';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3001';
 function readArg(name) {
@@ -13,9 +15,13 @@ const DATE = new Date().toISOString().slice(0, 10);
 const DIR =
   process.env.SCREENSHOT_DIR ||
   process.env.SCREENSHOT_OUT ||
+  // Preferred: positional first arg (node screenshot-all.mjs <outDir>)
+  process.argv[2] ||
   readArg('outDir') ||
   readArg('out') ||
   `learnflow/screenshots/iter${ITER}-${DATE}`;
+
+console.log(`Using output dir: ${path.resolve(DIR)}`);
 
 const PUBLIC_PAGES = [
   ['/', 'landing-home'],
@@ -69,9 +75,6 @@ async function dismissOverlays(page) {
     /* ignore */
   }
 }
-
-import fs from 'node:fs';
-import path from 'node:path';
 
 fs.mkdirSync(path.resolve(DIR), { recursive: true });
 
