@@ -16,6 +16,8 @@ const addKeySchema = z.object({
   apiKey: z.string().min(1),
   label: z.string().optional(),
   validate: z.boolean().optional(),
+  // Iter97: If true, this key becomes the sole active key for the provider.
+  activate: z.boolean().optional(),
 });
 
 const validateKeySchema = z.object({
@@ -29,10 +31,10 @@ const deleteKeySchema = z.object({
 
 /** POST /api/v1/keys — store an encrypted API key */
 router.post('/', validateBody(addKeySchema), async (req: Request, res: Response) => {
-  const { provider, apiKey, label, validate } = req.body;
+  const { provider, apiKey, label, validate, activate } = req.body;
   const userId = req.user!.sub;
 
-  const { encrypted, iv } = encrypt(apiKey);
+  const { encrypted, iv, tag, encVersion } = encrypt(apiKey);
   const lastFour = apiKey.slice(-4);
 
   let validationStatus: 'unknown' | 'valid' | 'invalid' = 'unknown';
@@ -51,12 +53,19 @@ router.post('/', validateBody(addKeySchema), async (req: Request, res: Response)
     }
   }
 
+  // Active-per-provider semantics: if activate=true, deactivate all other keys for this provider.
+  if (activate) {
+    db.deactivateKeysForProviderByUser(userId, provider);
+  }
+
   const keyRecord: DbApiKey = {
     id: uuidv4(),
     userId,
     provider,
     encryptedKey: encrypted,
     iv,
+    tag,
+    encVersion,
     label: label || `${provider} key`,
     lastFour,
     active: true,
@@ -95,6 +104,28 @@ router.post('/', validateBody(addKeySchema), async (req: Request, res: Response)
 router.get('/', (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const keys = db.getKeysByUserId(userId);
+
+  // Iter97: Enforce active-per-provider semantics at read-time for legacy rows.
+  // If multiple actives exist for a provider, keep most recently updated active.
+  const byProvider: Record<string, DbApiKey[]> = {};
+  for (const k of keys) {
+    byProvider[k.provider] ||= [];
+    byProvider[k.provider].push(k);
+  }
+
+  for (const provider of Object.keys(byProvider)) {
+    const list = byProvider[provider];
+    const actives = list.filter((k) => k.active);
+    if (actives.length > 1) {
+      const sorted = [...actives].sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      );
+      const keep = sorted[0];
+      for (const k of sorted.slice(1)) db.setApiKeyActive(k.id, false);
+      // Update local copies so response matches DB update.
+      for (const k of list) k.active = k.id === keep.id;
+    }
+  }
 
   const sinceMonth = new Date();
   sinceMonth.setDate(1);
@@ -183,5 +214,26 @@ router.delete('/:provider', validateParams(deleteKeySchema), (req: Request, res:
   for (const k of matches) db.deleteApiKey(k.id);
   res.status(204).send();
 });
+
+/** POST /api/v1/keys/:id/activate — activate a specific key for its provider */
+router.post(
+  '/:id/activate',
+  validateParams(z.object({ id: z.string().min(1) })),
+  (req: Request, res: Response) => {
+    const userId = req.user!.sub;
+    const id = String((req.params as any).id);
+
+    const key = db.findApiKeyById(id);
+    if (!key || key.userId !== userId) {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Key not found' });
+      return;
+    }
+
+    db.deactivateKeysForProviderByUser(userId, key.provider);
+    db.setApiKeyActive(key.id, true);
+
+    res.status(200).json({ id: key.id, provider: key.provider, active: true });
+  },
+);
 
 export const keysRouter = router;

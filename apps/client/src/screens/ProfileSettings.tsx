@@ -4,7 +4,7 @@ import { useApp, apiGet, apiPost, apiDelete } from '../context/AppContext.js';
 import { useToast } from '../components/Toast.js';
 import { useTheme } from '../design-system/ThemeProvider.js';
 import { Button } from '../components/Button.js';
-import { fetchUsageSummary, type UsageSummary } from '../lib/usage';
+import { fetchUsageDashboard, type UsageDashboard } from '../lib/usage';
 import {
   IconBrainSpark,
   IconChart,
@@ -40,7 +40,8 @@ export function ProfileSettings() {
     }>
   >([]);
 
-  const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [usage, setUsage] = useState<UsageDashboard | null>(null);
+  const [usageRange, setUsageRange] = useState<7 | 30 | 90>(7);
   const [serverRole, setServerRole] = useState<string>('');
 
   const [dataSummary, setDataSummary] = useState<any>(null);
@@ -50,13 +51,13 @@ export function ProfileSettings() {
   useEffect(() => {
     (async () => {
       try {
-        const summary = await fetchUsageSummary(apiGet, 7);
-        setUsage(summary);
+        const dash = await fetchUsageDashboard(apiGet, usageRange);
+        setUsage(dash);
       } catch {
         // best-effort
       }
     })();
-  }, [apiGet]);
+  }, [apiGet, usageRange]);
 
   const loadDataSummary = React.useCallback(async () => {
     setDataSummaryError('');
@@ -319,9 +320,24 @@ export function ProfileSettings() {
 
           {/* Usage */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-3 flex flex-col">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Usage (last 7 days)
-            </h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Usage</h2>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-500 dark:text-gray-300" htmlFor="usage-range">
+                  Range
+                </label>
+                <select
+                  id="usage-range"
+                  className="text-sm px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                  value={usageRange}
+                  onChange={(e) => setUsageRange(Number(e.target.value) as 7 | 30 | 90)}
+                >
+                  <option value={7}>7 days</option>
+                  <option value={30}>30 days</option>
+                  <option value={90}>90 days</option>
+                </select>
+              </div>
+            </div>
             <div className="text-sm text-gray-800/80 dark:text-gray-200 flex items-center justify-between">
               <span>Total tokens</span>
               <span className="font-mono">{usage ? usage.totalTokens : 0}</span>
@@ -330,13 +346,13 @@ export function ProfileSettings() {
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="text-xs text-gray-500 dark:text-gray-300">Top agents</div>
                 <ul className="mt-2 space-y-1">
-                  {(usage?.topAgents || []).slice(0, 5).map((a) => (
+                  {(usage?.byAgent || []).slice(0, 5).map((a) => (
                     <li key={a.agentName} className="flex items-center justify-between text-sm">
                       <span className="text-gray-900 dark:text-white">{a.agentName}</span>
                       <span className="font-mono text-gray-700 dark:text-gray-200">{a.total}</span>
                     </li>
                   ))}
-                  {(!usage || (usage.topAgents || []).length === 0) && (
+                  {(!usage || (usage.byAgent || []).length === 0) && (
                     <li className="text-sm text-gray-500 dark:text-gray-300">No usage yet</li>
                   )}
                 </ul>
@@ -344,13 +360,13 @@ export function ProfileSettings() {
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="text-xs text-gray-500 dark:text-gray-300">Top providers</div>
                 <ul className="mt-2 space-y-1">
-                  {(usage?.topProviders || []).slice(0, 5).map((p) => (
+                  {(usage?.byProvider || []).slice(0, 5).map((p) => (
                     <li key={p.provider} className="flex items-center justify-between text-sm">
                       <span className="text-gray-900 dark:text-white capitalize">{p.provider}</span>
                       <span className="font-mono text-gray-700 dark:text-gray-200">{p.total}</span>
                     </li>
                   ))}
-                  {(!usage || (usage.topProviders || []).length === 0) && (
+                  {(!usage || (usage.byProvider || []).length === 0) && (
                     <li className="text-sm text-gray-500 dark:text-gray-300">No usage yet</li>
                   )}
                 </ul>

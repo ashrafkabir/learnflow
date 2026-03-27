@@ -2049,6 +2049,10 @@ router.post('/:id/lessons/:lessonId/notes', async (req: Request, res: Response) 
         prompt = `Create a concise, well-structured summary of this lesson. Use bullet points and bold key terms. Keep it under 500 words.\n\nLesson: "${lesson.title}"\n\n${lessonText}`;
       } else if (format === 'cornell') {
         prompt = `Create Cornell-style notes for this lesson with three clear sections:\n1. **Cue Questions** (left column) — 5-7 key questions\n2. **Notes** (right column) — detailed notes organized by topic\n3. **Summary** — a concise paragraph summarizing the main ideas\n\nUse markdown formatting.\n\nLesson: "${lesson.title}"\n\n${lessonText}`;
+      } else if (format === 'zettelkasten') {
+        prompt = `Create Zettelkasten-style notes for this lesson as a small set of atomic notes.\n\nRequirements:\n- 4–8 notes\n- Each note has: Title, 1–3 short paragraphs, and 2–5 backlinks/tags\n- Use markdown headings.\n\nLesson: "${lesson.title}"\n\n${lessonText}`;
+      } else if (format === 'flashcards') {
+        prompt = `Create a set of study flashcards for this lesson.\n\nRequirements:\n- 8–15 flashcards\n- Each flashcard has: Front (question/prompt) and Back (answer/explanation)\n- Use markdown format with clear Front/Back labels.\n\nLesson: "${lesson.title}"\n\n${lessonText}`;
       } else if (format === 'mindmap') {
         prompt = `Create a hierarchical mind map outline for this lesson. Use indented bullet points to show relationships:\n- Main topic\n  - Subtopic 1\n    - Detail\n    - Detail\n  - Subtopic 2\n    - Detail\n\nLesson: "${lesson.title}"\n\n${lessonText}`;
       }

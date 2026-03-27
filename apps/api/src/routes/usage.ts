@@ -33,4 +33,28 @@ router.get('/summary', (req: Request, res: Response) => {
   });
 });
 
+/** GET /api/v1/usage/dashboard?range=7|30|90
+ * Iter97: expanded usage dashboard for UI.
+ */
+router.get('/dashboard', (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const range = parseDays(req.query.range, 7);
+  const since = new Date(Date.now() - range * 24 * 60 * 60 * 1000);
+
+  const totalTokens = db.getUsageTotalSince(userId, since);
+  const daily = db.getUsageByDaySince(userId, since);
+
+  const byAgent = db.getTopAgentsSince(userId, since, 50);
+  const byProvider = db.getUsageByProviderSince(userId, since);
+
+  res.status(200).json({
+    range,
+    since: since.toISOString(),
+    totalTokens,
+    daily,
+    byAgent,
+    byProvider,
+  });
+});
+
 export const usageRouter = router;

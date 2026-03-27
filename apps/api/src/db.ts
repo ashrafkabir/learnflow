@@ -169,6 +169,7 @@ if (!isTest) {
     // Iter70: lesson_sources gained missingReason
 
     // Iter85: api_keys gained validationStatus + validatedAt
+    // Iter97: api_keys gained tag + encVersion (AEAD)
     try {
       if (!hasColumn('api_keys', 'validationStatus')) {
         sqlite.exec(
@@ -177,6 +178,12 @@ if (!isTest) {
       }
       if (!hasColumn('api_keys', 'validatedAt')) {
         sqlite.exec(`ALTER TABLE api_keys ADD COLUMN validatedAt TEXT;`);
+      }
+      if (!hasColumn('api_keys', 'tag')) {
+        sqlite.exec(`ALTER TABLE api_keys ADD COLUMN tag TEXT NOT NULL DEFAULT '';`);
+      }
+      if (!hasColumn('api_keys', 'encVersion')) {
+        sqlite.exec(`ALTER TABLE api_keys ADD COLUMN encVersion TEXT NOT NULL DEFAULT 'v1_cbc';`);
       }
     } catch {
       // If api_keys doesn't exist yet, CREATE TABLE below will handle it.
@@ -364,6 +371,8 @@ sqlite.exec(`
     provider TEXT NOT NULL,
     encryptedKey TEXT NOT NULL,
     iv TEXT NOT NULL DEFAULT '',
+    tag TEXT NOT NULL DEFAULT '',
+    encVersion TEXT NOT NULL DEFAULT 'v1_cbc',
     label TEXT NOT NULL DEFAULT '',
     lastFour TEXT NOT NULL DEFAULT '',
     active INTEGER NOT NULL DEFAULT 1,
@@ -716,11 +725,15 @@ const stmts = {
 
   // API keys
   insertApiKey: sqlite.prepare(
-    `INSERT INTO api_keys (id, userId, provider, encryptedKey, iv, label, lastFour, active, validationStatus, validatedAt, expiresAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO api_keys (id, userId, provider, encryptedKey, iv, tag, encVersion, label, lastFour, active, validationStatus, validatedAt, expiresAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   getKeysByUserId: sqlite.prepare(`SELECT * FROM api_keys WHERE userId = ?`),
   findApiKeyById: sqlite.prepare(`SELECT * FROM api_keys WHERE id = ?`),
   deleteApiKey: sqlite.prepare(`DELETE FROM api_keys WHERE id = ?`),
+  setApiKeyActive: sqlite.prepare(`UPDATE api_keys SET active = ? WHERE id = ?`),
+  deactivateKeysForProviderByUser: sqlite.prepare(
+    `UPDATE api_keys SET active = 0 WHERE userId = ? AND provider = ?`,
+  ),
 
   // Token usage
   insertTokenUsage: sqlite.prepare(
@@ -1114,6 +1127,8 @@ export interface DbApiKey {
   provider: string;
   encryptedKey: string;
   iv: string;
+  tag: string;
+  encVersion: string;
   label: string;
   lastFour: string;
   active: boolean;
@@ -1162,6 +1177,8 @@ function rowToUser(row: any): DbUser | undefined {
 function rowToApiKey(row: any): DbApiKey {
   return {
     ...row,
+    tag: String(row.tag || ''),
+    encVersion: String(row.encVersion || 'v1_cbc'),
     active: !!row.active,
     validationStatus: (row.validationStatus || 'unknown') as any,
     validatedAt: row.validatedAt ? new Date(row.validatedAt) : undefined,
@@ -1254,6 +1271,8 @@ class SqliteDb {
       key.provider,
       key.encryptedKey,
       key.iv,
+      key.tag || '',
+      key.encVersion || 'v1_cbc',
       key.label,
       key.lastFour,
       key.active ? 1 : 0,
@@ -1276,6 +1295,14 @@ class SqliteDb {
 
   deleteApiKey(id: string): void {
     stmts.deleteApiKey.run(id);
+  }
+
+  setApiKeyActive(id: string, active: boolean): void {
+    (stmts as any).setApiKeyActive.run(active ? 1 : 0, id);
+  }
+
+  deactivateKeysForProviderByUser(userId: string, provider: string): void {
+    (stmts as any).deactivateKeysForProviderByUser.run(userId, provider);
   }
 
   addTokenUsage(record: TokenUsageRecord): void {

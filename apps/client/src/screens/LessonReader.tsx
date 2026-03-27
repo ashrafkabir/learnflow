@@ -1782,6 +1782,18 @@ export function LessonReader() {
                     icon: <IconClipboard className="w-4 h-4" />,
                   },
                   {
+                    key: 'zettelkasten',
+                    label: 'Zettelkasten',
+                    desc: 'Atomic linked notes',
+                    icon: <IconBook className="w-4 h-4" />,
+                  },
+                  {
+                    key: 'flashcards',
+                    label: 'Flashcards',
+                    desc: 'Q/A study cards',
+                    icon: <IconTestTube className="w-4 h-4" />,
+                  },
+                  {
                     key: 'mindmap',
                     label: 'Mind Map',
                     desc: 'Hierarchical outline',

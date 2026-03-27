@@ -31,7 +31,12 @@ export function getApiKeyForProvider(params: {
   const active = keys.find((k) => k.active && k.provider === provider);
   if (active) {
     try {
-      const apiKey = decrypt(active.encryptedKey, active.iv);
+      const apiKey = decrypt({
+        encrypted: active.encryptedKey,
+        iv: active.iv,
+        tag: (active as any).tag,
+        encVersion: (active as any).encVersion,
+      });
       return { apiKey, source: { kind: 'user_key', keyId: active.id } };
     } catch {
       // fall through

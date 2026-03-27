@@ -137,7 +137,12 @@ describe('S02-A06: Store API key encrypted', () => {
     expect(dbKey!.iv).toBeDefined();
 
     // Verify we can decrypt it
-    const decrypted = decrypt(dbKey!.encryptedKey, dbKey!.iv);
+    const decrypted = decrypt({
+      encrypted: dbKey!.encryptedKey,
+      iv: dbKey!.iv,
+      tag: (dbKey as any).tag,
+      encVersion: (dbKey as any).encVersion,
+    });
     expect(decrypted).toBe('sk-testkey1234567890abcdefghijk');
   });
 });
@@ -248,12 +253,18 @@ describe('S02-A11: Auth middleware types req.user', () => {
 describe('S02-A12: Encryption roundtrip', () => {
   it('encrypts and decrypts back to original', () => {
     const original = 'sk-test1234567890abcdefghijklmnopqr';
-    const { encrypted, iv } = encrypt(original);
+    const out = encrypt(original);
 
-    expect(encrypted).not.toBe(original);
-    expect(iv).toBeDefined();
+    expect(out.encrypted).not.toBe(original);
+    expect(out.iv).toBeDefined();
+    expect(out.tag).toBeDefined();
 
-    const decrypted = decrypt(encrypted, iv);
+    const decrypted = decrypt({
+      encrypted: out.encrypted,
+      iv: out.iv,
+      tag: out.tag,
+      encVersion: out.encVersion,
+    });
     expect(decrypted).toBe(original);
   });
 
@@ -267,8 +278,12 @@ describe('S02-A12: Encryption roundtrip', () => {
     expect(r1.iv).not.toBe(r2.iv);
 
     // Both decrypt to same value
-    expect(decrypt(r1.encrypted, r1.iv)).toBe(original);
-    expect(decrypt(r2.encrypted, r2.iv)).toBe(original);
+    expect(
+      decrypt({ encrypted: r1.encrypted, iv: r1.iv, tag: r1.tag, encVersion: r1.encVersion }),
+    ).toBe(original);
+    expect(
+      decrypt({ encrypted: r2.encrypted, iv: r2.iv, tag: r2.tag, encVersion: r2.encVersion }),
+    ).toBe(original);
   });
 });
 

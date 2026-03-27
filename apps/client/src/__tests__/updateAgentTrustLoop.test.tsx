@@ -115,8 +115,9 @@ describe('Update Agent trust loop UI', () => {
 
     await new Promise((r) => setTimeout(r, 50));
 
+    // The client uses a configurable apiBase() in tests; match on suffix.
     expect(
-      calls.some((c) => c.url.includes('/api/v1/notifications/generate') && c.method === 'POST'),
+      calls.some((c) => c.url.endsWith('/api/v1/notifications/generate') && c.method === 'POST'),
     ).toBe(true);
   });
 });
