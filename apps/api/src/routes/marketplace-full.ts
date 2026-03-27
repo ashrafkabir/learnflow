@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { sendError } from '../errors.js';
 import { validateBody, validateQuery } from '../validation.js';
 import {
+  db,
   dbMarketplaceCourses,
   dbMarketplaceEnrollments,
   dbMarketplacePayouts,
@@ -13,6 +14,7 @@ import {
   dbMarketplaceAgentSubmissions,
   dbMarketplace,
 } from '../db.js';
+import { CAPABILITY_MATRIX } from '../lib/capabilities.js';
 
 const router = Router();
 
@@ -159,6 +161,33 @@ router.post(
   ['/publish', '/courses'],
   validateBody(publishCourseSchema),
   (req: Request, res: Response) => {
+    const tierFromToken = String(req.user?.tier || 'free') as 'free' | 'pro' | string;
+    const user = db.findUserById(req.user!.sub);
+    const effectiveTier = (user?.tier || tierFromToken) as 'free' | 'pro' | string;
+
+    const enabled =
+      effectiveTier === 'pro' ? CAPABILITY_MATRIX.pro.enabled : CAPABILITY_MATRIX.free.enabled;
+    if (!enabled['marketplace.publish']) {
+      sendError(res, req, {
+        status: 403,
+        code: 'forbidden',
+        message: 'Marketplace publishing is not enabled for your plan.',
+      });
+      return;
+    }
+
+    // Policy (Iter102): publishing is allowed for both Free and Pro, but paid publishing is Pro-only.
+    const requestedPrice = Number((req.body as any)?.price || 0);
+    if (requestedPrice > 0 && effectiveTier !== 'pro') {
+      sendError(res, req, {
+        status: 403,
+        code: 'forbidden',
+        message: 'Paid course publishing requires Pro. Set price to 0 or upgrade.',
+        details: { tier: effectiveTier, price: requestedPrice },
+      });
+      return;
+    }
+
     const data = req.body;
     // Map client payloads (`lessonCount`, `attributionCount`, `readabilityScore`) if present; otherwise rely on defaults.
     const lessonCount =

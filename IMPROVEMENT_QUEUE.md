@@ -1477,3 +1477,25 @@ Status: **DONE**
 
 - `npm test` passes.
 - Manual WS smoke: Conversation shows streaming + agent activity pills.
+
+---
+
+## Iteration 102 — Spec ↔ Implementation Audit (re-run) + Builder Task List
+
+Status: **DONE**
+
+### Completed tasks
+
+- **P0 — Marketplace publish gating (spec aligned)**
+  - Policy: Free can publish **free** courses only (price=0). Pro can publish free + **paid**.
+  - Implemented in capability matrices (client + api) and enforced server-side in `/api/v1/marketplace/publish`.
+  - Tests updated/added.
+
+- **P2 — Screenshot harness output naming**
+  - `screenshot-all.mjs` now supports `--outDir` (and `--out`) and no longer hardcodes historical iter folder naming.
+
+### Evidence
+
+- Local screenshots: `learnflow/screenshots/iter102/run-001/`
+- OneDrive mirror: `~/onedrive-learnflow/learnflow/learnflow/screenshots/iter102/run-001/`
+- Build log: `BUILD_LOG_ITER102.md`

@@ -2,11 +2,19 @@
 import { chromium } from 'playwright';
 
 const BASE = process.env.BASE_URL || 'http://localhost:3001';
-const ITER = process.env.ITERATION || process.env.ITER || '61';
+function readArg(name) {
+  const idx = process.argv.indexOf(`--${name}`);
+  if (idx === -1) return undefined;
+  return process.argv[idx + 1];
+}
+
+const ITER = process.env.ITERATION || process.env.ITER || readArg('iter') || '102';
 const DATE = new Date().toISOString().slice(0, 10);
 const DIR =
   process.env.SCREENSHOT_DIR ||
   process.env.SCREENSHOT_OUT ||
+  readArg('outDir') ||
+  readArg('out') ||
   `learnflow/screenshots/iter${ITER}-${DATE}`;
 
 const PUBLIC_PAGES = [
@@ -61,6 +69,11 @@ async function dismissOverlays(page) {
     /* ignore */
   }
 }
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+fs.mkdirSync(path.resolve(DIR), { recursive: true });
 
 const browser = await chromium.launch();
 
