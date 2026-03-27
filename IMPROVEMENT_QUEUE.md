@@ -4699,7 +4699,7 @@ TODO (planner did not sync):
 
 ## Iteration 97 — PROOF OF MULTI-USER COLLAB + UPDATE AGENT TIER GATING/OBSERVABILITY + PROVENANCE DURABILITY + BILLING HONESTY
 
-Status: **PLANNED** (planner)
+Status: **PARTIAL (P0.2–P0.4 DONE, P0.1 BLOCKED on multi-user Yjs E2E proof)**
 
 Planner evidence (Iter97):
 
