@@ -385,7 +385,7 @@ export function HomePage() {
           {[
             {
               icon: <IconLock className="w-4 h-4" />,
-              label: 'API key encryption at rest (AES-256-CBC; no AEAD in MVP)',
+              label: 'API key encryption at rest (AES-256-GCM, AEAD)',
             },
             { icon: <IconShield className="w-4 h-4" />, label: 'Security-first (MVP)' },
             { icon: <IconGlobe className="w-4 h-4" />, label: 'GDPR Ready' },

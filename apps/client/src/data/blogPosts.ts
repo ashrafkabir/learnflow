@@ -156,15 +156,15 @@ LearnFlow lets you bring your own API keys. Here's why:
 
 ### You Control Your Keys
 
-Your API keys are encrypted at rest server-side (AES-256-CBC) before storage:
+Your API keys are encrypted at rest server-side (AES-256-GCM, AEAD) before storage:
 
 \`\`\`typescript
 // Server-side encryption (MVP)
-const { encrypted, iv } = encrypt(plaintextKey); // aes-256-cbc
+const { encrypted, iv, tag } = encrypt(plaintextKey); // aes-256-gcm (AEAD)
 // Keys are NEVER returned in plaintext
 \`\`\`
 
-We store the encrypted key and IV. Only authenticated requests can decrypt and use them. Keys are transmitted over TLS.
+We store the encrypted key, IV, and auth tag. Only authenticated requests can decrypt and use them. Keys are transmitted over TLS.
 
 ### You Control Your Costs
 

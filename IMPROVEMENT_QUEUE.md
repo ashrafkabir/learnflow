@@ -526,3 +526,271 @@ Sync these artifacts to OneDrive per standard destination (`onedrive:Documents/A
 - `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
 - `/home/aifactory/.openclaw/workspace/learnflow/learnflow/screenshots/iter96/run-001/`
 - Any build logs created (`learnflow/BUILD_LOG_ITER96.md`)
+
+---
+
+## Iteration 98 — Spec-to-implementation reality check (Vault/Export/Marketplace/Realtime)
+
+**Status:** DONE
+
+### Top 3 gaps (summary)
+
+1. **Mobile screenshot harness is flaky**: `screenshot-mobile.mjs` crashes during `page.evaluate()` due to navigation teardown; we only captured partial mobile coverage for Iter98.
+2. **Vault security + copy are inconsistent**: backend defaults to **AES-256-GCM (AEAD)** (`apps/api/src/crypto.ts`), but UI/marketing still claims **AES-256-CBC / no AEAD**.
+3. **Spec claims Pro exports (PDF/SCORM/Notion/Obsidian) and subscription ($14.99)**, but implementation is Markdown/JSON/ZIP only and `/subscription` + marketplace checkout are mock/non-Stripe.
+
+### 1) P0 — Fix mobile screenshot harness crash so Iter98 captures _every_ screen (320/375/414)
+
+**Problem evidence**
+
+- `learnflow/screenshots/iter98/planner-run/NOTES.md`
+- Crash: `page.evaluate: Execution context was destroyed...` at `screenshot-mobile.mjs:79`.
+
+**Acceptance criteria**
+
+- `SCREENSHOT_DIR=learnflow/screenshots/iter98/planner-run/mobile SCREENSHOT_AUTHED=true node screenshot-mobile.mjs` completes without exception.
+- Produces screenshots for **all pages** in `pages[]` across **all viewports** (`mobile-320`, `mobile-375`, `mobile-414`).
+
+**Likely files**
+
+- `screenshot-mobile.mjs`
+
+**Verification checklist**
+
+- Run command above; confirm non-zero file counts:
+  - `find learnflow/screenshots/iter98/planner-run/mobile -type f | wc -l`
+- Spot-check 3 screens for each viewport.
+
+---
+
+### 2) P0 — Align Vault encryption copy with actual AEAD implementation (and/or gate copy on encVersion)
+
+**Problem evidence**
+
+- Backend encryption defaults to **v2_gcm**: `apps/api/src/crypto.ts`.
+- UI copy: `apps/client/src/screens/ProfileSettings.tsx` claims AES-256-CBC.
+- Marketing copy: `apps/client/src/screens/marketing/Home.tsx` says “AES-256-CBC; no AEAD in MVP”.
+
+**Acceptance criteria**
+
+- UI + marketing pages reflect reality:
+  - “Encrypted at rest (AES-256-GCM, AEAD)” or more deployment-neutral wording.
+- No docs claim “no AEAD” if AEAD is in use.
+
+**Likely files**
+
+- `apps/client/src/screens/ProfileSettings.tsx`
+- `apps/client/src/screens/marketing/Home.tsx`
+- `apps/client/src/screens/marketing/Docs.tsx`
+- `apps/client/src/screens/marketing/About.tsx`
+
+**Verification checklist**
+
+- `rg -n "AES-256-CBC|no AEAD" apps/client/src -S` returns no incorrect claims.
+- Re-run Iter98 screenshot harness after copy changes.
+
+---
+
+### 3) P0 — Marketplace billing honesty: surface “MOCK checkout” clearly in UI and API responses
+
+**Problem evidence**
+
+- API explicitly says mock: `apps/api/src/routes/marketplace-full.ts` (checkout + confirm).
+- Client note exists but is buried: `apps/client/src/screens/marketplace/CourseDetail.tsx`.
+
+**Acceptance criteria**
+
+- Marketplace Course Detail displays a persistent, unmissable banner/tag when checkout is mock.
+- `/api/v1/marketplace/checkout` response includes `mode: 'mock'` (already) and UI uses it.
+
+**Likely files**
+
+- `apps/client/src/screens/marketplace/CourseDetail.tsx`
+- `apps/client/src/screens/marketplace/CourseMarketplace.tsx`
+- `apps/api/src/routes/marketplace-full.ts`
+
+**Verification checklist**
+
+- Manual: attempt enroll; verify banner shown before purchase.
+- E2E: add assertion in a marketplace spec.
+- Screenshots: marketplace detail + checkout state.
+
+---
+
+### 4) P0 — Subscription price mismatch: spec says $14.99/mo, UI matrix says $19/mo; reconcile
+
+**Problem evidence**
+
+- Spec: `LearnFlow_Product_Spec.md` §8 says **Pro ($14.99/mo)**.
+- Client matrix: `apps/client/src/lib/capabilities.ts` uses `priceMonthlyUsd: 19` and `priceAnnualUsd: 15`.
+
+**Acceptance criteria**
+
+- Decide source of truth (spec vs implementation) and make both consistent.
+- Pricing displayed in `/pricing` and subscription UI matches matrix.
+
+**Likely files**
+
+- `LearnFlow_Product_Spec.md` (if updating spec)
+- `apps/client/src/lib/capabilities.ts`
+- `apps/client/src/screens/marketing/Pricing.tsx` (if exists) / relevant marketing screens
+
+**Verification checklist**
+
+- Screenshots: pricing page shows updated price.
+- Unit test (optional): ensure capability matrix values used by pricing.
+
+---
+
+### 5) P0 — Pro export formats: PDF/SCORM/Notion/Obsidian are “coming soon”, but API returns 501; ensure UI doesn’t imply availability
+
+**Problem evidence**
+
+- `/api/v1/export` returns 501 for `pdf|scorm`: `apps/api/src/routes/export.ts`.
+- Settings UI shows “Export as PDF/SCORM/Notion/Obsidian” as PRO but “Coming soon” (good) — keep consistent.
+
+**Acceptance criteria**
+
+- No UI path suggests PDF/SCORM/Notion/Obsidian currently work.
+- If buttons are added later, wire them to API with clear 501 handling.
+
+**Likely files**
+
+- `apps/api/src/routes/export.ts`
+- `apps/client/src/screens/ProfileSettings.tsx`
+
+**Verification checklist**
+
+- Click “coming soon” rows do nothing (cursor-not-allowed ok).
+- E2E: assert 501 is handled gracefully if route hit.
+
+---
+
+### 6) P1 — Mindmap plan gating: spec says Free=100 nodes / Pro=unlimited, but implementation shows no node limit gating
+
+**Problem evidence**
+
+- Spec §8: “Mindmap Basic (100 nodes) vs Pro unlimited”.
+- No “100 nodes” limit found in codebase; mindmap UI + Yjs appear ungated.
+
+**Acceptance criteria**
+
+- Either implement node cap enforcement for free tier (UI + server) OR update spec/capability matrix to match reality.
+- If enforcing: prevent adding nodes beyond cap, with upgrade CTA.
+
+**Likely files**
+
+- `apps/client/src/screens/MindmapExplorer.tsx`
+- `apps/client/src/lib/capabilities.ts`
+- `apps/api/src/routes/mindmap.ts` and/or `apps/api/src/yjsServer.ts`
+
+**Verification checklist**
+
+- E2E: attempt to add >100 nodes as free → blocked.
+- Screenshot: mindmap shows limit messaging.
+
+---
+
+### 7) P1 — Lesson structure enforcement: ensure required headings are hard failures (not just console.warn)
+
+**Problem evidence**
+
+- `apps/api/src/utils/lessonStructure.ts` defines required headings.
+- `apps/api/src/routes/courses.ts` currently only `console.warn` when missing.
+
+**Acceptance criteria**
+
+- If a generated lesson misses required sections, regeneration retries must run (or request fails with actionable error) and persisted lesson always complies.
+
+**Likely files**
+
+- `apps/api/src/routes/courses.ts`
+- `apps/api/src/utils/stage2Retry.ts` (if used)
+
+**Verification checklist**
+
+- Unit test: force malformed lesson → verify retry/fail.
+- E2E: course-quality spec passes.
+
+---
+
+### 8) P1 — Export fidelity: include notes inline in Markdown export (currently payload includes notesByLessonId but Markdown ignores)
+
+**Problem evidence**
+
+- Export payload includes `notesByLessonId` but `coursesToMarkdown()` doesn’t render it: `apps/api/src/routes/export.ts`.
+
+**Acceptance criteria**
+
+- Markdown export includes user notes under each lesson (clearly labeled) when present.
+
+**Likely files**
+
+- `apps/api/src/routes/export.ts`
+
+**Verification checklist**
+
+- Create note → export MD → confirm note present.
+
+---
+
+### 9) P2 — Marketplace agent activation: ensure orchestrator transparently informs first-use per session (spec requirement)
+
+**Problem evidence**
+
+- Spec §10: “Always inform the student when using a marketplace agent for the first time in a session.”
+- Need to verify in orchestrator routing / client chat UI (not confirmed in planner run).
+
+**Acceptance criteria**
+
+- On first marketplace-agent invocation in session, UI includes a clear disclosure.
+
+**Likely files**
+
+- `packages/core/src/orchestrator/*`
+- `apps/api/src/wsOrchestrator.ts`
+- `apps/client/src/screens/Conversation.tsx`
+
+**Verification checklist**
+
+- Unit test: orchestrator chooses marketplace agent → message includes disclosure.
+
+---
+
+### 10) P2 — Update spec vs code: document known MVP stubs (Stripe, exports, mindmap limits) to prevent “spec drift” confusion
+
+**Acceptance criteria**
+
+- Add an explicit “MVP deviations” section to the spec or repo docs listing:
+  - mock subscription + checkout
+  - export formats supported
+  - mindmap limits
+  - vault encryption version
+
+**Likely files**
+
+- `LearnFlow_Product_Spec.md` or `README.md`
+
+**Verification checklist**
+
+- Reviewer can quickly understand what is real vs planned.
+
+---
+
+### Iter98 verification (Builder)
+
+- Playwright (screenshots):
+  - Desktop: `SCREENSHOT_DIR=learnflow/screenshots/iter98/planner-run SCREENSHOT_AUTHED=true node screenshot.mjs`
+  - Mobile: `SCREENSHOT_DIR=learnflow/screenshots/iter98/planner-run/mobile SCREENSHOT_AUTHED=true node screenshot-mobile.mjs`
+- Tests:
+  - `npm test`
+  - `npm run lint:check`
+
+### OneDrive sync (Builder — do not skip)
+
+Sync:
+
+- `/home/aifactory/.openclaw/workspace/learnflow/IMPROVEMENT_QUEUE.md`
+- `/home/aifactory/.openclaw/workspace/learnflow/learnflow/screenshots/iter98/planner-run/`
+- Mirror location:
+  - `/home/aifactory/onedrive-learnflow/learnflow/learnflow/screenshots/iter98/planner-run/`

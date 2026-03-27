@@ -72,19 +72,42 @@ for (const vp of viewports) {
 
   for (const [p, name] of pages) {
     const page = await ctx.newPage();
-    await page.goto(`${BASE}${p}`, { waitUntil: 'networkidle', timeout: 20000 }).catch(() => {});
-    await page.waitForTimeout(700);
 
-    // Safety: no horizontal scroll
-    const scrollWidth = await page.evaluate(() => globalThis.document.documentElement.scrollWidth);
-    const viewWidth = await page.evaluate(() => globalThis.window.innerWidth);
-    if (scrollWidth > viewWidth + 10) {
-      console.warn(`⚠️  ${vp.name} ${name} has horizontal overflow: ${scrollWidth} > ${viewWidth}`);
+    let navOk = false;
+    try {
+      await page.goto(`${BASE}${p}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      // Some routes keep sockets/polling open; "networkidle" can hang. Instead: wait for DOM + a short settle.
+      await page.waitForTimeout(800);
+      navOk = true;
+    } catch (err) {
+      console.warn(`⚠️  ${vp.name} ${name} navigation failed: ${String(err)}`);
     }
 
-    await page.screenshot({ path: `${DIR}/${vp.name}__${name}.png`, fullPage: true });
-    await page.close();
-    console.log(`✓ ${vp.name} ${name}`);
+    if (navOk && !page.isClosed()) {
+      // Safety: no horizontal scroll (best-effort; don't crash harness)
+      try {
+        const { scrollWidth, viewWidth } = await page.evaluate(() => ({
+          scrollWidth: globalThis.document.documentElement.scrollWidth,
+          viewWidth: globalThis.window.innerWidth,
+        }));
+        if (scrollWidth > viewWidth + 10) {
+          console.warn(
+            `⚠️  ${vp.name} ${name} has horizontal overflow: ${scrollWidth} > ${viewWidth}`,
+          );
+        }
+      } catch (err) {
+        console.warn(`⚠️  ${vp.name} ${name} overflow check failed: ${String(err)}`);
+      }
+
+      try {
+        await page.screenshot({ path: `${DIR}/${vp.name}__${name}.png`, fullPage: true });
+        console.log(`✓ ${vp.name} ${name}`);
+      } catch (err) {
+        console.warn(`⚠️  ${vp.name} ${name} screenshot failed: ${String(err)}`);
+      }
+    }
+
+    await page.close().catch(() => {});
   }
 
   await ctx.close();

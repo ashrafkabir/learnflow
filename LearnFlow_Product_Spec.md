@@ -406,7 +406,7 @@ The agent marketplace enables developers to publish specialized agents that exte
 
 |                   |                                  |                                      |
 | ----------------- | -------------------------------- | ------------------------------------ |
-| **Feature**       | **Free (BYOAI)**                 | **Pro ($14.99/mo)**                  |
+| **Feature**       | **Free (BYOAI)**                 | **Pro ($19/mo)**                     |
 | API Key           | Student provides their own       | Managed by platform (pooled keys)    |
 | Course Creation   | Unlimited                        | Unlimited + priority generation      |
 | Agent Access      | All marketplace agents           | All + Pro-exclusive agents           |

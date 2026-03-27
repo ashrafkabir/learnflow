@@ -381,8 +381,7 @@ export function ProfileSettings() {
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4 flex flex-col">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">API Keys</h2>
             <p className="text-xs text-gray-800/80 dark:text-gray-200">
-              Keys are encrypted at rest (AES-256-CBC) and stored on the server. We never store raw
-              keys.
+              Keys are encrypted at rest on the server (AES-256-GCM, AEAD). We never store raw keys.
             </p>
 
             {/* Saved keys with usage stats — Task 12 */}
@@ -870,7 +869,7 @@ export function ProfileSettings() {
               { label: 'Learning progress & streaks', tracked: true },
               { label: 'Course creation topics', tracked: true },
               { label: 'Quiz scores & completion rates', tracked: true },
-              { label: 'API keys (encrypted at rest, AES-256-CBC)', tracked: true },
+              { label: 'API keys (encrypted at rest, AES-256-GCM)', tracked: true },
               { label: 'Conversation content (session only)', tracked: false },
               { label: 'Browsing activity outside LearnFlow', tracked: false },
             ].map((item) => (
