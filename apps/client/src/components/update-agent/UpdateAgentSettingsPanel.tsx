@@ -323,10 +323,10 @@ export function UpdateAgentSettingsPanel() {
                 size="sm"
                 disabled={!selectedTopic?.topic || loading}
                 onClick={async () => {
-                  if (!selectedTopic?.topic) return;
+                  // Canonical "tick" endpoint (runs all enabled topics/sources).
                   setLoading(true);
                   try {
-                    await apiPost('/notifications/generate', { topic: selectedTopic.topic });
+                    await apiPost('/update-agent/tick', {});
                     await loadTopics();
                     await loadSources(selectedTopicId);
                     await loadRuns();

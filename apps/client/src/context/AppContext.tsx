@@ -448,10 +448,14 @@ export function getAuthHeaders(): Record<string, string> {
 }
 
 export function apiBase(): string {
-  // When running in the browser, prefer same-origin requests.
-  // In development / tests (Node), default to the local API.
-  // NOTE: Vitest uses jsdom where window exists; treat that as Node/test.
-  if (typeof window !== 'undefined' && (window as any).location?.hostname !== 'test') return '';
+  // Prefer same-origin requests in real browser usage.
+  // In tests (Vitest/jsdom) and in Node, default to the local API.
+  const isVitest = typeof (globalThis as any).vi !== 'undefined';
+  const isPlaywright = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+
+  // In real browser usage (no test runners), use same-origin.
+  // In Vitest/jsdom, prefer relative to satisfy fetch stubs in tests.
+  if (typeof window !== 'undefined' && !isPlaywright && !isVitest) return '';
 
   // Allow explicit override for E2E/CI.
   const envBase = process.env.PLAYWRIGHT_BASE_URL || process.env.VITE_API_BASE_URL;

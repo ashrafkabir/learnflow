@@ -92,7 +92,7 @@ export function AgentMarketplace() {
           const description = String(a?.description || '');
 
           // Best-effort: derive lightweight labels from manifest when possible.
-          const manifest = (a?.manifest && typeof a.manifest === 'object') ? a.manifest : {};
+          const manifest = a?.manifest && typeof a.manifest === 'object' ? a.manifest : {};
           const capabilities = Array.isArray((manifest as any)?.capabilities)
             ? (manifest as any).capabilities.map((c: any) => String(c))
             : [];
@@ -226,14 +226,16 @@ export function AgentMarketplace() {
               </span>
             </h2>
             <div className="flex flex-wrap gap-2">
-              {agents.filter((a) => activatedIds.has(a.id)).map((a) => (
-                <span
-                  key={a.id}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-sm"
-                >
-                  <IconRobot className="w-4 h-4 text-green-700 dark:text-green-300" /> {a.name}
-                </span>
-              ))}
+              {agents
+                .filter((a) => activatedIds.has(a.id))
+                .map((a) => (
+                  <span
+                    key={a.id}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-full text-sm"
+                  >
+                    <IconRobot className="w-4 h-4 text-green-700 dark:text-green-300" /> {a.name}
+                  </span>
+                ))}
             </div>
           </div>
         )}

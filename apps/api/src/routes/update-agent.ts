@@ -11,7 +11,10 @@ import { runUpdateAgentForTopic } from '../utils/updateAgent/runTopic.js';
 const router = Router();
 
 const inFlightTicksByUser = new Map<string, number>();
-const INFLIGHT_TTL_MS = 10 * 60 * 1000;
+// In-process guard window.
+// DB lock is the real cross-process lock; this guard avoids rapid double-submits
+// and makes concurrency tests deterministic.
+const INFLIGHT_TTL_MS = 1000;
 
 function tryAcquireInProcessTick(userId: string): boolean {
   const now = Date.now();
@@ -44,6 +47,19 @@ router.post('/tick', requireTier('pro'), async (req: Request, res: Response) => 
   const userId = req.user!.sub;
   const startedAt = new Date();
 
+  // Prevent concurrent ticks from the same user (in-process + DB lock).
+  // Acquire the in-process guard first so tests that fire 2 requests in the same tick
+  // deterministically see the second request rejected.
+  const memLockOk = tryAcquireInProcessTick(userId);
+  if (!memLockOk) {
+    sendError(res, req, {
+      status: 409,
+      code: 'conflict',
+      message: 'Update Agent tick already in progress',
+    });
+    return;
+  }
+
   const lockId = `lock-${uuidv4()}`;
   // Primary: DB-backed lock (multi-process safe). Fallback: in-process guard for tests.
   const acquiredOk = db.acquireUpdateAgentGlobalRunLockStrict({
@@ -53,14 +69,9 @@ router.post('/tick', requireTier('pro'), async (req: Request, res: Response) => 
     staleBefore: new Date(Date.now() - 10 * 60 * 1000),
   });
 
-  const memLockOk = tryAcquireInProcessTick(userId);
-
-  if (!acquiredOk || !memLockOk) {
-    // Best-effort cleanup if we won DB lock but failed mem lock (rare in tests)
-    if (acquiredOk && !memLockOk) {
-      db.releaseUpdateAgentGlobalRunLock({ userId, lockId });
-      releaseInProcessTick(userId);
-    }
+  if (!acquiredOk) {
+    // If we can't get the DB lock, release the in-process guard.
+    releaseInProcessTick(userId);
 
     sendError(res, req, {
       status: 409,
@@ -178,6 +189,7 @@ router.post('/tick', requireTier('pro'), async (req: Request, res: Response) => 
     });
   } finally {
     db.releaseUpdateAgentGlobalRunLock({ userId, lockId });
+    releaseInProcessTick(userId);
   }
 });
 
