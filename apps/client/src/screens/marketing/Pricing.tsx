@@ -144,9 +144,6 @@ export function PricingPage() {
                   // Pro: call API to subscribe (sandbox). Then route to settings.
                   try {
                     await apiPost('/subscription', { action: 'upgrade', plan: 'pro' });
-                    // Server is source of truth; localStorage is only a cache.
-                    // We optimistically set it to avoid UI flicker, but the app should re-hydrate from GET /subscription.
-                    localStorage.setItem('learnflow-subscription', 'pro');
                     nav('/settings');
                   } catch {
                     // If upgrade fails, do NOT set local subscription state.

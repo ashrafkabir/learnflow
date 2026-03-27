@@ -195,7 +195,8 @@ export function Collaboration() {
             <IconRocket className="w-4 h-4" />
           </span>
           Collaboration is live (MVP): groups + messages are persisted. Study partner suggestions
-          are topic-based previews (not verified). Shared mindmaps remain in progress.
+          are topic-based previews (not verified). Shared mindmaps are available for groups via live
+          sync links (Yjs).
         </div>
 
         {/* Tabs */}

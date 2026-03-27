@@ -92,6 +92,7 @@ router.get('/', (req: Request, res: Response) => {
   res.status(200).json({
     tier,
     status: tier === 'pro' ? 'active' : 'inactive',
+    billingMode: 'mock',
     managedKeyAccess: Boolean(features.managedApiKeys),
     features,
     invoices,
@@ -109,6 +110,7 @@ router.get('/status', (req: Request, res: Response) => {
     tier,
     plan: tier,
     status: tier === 'pro' ? 'active' : 'inactive',
+    billingMode: 'mock',
     managedKeyAccess: Boolean(features.managedApiKeys),
     features,
   });

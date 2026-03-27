@@ -397,7 +397,7 @@ router.post('/checkout', validateBody(checkoutSchema), (req: Request, res: Respo
     createdAt: intent.createdAt,
   });
 
-  res.status(200).json({ paymentIntent: intent, enrolled: false, mode: 'mock' });
+  res.status(200).json({ paymentIntent: intent, enrolled: false, billingMode: 'mock' });
 });
 
 // POST /api/v1/marketplace/checkout/confirm — confirm payment (MOCK)
@@ -480,7 +480,7 @@ router.post(
       updatedAt: new Date().toISOString(),
     });
 
-    res.status(200).json({ paymentIntent: intent, payout, enrolled: true, mode: 'mock' });
+    res.status(200).json({ paymentIntent: intent, payout, enrolled: true, billingMode: 'mock' });
   },
 );
 

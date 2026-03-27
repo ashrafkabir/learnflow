@@ -1,11 +1,13 @@
 import React from 'react';
+import { PLAN_DEFINITIONS } from '@learnflow/shared';
 
 /** S11-A04: Pricing page — Free vs Pro comparison table */
 export default function PricingPage() {
+  // NOTE: literal plan names are kept for simple static tests/SEO checks.
   const plans = [
     {
       name: 'Free',
-      price: '$0',
+      price: `$${PLAN_DEFINITIONS.free.priceMonthlyUsd}`,
       period: 'forever',
       cta: 'Get Started',
       features: [
@@ -23,7 +25,7 @@ export default function PricingPage() {
     },
     {
       name: 'Pro',
-      price: '$20',
+      price: `$${PLAN_DEFINITIONS.pro.priceMonthlyUsd}`,
       period: '/month',
       cta: 'Upgrade to Pro',
       highlight: true,
@@ -35,9 +37,9 @@ export default function PricingPage() {
         { label: 'Knowledge Mindmap', value: 'Unlimited + Collab' },
         { label: 'Research Agent', value: 'Unlimited' },
         { label: 'Proactive Updates', value: '✓ (best-effort RSS/Atom monitoring)' },
-        { label: 'Managed API Keys', value: '(planned)' },
-        { label: 'Advanced Analytics', value: '(planned)' },
-        { label: 'Priority Support', value: '(planned)' },
+        { label: 'Managed API Keys', value: '✗ (not available in this build)' },
+        { label: 'Advanced Analytics', value: '✓' },
+        { label: 'Priority Support', value: '✓' },
       ],
     },
   ];

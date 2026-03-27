@@ -241,7 +241,8 @@ const initialState: AppState = {
   loading: {},
   streak: 0,
   completedLessons: new Set(),
-  subscription: (safeLocalStorageGet('learnflow-subscription') as SubscriptionTier) || 'free',
+  // Subscription is server-driven; default to free until hydrated from GET /subscription.
+  subscription: 'free',
   notifications: safeLocalStorageGetJson('learnflow-notifications', [] as any),
   mindmapSuggestions: safeLocalStorageGetJson('learnflow-mindmap-suggestions', {} as any),
 };
@@ -361,7 +362,7 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, profile: nextProfile };
     }
     case 'SET_SUBSCRIPTION':
-      localStorage.setItem('learnflow-subscription', action.tier);
+      // Subscription is server-driven; do not persist tier in localStorage.
       return { ...state, subscription: action.tier };
     case 'ADD_NOTIFICATION': {
       const notifs = [action.notification, ...state.notifications].slice(0, 50);
@@ -478,9 +479,8 @@ export async function apiPost(path: string, body: unknown) {
           headers: getAuthHeaders(),
         }).then((r) => r.json());
         if (sub?.tier) {
-          localStorage.setItem('learnflow-subscription', sub.tier);
           // Notify the already-mounted AppProvider to update state immediately.
-          // (Storage events don't fire in the same tab.)
+          // (Subscription is server-driven; we keep it in memory only.)
           if (typeof window !== 'undefined') {
             window.dispatchEvent(
               new CustomEvent('learnflow:subscription', { detail: { tier: sub.tier } }),
