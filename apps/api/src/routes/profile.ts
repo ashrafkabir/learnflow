@@ -43,6 +43,7 @@ router.get('/context', (req: Request, res: Response) => {
       notifications: true,
       darkMode: false,
       language: user?.preferredLanguage || 'en',
+      telemetryEnabled: user?.telemetryEnabled !== false,
       settingsVersion: 1,
     },
   });
@@ -51,6 +52,10 @@ router.get('/context', (req: Request, res: Response) => {
 const saveGoalsSchema = z.object({
   goals: z.array(z.string()).optional(),
   topics: z.array(z.string()).optional(),
+});
+
+const privacySchema = z.object({
+  telemetryEnabled: z.boolean(),
 });
 
 // POST /api/v1/profile/goals - Save learning goals
@@ -89,6 +94,22 @@ router.post(
     });
   },
 );
+
+// POST /api/v1/profile/privacy - Save privacy/consent settings
+router.post('/privacy', validateBody(privacySchema), (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const user = db.findUserById(userId);
+  if (!user) {
+    res.status(404).json({ error: { code: 'not_found', message: 'User not found' } });
+    return;
+  }
+
+  (user as any).telemetryEnabled = req.body.telemetryEnabled;
+  user.updatedAt = new Date();
+  db.updateUser(user);
+
+  res.status(200).json({ ok: true, telemetryEnabled: Boolean((user as any).telemetryEnabled) });
+});
 
 // GET /api/v1/profile/data-summary
 // Returns a minimal, user-auditable summary of what the server stores.

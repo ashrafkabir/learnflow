@@ -48,6 +48,9 @@ export function ProfileSettings() {
   const [dataSummaryLoading, setDataSummaryLoading] = useState(false);
   const [dataSummaryError, setDataSummaryError] = useState<string>('');
 
+  const [telemetryEnabled, setTelemetryEnabled] = useState(true);
+  const [telemetrySaving, setTelemetrySaving] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
@@ -77,14 +80,16 @@ export function ProfileSettings() {
     loadDataSummary();
   }, [loadDataSummary]);
 
-  // Server-driven admin gating (Iter69): trust /profile/context rather than localStorage.
+  // Server-driven admin gating + privacy defaults (Iter69/101)
   useEffect(() => {
     (async () => {
       try {
         const ctx = await apiGet('/profile/context');
         setServerRole(String(ctx?.role || ''));
+        setTelemetryEnabled(Boolean(ctx?.preferences?.telemetryEnabled ?? true));
       } catch {
         setServerRole('');
+        setTelemetryEnabled(true);
       }
     })();
   }, []);
@@ -165,7 +170,9 @@ export function ProfileSettings() {
                     Active
                   </span>
                 </span>
-                <p className="text-xs opacity-75">Billing dates are not available in this MVP.</p>
+                <p className="text-xs opacity-75">
+                  Billing is in mock mode in this MVP (no real charges).
+                </p>
               </div>
             )}
           </div>
@@ -247,7 +254,11 @@ export function ProfileSettings() {
                 label: 'Priority agent access',
                 pro: true,
               },
-              { icon: <IconKey className="w-5 h-5" />, label: 'Managed API keys', pro: true },
+              {
+                icon: <IconKey className="w-5 h-5" />,
+                label: 'Managed keys (if enabled on this deployment)',
+                pro: true,
+              },
               { icon: <IconRefresh className="w-5 h-5" />, label: 'Update Agent', pro: true },
               { icon: <IconCourse className="w-5 h-5" />, label: '3 courses', pro: false },
               { icon: <IconBrainSpark className="w-5 h-5" />, label: 'Basic agents', pro: false },
@@ -862,27 +873,61 @@ export function ProfileSettings() {
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Privacy</h2>
           <p className="text-xs text-gray-800/80 dark:text-gray-200">
-            Per our privacy policy, here's what we track:
+            Control server-side learning telemetry (used for streaks, progress summaries, and
+            quality diagnostics). This MVP does not track browsing outside LearnFlow.
           </p>
-          <div className="space-y-2 text-sm">
-            {[
-              { label: 'Learning progress & streaks', tracked: true },
-              { label: 'Course creation topics', tracked: true },
-              { label: 'Quiz scores & completion rates', tracked: true },
-              { label: 'API keys (encrypted at rest, AES-256-GCM)', tracked: true },
-              { label: 'Conversation content (session only)', tracked: false },
-              { label: 'Browsing activity outside LearnFlow', tracked: false },
-            ].map((item) => (
-              <div
-                key={item.label}
-                className="flex items-center gap-2 text-gray-800/80 dark:text-gray-200"
-              >
-                <span className={item.tracked ? 'text-blue-500' : 'text-gray-300'}>
-                  {item.tracked ? '●' : '○'}
-                </span>
-                <span>{item.label}</span>
+          <div className="space-y-3 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  Learning telemetry
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-300">
+                  When enabled, we store lesson view + completion events on the server. Used to
+                  compute streaks and improve reliability.
+                </p>
               </div>
-            ))}
+              <label className="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200 select-none">
+                <input
+                  type="checkbox"
+                  checked={telemetryEnabled}
+                  onChange={async (e) => {
+                    const next = Boolean(e.target.checked);
+                    setTelemetryEnabled(next);
+                    setTelemetrySaving(true);
+                    try {
+                      await apiPost('/profile/privacy', { telemetryEnabled: next });
+                      toast('Privacy settings saved', 'success');
+                      loadDataSummary();
+                    } catch {
+                      setTelemetryEnabled(!next);
+                      toast('Failed to save privacy settings', 'error');
+                    } finally {
+                      setTelemetrySaving(false);
+                    }
+                  }}
+                />
+                <span>{telemetrySaving ? 'Saving…' : telemetryEnabled ? 'On' : 'Off'}</span>
+              </label>
+            </div>
+
+            <div className="space-y-2 text-xs text-gray-700 dark:text-gray-200">
+              {[
+                { label: 'Learning progress & streaks', tracked: true },
+                { label: 'Course creation topics', tracked: true },
+                { label: 'Quiz scores & completion rates', tracked: true },
+                { label: 'API keys (encrypted at rest, AES-256-GCM)', tracked: true },
+                { label: 'Conversation content (session only)', tracked: false },
+                { label: 'Browsing activity outside LearnFlow', tracked: false },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center gap-2">
+                  <span className={item.tracked ? 'text-blue-500' : 'text-gray-300'}>
+                    {item.tracked ? '●' : '○'}
+                  </span>
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="pt-3 border-t border-gray-100 dark:border-gray-800">

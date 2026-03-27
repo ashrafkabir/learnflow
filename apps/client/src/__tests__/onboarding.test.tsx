@@ -12,11 +12,36 @@ import { App } from '../App.js';
 beforeEach(() => {
   localStorage.setItem('learnflow-token', 'test-token');
   localStorage.removeItem('learnflow-onboarding-complete');
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ courses: [], keys: [] }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })) as typeof fetch;
+  globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
+    const url =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.href
+          : (input as Request).url;
+
+    // Minimal API stubs needed for app boot.
+    if (url.includes('/api/v1/profile/context')) {
+      return new Response(
+        JSON.stringify({
+          userId: 'test-user',
+          role: 'student',
+          tier: 'free',
+          preferences: { telemetryEnabled: true },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (url.includes('/api/') || url.startsWith('/')) {
+      return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }) as typeof fetch;
 });
 
 afterEach(() => cleanup());

@@ -158,6 +158,11 @@ if (!isTest) {
       sqlite.exec(`ALTER TABLE users ADD COLUMN onboardingCompletedAt TEXT;`);
     }
 
+    // Iter101: user consent for server-side learning event telemetry
+    if (!hasColumn('users', 'telemetryEnabled')) {
+      sqlite.exec(`ALTER TABLE users ADD COLUMN telemetryEnabled INTEGER NOT NULL DEFAULT 1;`);
+    }
+
     if (!hasColumn('mindmaps', 'yjsState')) {
       sqlite.exec(`ALTER TABLE mindmaps ADD COLUMN yjsState TEXT;`);
     }
@@ -285,6 +290,7 @@ sqlite.exec(`
     schedule TEXT NOT NULL DEFAULT '{}',
     preferredLanguage TEXT NOT NULL DEFAULT 'en',
     onboardingCompletedAt TEXT,
+    telemetryEnabled INTEGER NOT NULL DEFAULT 1,
     oauthProvider TEXT,
     oauthId TEXT,
     createdAt TEXT NOT NULL,
@@ -706,10 +712,10 @@ const stmts = {
 
   // Users
   insertUser: sqlite.prepare(
-    `INSERT INTO users (id, email, displayName, passwordHash, role, tier, goals, topics, experience, schedule, preferredLanguage, onboardingCompletedAt, oauthProvider, oauthId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (id, email, displayName, passwordHash, role, tier, goals, topics, experience, schedule, preferredLanguage, onboardingCompletedAt, telemetryEnabled, oauthProvider, oauthId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   updateUser: sqlite.prepare(
-    `UPDATE users SET email=?, displayName=?, passwordHash=?, role=?, tier=?, goals=?, topics=?, experience=?, schedule=?, preferredLanguage=?, onboardingCompletedAt=?, oauthProvider=?, oauthId=?, updatedAt=? WHERE id=?`,
+    `UPDATE users SET email=?, displayName=?, passwordHash=?, role=?, tier=?, goals=?, topics=?, experience=?, schedule=?, preferredLanguage=?, onboardingCompletedAt=?, telemetryEnabled=?, oauthProvider=?, oauthId=?, updatedAt=? WHERE id=?`,
   ),
   findUserById: sqlite.prepare(`SELECT * FROM users WHERE id = ?`),
   findUserByEmail: sqlite.prepare(`SELECT * FROM users WHERE email = ?`),
@@ -1125,6 +1131,8 @@ export interface DbUser {
   schedule?: any;
   preferredLanguage: string;
   onboardingCompletedAt?: Date;
+  /** User consent for server-side learning event telemetry (default true). */
+  telemetryEnabled?: boolean;
   oauthProvider?: string;
   oauthId?: string;
   createdAt: Date;
@@ -1178,6 +1186,10 @@ function rowToUser(row: any): DbUser | undefined {
     onboardingCompletedAt: row.onboardingCompletedAt
       ? new Date(row.onboardingCompletedAt)
       : undefined,
+    telemetryEnabled:
+      row.telemetryEnabled === 0 || row.telemetryEnabled === '0'
+        ? false
+        : Boolean(row.telemetryEnabled ?? 1),
     active: undefined,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
@@ -1247,6 +1259,7 @@ class SqliteDb {
       JSON.stringify(user.schedule || {}),
       user.preferredLanguage || 'en',
       user.onboardingCompletedAt ? user.onboardingCompletedAt.toISOString() : null,
+      user.telemetryEnabled === false ? 0 : 1,
       user.oauthProvider || null,
       user.oauthId || null,
       user.createdAt.toISOString(),
@@ -1267,6 +1280,7 @@ class SqliteDb {
       JSON.stringify(user.schedule || {}),
       user.preferredLanguage || 'en',
       user.onboardingCompletedAt ? user.onboardingCompletedAt.toISOString() : null,
+      user.telemetryEnabled === false ? 0 : 1,
       user.oauthProvider || null,
       user.oauthId || null,
       user.updatedAt.toISOString(),

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { dbEvents } from '../db.js';
+import { dbEvents, db } from '../db.js';
 import { validateBody } from '../validation.js';
 
 const router = Router();
@@ -26,6 +26,12 @@ router.post('/', validateBody(createEventSchema), (req: Request, res: Response) 
   }
 
   try {
+    const user = db.findUserById(userId);
+    if (user && user.telemetryEnabled === false) {
+      res.status(201).json({ ok: true, skipped: true, reason: 'telemetry_disabled' });
+      return;
+    }
+
     const { type, courseId, lessonId, meta } = req.body;
     dbEvents.add(userId, { type, courseId, lessonId, meta: meta || {}, origin });
   } catch {

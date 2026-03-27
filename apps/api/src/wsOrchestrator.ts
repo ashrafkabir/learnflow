@@ -68,6 +68,14 @@ export async function handleWsMessage(
     (clientMessageId && String(clientMessageId).trim()) ||
     `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   const text: string = msg?.data?.text || '';
+  // Iter101: accept optional future-proof fields without rejecting
+  const _attachments = Array.isArray(msg?.data?.attachments) ? msg.data.attachments : undefined;
+  const _contextOverrides =
+    msg?.data?.context_overrides && typeof msg.data.context_overrides === 'object'
+      ? msg.data.context_overrides
+      : undefined;
+  void _attachments;
+  void _contextOverrides;
   const clientRequestId: string | undefined = msg?.data?.requestId;
   const requestId = (clientRequestId && String(clientRequestId).trim()) || createRequestId();
 

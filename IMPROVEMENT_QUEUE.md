@@ -2,7 +2,196 @@
 
 Owner: Builder  
 Planner: Ash (main session)  
-Last updated: 2026-03-27 (Iteration 100 READY FOR BUILDER)
+Last updated: 2026-03-27 (Iteration 101 DONE)
+
+---
+
+## Iteration 101 — SPEC ↔ IMPLEMENTATION PARITY AUDIT + HIGH-LEVERAGE FIX LIST
+
+Status: **DONE**
+
+### Summary (Iter101)
+
+Planner label: `iter101/planner-run` (screenshots captured desktop + key mobile).
+
+**3 biggest gaps found**
+
+1. **Subscription & monetization are mock/incomplete vs spec**: Pro is toggled via `/api/v1/subscription` (no Stripe), marketplace checkout is MOCK, “managed keys” is a flag only (no pooled key path). This contradicts Spec §8 and marketplace/payment flows.
+2. **Export formats are stubbed vs spec**: Spec promises Pro exports to PDF/SCORM/Notion/Obsidian; API returns 501 for pdf/scorm and there is no Notion/Obsidian integration. UI labels these as “coming soon”, but spec reads as committed functionality.
+3. **Behavioral tracking/privacy consent is underspecified in implementation**: Spec §9.3 calls for consent management + “Profile > Data” transparency. UI shows a tracking list + server data summary and supports deletion, but no explicit consent toggles, and event ingestion is unconditional (best-effort POST `/api/v1/events`).
+
+### Screenshot evidence (planner-run)
+
+- Local: `learnflow/screenshots/iter101/planner-run/` (desktop + mobile)
+- OneDrive mirror: `~/onedrive-learnflow/learnflow/learnflow/screenshots/iter101/planner-run/`
+- Notes/commands: `learnflow/screenshots/iter101/planner-run/NOTES.md`
+
+### P0 (Must fix — spec contradictions that will mislead users)
+
+#### 1) P0 — Decide + implement “Managed API keys” behavior (Pro) or revise spec + UI copy
+
+**Why**: Spec §8 says Pro includes managed (pooled) keys. Current system supports BYOAI key storage (encrypted) and capability matrix exposes `keys.managed`, but there is no real pooled key/provider selection logic exposed for Pro.
+
+**Acceptance criteria**
+
+- Either:
+  - (A) Implement a working Pro-managed-key path for at least one provider (e.g., OpenAI) used by server-side LLM calls when no BYOAI key exists, with guardrails + usage attribution, OR
+  - (B) Update spec + marketing/pricing copy to clearly state managed keys are not yet available.
+- Settings copy is consistent with the chosen behavior.
+
+**Likely files**
+
+- `apps/api/src/lib/capabilities.ts`
+- `apps/api/src/llm/*` (`openai.ts`, `providers.ts`, key selection)
+- `apps/client/src/screens/ProfileSettings.tsx`
+- `LearnFlow_Product_Spec.md` (§8)
+
+**Verification checklist**
+
+- Manual: Pro user without BYOAI key can still generate notes/quiz/research (if (A)).
+- Tests: add/adjust API tests for provider selection/attribution.
+- Screenshot: Settings “API Vault” state matches reality.
+
+---
+
+#### 2) P0 — Subscription payments: either wire Stripe (minimal) or explicitly mark as mock across UI/spec
+
+**Why**: Marketplace checkout is explicitly MOCK (`apps/api/src/routes/marketplace-full.ts`), and `/api/v1/subscription` directly flips tier (`apps/api/src/routes/subscription.ts`). Spec §8 + marketplace sections describe real monetization.
+
+**Acceptance criteria**
+
+- Either:
+  - (A) Implement minimal Stripe integration for subscription _or_ marketplace checkout (one path) with webhooks stubbed safely for local/dev, OR
+  - (B) Update spec + UI copy to state payments are mock in MVP and not real billing.
+- Ensure “invoices” returned from `/api/v1/subscription` are coherent with chosen approach.
+
+**Likely files**
+
+- `apps/api/src/routes/subscription.ts`
+- `apps/api/src/routes/marketplace-full.ts`
+- `apps/client/src/screens/marketplace/CourseDetail.tsx` (checkout UX)
+- `LearnFlow_Product_Spec.md` (§8, marketplace payment steps)
+
+**Verification checklist**
+
+- API: subscription status endpoints return consistent shapes.
+- E2E: marketplace “Enroll/Checkout” flow deterministic (mock or real).
+- Screenshots: pricing + marketplace detail reflect correct billing language.
+
+---
+
+#### 3) P0 — Export roadmap honesty: implement one Pro format (PDF or SCORM) end-to-end, or update spec/pricing
+
+**Why**: API export supports Markdown for free and JSON/ZIP for Pro; PDF/SCORM return 501; Notion/Obsidian absent.
+
+**Acceptance criteria**
+
+- Either:
+  - (A) Implement at least **one** additional Pro export format end-to-end (PDF _or_ SCORM) with UI button enabled for Pro, OR
+  - (B) Update spec + pricing table to align with current export reality (MD/JSON/ZIP only).
+- Exports continue to include lesson sources provenance (`apps/api/src/routes/export.ts`).
+
+**Likely files**
+
+- `apps/api/src/routes/export.ts`
+- `apps/client/src/screens/ProfileSettings.tsx`
+- `packages/agents/src/export-agent/export-agent.ts` (copy/behavior)
+- `LearnFlow_Product_Spec.md` (§8 export row)
+
+**Verification checklist**
+
+- Manual: Pro user can click an enabled export button and receive the file.
+- Tests: add an export format test (Supertest) and a UI smoke (Playwright).
+
+---
+
+### P1 (High leverage — improves trust + reduces drift)
+
+#### 4) P1 — Consent management for behavioral tracking (Spec §9.3)
+
+**Acceptance criteria**
+
+- Add user-facing toggle(s) for telemetry/behavioral tracking (at least “learning events”).
+- When disabled, API should reject/ignore `/api/v1/events` writes for that user (or store nothing).
+- Profile > Data reflects consent status + explains what’s stored.
+
+**Likely files**
+
+- `apps/api/src/routes/events.ts` (or wherever `/api/v1/events` is handled)
+- `apps/api/src/db.ts` (events tables)
+- `apps/client/src/screens/ProfileSettings.tsx`
+- `LearnFlow_Product_Spec.md` (§9.3)
+
+**Verification checklist**
+
+- Toggle off → lesson view does not increment “learning events” count.
+- Toggle on → events resume.
+- Screenshot: Profile Settings privacy section shows consent.
+
+---
+
+#### 5) P1 — WebSocket contract parity with spec §11.2 (attachments/context_overrides)
+
+**Why**: Spec indicates `message` payload includes attachments + context_overrides. Current server validates only `data.text` and ignores those fields.
+
+**Acceptance criteria**
+
+- Server accepts `attachments` and `context_overrides` fields (even if ignored) without errors.
+- Document what is supported today via `ws.contract` event and/or docs.
+
+**Likely files**
+
+- `apps/api/src/websocket.ts`
+- `apps/api/src/wsOrchestrator.ts`
+- `apps/docs/pages/api-reference.md` (if present)
+- `LearnFlow_Product_Spec.md` (§11.2)
+
+**Verification checklist**
+
+- Add WS contract test: send envelope with attachments; server still responds.
+- Manual: Conversation works unchanged.
+
+---
+
+#### 6) P1 — Collaboration: reconcile spec (“forums/peer matching/study groups”) with what exists
+
+**Acceptance criteria**
+
+- Either implement minimal peer matching/study groups, or update spec + UI labels to match current collaboration screen behavior.
+- Ensure deletion (“delete my data”) accounts for collaboration memberships per UI warning.
+
+**Likely files**
+
+- `apps/client/src/screens/Collaboration.tsx`
+- `apps/api/src/routes/collaboration*.ts`
+- `apps/api/src/routes/delete-my-data.ts`
+- `LearnFlow_Product_Spec.md` (§8, §9 social)
+
+**Verification checklist**
+
+- E2E smoke: can create/join a study group (or UI clearly says “coming soon”).
+- Screenshot: Collaboration screen updated.
+
+---
+
+### P2 (Cleanups)
+
+#### 7) P2 — Update spec to match current architecture choices (Yjs on dedicated port, ws events, export gating)
+
+**Acceptance criteria**
+
+- Spec reflects:
+  - Yjs server runs on separate port (`apps/api/src/index.ts`) and path `/yjs`.
+  - WS inbound contract (`ws.contract` event).
+  - Export gating is enforced server-side (free: MD only).
+
+**Likely files**
+
+- `LearnFlow_Product_Spec.md`
+
+**Verification checklist**
+
+- Reviewer can reconcile these without code-reading.
 
 ---
 

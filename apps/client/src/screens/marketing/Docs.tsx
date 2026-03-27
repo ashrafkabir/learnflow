@@ -21,7 +21,7 @@ const SECTIONS = [
       {
         title: 'Configuring API Keys',
         content:
-          'Go to Settings → API Vault to add your own OpenAI, Anthropic, or Google API keys. Keys are encrypted locally and never shared. Pro users get managed keys included.',
+          'Go to Settings → API Vault to add your own OpenAI, Anthropic, or Google API keys. Keys are encrypted at rest. Some deployments may also enable managed keys for Pro users (not guaranteed).',
       },
     ],
   },
