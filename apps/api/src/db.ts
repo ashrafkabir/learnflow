@@ -111,6 +111,22 @@ if (!isTest) {
       // If update_agent_sources doesn't exist yet, CREATE TABLE below will handle it.
     }
 
+    // Iter96: Update Agent global lock + run history
+    try {
+      // best-effort: if missing tables, CREATE TABLE below will handle it.
+      sqlite.exec(
+        `CREATE TABLE IF NOT EXISTS update_agent_global_runs (userId TEXT PRIMARY KEY, lockId TEXT NOT NULL DEFAULT '', lockedAt TEXT, createdAt TEXT NOT NULL, updatedAt TEXT);`,
+      );
+      sqlite.exec(
+        `CREATE TABLE IF NOT EXISTS update_agent_runs (id TEXT PRIMARY KEY, userId TEXT NOT NULL, startedAt TEXT NOT NULL, finishedAt TEXT, status TEXT NOT NULL, topicsChecked INTEGER NOT NULL DEFAULT 0, sourcesChecked INTEGER NOT NULL DEFAULT 0, notificationsCreated INTEGER NOT NULL DEFAULT 0, failuresJson TEXT NOT NULL DEFAULT '[]');`,
+      );
+      sqlite.exec(
+        `CREATE INDEX IF NOT EXISTS idx_update_agent_runs_user_started ON update_agent_runs(userId, startedAt DESC);`,
+      );
+    } catch {
+      // ignore
+    }
+
     try {
       if (!hasColumn('notifications', 'topic')) {
         sqlite.exec(`ALTER TABLE notifications ADD COLUMN topic TEXT NOT NULL DEFAULT '';`);
@@ -572,6 +588,29 @@ sqlite.exec(`
 
   CREATE UNIQUE INDEX IF NOT EXISTS idx_update_agent_topic_runs_user_topic
     ON update_agent_topic_runs(userId, topicId);
+
+  -- Iter96: global per-user tick lock + run history
+  CREATE TABLE IF NOT EXISTS update_agent_global_runs (
+    userId TEXT PRIMARY KEY,
+    lockId TEXT NOT NULL DEFAULT '',
+    lockedAt TEXT,
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS update_agent_runs (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    startedAt TEXT NOT NULL,
+    finishedAt TEXT,
+    status TEXT NOT NULL,
+    topicsChecked INTEGER NOT NULL DEFAULT 0,
+    sourcesChecked INTEGER NOT NULL DEFAULT 0,
+    notificationsCreated INTEGER NOT NULL DEFAULT 0,
+    failuresJson TEXT NOT NULL DEFAULT '[]'
+  );
+  CREATE INDEX IF NOT EXISTS idx_update_agent_runs_user_started ON update_agent_runs(userId, startedAt DESC);
+
   CREATE INDEX IF NOT EXISTS idx_update_agent_sources_user ON update_agent_sources(userId);
   CREATE INDEX IF NOT EXISTS idx_update_agent_sources_topic ON update_agent_sources(topicId);
 
@@ -775,6 +814,43 @@ const stmts = {
     `SELECT id FROM notifications WHERE userId = ? AND url = ? LIMIT 1`,
   ),
 
+  // Iter96: per-user global tick lock + run history
+  acquireUpdateAgentGlobalRunLock: sqlite.prepare(`
+    INSERT INTO update_agent_global_runs (userId, lockId, lockedAt, createdAt, updatedAt)
+    VALUES (@userId, @lockId, @lockedAt, @createdAt, @updatedAt)
+    ON CONFLICT(userId) DO UPDATE SET
+      lockId = CASE
+        WHEN lockedAt IS NULL OR lockedAt < @staleBefore THEN excluded.lockId
+        ELSE lockId
+      END,
+      lockedAt = CASE
+        WHEN lockedAt IS NULL OR lockedAt < @staleBefore THEN excluded.lockedAt
+        ELSE lockedAt
+      END,
+      updatedAt = excluded.updatedAt
+    RETURNING lockId
+  `),
+
+  releaseUpdateAgentGlobalRunLock: sqlite.prepare(`
+    UPDATE update_agent_global_runs
+    SET lockedAt = NULL, updatedAt = @updatedAt
+    WHERE userId = @userId AND lockId = @lockId
+  `),
+
+  insertUpdateAgentRun: sqlite.prepare(`
+    INSERT INTO update_agent_runs (id, userId, startedAt, finishedAt, status, topicsChecked, sourcesChecked, notificationsCreated, failuresJson)
+    VALUES (@id, @userId, @startedAt, @finishedAt, @status, @topicsChecked, @sourcesChecked, @notificationsCreated, @failuresJson)
+  `),
+
+  finishUpdateAgentRun: sqlite.prepare(`
+    UPDATE update_agent_runs
+    SET finishedAt=@finishedAt, status=@status, topicsChecked=@topicsChecked, sourcesChecked=@sourcesChecked, notificationsCreated=@notificationsCreated, failuresJson=@failuresJson
+    WHERE id=@id AND userId=@userId
+  `),
+
+  listUpdateAgentRunsByUser: sqlite.prepare(
+    `SELECT * FROM update_agent_runs WHERE userId = ? ORDER BY startedAt DESC LIMIT ?`,
+  ),
   // Iter84: per-user/topic run lock + run state
   acquireUpdateAgentTopicRunLock: sqlite.prepare(`
     INSERT INTO update_agent_topic_runs (userId, topicId, lockId, lockedAt, createdAt, updatedAt)
@@ -1534,6 +1610,105 @@ class SqliteDb {
 
   deleteUpdateAgentSource(userId: string, id: string): void {
     stmts.deleteUpdateAgentSource.run(id, userId);
+  }
+
+  // Iter96: global per-user tick lock
+  acquireUpdateAgentGlobalRunLock(args: {
+    userId: string;
+    lockId: string;
+    lockedAt: Date;
+    staleBefore: Date;
+  }): { lockId: string } | null {
+    const row = stmts.acquireUpdateAgentGlobalRunLock.get({
+      userId: args.userId,
+      lockId: args.lockId,
+      lockedAt: args.lockedAt.toISOString(),
+      staleBefore: args.staleBefore.toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    if (!row) return null;
+    return { lockId: String(row.lockId || '') };
+  }
+
+  acquireUpdateAgentGlobalRunLockStrict(args: {
+    userId: string;
+    lockId: string;
+    lockedAt: Date;
+    staleBefore: Date;
+  }): boolean {
+    const row = this.acquireUpdateAgentGlobalRunLock(args);
+    return !!row && row.lockId === args.lockId;
+  }
+
+  releaseUpdateAgentGlobalRunLock(args: { userId: string; lockId: string }): void {
+    stmts.releaseUpdateAgentGlobalRunLock.run({
+      userId: args.userId,
+      lockId: args.lockId,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  // Iter96: run history
+  insertUpdateAgentRun(row: {
+    id: string;
+    userId: string;
+    startedAt: Date;
+    finishedAt: Date | null;
+    status: string;
+    topicsChecked: number;
+    sourcesChecked: number;
+    notificationsCreated: number;
+    failuresJson: string;
+  }): void {
+    stmts.insertUpdateAgentRun.run({
+      id: row.id,
+      userId: row.userId,
+      startedAt: row.startedAt.toISOString(),
+      finishedAt: row.finishedAt ? row.finishedAt.toISOString() : null,
+      status: row.status,
+      topicsChecked: row.topicsChecked,
+      sourcesChecked: row.sourcesChecked,
+      notificationsCreated: row.notificationsCreated,
+      failuresJson: row.failuresJson,
+    });
+  }
+
+  finishUpdateAgentRun(args: {
+    id: string;
+    userId: string;
+    finishedAt: Date;
+    status: string;
+    topicsChecked: number;
+    sourcesChecked: number;
+    notificationsCreated: number;
+    failuresJson: string;
+  }): void {
+    stmts.finishUpdateAgentRun.run({
+      id: args.id,
+      userId: args.userId,
+      finishedAt: args.finishedAt.toISOString(),
+      status: args.status,
+      topicsChecked: args.topicsChecked,
+      sourcesChecked: args.sourcesChecked,
+      notificationsCreated: args.notificationsCreated,
+      failuresJson: args.failuresJson,
+    });
+  }
+
+  listUpdateAgentRuns(userId: string, limit = 20): Array<any> {
+    return stmts.listUpdateAgentRunsByUser.all(userId, limit).map((r: any) => ({
+      id: String(r.id),
+      userId: String(r.userId),
+      startedAt: String(r.startedAt),
+      finishedAt: r.finishedAt ? String(r.finishedAt) : null,
+      status: String(r.status),
+      topicsChecked: Number(r.topicsChecked || 0),
+      sourcesChecked: Number(r.sourcesChecked || 0),
+      notificationsCreated: Number(r.notificationsCreated || 0),
+      failuresJson: String(r.failuresJson || '[]'),
+    }));
   }
 
   acquireUpdateAgentTopicRunLock(args: {

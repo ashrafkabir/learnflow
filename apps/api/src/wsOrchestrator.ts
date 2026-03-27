@@ -11,6 +11,7 @@ import {
 import { scoreSourceCredibility } from './utils/sourceCredibility.js';
 import { db } from './db.js';
 import { createRequestId } from './errors.js';
+import { isDuplicateCompletedMessage, markMessageCompleted } from './wsIdempotency.js';
 
 /**
  * Shared WS orchestrator.
@@ -62,7 +63,6 @@ export async function handleWsMessage(
   msg: { event: string; data: any },
 ): Promise<void> {
   if (msg.event !== 'message') return;
-
   const clientMessageId: string | undefined = msg?.data?.message_id;
   const messageId =
     (clientMessageId && String(clientMessageId).trim()) ||
@@ -70,6 +70,15 @@ export async function handleWsMessage(
   const text: string = msg?.data?.text || '';
   const clientRequestId: string | undefined = msg?.data?.requestId;
   const requestId = (clientRequestId && String(clientRequestId).trim()) || createRequestId();
+
+  if (isDuplicateCompletedMessage(user.sub, messageId)) {
+    sendWsError(ws, requestId, {
+      code: 'duplicate_message',
+      message: 'Duplicate message_id already completed',
+      message_id: messageId,
+    });
+    return;
+  }
 
   const lessonId: string | undefined = msg?.data?.lessonId;
   const courseId: string | undefined = msg?.data?.courseId;
@@ -243,6 +252,7 @@ export async function handleWsMessage(
       actions: mapActions(suggestedActions),
       sources: enrichedSources,
     });
+    markMessageCompleted(user.sub, messageId);
   } catch (err: any) {
     const message = err?.message || 'Orchestrator error';
     sendWsError(ws, requestId, {
@@ -255,5 +265,6 @@ export async function handleWsMessage(
       actions: mapActions(['Try Again']),
       sources: [],
     });
+    markMessageCompleted(user.sub, messageId);
   }
 }

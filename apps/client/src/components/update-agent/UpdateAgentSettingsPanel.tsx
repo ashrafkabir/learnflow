@@ -18,6 +18,17 @@ type TopicRow = {
   lastRunError?: string;
 };
 
+type RunRow = {
+  id: string;
+  startedAt: string;
+  finishedAt: string | null;
+  status: string;
+  topicsChecked: number;
+  sourcesChecked: number;
+  notificationsCreated: number;
+  failuresJson?: string;
+};
+
 type SourceRow = {
   id: string;
   topicId: string;
@@ -52,6 +63,7 @@ export function UpdateAgentSettingsPanel() {
   const [topics, setTopics] = React.useState<TopicRow[]>([]);
   const [selectedTopicId, setSelectedTopicId] = React.useState<string>('');
   const [sources, setSources] = React.useState<SourceRow[]>([]);
+  const [runs, setRuns] = React.useState<RunRow[]>([]);
 
   const [newTopic, setNewTopic] = React.useState('');
   const [newSourceUrl, setNewSourceUrl] = React.useState('');
@@ -62,6 +74,12 @@ export function UpdateAgentSettingsPanel() {
     setTopics(rows);
     if (!selectedTopicId && rows[0]?.id) setSelectedTopicId(rows[0].id);
   }, [selectedTopicId]);
+
+  const loadRuns = React.useCallback(async () => {
+    const res = await apiGet('/update-agent/runs?limit=5');
+    const rows = Array.isArray(res?.runs) ? res.runs : [];
+    setRuns(rows);
+  }, []);
 
   const loadSources = React.useCallback(async (topicId: string) => {
     if (!topicId) {
@@ -75,7 +93,7 @@ export function UpdateAgentSettingsPanel() {
 
   React.useEffect(() => {
     setLoading(true);
-    loadTopics()
+    Promise.all([loadTopics(), loadRuns()])
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [loadTopics]);
@@ -169,6 +187,7 @@ export function UpdateAgentSettingsPanel() {
             try {
               await loadTopics();
               await loadSources(selectedTopicId);
+              await loadRuns();
               toast('Update Agent settings refreshed', 'success');
             } catch {
               toast('Failed to refresh Update Agent settings', 'error');
@@ -236,6 +255,35 @@ export function UpdateAgentSettingsPanel() {
                   Last source error: {topicStatus.lastError}
                 </div>
               ) : null}
+
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-xs font-semibold text-gray-900 dark:text-white">
+                  Recent runs
+                </div>
+                {runs.length === 0 ? (
+                  <div className="text-xs text-gray-600 dark:text-gray-300 mt-1">—</div>
+                ) : (
+                  <ul className="mt-2 space-y-1">
+                    {runs.slice(0, 5).map((r) => (
+                      <li key={r.id} className="text-xs text-gray-700 dark:text-gray-200">
+                        <span className="font-semibold">{fmt(r.startedAt)}</span> —{' '}
+                        <span
+                          className={
+                            r.status === 'success'
+                              ? 'font-semibold text-green-700 dark:text-green-300'
+                              : r.status === 'running'
+                                ? 'font-semibold text-yellow-700 dark:text-yellow-300'
+                                : 'font-semibold text-red-700 dark:text-red-300'
+                          }
+                        >
+                          {r.status}
+                        </span>{' '}
+                        · {r.notificationsCreated} new · {r.sourcesChecked} sources
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
 
             <div className="flex flex-col items-end gap-2">
@@ -249,6 +297,7 @@ export function UpdateAgentSettingsPanel() {
                     await apiPost('/notifications/generate', { topic: selectedTopic.topic });
                     await loadTopics();
                     await loadSources(selectedTopicId);
+                    await loadRuns();
                     toast('Update Agent run started', 'success');
                   } catch (e: any) {
                     toast(String(e?.message || 'Failed to run Update Agent'), 'error');

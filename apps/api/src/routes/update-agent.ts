@@ -6,8 +6,212 @@ import { sendError } from '../errors.js';
 import { requireTier } from '../middleware.js';
 import { validateBody, validateQuery, validateParams } from '../validation.js';
 import { normalizeUrl } from '../utils/updateAgent/url.js';
+import { runUpdateAgentForTopic } from '../utils/updateAgent/runTopic.js';
 
 const router = Router();
+
+const inFlightTicksByUser = new Map<string, number>();
+const INFLIGHT_TTL_MS = 10 * 60 * 1000;
+
+function tryAcquireInProcessTick(userId: string): boolean {
+  const now = Date.now();
+  const prev = inFlightTicksByUser.get(userId);
+  if (prev && now - prev < INFLIGHT_TTL_MS) return false;
+  inFlightTicksByUser.set(userId, now);
+  return true;
+}
+
+function releaseInProcessTick(userId: string): void {
+  inFlightTicksByUser.delete(userId);
+}
+
+// ── Runs (Iter96)
+
+type RunSummary = {
+  id: string;
+  startedAt: string;
+  finishedAt: string;
+  status: 'success' | 'partial_failure' | 'failure';
+  topicsChecked: number;
+  sourcesChecked: number;
+  notificationsCreated: number;
+  failures: Array<{ topic: string; url: string; error: string }>;
+};
+
+// POST /api/v1/update-agent/tick (Pro only)
+// Canonical scheduler entrypoint: global per-user lock, iterate enabled topics/sources.
+router.post('/tick', requireTier('pro'), async (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const startedAt = new Date();
+
+  const lockId = `lock-${uuidv4()}`;
+  // Primary: DB-backed lock (multi-process safe). Fallback: in-process guard for tests.
+  const acquiredOk = db.acquireUpdateAgentGlobalRunLockStrict({
+    userId,
+    lockId,
+    lockedAt: new Date(),
+    staleBefore: new Date(Date.now() - 10 * 60 * 1000),
+  });
+
+  const memLockOk = tryAcquireInProcessTick(userId);
+
+  if (!acquiredOk || !memLockOk) {
+    // Best-effort cleanup if we won DB lock but failed mem lock (rare in tests)
+    if (acquiredOk && !memLockOk) {
+      db.releaseUpdateAgentGlobalRunLock({ userId, lockId });
+      releaseInProcessTick(userId);
+    }
+
+    sendError(res, req, {
+      status: 409,
+      code: 'conflict',
+      message: 'Update Agent tick already in progress',
+    });
+    return;
+  }
+
+  const runId = `uar-${uuidv4()}`;
+  db.insertUpdateAgentRun({
+    id: runId,
+    userId,
+    startedAt,
+    finishedAt: null,
+    status: 'running',
+    topicsChecked: 0,
+    sourcesChecked: 0,
+    notificationsCreated: 0,
+    failuresJson: '[]',
+  });
+
+  let topicsChecked = 0;
+  let sourcesChecked = 0;
+  let notificationsCreated = 0;
+  const failures: Array<{ topic: string; url: string; error: string }> = [];
+
+  try {
+    const topics = db.listUpdateAgentTopics(userId).filter((t) => t.enabled !== false);
+
+    for (const t of topics) {
+      topicsChecked += 1;
+      const sources = db
+        .listUpdateAgentSources(userId, t.id)
+        .filter((s) => s.enabled !== false)
+        .filter((s) => {
+          if (!s.nextEligibleAt) return true;
+          const nextEligible = new Date(String(s.nextEligibleAt));
+          if (!Number.isFinite(nextEligible.getTime())) return true;
+          return nextEligible.getTime() <= Date.now();
+        })
+        .map((s) => ({ id: s.id, url: String(s.url) }));
+
+      const topicResult = await runUpdateAgentForTopic({
+        userId,
+        topic: String(t.topic),
+        topicId: t.id,
+        sources,
+        checkedAt: startedAt,
+      });
+
+      sourcesChecked += topicResult.sourcesChecked;
+      notificationsCreated += topicResult.notificationsCreated;
+      for (const f of topicResult.failures) {
+        failures.push({ topic: t.topic, url: f.url, error: f.error });
+      }
+
+      // Update per-topic last run state for UI continuity.
+      db.updateUpdateAgentTopicRunResult({
+        userId,
+        topicId: t.id,
+        lastRunAt: new Date(),
+        ok: topicResult.failures.length === 0,
+        error: topicResult.failures[0]?.error || '',
+      });
+    }
+
+    const finishedAt = new Date();
+    const finalStatus =
+      failures.length === 0 ? 'success' : topicsChecked > 0 ? 'partial_failure' : 'failure';
+
+    db.finishUpdateAgentRun({
+      id: runId,
+      userId,
+      finishedAt,
+      status: finalStatus,
+      topicsChecked,
+      sourcesChecked,
+      notificationsCreated,
+      failuresJson: JSON.stringify(failures),
+    });
+
+    const out: RunSummary = {
+      id: runId,
+      startedAt: startedAt.toISOString(),
+      finishedAt: finishedAt.toISOString(),
+      status: finalStatus as any,
+      topicsChecked,
+      sourcesChecked,
+      notificationsCreated,
+      failures,
+    };
+
+    res.status(200).json({ run: out });
+  } catch (e: any) {
+    const finishedAt = new Date();
+    failures.push({ topic: '', url: '', error: e?.message || String(e) });
+
+    db.finishUpdateAgentRun({
+      id: runId,
+      userId,
+      finishedAt,
+      status: 'failure',
+      topicsChecked,
+      sourcesChecked,
+      notificationsCreated,
+      failuresJson: JSON.stringify(failures),
+    });
+
+    sendError(res, req, {
+      status: 500,
+      code: 'update_agent_tick_failed',
+      message: 'Update Agent tick failed',
+      details: { error: e?.message || String(e) },
+    });
+  } finally {
+    db.releaseUpdateAgentGlobalRunLock({ userId, lockId });
+  }
+});
+
+// GET /api/v1/update-agent/runs?limit=20
+router.get(
+  '/runs',
+  requireTier('pro'),
+  validateQuery(z.object({ limit: z.coerce.number().int().min(1).max(50).default(20) })),
+  (req: Request, res: Response) => {
+    const userId = req.user!.sub;
+    const limit = (req.query as any).limit;
+    const runs = db.listUpdateAgentRuns(userId, limit).map((r: any) => {
+      let failures: any[] = [];
+      try {
+        failures = JSON.parse(String(r.failuresJson || '[]'));
+      } catch {
+        failures = [];
+      }
+
+      return {
+        id: r.id,
+        startedAt: String(r.startedAt),
+        finishedAt: r.finishedAt ? String(r.finishedAt) : null,
+        status: String(r.status),
+        topicsChecked: Number(r.topicsChecked || 0),
+        sourcesChecked: Number(r.sourcesChecked || 0),
+        notificationsCreated: Number(r.notificationsCreated || 0),
+        failures,
+      };
+    });
+
+    res.status(200).json({ runs });
+  },
+);
 
 // Topics
 router.get('/topics', (req: Request, res: Response) => {

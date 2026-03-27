@@ -6,20 +6,20 @@ In this MVP, **LearnFlow does not schedule runs by itself**. Scheduling is **ext
 
 ## What runs
 
-Call the Update Agent generator endpoint with a topic:
+Call the canonical Update Agent tick endpoint:
 
 ```bash
 curl -X POST \
   -H "Authorization: Bearer $LEARNFLOW_TOKEN" \
   -H "Content-Type: application/json" \
-  https://YOUR_DOMAIN/api/v1/notifications/generate \
-  -d '{"topic":"AI Safety"}'
+  https://YOUR_DOMAIN/api/v1/update-agent/tick \
+  -d '{}'
 ```
 
 Notes:
 
 - Runs are **best-effort** and may miss updates.
-- LearnFlow applies **locks** to avoid overlapping runs per user/topic.
+- LearnFlow applies a **global per-user lock** to avoid overlapping runs. If a tick is already in progress, the API returns **409 Conflict**.
 - Sources can be configured under **Settings → Update Agent**.
 
 ## Cron (Linux)
@@ -30,8 +30,8 @@ Example: run every 15 minutes:
 */15 * * * * curl -sS -X POST \
   -H "Authorization: Bearer $LEARNFLOW_TOKEN" \
   -H "Content-Type: application/json" \
-  https://YOUR_DOMAIN/api/v1/notifications/generate \
-  -d '{"topic":"AI Safety"}' >/dev/null
+  https://YOUR_DOMAIN/api/v1/update-agent/tick \
+  -d '{}' >/dev/null
 ```
 
 ## systemd timer
@@ -45,7 +45,7 @@ Description=LearnFlow Update Agent run
 [Service]
 Type=oneshot
 Environment=LEARNFLOW_TOKEN=REPLACE_ME
-ExecStart=/usr/bin/curl -sS -X POST -H "Authorization: Bearer %E{LEARNFLOW_TOKEN}" -H "Content-Type: application/json" https://YOUR_DOMAIN/api/v1/notifications/generate -d '{"topic":"AI Safety"}'
+ExecStart=/usr/bin/curl -sS -X POST -H "Authorization: Bearer %E{LEARNFLOW_TOKEN}" -H "Content-Type: application/json" https://YOUR_DOMAIN/api/v1/update-agent/tick -d '{}'
 ```
 
 `/etc/systemd/system/learnflow-update-agent.timer`
@@ -92,6 +92,6 @@ spec:
                   curl -sS -X POST \
                     -H "Authorization: Bearer $LEARNFLOW_TOKEN" \
                     -H "Content-Type: application/json" \
-                    https://YOUR_DOMAIN/api/v1/notifications/generate \
-                    -d '{"topic":"AI Safety"}'
+                    https://YOUR_DOMAIN/api/v1/update-agent/tick \
+                    -d '{}'
 ```

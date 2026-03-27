@@ -4,11 +4,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db.js';
 import { sendError } from '../errors.js';
 import { validateBody, validateQuery } from '../validation.js';
-import { fetchWithBackoff } from '../utils/updateAgent/fetchWithBackoff.js';
-import { parseFeed } from '../utils/updateAgent/rss.js';
-import { buildDeterministicExplanation } from '../utils/updateAgent/explanation.js';
 import { defaultSourcesForTopic } from '../utils/updateAgent/defaultSources.js';
-import { getDomain, normalizeUrl } from '../utils/updateAgent/url.js';
+
+import { runUpdateAgentForTopic } from '../utils/updateAgent/runTopic.js';
 
 const router = Router();
 
@@ -89,117 +87,13 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
     for (const u of defaultSourcesForTopic(topic)) sources.push({ url: u });
   }
 
-  const failures: Array<{ url: string; error: string }> = [];
-  let created = 0;
-
-  for (const src of sources.slice(0, 6)) {
-    const srcUrl = src.url;
-    const now = new Date();
-    try {
-      const normalizedSourceUrl = normalizeUrl(srcUrl);
-      const resp = await fetchWithBackoff(normalizedSourceUrl, { timeoutMs: 12_000 });
-      const body = await resp.text();
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
-
-      const items = parseFeed(body).slice(0, 8);
-      // Find the first item we haven't notified for.
-      const next = items.find((it) => !db.hasNotificationUrl(userId, normalizeUrl(it.url)));
-      if (!next) {
-        // still record source check
-        if (src.id) {
-          db.updateUpdateAgentSourceStatus({
-            userId,
-            id: src.id,
-            lastCheckedAt: now,
-            lastSuccessAt: now,
-            lastError: '',
-            lastErrorAt: null,
-            lastItemUrlSeen: items[0]?.url ? normalizeUrl(items[0].url) : '',
-            lastItemPublishedAt: items[0]?.publishedAt || null,
-
-            nextEligibleAt: null,
-            failureCount: 0,
-          });
-        }
-        continue;
-      }
-
-      const itemUrl = normalizeUrl(next.url);
-      const title = next.title;
-      const summary = next.summary || '';
-      const explanation = buildDeterministicExplanation({ topic, title, summary });
-
-      db.addNotification({
-        id: `notif-${uuidv4()}`,
-        userId,
-        type: 'update',
-        title,
-        body: summary,
-        createdAt: checkedAt,
-        readAt: null,
-        topic,
-        sourceUrl: normalizedSourceUrl,
-        sourceDomain: getDomain(normalizedSourceUrl),
-        checkedAt,
-        explanation,
-        url: itemUrl,
-        origin: 'update_agent',
-      });
-      created += 1;
-
-      if (src.id) {
-        db.updateUpdateAgentSourceStatus({
-          userId,
-          id: src.id,
-          lastCheckedAt: now,
-          lastSuccessAt: now,
-          lastError: '',
-          lastErrorAt: null,
-          lastItemUrlSeen: itemUrl,
-          lastItemPublishedAt: next.publishedAt || null,
-          nextEligibleAt: null,
-          failureCount: 0,
-        });
-      }
-    } catch (e: any) {
-      failures.push({ url: srcUrl, error: e?.message || String(e) });
-      if (src.id) {
-        // backoff: 30s * 2^n, capped at 1h
-        let prevFailureCount = 0;
-        try {
-          const allTopics = db.listUpdateAgentTopics(userId);
-          for (const t of allTopics) {
-            const rows = db.listUpdateAgentSources(userId, t.id);
-            const match = rows.find((r: any) => r.id === src.id);
-            if (match) {
-              prevFailureCount = Number(match.failureCount || 0);
-              break;
-            }
-          }
-        } catch {
-          // ignore
-        }
-        const nextFailureCount = Math.max(0, prevFailureCount) + 1;
-        const delayMs = Math.min(
-          60 * 60 * 1000,
-          30 * 1000 * Math.pow(2, Math.min(10, nextFailureCount - 1)),
-        );
-        db.updateUpdateAgentSourceStatus({
-          userId,
-          id: src.id,
-          lastCheckedAt: now,
-          lastSuccessAt: null,
-          lastError: e?.message || String(e),
-          lastErrorAt: now,
-          nextEligibleAt: new Date(Date.now() + delayMs),
-          failureCount: nextFailureCount,
-        });
-      }
-      continue;
-    }
-  }
+  const result = await runUpdateAgentForTopic({
+    userId,
+    topic,
+    topicId,
+    sources,
+    checkedAt,
+  });
 
   // Iter84: release lock + persist last run status
   try {
@@ -209,8 +103,8 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
         userId,
         topicId: lock.topicId,
         lastRunAt: new Date(),
-        ok: failures.length === 0,
-        error: failures[0]?.error || '',
+        ok: result.failures.length === 0,
+        error: result.failures[0]?.error || '',
       });
       db.releaseUpdateAgentTopicRunLock({ userId, topicId: lock.topicId, lockId: lock.lockId });
     }
@@ -218,7 +112,10 @@ router.post('/generate', validateBody(generateSchema), async (req: Request, res:
     // ignore
   }
 
-  res.status(201).json({ created, failures });
+  res.status(201).json({
+    created: result.notificationsCreated,
+    failures: result.failures,
+  });
 });
 
 const markAllReadSchema = z.object({});

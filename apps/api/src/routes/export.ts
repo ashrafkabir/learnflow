@@ -7,6 +7,11 @@ import { scoreSourceCredibility } from '../utils/sourceCredibility.js';
 
 const router = Router();
 
+function exportStamp(d = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}-${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}`;
+}
+
 function stableSourceId(s: any): string {
   const url = String(s?.url || '').trim();
   const title = String(s?.title || '').trim();
@@ -156,9 +161,12 @@ router.get('/', async (req: Request, res: Response) => {
     }
   }
 
+  const stamp = exportStamp();
+
   const payload = {
     exportedAt: new Date().toISOString(),
-    version: '1.0',
+    version: process.env.npm_package_version || '0.1.0',
+    schemaVersion: 'v1',
     profile: {
       name: user?.displayName || '',
       email: user?.email || '',
@@ -177,7 +185,7 @@ router.get('/', async (req: Request, res: Response) => {
   if (format === 'md' || format === 'markdown') {
     const md = coursesToMarkdown(courses, lessonSourcesByLessonId);
     res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-    res.setHeader('Content-Disposition', 'attachment; filename="learnflow-export.md"');
+    res.setHeader('Content-Disposition', `attachment; filename="learnflow-export-${stamp}.md"`);
     res.status(200).send(md);
     return;
   }
@@ -202,12 +210,20 @@ router.get('/', async (req: Request, res: Response) => {
     zip.file('learnflow-export.md', coursesToMarkdown(courses, lessonSourcesByLessonId));
     zip.file(
       'metadata.json',
-      JSON.stringify({ exportedAt: payload.exportedAt, version: payload.version }, null, 2),
+      JSON.stringify(
+        {
+          exportedAt: payload.exportedAt,
+          appVersion: payload.version,
+          schemaVersion: payload.schemaVersion || 'v1',
+        },
+        null,
+        2,
+      ),
     );
 
     const buf = await zip.generateAsync({ type: 'nodebuffer' });
     res.setHeader('Content-Type', 'application/zip');
-    res.setHeader('Content-Disposition', 'attachment; filename="learnflow-export.zip"');
+    res.setHeader('Content-Disposition', `attachment; filename="learnflow-export-${stamp}.zip"`);
     res.status(200).send(buf);
     return;
   }
@@ -225,7 +241,7 @@ router.get('/', async (req: Request, res: Response) => {
 
   // default JSON (Pro)
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="learnflow-export.json"');
+  res.setHeader('Content-Disposition', `attachment; filename="learnflow-export-${stamp}.json"`);
   res.status(200).send(JSON.stringify(payload, null, 2));
 });
 
