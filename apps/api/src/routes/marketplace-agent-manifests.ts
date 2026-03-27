@@ -17,7 +17,7 @@ router.post(
     const approvedById = new Map(approved.map((a) => [String(a.id), a]));
 
     const manifests = agentIds
-      .map((id) => {
+      .map((id: string) => {
         const row = approvedById.get(String(id));
         return resolveMarketplaceAgentManifest({ agentId: String(id), manifest: row?.manifest });
       })
