@@ -98,6 +98,12 @@ export function createApp(options?: { devMode?: boolean }) {
 
         if (app.locals.devMode) return cb(null, true);
 
+        // In non-production we allow browser origins even if no allowlist is configured.
+        // Rationale: local dev (Vite/Playwright) runs should not 500 due to missing env.
+        if (allowlist.length === 0 && process.env.NODE_ENV !== 'production') {
+          return cb(null, true);
+        }
+
         if (allowlist.length === 0) {
           return cb(new Error('CORS not configured')); // handled by errorHandler
         }

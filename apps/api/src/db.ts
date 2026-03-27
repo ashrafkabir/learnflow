@@ -828,7 +828,17 @@ const stmts = {
   ),
 
   // Iter96: per-user global tick lock + run history
-  acquireUpdateAgentGlobalRunLock: sqlite.prepare(`
+  acquireUpdateAgentGlobalRunLock: sqlite.prepare<
+    {
+      userId: string;
+      lockId: string;
+      lockedAt: string;
+      staleBefore: string;
+      createdAt: string;
+      updatedAt: string;
+    },
+    { lockId: string }
+  >(`
     INSERT INTO update_agent_global_runs (userId, lockId, lockedAt, createdAt, updatedAt)
     VALUES (@userId, @lockId, @lockedAt, @createdAt, @updatedAt)
     ON CONFLICT(userId) DO UPDATE SET

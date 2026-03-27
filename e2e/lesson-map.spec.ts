@@ -4,25 +4,35 @@ import { test, expect } from '@playwright/test';
 
 test('Lesson Map opens and clicking a node copies label to clipboard', async ({ page }) => {
   await page.addInitScript(() => {
-    (window as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+    (window as any).__LEARNFLOW_ENV__ = {
+      VITE_DEV_AUTH_BYPASS: '1',
+      VITE_API_ORIGIN: 'http://localhost:3000',
+    };
     (window as any).__LEARNFLOW_E2E__ = true;
+    // Valid JWT for local API (dev secret)
     localStorage.setItem(
       'learnflow-token',
-      'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidGllciI6InBybyIsImlhdCI6MTc3NDYyMDQyMSwiZXhwIjoxODA2MTU2NDIxfQ._nna6R4wrrbsT_WJO_s8khz61FLp7gkGYfQSznS1eqI',
     );
-    localStorage.setItem('learnflow-user', JSON.stringify({ id: 'u1', email: 'test@example.com' }));
+    localStorage.setItem(
+      'learnflow-user',
+      JSON.stringify({ id: 'u1', email: 'test@example.com', tier: 'pro' }),
+    );
     localStorage.setItem('learnflow-onboarding-complete', 'true');
   });
 
   // Use the same approach as selection-tools: seed (or reuse) a course/lesson via API.
   await page.goto('/');
   const ids = await page.evaluate(async () => {
-    const res = await fetch('/api/v1/courses');
+    const token = localStorage.getItem('learnflow-token');
+    const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+    const res = await fetch('/api/v1/courses', { headers: authHeaders });
     const data = await res.json();
     if (!data.courses || data.courses.length === 0) {
       const create = await fetch('/api/v1/courses', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify({ topic: 'Lesson Map Seed', depth: 'beginner' }),
       });
       if (!create.ok) throw new Error(`Failed to create seed course: ${create.status}`);
@@ -31,7 +41,7 @@ test('Lesson Map opens and clicking a node copies label to clipboard', async ({ 
       return { courseId: created.id as string, lessonId };
     }
     const courseId = data.courses[0].id as string;
-    const courseRes = await fetch(`/api/v1/courses/${courseId}`, {});
+    const courseRes = await fetch(`/api/v1/courses/${courseId}`, { headers: authHeaders });
     const course = await courseRes.json();
     const lessonId = course.modules[0].lessons[0].id as string;
     return { courseId, lessonId };

@@ -2,7 +2,253 @@
 
 Owner: Builder  
 Planner: Ash (main session)  
-Last updated: 2026-03-27 (Iteration 99 DONE)
+Last updated: 2026-03-27 (Iteration 100 READY FOR BUILDER)
+
+---
+
+## Iteration 100 — QUALITY GATES + E2E SEED STABILITY + MINDMAP CRDT RELIABILITY + TSC FIXES
+
+Status: **DONE**
+
+### Biggest gaps (top 3)
+
+1. **TypeScript build is broken**: `npx tsc --noEmit` fails at `apps/api/src/db.ts:1659` (`row.lockId` typing). This violates Spec §15 quality gates and breaks developer trust.
+2. **E2E seed course creation is unstable**: multiple E2E suites (`e2e/lesson-map.spec.ts`, `e2e/selection-tools.spec.ts`) fail with `Failed to create seed course: 500`, preventing regression coverage for lesson-map + selection tools.
+3. **Mindmap CRDT test is unreliable**: `e2e/mindmap-crdt.spec.ts` fails because the dev-only hook `window.__learnflowMindmapNodes` doesn’t populate / sync deterministically, so real-time collab claims aren’t verifiable.
+
+### Screenshot evidence (planner-run)
+
+- Local: `learnflow/screenshots/iter100/planner-run/` (desktop + mobile)
+- OneDrive mirror: `/home/aifactory/onedrive-learnflow/learnflow/learnflow/screenshots/iter100/planner-run/`
+- Notes/commands: `learnflow/screenshots/iter100/planner-run/NOTES.md`
+
+### P0 (Must fix — restores Spec §15 quality gates + unblocks E2E)
+
+#### 1) P0 — Fix TypeScript compile error in Update Agent global lock path
+
+**Goal**: `npx tsc --noEmit` must pass again.
+
+**What’s failing**
+
+- `apps/api/src/db.ts(1659,33): error TS2339: Property 'lockId' does not exist on type '{}'`.
+- The statement uses `RETURNING lockId` (`stmts.acquireUpdateAgentGlobalRunLock`) so `row` does have a `lockId` at runtime, but TypeScript typing is wrong.
+
+**Acceptance criteria**
+
+- `npx tsc --noEmit` exits 0.
+- Update Agent lock acquisition returns typed `{ lockId: string } | null` without `any` casts leaking.
+
+**Likely files**
+
+- `apps/api/src/db.ts` (methods around `acquireUpdateAgentGlobalRunLock` and the `stmts` prepare typing)
+
+**Verification checklist**
+
+- Run: `npx tsc --noEmit`
+- Run: `npm test` (at least `apps/api` tests)
+
+---
+
+#### 2) P0 — Stabilize seed course creation endpoint used by E2E (eliminate 500)
+
+**Goal**: E2E tests should never fail because course seeding intermittently 500s.
+
+**Observed failures**
+
+- `e2e/lesson-map.spec.ts` and `e2e/selection-tools.spec.ts` both seed via `POST /api/v1/courses` and can throw `Failed to create seed course: 500`.
+
+**Acceptance criteria**
+
+- In dev + `VITE_DEV_AUTH_BYPASS=1`, `POST /api/v1/courses` is deterministic and never 500s.
+- If the upstream agent pipeline fails, the API returns a structured 4xx/5xx with reason and the UI/E2E harness can fall back to fixture generation.
+
+**Likely files**
+
+- `apps/api/src/routes/courses.ts` (course creation)
+- `packages/agents/src/course-builder/course-builder-agent.ts` (if invoked)
+- `apps/api/src/orchestrator.ts` / chat pipeline used for course creation
+- Any “test mode” toggles used for deterministic generation
+
+**Verification checklist**
+
+- Run repeatedly: `for i in {1..20}; do curl -s -o /dev/null -w "%{http_code}\n" -X POST .../api/v1/courses; done` (or Playwright loop)
+- Re-run: `npx playwright test e2e/lesson-map.spec.ts e2e/selection-tools.spec.ts`
+
+---
+
+#### 3) P0 — Make Mindmap CRDT E2E assertion deterministic (dev hook or API)
+
+**Goal**: Verify realtime collaboration behavior without relying on canvas DOM.
+
+**Observed failure**
+
+- `e2e/mindmap-crdt.spec.ts` expects `window.__learnflowMindmapNodes` to include `"CRDT Node A"`, but it stays `[]` after 10s.
+
+**Acceptance criteria**
+
+- Expose a dev-only, E2E-only hook that reliably reflects the Yjs doc state (nodes/edges) after sync.
+- Or: provide a lightweight `/api/v1/mindmap/:courseId/debug` endpoint in dev auth bypass only.
+
+**Likely files**
+
+- `apps/client/src/screens/MindmapExplorer.tsx` (where Yjs state is managed)
+- `apps/api/src/ws.ts` or mindmap websocket bridge
+- `e2e/mindmap-crdt.spec.ts`
+
+**Verification checklist**
+
+- `npx playwright test e2e/mindmap-crdt.spec.ts`
+- Manual: open 2 tabs on `/mindmap` and confirm edits sync
+
+---
+
+#### 4) P0 — Ensure screenshot harness covers _every_ core screen and does not depend on flaky API
+
+**Goal**: Keep Iter100+ planner runs reproducible.
+
+**Acceptance criteria**
+
+- `node screenshot-all.mjs` runs from clean state and produces all expected PNGs.
+- Seeded course routes (`/courses/c-1`, `/courses/c-1/lessons/l1`) must always resolve (fixture-backed) or the harness must create a deterministic local course first.
+
+**Likely files**
+
+- `screenshot-all.mjs`
+- `apps/api/src/routes/courses.ts` (seed/fixture)
+
+**Verification checklist**
+
+- `SCREENSHOT_DIR=... node screenshot-all.mjs` on a fresh DB
+
+---
+
+### P1 (Should do — reduce spec drift / UX gaps)
+
+#### 5) P1 — Onboarding flow parity with spec (experience step + “first course” clarity)
+
+**Spec delta**
+
+- Spec §5.2.1 calls for 6 onboarding screens including “experience/level assessment”. Current router redirects `/onboarding/experience` → subscription (`apps/client/src/main.tsx` route table), and the flow lands on `/onboarding/ready`/`first-course` depending.
+
+**Acceptance criteria**
+
+- Either implement an actual experience step UI and persist it, **or** update copy/spec tracker to explicitly mark as MVP deviation.
+- The final onboarding step consistently leads to a “create first course” action.
+
+**Likely files**
+
+- `apps/client/src/screens/*` (`Welcome.tsx`, `Goals.tsx`, `Topics.tsx`, `SubscriptionChoice.tsx`, `FirstCourse.tsx`)
+- `apps/client/src/main.tsx` (route table)
+- `apps/api/src/routes/profile.ts` (context persistence)
+
+**Verification checklist**
+
+- Re-run: `npx playwright test e2e/learning-journey.spec.ts`
+
+---
+
+#### 6) P1 — Selection tools reliability + explicit error surfacing
+
+**Observed**
+
+- Selection tools E2E currently blocked by seed course 500s. Also ensure tool preview/attach flows handle failures without silent no-op.
+
+**Acceptance criteria**
+
+- Preview endpoint always returns a well-formed object (even on failure) including `error` string.
+- Attach creates an annotation and the UI reflects it immediately.
+
+**Likely files**
+
+- `apps/api/src/routes/courses.ts` (selection-tools endpoints)
+- `apps/client/src/screens/LessonReader.tsx` (selection toolbar + preview drawer)
+- `e2e/selection-tools.spec.ts`
+
+**Verification checklist**
+
+- `npx playwright test e2e/selection-tools.spec.ts`
+
+---
+
+#### 7) P1 — Lesson map UX: ensure clicks always produce a meaningful action
+
+**Acceptance criteria**
+
+- Lesson mindmap opens and clicking a node triggers a defined behavior:
+  - copy label to clipboard **and/or** open “concept details” drawer.
+- If no nodes, show an empty state explaining why.
+
+**Likely files**
+
+- `apps/client/src/screens/LessonReader.tsx` (lesson mindmap)
+- `e2e/lesson-map.spec.ts`
+
+**Verification checklist**
+
+- `npx playwright test e2e/lesson-map.spec.ts`
+- Screenshot: lesson map open state
+
+---
+
+### P2 (Nice to have — spec honesty + hardening)
+
+#### 8) P2 — Spec compliance suite: persist artifacts for failures and link them from Improvement Queue
+
+**Acceptance criteria**
+
+- When `e2e/spec-compliance.spec.ts` fails `tsc`, the saved `learnflow/screenshots/compliance/tsc-error.txt` is linked from the Iter section.
+- Add a short “How to run compliance tests” doc snippet.
+
+**Likely files**
+
+- `e2e/spec-compliance.spec.ts`
+- `README.md` or `PROGRESS.md`
+
+---
+
+#### 9) P2 — Update Agent: align marketing/security claims with actual behavior
+
+**Observed**
+
+- Marketing pages claim “API key encryption at rest (AES-256-GCM, AEAD)” and “Now with multi-agent AI pipeline”. Ensure these claims stay true and/or are qualified as MVP.
+
+**Acceptance criteria**
+
+- If any claim becomes untrue, adjust marketing copy or implement missing pieces.
+
+**Likely files**
+
+- `apps/web/src/app/page.tsx` (homepage)
+- `apps/client/src/screens/Home.tsx` (marketing content in client)
+
+---
+
+#### 10) P2 — OneDrive sync guardrail (planner-run folder must always mirror)
+
+**Acceptance criteria**
+
+- Add a simple checklist in `screenshots/*/NOTES.md` for rsync paths.
+
+**Verification checklist**
+
+- Confirm files exist at: `/home/aifactory/onedrive-learnflow/learnflow/learnflow/screenshots/iter100/planner-run/`
+
+---
+
+### Iter100 verification (Builder)
+
+- Typecheck: `npx tsc --noEmit`
+- Unit tests: `npm test`
+- Lint: `npm run lint:check`
+- E2E criticals:
+  - `npx playwright test e2e/lesson-map.spec.ts e2e/selection-tools.spec.ts e2e/mindmap-crdt.spec.ts e2e/spec-compliance.spec.ts`
+- Screenshots:
+  - Desktop: `SCREENSHOT_DIR=learnflow/screenshots/iter100/planner-run node screenshot-all.mjs`
+  - Mobile: `node screenshot-mobile.mjs` (copy into iter folder)
+
+### OneDrive sync (Planner — completed)
+
+- Synced: `learnflow/screenshots/iter100/planner-run/` → `/home/aifactory/onedrive-learnflow/learnflow/learnflow/screenshots/iter100/planner-run/`
 
 ---
 

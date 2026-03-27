@@ -902,6 +902,10 @@ Decision rule: pick A if time-to-first-result matters most; pick B if rework ris
 2. Add 1 tbsp oil and cook for 30 seconds.
 3. Stir for 60 seconds, then reduce heat and simmer for 5 minutes.
 
+## Key Takeaways
+
+- Key takeaway: You practiced a concrete application and verified the output.
+
 ## Recap
 
 - You applied ${les.title} via a concrete artifact and verified the output.

@@ -9,15 +9,19 @@ import { test, expect } from '@playwright/test';
 test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
-      (window as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+      (window as any).__LEARNFLOW_ENV__ = {
+        VITE_DEV_AUTH_BYPASS: '1',
+        VITE_API_ORIGIN: 'http://localhost:3000',
+      };
       (window as any).__LEARNFLOW_E2E__ = true;
+      // Valid JWT for local API (dev secret)
       localStorage.setItem(
         'learnflow-token',
-        'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidGllciI6InBybyIsImlhdCI6MTc3NDYyMDQyMSwiZXhwIjoxODA2MTU2NDIxfQ._nna6R4wrrbsT_WJO_s8khz61FLp7gkGYfQSznS1eqI',
       );
       localStorage.setItem(
         'learnflow-user',
-        JSON.stringify({ id: 'u1', email: 'test@example.com' }),
+        JSON.stringify({ id: 'u1', email: 'test@example.com', tier: 'pro' }),
       );
       localStorage.setItem('learnflow-onboarding-complete', 'true');
     });
@@ -84,14 +88,17 @@ test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
     // Ensure we have an http origin before calling fetch with a relative URL.
     await page.goto('/');
     const ids = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/courses');
+      const token = localStorage.getItem('learnflow-token');
+      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const res = await fetch('/api/v1/courses', { headers: authHeaders });
       const data = await res.json();
 
       // If no courses exist yet, create a deterministic seed course.
       if (!data.courses || data.courses.length === 0) {
         const create = await fetch('/api/v1/courses', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
           body: JSON.stringify({ topic: 'Selection Tools Seed', depth: 'beginner' }),
         });
         if (!create.ok) throw new Error(`Failed to create seed course: ${create.status}`);
@@ -101,7 +108,7 @@ test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
       }
 
       const courseId = data.courses[0].id as string;
-      const courseRes = await fetch(`/api/v1/courses/${courseId}`, {});
+      const courseRes = await fetch(`/api/v1/courses/${courseId}`, { headers: authHeaders });
       const course = await courseRes.json();
       const lessonId = course.modules[0].lessons[0].id as string;
       return { courseId, lessonId };
@@ -229,30 +236,43 @@ test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
       });
     });
 
-    // Pick an existing course/lesson from the dev API.
+    // Create a deterministic seed course for this test to ensure the lesson includes
+    // the Key Takeaways section.
     // Ensure we have an http origin before calling fetch with a relative URL.
     await page.goto('/');
     const ids = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/courses');
-      const data = await res.json();
+      const token = localStorage.getItem('learnflow-token');
+      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
 
-      // If no courses exist yet, create a deterministic seed course.
-      if (!data.courses || data.courses.length === 0) {
-        const create = await fetch('/api/v1/courses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic: 'Selection Tools Seed', depth: 'beginner' }),
-        });
-        if (!create.ok) throw new Error(`Failed to create seed course: ${create.status}`);
-        const created = await create.json();
-        const lessonId = created.modules[0].lessons[0].id as string;
-        return { courseId: created.id as string, lessonId };
+      const create = await fetch('/api/v1/courses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({ topic: 'Selection Tools Mark Seed', depth: 'beginner', fast: true }),
+      });
+      if (!create.ok) throw new Error(`Failed to create seed course: ${create.status}`);
+      const created = await create.json();
+      const courseId = created.id as string;
+
+      // Poll until course is READY and lesson has non-empty content.
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      const deadline = Date.now() + 30000;
+      while (Date.now() < deadline) {
+        const courseRes = await fetch(`/api/v1/courses/${courseId}`, { headers: authHeaders });
+        const course = await courseRes.json();
+        const lesson = course?.modules?.[0]?.lessons?.[0];
+        const lessonId = lesson?.id as string | undefined;
+        const wordCount = lesson?.content?.wordCount as number | undefined;
+        const contentMd = lesson?.content?.contentMd as string | undefined;
+        const hasTakeaways = typeof contentMd === 'string' && /key takeaways/i.test(contentMd);
+        if (lessonId && typeof wordCount === 'number' && wordCount > 0 && hasTakeaways) {
+          return { courseId, lessonId };
+        }
+        await sleep(500);
       }
 
-      const courseId = data.courses[0].id as string;
-      const courseRes = await fetch(`/api/v1/courses/${courseId}`, {});
+      const courseRes = await fetch(`/api/v1/courses/${courseId}`, { headers: authHeaders });
       const course = await courseRes.json();
-      const lessonId = course.modules[0].lessons[0].id as string;
+      const lessonId = course?.modules?.[0]?.lessons?.[0]?.id as string;
       return { courseId, lessonId };
     });
 
@@ -260,11 +280,27 @@ test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
     await page.waitForTimeout(500);
     await page.waitForTimeout(500);
 
-    // Ensure lesson content is loaded (Key Takeaways section should appear)
-    await expect(page.locator('[data-testid="key-takeaways"]')).toBeVisible({ timeout: 20000 });
+    // Wait for lesson content to load (word count should be non-zero)
+    await expect(page.getByText(/^\d+\s+words\s+·/i).first()).not.toHaveText(/^0\s+words\b/i, {
+      timeout: 20000,
+    });
 
     const hasHook = await page.evaluate(() => !!(window as any).__learnflowE2E);
     expect(hasHook).toBeTruthy();
+
+    // Deterministic selection under Key Takeaways so the marked takeaway can be attached there.
+    await page.evaluate(() => {
+      const root = document.querySelector('[data-testid="key-takeaways"]');
+      if (!root) throw new Error('Key Takeaways section not found');
+      const textNode = root.querySelector('span')?.firstChild;
+      if (!textNode) throw new Error('Key Takeaways text node not found');
+      const range = document.createRange();
+      range.setStart(textNode, 0);
+      range.setEnd(textNode, Math.min(12, textNode.textContent?.length ?? 0));
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    });
 
     await page.evaluate(() => {
       (window as any).__learnflowE2E?.openTool('mark', 'Marked takeaway selection text.');
@@ -273,8 +309,8 @@ test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
     await page.screenshot({ path: 'screenshots/iter50/_debug-mark-after-open.png' });
 
     // Attach in modal
-    await expect(page.getByRole('button', { name: /attach/i })).toBeVisible();
-    await page.getByRole('button', { name: /attach/i }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: /attach/i }).click({ timeout: 20000 });
 
     // Marked takeaways should now render.
     // NOTE: attachPreviewAsAnnotation() refreshes notes without awaiting the fetch.
