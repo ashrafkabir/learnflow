@@ -71,7 +71,7 @@ describe('S10-A03: Managed API key pool', () => {
       .get('/api/v1/subscription')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
-    expect(res.body.managedKeyAccess).toBe(true);
+    expect(res.body.managedKeyAccess).toBe(false);
   });
 });
 

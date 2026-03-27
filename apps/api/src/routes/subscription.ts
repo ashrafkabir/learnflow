@@ -25,7 +25,7 @@ function getFeatureFlags(tier: string): FeatureFlags {
     proactiveUpdates: Boolean(enabled.update_agent),
     unlimitedMindmap: Boolean(enabled['courses.unlimited']),
     priorityAgents: Boolean(enabled['agents.priority']),
-    managedApiKeys: Boolean(enabled['keys.managed']),
+    managedApiKeys: false,
     advancedAnalytics: Boolean(enabled['analytics.advanced']),
   };
 }
@@ -92,7 +92,7 @@ router.get('/', (req: Request, res: Response) => {
   res.status(200).json({
     tier,
     status: tier === 'pro' ? 'active' : 'inactive',
-    managedKeyAccess: tier === 'pro',
+    managedKeyAccess: Boolean(features.managedApiKeys),
     features,
     invoices,
   });
@@ -109,7 +109,7 @@ router.get('/status', (req: Request, res: Response) => {
     tier,
     plan: tier,
     status: tier === 'pro' ? 'active' : 'inactive',
-    managedKeyAccess: tier === 'pro',
+    managedKeyAccess: Boolean(features.managedApiKeys),
     features,
   });
 });

@@ -43,7 +43,7 @@ export const CAPABILITY_MATRIX: Record<PlanId, CapabilityMatrix> = {
     ],
     missing: [
       'Priority AI agents',
-      'Managed API keys (when available)',
+      'Managed API keys (coming soon)',
       'Update Agent',
       'Advanced analytics',
       'Priority support',
@@ -70,7 +70,6 @@ export const CAPABILITY_MATRIX: Record<PlanId, CapabilityMatrix> = {
     features: [
       'Unlimited courses',
       'Priority AI agents',
-      'Managed API keys (when available)',
       'Update Agent',
       'Cornell notes & flashcards',
       'Knowledge mindmap',
@@ -82,14 +81,14 @@ export const CAPABILITY_MATRIX: Record<PlanId, CapabilityMatrix> = {
     enabled: {
       'courses.unlimited': true,
       'agents.priority': true,
-      'keys.managed': true,
+      'keys.managed': false,
       update_agent: true,
       'analytics.advanced': true,
       'support.priority': true,
       'marketplace.publish': true,
       'export.data': true,
     },
-    notes: ['Managed keys availability depends on this deployment.'],
+    notes: ['Managed API keys are not available in this build (coming soon).'],
   },
 };
 

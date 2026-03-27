@@ -25,7 +25,7 @@ export default function PricingPage() {
       name: 'Pro',
       price: '$20',
       period: '/month',
-      cta: 'Start Pro Trial',
+      cta: 'Upgrade to Pro',
       highlight: true,
       features: [
         { label: 'Courses', value: 'Unlimited' },
@@ -50,6 +50,24 @@ export default function PricingPage() {
       <p style={{ textAlign: 'center', fontSize: 18, color: '#6b7280', marginBottom: 48 }}>
         Start free. Upgrade when you need more.
       </p>
+
+      <div
+        role="note"
+        aria-label="Billing note"
+        style={{
+          maxWidth: 720,
+          margin: '0 auto 32px',
+          padding: 16,
+          borderRadius: 12,
+          border: '1px solid #bbf7d0',
+          background: '#f0fdf4',
+          color: '#166534',
+          fontSize: 14,
+        }}
+      >
+        <strong>Billing is MVP/mock in this build.</strong> Upgrading does not perform real charges
+        or refunds in this deployment.
+      </div>
 
       <div
         data-component="pricing-comparison"

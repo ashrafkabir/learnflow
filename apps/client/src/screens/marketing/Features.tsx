@@ -45,7 +45,11 @@ const FEATURES = [
     icon: <IconLesson className="w-6 h-6" />,
     title: 'Smart Note-Taking',
     desc: 'Generate Cornell notes, flashcards, or Zettelkasten entries from any lesson. Notes are contextualized to your learning level.',
-    benefits: ['Three note formats', 'Auto-generated cue questions', 'Export to Markdown/PDF'],
+    benefits: [
+      'Three note formats',
+      'Auto-generated cue questions',
+      'Export to Markdown (PDF coming soon)',
+    ],
   },
   {
     icon: <IconTestTube className="w-6 h-6" />,

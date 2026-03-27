@@ -135,7 +135,7 @@ The Orchestrator is the central intelligence layer. It receives all user interac
 | Summarizer Agent      | Condenses long-form content into key takeaways; produces executive summaries for professionals                                           | User requests summary or lesson exceeds time threshold     |
 | Mindmap Agent         | Extends and visualizes the learner's knowledge graph; shows concept relationships and coverage gaps                                      | User explores course structure or requests visual overview |
 | Update Agent (Pro)    | Monitors subscribed topics for new developments; proactively pushes refreshed lessons                                                    | Scheduled (daily/weekly) for Pro subscribers               |
-| Export Agent          | Packages courses, notes, and progress into PDF, Markdown, or SCORM format for offline use or LMS import                                  | User requests export                                       |
+| Export Agent          | Packages courses, notes, and progress into Markdown/JSON/ZIP today (PDF/SCORM planned) for offline use or LMS import                     | User requests export                                       |
 
 ## 4.3 Agent Communication Protocol
 
@@ -400,23 +400,23 @@ The agent marketplace enables developers to publish specialized agents that exte
 
 - Productivity: schedule optimizers, goal trackers, Pomodoro timers
 
-- Export/Integration: LMS connectors, Notion/Obsidian sync, PDF generators
+- Export/Integration: LMS connectors, Notion/Obsidian sync, PDF generators (planned)
 
 # 8. Subscription & Monetization
 
-|                   |                                  |                                      |
-| ----------------- | -------------------------------- | ------------------------------------ |
-| **Feature**       | **Free (BYOAI)**                 | **Pro ($19/mo)**                     |
-| API Key           | Student provides their own       | Managed by platform (pooled keys)    |
-| Course Creation   | Unlimited                        | Unlimited + priority generation      |
-| Agent Access      | All marketplace agents           | All + Pro-exclusive agents           |
-| Proactive Updates | None                             | Daily/weekly skill refresh alerts    |
-| Mindmap           | Basic (100 nodes)                | Advanced (unlimited nodes, export)   |
-| Collaboration     | Community forums                 | Priority peer matching, study groups |
-| Course Publishing | Free courses only                | Free + paid courses                  |
-| Export            | Markdown only                    | PDF, SCORM, Notion, Obsidian         |
-| Support           | Community                        | Priority email + chat                |
-| Usage Limits      | Subject to user's API key limits | Platform-managed, high limits        |
+|                   |                                  |                                                              |
+| ----------------- | -------------------------------- | ------------------------------------------------------------ |
+| **Feature**       | **Free (BYOAI)**                 | **Pro ($19/mo)**                                             |
+| API Key           | Student provides their own       | Student provides their own (managed keys: coming soon)       |
+| Course Creation   | Unlimited                        | Unlimited + priority generation                              |
+| Agent Access      | All marketplace agents           | All + Pro-exclusive agents                                   |
+| Proactive Updates | None                             | Daily/weekly skill refresh alerts                            |
+| Mindmap           | Basic (100 nodes)                | Advanced (unlimited nodes, export)                           |
+| Collaboration     | Community forums                 | Priority peer matching, study groups                         |
+| Course Publishing | Free courses only                | Free + paid courses                                          |
+| Export            | Markdown only                    | Markdown + JSON/ZIP (PDF/SCORM/Notion/Obsidian: coming soon) |
+| Support           | Community                        | Priority email + chat                                        |
+| Usage Limits      | Subject to user's API key limits | Platform-managed, high limits                                |
 
 ■ **FUTURE TIERS**
 
@@ -756,15 +756,15 @@ You continuously adapt based on observed behavior:
 
 ## 14.3 Phase 3: Marketplace (Weeks 17–24)
 
-- Course marketplace: publishing flow, discovery, payments (Stripe)
+- Course marketplace: publishing flow, discovery, payments (mock in this build; Stripe planned)
 
 - Agent marketplace: submission, review, activation
 
-- Pro subscription launch with managed API keys
+- Pro subscription launch (billing mock in this build; managed keys planned)
 
 - Update Agent for Pro subscribers
 
-- Export Agent with PDF, SCORM, and Obsidian sync
+- Export Agent (PDF/SCORM/Obsidian sync planned; current: MD/JSON/ZIP)
 
 - Public App Store / Play Store launch
 

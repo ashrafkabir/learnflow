@@ -40,7 +40,7 @@ const PLANS = [
 const FAQ = [
   {
     q: 'Can I use my own API keys?',
-    a: "Yes! Bring your own OpenAI, Anthropic, or Google API keys. They're encrypted and never shared. Pro users may have access to managed keys when available on this deployment.",
+    a: "Yes! Bring your own OpenAI, Anthropic, or Google API keys. They're encrypted and never shared. Managed keys are planned but not available in this build.",
   },
   {
     q: 'What happens when I hit the course limit?',

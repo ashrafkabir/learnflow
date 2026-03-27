@@ -38,7 +38,7 @@ export const CAPABILITY_MATRIX: Record<PlanId, CapabilityMatrix> = {
     enabled: {
       'courses.unlimited': true,
       'agents.priority': true,
-      'keys.managed': true,
+      'keys.managed': false,
       update_agent: true,
       'analytics.advanced': true,
       'support.priority': true,

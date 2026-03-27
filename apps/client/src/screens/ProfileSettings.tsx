@@ -256,7 +256,7 @@ export function ProfileSettings() {
               },
               {
                 icon: <IconKey className="w-5 h-5" />,
-                label: 'Managed keys (if enabled on this deployment)',
+                label: 'Managed API keys (coming soon)',
                 pro: true,
               },
               { icon: <IconRefresh className="w-5 h-5" />, label: 'Update Agent', pro: true },

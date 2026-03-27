@@ -86,7 +86,7 @@ describe('Update Agent trust loop UI', () => {
         );
       }
 
-      if (url.includes('/api/v1/notifications/generate')) {
+      if (url.includes('/notifications/generate')) {
         return new Response(JSON.stringify({ created: 0, failures: [] }), {
           status: 201,
           headers: { 'Content-Type': 'application/json' },

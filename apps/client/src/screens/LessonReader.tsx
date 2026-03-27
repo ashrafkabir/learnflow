@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../context/AppContext.js';
+import { useApp, apiPost } from '../context/AppContext.js';
 import { CitationTooltip, Source } from '../components/CitationTooltip.js';
 import { LessonMindmap } from '../components/LessonMindmap.js';
 import { parseSources } from '../lib/sources.js';
@@ -257,24 +257,16 @@ export function LessonReader() {
     if (!courseId || !lessonId) return;
 
     const startedAt = Date.now();
-    // Best-effort fire-and-forget
-    fetch('/api/v1/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'lesson.view_start', courseId, lessonId, meta: {} }),
-    }).catch(() => {});
+    // Best-effort fire-and-forget (use shared helper so auth + origin tagging apply)
+    apiPost('/events', { type: 'lesson.view_start', courseId, lessonId, meta: {} }).catch(() => {});
 
     return () => {
       const durationMs = Math.max(0, Date.now() - startedAt);
-      fetch('/api/v1/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'lesson.view_end',
-          courseId,
-          lessonId,
-          meta: { durationMs },
-        }),
+      apiPost('/events', {
+        type: 'lesson.view_end',
+        courseId,
+        lessonId,
+        meta: { durationMs },
       }).catch(() => {});
     };
   }, [courseId, lessonId]);
