@@ -83,6 +83,27 @@ LearnFlow follows a layered architecture with clear separation between the clien
 
 ## 3.2 Technology Stack
 
+### 3.2.0 MVP architecture (this repo, today)
+
+This repository currently implements an **MVP**, not the full production architecture described below.
+
+**What’s real in this repo**
+
+- **API**: single Node/TypeScript Express server (`apps/api`) + WebSocket orchestrator for streaming.
+- **DB**: SQLite (via Drizzle), no Postgres.
+- **Realtime mindmap**: Yjs-based CRDT sync (no gRPC).
+- **Orchestration**: deterministic intent routing (keyword-based), plus “built-in agents” (no third-party code loading).
+- **Scheduling**: Update Agent runs are **manual** (`POST /api/v1/update-agent/tick`) and **RSS/Atom-only**; production scheduling is expected via **external cron**.
+
+**Not implemented (planned / future)**
+
+- Kong / AWS API Gateway layer
+- Internal gRPC mesh
+- Redis / S3 / vector DB (Pinecone/Weaviate)
+- Containerized agent mesh on K8s
+
+> The rest of §3.2 describes the planned production stack and should be read as **future state**.
+
 |                   |                                             |                                                             |
 | ----------------- | ------------------------------------------- | ----------------------------------------------------------- |
 | **Layer**         | **Technology**                              | **Rationale**                                               |

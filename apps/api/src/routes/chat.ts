@@ -252,13 +252,20 @@ router.post('/', validateBody(chatSchema), async (req: Request, res: Response) =
     }
   }
 
+  const suggestedActions = result.suggestedActions || [];
+  const actionTargets: Record<string, string> = {};
+  for (const a of suggestedActions) {
+    if (String(a).toLowerCase().includes('export')) actionTargets[a] = '/settings?tab=export';
+  }
+
   res.status(200).json({
     message_id: `msg-${Date.now()}`,
     agentName: routedAgentName,
     content: result.text,
     response: result.text,
     reply: result.text,
-    actions: result.suggestedActions || [],
+    actions: suggestedActions,
+    actionTargets,
     sources,
     notes,
     questions,

@@ -39,6 +39,13 @@ describe('Update Agent trust loop UI', () => {
       const body = init?.body ? JSON.parse(String(init.body)) : undefined;
       calls.push({ url, method, body });
 
+      if (url.includes('/api/v1/subscription')) {
+        return new Response(JSON.stringify({ tier: 'pro' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       if (url.includes('/api/v1/update-agent/topics')) {
         return new Response(
           JSON.stringify({

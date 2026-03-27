@@ -149,7 +149,9 @@ export async function handleWsMessage(
       if (!alreadyDisclosed) {
         setWsFlag(user.sub, sessionKey);
         const display = activatedMarketplaceAgentName || activatedMarketplaceAgentId;
-        const disclosure = `Disclosure: This response is being generated using an activated marketplace agent (${display}).`;
+        const disclosure =
+          `Disclosure: Activated marketplace agent selected (${display}); ` +
+          `execution is currently routed to built-in agent: ${routedAgentName}.`;
         send(ws, 'response.chunk', {
           message_id: messageId,
           content_delta: `${disclosure}\n\n`,
@@ -285,9 +287,15 @@ export async function handleWsMessage(
       };
     });
 
+    const actionTargets: Record<string, string> = {};
+    for (const a of suggestedActions || []) {
+      if (String(a).toLowerCase().includes('export')) actionTargets[a] = '/settings?tab=export';
+    }
+
     send(ws, 'response.end', {
       message_id: messageId,
       actions: mapActions(suggestedActions),
+      actionTargets,
       sources: enrichedSources,
     });
     markMessageCompleted(user.sub, messageId);

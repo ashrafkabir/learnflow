@@ -5,7 +5,7 @@ import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { useToast } from '../../components/Toast.js';
 
-type KeyProvider = 'openai' | 'anthropic' | 'google' | 'mistral' | 'groq' | 'ollama';
+type KeyProvider = 'openai' | 'anthropic' | 'google' | 'mistral' | 'groq' | 'ollama' | 'tavily';
 
 export function OnboardingApiKeys() {
   const nav = useNavigate();
@@ -83,8 +83,8 @@ export function OnboardingApiKeys() {
           Connect Your AI Provider
         </h1>
         <p className="text-gray-500 dark:text-gray-300 mb-8">
-          Bring your own API key from OpenAI, Anthropic, Google, Mistral, Groq, or Ollama. Your key
-          is encrypted and never shared.
+          Bring your own API key from OpenAI, Anthropic, Google, Mistral, Groq, Tavily, or Ollama.
+          Your key is encrypted and never shared.
         </p>
 
         <div className="grid grid-cols-1 gap-4 mb-6">
@@ -102,6 +102,7 @@ export function OnboardingApiKeys() {
               <option value="google">Google</option>
               <option value="mistral">Mistral</option>
               <option value="groq">Groq</option>
+              <option value="tavily">Tavily (search)</option>
               <option value="ollama">Ollama (local)</option>
             </select>
           </label>
@@ -122,11 +123,13 @@ export function OnboardingApiKeys() {
                     ? 'AI...'
                     : provider === 'groq'
                       ? 'gsk_...'
-                      : provider === 'ollama'
-                        ? 'optional (local)'
-                        : provider === 'mistral'
-                          ? 'mistral key...'
-                          : 'sk-...'
+                      : provider === 'tavily'
+                        ? 'tvly_...'
+                        : provider === 'ollama'
+                          ? 'optional (local)'
+                          : provider === 'mistral'
+                            ? 'mistral key...'
+                            : 'sk-...'
               }
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent"
             />

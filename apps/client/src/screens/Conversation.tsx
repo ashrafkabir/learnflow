@@ -383,6 +383,7 @@ export function Conversation() {
   const [drawerSources, setDrawerSources] = useState<Source[]>([]);
   const [streamingContent, setStreamingContent] = useState('');
   const [wsActions, setWsActions] = useState<Array<{ type: string; label: string }>>([]);
+  const [wsActionTargets, setWsActionTargets] = useState<Record<string, string | undefined>>({});
   const [mindmapOpen, setMindmapOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -453,7 +454,13 @@ export function Conversation() {
               })),
             );
           }
-          setWsActions(Array.isArray(evt.data?.actions) ? evt.data.actions : []);
+          const actions = Array.isArray(evt.data?.actions) ? evt.data.actions : [];
+          setWsActions(actions);
+          // Optional actionTargets map: { [label]: '/path' }
+          const targets = (evt.data as any)?.actionTargets;
+          setWsActionTargets(
+            targets && typeof targets === 'object' && !Array.isArray(targets) ? targets : {},
+          );
           setActiveAgent(null);
           setActiveAgentKind(null);
           setActiveAgentStartedAt(null);
@@ -600,6 +607,7 @@ export function Conversation() {
       dispatch({ type: 'SET_LOADING', key: 'chat', value: true });
       setStreamingContent('');
       setWsActions([]);
+      setWsActionTargets({});
       wsSend('message', {
         text: msg,
         courseId: state.activeCourse?.id,
@@ -684,6 +692,13 @@ export function Conversation() {
           </div>
         </div>
       </header>
+
+      <div className="px-4 sm:px-6 py-2 border-b border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60">
+        <p className="text-[11px] leading-snug text-gray-600 dark:text-gray-300">
+          System mode (MVP): deterministic routing; no open-web browsing unless enabled via
+          connected keys.
+        </p>
+      </div>
 
       {/* Messages */}
       <main
@@ -836,7 +851,14 @@ export function Conversation() {
                         key={a.type || a.label}
                         variant="ghost"
                         size="sm"
-                        onClick={() => send(a.label)}
+                        onClick={() => {
+                          const target = wsActionTargets?.[a.label];
+                          if (typeof target === 'string' && target.startsWith('/')) {
+                            nav(target);
+                          } else {
+                            send(a.label);
+                          }
+                        }}
                         className="rounded-full border border-gray-200 dark:border-gray-700"
                       >
                         {a.label}

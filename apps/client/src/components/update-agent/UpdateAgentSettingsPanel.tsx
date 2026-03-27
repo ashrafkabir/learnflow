@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '../Button.js';
-import { apiGet, apiPost, apiDelete } from '../../context/AppContext.js';
+import { apiGet, apiPost, apiDelete, useApp } from '../../context/AppContext.js';
 import { useToast } from '../Toast.js';
 
 type TopicRow = {
@@ -57,6 +57,7 @@ function fmt(ts?: string | null) {
 }
 
 export function UpdateAgentSettingsPanel() {
+  const { state } = useApp();
   const { toast } = useToast();
 
   const [loading, setLoading] = React.useState(false);
@@ -148,6 +149,37 @@ export function UpdateAgentSettingsPanel() {
       lastError,
     };
   }, [selectedTopic, sources]);
+
+  if (state.subscription !== 'pro') {
+    return (
+      <section
+        aria-label="Update Agent"
+        className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-3"
+      >
+        <header>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Update Agent</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+            Update Agent is a <span className="font-semibold">Pro</span> feature.
+          </p>
+        </header>
+        <p className="text-xs text-gray-700 dark:text-gray-200">
+          In this MVP, the Update Agent monitors <span className="font-semibold">RSS/Atom</span>{' '}
+          sources you add and creates a notification feed. It does not crawl the open web, and runs
+          are <span className="font-semibold">best-effort</span>.
+        </p>
+        <div className="flex items-center gap-2">
+          <a href="/pricing" className="inline-flex">
+            <Button variant="secondary" size="sm">
+              Upgrade to Pro
+            </Button>
+          </a>
+          <a href="/docs/update-agent-scheduling" className="text-xs text-accent hover:underline">
+            Scheduling docs
+          </a>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

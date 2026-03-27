@@ -1,6 +1,6 @@
-# LearnFlow — IMPLEMENTED_VS_SPEC (Iteration 70)
+# LearnFlow — IMPLEMENTED_VS_SPEC (Iteration 106)
 
-This document is a **brutally honest** mapping between the product spec (sections 1–17) and what is actually implemented in this repo as of Iteration 70.
+This document is a **brutally honest** mapping between the product spec (sections 1–17) and what is actually implemented in this repo as of Iteration 106.
 
 Legend:
 
@@ -110,10 +110,15 @@ Legend:
 
 ## 14) “Update Agent (Pro)” proactive topic monitor
 
-- **Partial / MVP (stub generator)**
-  - There is now a durable notifications table + API.
-  - A cron-friendly `POST /api/v1/notifications/generate` endpoint exists but **does not actually crawl the web**; it generates generic notifications.
-  - No real scheduler/cron is included in-repo; must be triggered externally.
+- **Partial / MVP (RSS-only, manual tick)**
+  - Update Agent exists end-to-end as an MVP:
+    - Topics CRUD (`/api/v1/update-agent/topics`)
+    - Topic sources CRUD (`/api/v1/update-agent/topics/:id/sources`)
+    - Manual run trigger (`POST /api/v1/update-agent/tick`)
+    - Run history endpoints (topics include last run fields; runs endpoint present per spec/queue)
+  - Notifications generation is **RSS/Atom-only** (no open-web crawling) and **best-effort** (per-source failures captured; run continues).
+  - **No in-repo scheduler** is included; production scheduling must be done via external cron (documented in docs).
+  - UI is Pro-gated and explicitly discloses RSS-only + best-effort behavior (Iteration 106 hardening).
 
 ## 15) Export
 

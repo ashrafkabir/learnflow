@@ -16,13 +16,22 @@ const BASE =
   'http://localhost:3001';
 
 const AUTHED = process.env.SCREENSHOT_AUTHED === '1' || process.env.SCREENSHOT_AUTHED === 'true';
+const DRY_RUN =
+  process.argv.includes('--dryRun') ||
+  process.argv.includes('--dry-run') ||
+  process.env.SCREENSHOT_DRY_RUN === '1' ||
+  process.env.SCREENSHOT_DRY_RUN === 'true';
 
 const DIR =
   process.env.SCREENSHOT_DIR ||
+  process.env.SCREENSHOT_OUT_DIR ||
+  readArg('outDir') ||
   readArg('out') ||
   (AUTHED ? 'evals/screenshots/iter45-mobile-authed' : 'evals/screenshots/iter45-mobile');
 
-fs.mkdirSync(path.resolve(DIR), { recursive: true });
+const resolvedDir = path.resolve(DIR);
+fs.mkdirSync(resolvedDir, { recursive: true });
+console.log(`Using output dir: ${resolvedDir}`);
 
 const viewports = [
   { name: 'mobile-320', width: 320, height: 640 },
@@ -45,6 +54,12 @@ const pages = [
   ['/marketplace/courses', 'marketplace-courses'],
   ['/marketplace/agents', 'marketplace-agents'],
 ];
+
+if (DRY_RUN) {
+  console.log('Dry run: skipping Playwright launch and navigation.');
+  console.log(`Done! Saved to ${resolvedDir}`);
+  process.exit(0);
+}
 
 const browser = await chromium.launch();
 
@@ -100,7 +115,7 @@ for (const vp of viewports) {
       }
 
       try {
-        await page.screenshot({ path: `${DIR}/${vp.name}__${name}.png`, fullPage: true });
+        await page.screenshot({ path: `${resolvedDir}/${vp.name}__${name}.png`, fullPage: true });
         console.log(`✓ ${vp.name} ${name}`);
       } catch (err) {
         console.warn(`⚠️  ${vp.name} ${name} screenshot failed: ${String(err)}`);
@@ -114,4 +129,4 @@ for (const vp of viewports) {
 }
 
 await browser.close();
-console.log(`Done! Saved to ${DIR}`);
+console.log(`Done! Saved to ${resolvedDir}`);
