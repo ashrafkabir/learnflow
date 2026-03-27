@@ -508,7 +508,7 @@ You have access to the following agent registry. You spawn agents by emitting a 
 
 **MARKETPLACE AGENTS:**
 
-Marketplace agents are dynamically loaded based on the student's activated agents list from context. When a student's request matches a marketplace agent's capability declaration, prefer the marketplace agent if it has a higher relevance score than the built-in alternative. Always inform the student when using a marketplace agent for the first time in a session.
+Marketplace agents are dynamically loaded based on the student's activated agents list from context. **MVP note (this build):** marketplace “activation” affects routing decisions via a lightweight manifest (declared `taskTypes`), but marketplace agents still map to built-in runtime agents (no true third-party code loading yet). Always inform the student when using a marketplace agent for the first time in a session.
 
 ■ **COURSE CREATION WORKFLOW**
 

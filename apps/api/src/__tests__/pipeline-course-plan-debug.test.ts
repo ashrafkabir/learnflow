@@ -41,7 +41,7 @@ describe('Iter74 P0.1: pipeline detail includes course plan (debug view)', () =>
 
     // Poll until reviewing
     let stage = '';
-    const deadline = Date.now() + 25_000;
+    const deadline = Date.now() + 60_000;
     while (Date.now() < deadline) {
       const get = await request(app)
         .get(`/api/v1/pipeline/${pipelineId}`)

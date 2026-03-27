@@ -12,6 +12,7 @@ import { scoreSourceCredibility } from './utils/sourceCredibility.js';
 import { db } from './db.js';
 import { createRequestId } from './errors.js';
 import { isDuplicateCompletedMessage, markMessageCompleted } from './wsIdempotency.js';
+import { hasWsFlag, setWsFlag } from './wsSessionFlags.js';
 
 /**
  * Shared WS orchestrator.
@@ -116,6 +117,8 @@ export async function handleWsMessage(
   let aggregatedText = '';
   let suggestedActions: string[] = [];
   let routedAgentName = 'orchestrator';
+  let activatedMarketplaceAgentId: string | null = null;
+  let activatedMarketplaceAgentName: string | null = null;
 
   try {
     const result = await Promise.race([
@@ -127,6 +130,33 @@ export async function handleWsMessage(
     aggregatedText = result.text || '';
     suggestedActions = result.suggestedActions || [];
     routedAgentName = result.agentResults?.[0]?.agentName || routedAgentName;
+
+    // Iter105 P0-2: detect if routing selected an activated marketplace agent.
+    const firstParams = (result as any)?.agentResults?.[0]?.task?.params;
+    activatedMarketplaceAgentId =
+      firstParams && typeof firstParams.activatedMarketplaceAgentId === 'string'
+        ? String(firstParams.activatedMarketplaceAgentId)
+        : null;
+    activatedMarketplaceAgentName =
+      firstParams && typeof firstParams.activatedMarketplaceAgentName === 'string'
+        ? String(firstParams.activatedMarketplaceAgentName)
+        : null;
+
+    // Iter105 P0-2: first-time marketplace agent disclosure (per WS session).
+    if (activatedMarketplaceAgentId) {
+      const sessionKey = `ws_marketplace_disclosed:${activatedMarketplaceAgentId}`;
+      const alreadyDisclosed = hasWsFlag(user.sub, sessionKey);
+      if (!alreadyDisclosed) {
+        setWsFlag(user.sub, sessionKey);
+        const display = activatedMarketplaceAgentName || activatedMarketplaceAgentId;
+        const disclosure = `Disclosure: This response is being generated using an activated marketplace agent (${display}).`;
+        send(ws, 'response.chunk', {
+          message_id: messageId,
+          content_delta: `${disclosure}\n\n`,
+          type: 'system',
+        });
+      }
+    }
 
     // Stream response in chunks so the client sees incremental output.
     const chunkSize = 500;

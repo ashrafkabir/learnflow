@@ -42,6 +42,8 @@ export interface AgentResponse {
   agentName: string;
   status: 'success' | 'error';
   data: unknown;
+  /** The executed task envelope (when available). Useful for WS tracing + UX disclosures. */
+  task?: AgentMessageEnvelope['task'];
   /**
    * tokensUsed is optional and may be null when the response did not come from an LLM call.
    * (e.g., deterministic/offline/mock agent behavior).

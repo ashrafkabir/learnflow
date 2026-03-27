@@ -32,6 +32,16 @@ export interface StudentContextObject extends StudentContext {
     inApp: boolean;
   };
   preferredAgents: string[];
+  /**
+   * Activated marketplace agent manifests available for routing decisions.
+   * Optional because many environments don't fetch/attach manifests.
+   */
+  marketplaceAgentManifests?: Array<{
+    id: string;
+    name?: string;
+    taskTypes: string[];
+    routesToAgentName: string;
+  }>;
   displayPreferences: {
     theme: 'light' | 'dark';
     fontSize: number;

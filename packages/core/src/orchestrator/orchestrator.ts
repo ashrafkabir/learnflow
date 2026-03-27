@@ -21,7 +21,10 @@ export class Orchestrator {
    * Process user input: route to agent(s), execute, aggregate response.
    */
   async processMessage(input: string, context: StudentContextObject): Promise<AggregatedResponse> {
-    const intent = routeIntent(input, { preferredAgents: context.preferredAgents });
+    const intent = routeIntent(input, {
+      preferredAgents: context.preferredAgents,
+      marketplaceAgentManifests: (context as any).marketplaceAgentManifests,
+    });
 
     // Parse lightweight format hints embedded in input (used by REST adapter).
     const fmtMatch = input.match(/\bformat\s*:\s*(cornell|flashcards?|zettelkasten)\b/i);
@@ -149,7 +152,10 @@ export class Orchestrator {
       const agentResult = r.result as import('../agents/types.js').AgentResponse | null;
 
       if (agentResult && !r.error) {
-        return agentResult;
+        return {
+          ...agentResult,
+          task,
+        };
       }
 
       return {
@@ -157,6 +163,7 @@ export class Orchestrator {
         status: 'error' as const,
         data: r.error ?? 'Unknown error',
         tokensUsed: 0,
+        task,
       };
     });
 

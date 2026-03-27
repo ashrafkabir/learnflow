@@ -6,6 +6,7 @@ import { coursesRouter } from './routes/courses.js';
 import { mindmapRouter } from './routes/mindmap.js';
 import { marketplaceRouter } from './routes/marketplace.js';
 import { marketplaceFullRouter } from './routes/marketplace-full.js';
+import { marketplaceAgentManifestsRouter } from './routes/marketplace-agent-manifests.js';
 import { profileRouter } from './routes/profile.js';
 import { subscriptionRouter } from './routes/subscription.js';
 import { analyticsRouter } from './routes/analytics.js';
@@ -299,6 +300,13 @@ export function createApp(options?: { devMode?: boolean }) {
     rateLimiter,
     writeRateLimiter,
     marketplaceFullRouter,
+  );
+  app.use(
+    '/api/v1/marketplace',
+    protectedAuth,
+    rateLimiter,
+    writeRateLimiter,
+    marketplaceAgentManifestsRouter,
   );
   app.use('/api/v1/profile', protectedAuth, rateLimiter, writeRateLimiter, profileRouter);
   app.use('/api/v1/subscription', protectedAuth, rateLimiter, writeRateLimiter, subscriptionRouter);

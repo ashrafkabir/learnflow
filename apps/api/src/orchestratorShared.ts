@@ -1,4 +1,5 @@
-import { db, dbMarketplace } from './db.js';
+import { db, dbMarketplace, dbMarketplaceAgentSubmissions } from './db.js';
+import { resolveMarketplaceAgentManifest } from './lib/marketplaceAgents.js';
 import type { StudentContextObject } from '@learnflow/core';
 import { AgentRegistry, Orchestrator } from '@learnflow/core';
 import {
@@ -58,6 +59,17 @@ export function buildStudentContext(userId: string): StudentContextObject {
     usageQuotas: {},
     notificationSettings: { email: true, push: true, inApp: true },
     preferredAgents: dbMarketplace.getActivatedAgents(userId),
+    marketplaceAgentManifests: (() => {
+      const ids = dbMarketplace.getActivatedAgents(userId);
+      const approved = dbMarketplaceAgentSubmissions.listApproved();
+      const approvedById = new Map(approved.map((a) => [String(a.id), a]));
+      return ids
+        .map((id) => {
+          const row = approvedById.get(String(id));
+          return resolveMarketplaceAgentManifest({ agentId: String(id), manifest: row?.manifest });
+        })
+        .filter(Boolean) as any;
+    })(),
     displayPreferences: { theme: 'light', fontSize: 16 },
     collaborationOptIn: false,
     peerConnections: [],

@@ -32,7 +32,7 @@ const PLANS = [
     desc: CAPABILITY_MATRIX.pro.tagline,
     features: CAPABILITY_MATRIX.pro.features,
     missing: CAPABILITY_MATRIX.pro.missing || [],
-    cta: 'Start Pro',
+    cta: 'Enable Pro (Mock)',
     highlight: true,
   },
 ];
@@ -94,6 +94,15 @@ export function PricingPage() {
               Annual <span className="text-accent text-xs ml-1">Save 20%</span>
             </Button>
           </div>
+        </div>
+
+        <div
+          role="note"
+          aria-label="Billing note"
+          className="max-w-3xl mx-auto mb-10 rounded-xl border border-green-200 bg-green-50 text-green-900 px-4 py-3 text-sm"
+        >
+          <strong>Billing is MVP/mock in this build.</strong> Upgrading does not perform real
+          charges or refunds in this deployment.
         </div>
 
         <motion.div

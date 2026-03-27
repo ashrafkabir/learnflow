@@ -9,6 +9,18 @@ export interface IntentResult {
   params: Record<string, unknown>;
 }
 
+export type MarketplaceAgentManifest = {
+  id: string;
+  name?: string;
+  /** Task types this marketplace agent claims to support (e.g. 'deep_research'). */
+  taskTypes: string[];
+  /**
+   * LearnFlow currently executes built-in agents.
+   * Marketplace agents can map to a built-in runtime agent until true dynamic loading exists.
+   */
+  routesToAgentName: string;
+};
+
 const INTENT_PATTERNS: Array<{
   patterns: RegExp[];
   agent: string;
@@ -75,9 +87,15 @@ const INTENT_PATTERNS: Array<{
 
 export function routeIntent(
   input: string,
-  context?: { preferredAgents?: string[] },
+  context?: {
+    preferredAgents?: string[];
+    marketplaceAgentManifests?: MarketplaceAgentManifest[];
+  },
 ): IntentResult | null {
   const preferred = new Set((context?.preferredAgents || []).map((s) => String(s)));
+  const manifests = Array.isArray(context?.marketplaceAgentManifests)
+    ? context!.marketplaceAgentManifests
+    : [];
 
   for (const { patterns, agent, taskType } of INTENT_PATTERNS) {
     for (const pattern of patterns) {
@@ -85,24 +103,28 @@ export function routeIntent(
 
       // If the user has activated a marketplace agent that claims this taskType as a capability,
       // prefer it over the built-in default.
-      if (preferred.size > 0) {
-        for (const id of preferred) {
-          // marketplace ids like "ma-2" (from API seed) can be mapped to agent names.
-          // This mapping is intentionally simple for MVP semantics.
-          if (taskType === 'deep_research' && id === 'ma-2') {
-            return {
-              agentName: 'research_agent',
-              confidence: 0.95,
-              params: { type: taskType, input, activatedMarketplaceAgentId: id },
-            };
-          }
-          if (taskType === 'build_course' && id === 'ma-1') {
-            return {
-              agentName: 'course_builder',
-              confidence: 0.95,
-              params: { type: taskType, input, activatedMarketplaceAgentId: id },
-            };
-          }
+      if (preferred.size > 0 && manifests.length > 0) {
+        const match = manifests.find(
+          (m) =>
+            preferred.has(m.id) &&
+            Array.isArray(m.taskTypes) &&
+            m.taskTypes.includes(taskType) &&
+            typeof m.routesToAgentName === 'string' &&
+            m.routesToAgentName.length > 0,
+        );
+
+        if (match) {
+          return {
+            agentName: match.routesToAgentName,
+            confidence: 0.95,
+            params: {
+              type: taskType,
+              input,
+              activatedMarketplaceAgentId: match.id,
+              activatedMarketplaceAgentName: match.name || match.id,
+              routingReason: `Activated marketplace agent matched taskType=${taskType}`,
+            },
+          };
         }
       }
 

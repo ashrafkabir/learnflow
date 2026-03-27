@@ -462,3 +462,42 @@ describe('S03-A15: Orchestrator integration with course_builder', () => {
     expect(response.agentResults[0].status).toBe('success');
   });
 });
+
+// Iter105 P0-1: Activated marketplace agent manifests should influence routing generically.
+describe('Iter105 P0-1: Marketplace agent activation routing', () => {
+  it('prefers an activated marketplace agent when manifest matches taskType', () => {
+    const intent = routeIntent('I need deep research on climate tech', {
+      preferredAgents: ['as-123'],
+      marketplaceAgentManifests: [
+        {
+          id: 'as-123',
+          name: 'My Research Agent',
+          taskTypes: ['deep_research'],
+          routesToAgentName: 'research_agent',
+        },
+      ],
+    });
+
+    expect(intent).not.toBeNull();
+    expect(intent!.agentName).toBe('research_agent');
+    expect(intent!.params.activatedMarketplaceAgentId).toBe('as-123');
+    expect(intent!.params.routingReason).toContain('taskType=deep_research');
+  });
+
+  it('does not switch agents when no manifest matches the inferred taskType', () => {
+    const intent = routeIntent('quiz me on what we covered', {
+      preferredAgents: ['as-123'],
+      marketplaceAgentManifests: [
+        {
+          id: 'as-123',
+          taskTypes: ['deep_research'],
+          routesToAgentName: 'research_agent',
+        },
+      ],
+    });
+
+    expect(intent).not.toBeNull();
+    expect(intent!.agentName).toBe('exam_agent');
+    expect((intent!.params as any).activatedMarketplaceAgentId).toBeUndefined();
+  });
+});

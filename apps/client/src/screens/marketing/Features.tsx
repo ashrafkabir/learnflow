@@ -48,7 +48,7 @@ const FEATURES = [
     benefits: [
       'Three note formats',
       'Auto-generated cue questions',
-      'Export to Markdown (PDF coming soon)',
+      'Export to Markdown (PDF/SCORM coming soon)',
     ],
   },
   {
