@@ -11,7 +11,7 @@ function readArg(name) {
 
 const BASE = process.env.BASE_URL || readArg('base') || 'http://localhost:3001';
 
-const ITER = process.env.ITERATION || process.env.ITER || readArg('iter') || '102';
+const ITER_ARG = process.env.ITERATION || process.env.ITER || readArg('iter');
 const DATE = new Date().toISOString().slice(0, 10);
 const DIR =
   process.env.SCREENSHOT_DIR ||
@@ -21,7 +21,14 @@ const DIR =
   readArg('out') ||
   // Preferred: positional first arg (node screenshot-all.mjs <outDir>)
   process.argv[2] ||
-  `learnflow/screenshots/iter${ITER}-${DATE}`;
+  `learnflow/screenshots/iter-unknown-${DATE}`;
+
+const inferredIter = (() => {
+  const m = String(DIR).match(/iter(\d+)/i);
+  return m ? m[1] : undefined;
+})();
+
+const ITER = ITER_ARG || inferredIter || 'unknown';
 
 console.log(`Using output dir: ${path.resolve(DIR)}`);
 
