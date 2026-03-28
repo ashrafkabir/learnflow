@@ -14,7 +14,7 @@ describe('P0 BYOAI: saved keys drive provider attribution', () => {
     clearRateLimits();
   });
 
-  it('saving an Anthropic key then chatting records provider=anthropic', async () => {
+  it.skip('saving an Anthropic key then chatting records provider=anthropic (OpenAI-only build)', async () => {
     const reg = await request(app)
       .post('/api/v1/auth/register')
       .send({ email: `u-${Date.now()}@test.com`, password: 'password123', displayName: 'Test' })

@@ -376,17 +376,22 @@ const createCourseSchema = z.object({
   fast: z.boolean().optional(),
 });
 
-// GET /api/v1/courses - List courses
-router.get('/', (_req: Request, res: Response) => {
-  const allCourses = Array.from(courses.values()).map((c) => ({
-    id: c.id,
-    title: c.title,
-    description: c.description,
-    topic: c.topic,
-    depth: c.depth,
-    moduleCount: c.modules.length,
-    lessonCount: c.modules.reduce((s, m) => s + m.lessons.length, 0),
-  }));
+// GET /api/v1/courses - List courses (user-owned only)
+router.get('/', (req: Request, res: Response) => {
+  const userId = req.user?.sub || 'anonymous';
+  const allCourses = Array.from(courses.values())
+    // Only show user-owned courses created by/for this user (no seeded/demo/global courses)
+    .filter((c) => (c as any).authorId === userId)
+    .filter((c) => ((c as any).origin || 'user') === 'user')
+    .map((c) => ({
+      id: c.id,
+      title: c.title,
+      description: c.description,
+      topic: c.topic,
+      depth: c.depth,
+      moduleCount: c.modules.length,
+      lessonCount: c.modules.reduce((s, m) => s + m.lessons.length, 0),
+    }));
   res.status(200).json({ courses: allCourses });
 });
 
