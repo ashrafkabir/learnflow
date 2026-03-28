@@ -88,6 +88,18 @@ This project uses [Turborepo](https://turbo.build/) for monorepo management. Key
 
 Developer docs live in `apps/docs/pages/*.md`.
 
+### Repo-local ripgrep
+
+Use the repo-local ripgrep binary (via `@vscode/ripgrep`) to keep search behavior consistent across environments:
+
+```bash
+# Search for a string in the repo
+npm run rg -- "TODO" .
+
+# Search within a package/app
+npm run rg -- "useWebSocket" apps/client/src
+```
+
 - Selection Tools (Discover / Illustrate / Mark): `apps/docs/pages/selection-tools.md`
 - API reference: `apps/docs/pages/api-reference.md`
 - Architecture notes: `apps/docs/pages/architecture.md`
