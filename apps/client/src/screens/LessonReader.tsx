@@ -11,6 +11,7 @@ import { AttributionDrawer } from '../components/AttributionDrawer.js';
 import { useSwipe } from '../hooks/useSwipe.js';
 import { analytics } from '../lib/analytics.js';
 import { useBookmarks } from '../hooks/useBookmarks.js';
+import { useToast } from '../components/Toast.js';
 import {
   IconBookmark,
   IconBook,
@@ -143,6 +144,7 @@ function parseStructuredContent(content?: string) {
 export function LessonReader() {
   const { courseId, lessonId } = useParams();
   const nav = useNavigate();
+  const { toast } = useToast();
   const { state, fetchLesson, completeLesson, generateQuiz } = useApp();
   const [loading, setLoading] = useState(false);
   const [activePanel, setActivePanel] = useState<'none' | 'notes' | 'quiz'>('none');
@@ -284,13 +286,17 @@ export function LessonReader() {
         .then((data) => {
           if (data?.illustrations) setSectionIllustrations(data.illustrations);
         })
-        .catch(() => {});
+        .catch(() => {
+          toast('Could not load illustrations for this lesson.', 'error');
+        });
       fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/annotations`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
           if (data?.annotations) setAnnotations(data.annotations);
         })
-        .catch(() => {});
+        .catch(() => {
+          toast('Could not load annotations for this lesson.', 'error');
+        });
       const cachedComp = localStorage.getItem(`learnflow-compare-${lessonId}`);
       if (cachedComp) {
         try {
@@ -309,7 +315,9 @@ export function LessonReader() {
             if (data.note.illustrations?.length) setIllustrations(data.note.illustrations);
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          toast('Could not load notes for this lesson.', 'error');
+        });
     }
   }, [courseId, lessonId]);
 
@@ -329,6 +337,7 @@ export function LessonReader() {
       }
     } catch (err) {
       console.error('Failed to generate notes:', err);
+      toast('Failed to generate notes. Please try again.', 'error');
     } finally {
       setGeneratingNoteFormat(null);
     }
@@ -347,6 +356,7 @@ export function LessonReader() {
       });
     } catch (err) {
       console.error('Failed to save note:', err);
+      toast('Failed to save your note. Please try again.', 'error');
     }
   };
 
@@ -366,6 +376,7 @@ export function LessonReader() {
       }
     } catch (err) {
       console.error('Failed to generate illustration:', err);
+      toast('Failed to generate an illustration. Please try again.', 'error');
     } finally {
       setGeneratingIllustration(false);
     }
@@ -394,6 +405,7 @@ export function LessonReader() {
       }
     } catch (err) {
       console.error('Failed to generate section illustration:', err);
+      toast('Failed to generate a section illustration. Please try again.', 'error');
     } finally {
       setGeneratingSectionIll(false);
     }
@@ -407,7 +419,7 @@ export function LessonReader() {
       });
       setSectionIllustrations((prev) => prev.filter((i) => i.id !== illId));
     } catch {
-      // ignore
+      toast('Could not delete illustration. Please try again.', 'error');
     }
   };
 
@@ -554,7 +566,7 @@ export function LessonReader() {
         const data = refreshed.ok ? await refreshed.json() : null;
         if (data?.note) setSavedNote(data.note);
       } catch {
-        // ignore
+        toast('Could not refresh notes after applying takeaways.', 'error');
       }
     } else {
       // Discover/Illustrate attach as an annotation note.
@@ -614,7 +626,7 @@ export function LessonReader() {
       setAnnotations((prev) => prev.filter((a) => a.id !== annId));
       setActiveAnnotation(null);
     } catch {
-      // ignore
+      toast('Could not delete annotation. Please try again.', 'error');
     }
   };
 

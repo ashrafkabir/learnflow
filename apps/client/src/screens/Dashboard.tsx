@@ -9,6 +9,7 @@ import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { usePipeline } from '../hooks/usePipeline.js';
 import { Button } from '../components/Button.js';
 import { useBookmarks } from '../hooks/useBookmarks.js';
+import { useToast } from '../components/Toast.js';
 import { SkeletonDashboard } from '../components/Skeleton.js';
 import { OnboardingTooltips } from '../components/OnboardingTooltips.js';
 import {
@@ -36,6 +37,7 @@ import {
 
 export function Dashboard() {
   const nav = useNavigate();
+  const { toast } = useToast();
   const { state, dispatch, deleteCourse } = useApp();
   const [newTopic, setNewTopic] = useState('');
   const [creating, setCreating] = useState(false);
@@ -323,7 +325,11 @@ export function Dashboard() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => removeBookmark(b.lessonId).catch(() => {})}
+                          onClick={() =>
+                            removeBookmark(b.lessonId).catch(() => {
+                              toast('Could not remove bookmark. Please try again.', 'error');
+                            })
+                          }
                           aria-label="Remove bookmark"
                         >
                           <IconTrash size={16} decorative />

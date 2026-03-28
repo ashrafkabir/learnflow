@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiDelete, apiGet, apiPost } from '../context/AppContext';
+import { useToast } from '../components/Toast';
 
 export type Bookmark = {
   userId?: string;
@@ -9,6 +10,7 @@ export type Bookmark = {
 };
 
 export function useBookmarks() {
+  const { toast } = useToast();
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,8 +28,10 @@ export function useBookmarks() {
     // best-effort hydrate when authenticated
     const token = localStorage.getItem('learnflow-token');
     if (!token) return;
-    refresh().catch(() => {});
-  }, []);
+    refresh().catch(() => {
+      toast('Could not load bookmarks.', 'error');
+    });
+  }, [toast]);
 
   const byLessonId = useMemo(() => {
     const m = new Map<string, Bookmark>();

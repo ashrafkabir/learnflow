@@ -106,7 +106,9 @@ export function AgentMarketplace() {
           setActivatedIds(new Set(data.activatedAgentIds));
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        toast('Could not load activated agents. Please refresh and try again.', 'error');
+      });
   }, []);
 
   const handleToggleActivate = async (agent: Agent) => {

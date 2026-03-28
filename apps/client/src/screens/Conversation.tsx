@@ -71,7 +71,9 @@ function MindmapPanel({
         DataSet = (mod as any).DataSet;
         setLoaded(true);
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('[LearnFlow] Could not load mindmap library', err);
+      });
   }, []);
 
   React.useEffect(() => {

@@ -102,8 +102,10 @@ export function ProfileSettings() {
       .then((data) => {
         if (data?.keys) setSavedKeys(data.keys);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        toast('Could not load your saved API keys.', 'error');
+      });
+  }, [toast]);
 
   const update = (partial: Partial<typeof profile>) => {
     dispatch({ type: 'UPDATE_PROFILE', profile: partial });

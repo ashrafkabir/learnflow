@@ -95,13 +95,17 @@ export function UpdateAgentSettingsPanel() {
   React.useEffect(() => {
     setLoading(true);
     Promise.all([loadTopics(), loadRuns()])
-      .catch(() => {})
+      .catch(() => {
+        toast('Could not load Update Agent settings. Please refresh and try again.', 'error');
+      })
       .finally(() => setLoading(false));
   }, [loadTopics]);
 
   React.useEffect(() => {
-    loadSources(selectedTopicId).catch(() => {});
-  }, [selectedTopicId, loadSources]);
+    loadSources(selectedTopicId).catch(() => {
+      toast('Could not load sources for this topic.', 'error');
+    });
+  }, [selectedTopicId, loadSources, toast]);
 
   const selectedTopic = topics.find((t) => t.id === selectedTopicId);
 

@@ -28,6 +28,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
    Disable in E2E to avoid cached API responses breaking deterministic tests. */
 if ('serviceWorker' in navigator && !(window as any).__LEARNFLOW_E2E__) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('[LearnFlow] Service worker registration failed', err);
+    });
   });
 }
