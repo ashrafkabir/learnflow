@@ -176,7 +176,8 @@ function ReviewingPanel({
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-500 dark:text-gray-300">
-        Course ready! Review and edit lessons below.
+        Course ready! Review and edit lessons below. (MVP: “Published” is a pipeline status only —
+        it does not list your course on the Marketplace.)
       </p>
 
       {loading ? (
@@ -204,7 +205,7 @@ function ReviewingPanel({
           onClick={handlePublish}
           className="flex-1 px-3 py-2 bg-success/10 text-success rounded-xl text-xs font-semibold hover:bg-success/20 transition-colors border border-success/20"
         >
-          Mark Published
+          Mark Published (personal only)
         </button>
         <button
           onClick={handlePersonal}
