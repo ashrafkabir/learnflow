@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { apiGet, apiPost } from '../context/AppContext.js';
 
 export type PipelineStage =
   | 'scraping'
@@ -102,6 +103,7 @@ export interface PipelineState {
 }
 
 const API = '/api/v1';
+// NOTE: Prefer apiGet/apiPost for auth + consistent error handling.
 
 export function usePipeline(pipelineId: string | null) {
   const [state, setState] = useState<PipelineState | null>(null);
@@ -194,13 +196,9 @@ export function useStartPipeline() {
     async (topic: string): Promise<{ pipelineId: string; courseId: string } | null> => {
       setLoading(true);
       try {
-        const res = await fetch(`${API}/pipeline`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ topic }),
-        });
-        if (!res.ok) return null;
-        return await res.json();
+        const data = await apiPost('/pipeline', { topic });
+        if (!data?.pipelineId) return null;
+        return data;
       } catch {
         return null;
       } finally {
@@ -218,11 +216,8 @@ export function usePipelineList() {
 
   const refresh = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/pipeline`);
-      if (res.ok) {
-        const data = await res.json();
-        setPipelines(data.pipelines || []);
-      }
+      const data = await apiGet('/pipeline');
+      setPipelines(data.pipelines || []);
     } catch {
       /* ignore */
     }
