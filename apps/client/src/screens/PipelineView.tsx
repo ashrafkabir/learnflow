@@ -134,6 +134,15 @@ export function PipelineViewScreen() {
       </header>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <div className="p-4 rounded-xl bg-accent/10 border border-accent/30 text-sm text-accent font-medium">
+          <p className="font-semibold">MVP note: “Publish” is internal</p>
+          <p className="mt-1 text-accent/90">
+            In Course Pipelines, <span className="font-semibold">Publish</span> means the pipeline
+            has produced a course artifact inside your LearnFlow workspace. It does{' '}
+            <span className="font-semibold">not</span> automatically publish to the public
+            Marketplace.
+          </p>
+        </div>
         {/* Filter Tabs */}
         <div className="flex gap-2" role="tablist" aria-label="Pipeline filter">
           {(['all', 'active', 'completed', 'failed'] as const).map((f) => (

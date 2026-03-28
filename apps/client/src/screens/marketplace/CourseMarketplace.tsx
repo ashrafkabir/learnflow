@@ -121,6 +121,19 @@ export function CourseMarketplace() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <div className="mb-6 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200/70 dark:border-amber-800/50 text-sm text-amber-900 dark:text-amber-100">
+          <p className="font-semibold">MVP note</p>
+          <ul className="mt-1 list-disc pl-5 space-y-1">
+            <li>
+              Paid course checkout is currently <span className="font-semibold">mocked</span> (no
+              real payment is processed).
+            </li>
+            <li>
+              Ratings / enrollment counts are not shown here because they are not yet backed by
+              reliable marketplace analytics.
+            </li>
+          </ul>
+        </div>
         {/* Featured Section */}
         {!loading && featured.length > 0 && (
           <div className="mb-8">
