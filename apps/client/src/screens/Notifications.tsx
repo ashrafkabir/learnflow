@@ -2,7 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
-import { IconBrainSpark, IconClose, IconProgressRing, IconSpark } from '../components/icons/index.js';
+import {
+  IconBrainSpark,
+  IconClose,
+  IconProgressRing,
+  IconSpark,
+} from '../components/icons/index.js';
 import { toast } from '../components/Toast.js';
 import { apiGet, apiPost } from '../context/AppContext.js';
 
@@ -127,67 +132,62 @@ export function NotificationsScreen() {
                 <div
                   key={n.id}
                   className={`flex items-start gap-3 p-3 rounded-xl border ${
-                    n.read
-                      ? 'border-gray-100 dark:border-gray-800'
-                      : 'border-accent/30 bg-accent/5'
+                    n.read ? 'border-gray-100 dark:border-gray-800' : 'border-accent/30 bg-accent/5'
                   }`}
                 >
-                <span className="text-accent mt-0.5" aria-hidden>
-                  {n.type === 'agent' ? (
-                    <IconBrainSpark size={16} />
-                  ) : n.type === 'progress' ? (
-                    <IconProgressRing size={16} />
-                  ) : (
-                    <IconSpark size={16} />
-                  )}
-                </span>
-
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-gray-800/90 dark:text-gray-100">{n.message}</div>
-                  {(n as any).meta?.sourceDomain || (n as any).meta?.url ? (
-                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-300">
-                      <span>
-                        Checked:{' '}
-                        {(n as any).meta?.sourceDomain || (n as any).meta?.sourceUrl || 'unknown'}
-                      </span>
-                      {(n as any).meta?.checkedAt ? (
-                        <span>
-                          {' '}
-                          · {new Date((n as any).meta.checkedAt).toLocaleString()}
-                        </span>
-                      ) : null}
-                      {(n as any).meta?.explanation ? (
-                        <div className="mt-1">Why: {(n as any).meta.explanation}</div>
-                      ) : null}
-                      {(n as any).meta?.url ? (
-                        <div className="mt-1">
-                          <a
-                            href={(n as any).meta.url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-accent hover:underline break-all"
-                          >
-                            {(n as any).meta.url}
-                          </a>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-col items-end gap-2">
-                  <span className="text-[11px] text-gray-400">
-                    {new Date(n.timestamp).toLocaleString()}
+                  <span className="text-accent mt-0.5" aria-hidden>
+                    {n.type === 'agent' ? (
+                      <IconBrainSpark size={16} />
+                    ) : n.type === 'progress' ? (
+                      <IconProgressRing size={16} />
+                    ) : (
+                      <IconSpark size={16} />
+                    )}
                   </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => dispatch({ type: 'DISMISS_NOTIFICATION', id: n.id })}
-                    aria-label="Dismiss notification"
-                  >
-                    <IconClose size={14} className="text-current" decorative />
-                  </Button>
-                </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-gray-800/90 dark:text-gray-100">{n.message}</div>
+                    {(n as any).meta?.sourceDomain || (n as any).meta?.url ? (
+                      <div className="mt-1 text-xs text-gray-500 dark:text-gray-300">
+                        <span>
+                          Checked:{' '}
+                          {(n as any).meta?.sourceDomain || (n as any).meta?.sourceUrl || 'unknown'}
+                        </span>
+                        {(n as any).meta?.checkedAt ? (
+                          <span> · {new Date((n as any).meta.checkedAt).toLocaleString()}</span>
+                        ) : null}
+                        {(n as any).meta?.explanation ? (
+                          <div className="mt-1">Why: {(n as any).meta.explanation}</div>
+                        ) : null}
+                        {(n as any).meta?.url ? (
+                          <div className="mt-1">
+                            <a
+                              href={(n as any).meta.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-accent hover:underline break-all"
+                            >
+                              {(n as any).meta.url}
+                            </a>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-[11px] text-gray-400">
+                      {new Date(n.timestamp).toLocaleString()}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => dispatch({ type: 'DISMISS_NOTIFICATION', id: n.id })}
+                      aria-label="Dismiss notification"
+                    >
+                      <IconClose size={14} className="text-current" decorative />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

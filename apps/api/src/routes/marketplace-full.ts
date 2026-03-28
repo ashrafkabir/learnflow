@@ -241,10 +241,18 @@ router.post(
         // Best-effort readability: map pipeline heuristic (0..100) into the marketplace 0..1 scale.
         // This is not a true readability metric, but prevents spoofed extremes.
         const totalWords = lessons
-          .map((l: any) => String(l.content || '').split(/\s+/).filter(Boolean).length)
+          .map(
+            (l: any) =>
+              String(l.content || '')
+                .split(/\s+/)
+                .filter(Boolean).length,
+          )
           .reduce((a: number, b: number) => a + b, 0);
         const objectivesAny = lessons.some((l: any) => /^- .+$/m.test(String(l.content || '')));
-        const approx = Math.min(100, Math.max(40, 60 + (totalWords > 2500 ? 20 : 0) + (objectivesAny ? 10 : 0)));
+        const approx = Math.min(
+          100,
+          Math.max(40, 60 + (totalWords > 2500 ? 20 : 0) + (objectivesAny ? 10 : 0)),
+        );
         readabilityScore = Math.max(0, Math.min(1, approx / 100));
       }
     }
