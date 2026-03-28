@@ -12,9 +12,9 @@ function safe(cmd) {
 }
 
 const PORTS = [
-  { name: 'web', port: 3000, url: 'http://localhost:3000' },
+  { name: 'api', port: 3000, url: 'http://localhost:3000' },
   { name: 'client', port: 3001, url: 'http://localhost:3001' },
-  { name: 'api', port: 3003, url: 'http://localhost:3003' },
+  { name: 'web', port: 3003, url: 'http://localhost:3003' },
 ];
 
 console.log('LearnFlow dev status');
