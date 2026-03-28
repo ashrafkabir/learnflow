@@ -4,7 +4,7 @@ Owner: Builder
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-28
 
-Status: **IN PROGRESS**
+Status: **DONE**
 
 ## Recent shipped commits (git log -10 --oneline)
 
