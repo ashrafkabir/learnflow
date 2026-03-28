@@ -142,6 +142,14 @@ export function ProfileSettings() {
       </header>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
+            Want the no-fluff version of what this build does?
+          </p>
+          <Button variant="ghost" size="sm" onClick={() => nav('/settings/about')} className="mt-2">
+            About this MVP →
+          </Button>
+        </div>
         {/* Subscription Tier */}
         <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-5 text-white shadow-card">
           <div className="flex items-center justify-between">
@@ -240,41 +248,72 @@ export function ProfileSettings() {
         {/* Pro Features Preview */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-3">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Pro Features</h2>
+          <p className="text-xs text-gray-600 dark:text-gray-300">
+            Feature availability is server-driven (capabilities matrix).
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { icon: <IconInfinity className="w-5 h-5" />, label: 'Unlimited courses', pro: true },
+              {
+                icon: <IconInfinity className="w-5 h-5" />,
+                label: 'Unlimited courses',
+                cap: 'courses.unlimited',
+              },
               {
                 icon: <IconRobot className="w-5 h-5" />,
                 label: 'Priority agent access',
-                pro: true,
+                cap: 'agents.priority',
               },
               {
                 icon: <IconKey className="w-5 h-5" />,
-                label: 'Managed API keys (coming soon)',
-                pro: true,
+                label: 'Managed API keys',
+                cap: 'keys.managed',
+                note: 'Coming soon',
               },
-              { icon: <IconRefresh className="w-5 h-5" />, label: 'Update Agent', pro: true },
-              { icon: <IconCourse className="w-5 h-5" />, label: '3 courses', pro: false },
-              { icon: <IconBrainSpark className="w-5 h-5" />, label: 'Basic agents', pro: false },
-            ].map((f) => (
-              <div
-                key={f.label}
-                className={`flex items-center gap-3 p-3 rounded-xl ${f.pro ? 'bg-purple-50 dark:bg-purple-900/20' : 'bg-gray-50 dark:bg-gray-800'}`}
-              >
-                <span className="text-gray-800/80 dark:text-gray-200">{f.icon}</span>
-                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">{f.label}</span>
-                {f.pro ? (
-                  <span className="text-xs bg-purple-700 text-white px-2 py-0.5 rounded-full font-bold">
-                    PRO
+              {
+                icon: <IconRefresh className="w-5 h-5" />,
+                label: 'Update Agent',
+                cap: 'update_agent',
+              },
+              {
+                icon: <IconCourse className="w-5 h-5" />,
+                label: '3 courses',
+                cap: 'courses.unlimited',
+              },
+              {
+                icon: <IconBrainSpark className="w-5 h-5" />,
+                label: 'Basic agents',
+                cap: 'agents.priority',
+              },
+            ].map((f) => {
+              const enabled = Boolean(state.capabilities?.[f.cap]);
+              // “Pro features” preview: enabled means this capability is available on the current plan/deployment.
+              return (
+                <div
+                  key={f.label}
+                  className={`flex items-center gap-3 p-3 rounded-xl ${enabled ? 'bg-gray-50 dark:bg-gray-800' : 'bg-purple-50 dark:bg-purple-900/20'}`}
+                >
+                  <span className="text-gray-800/80 dark:text-gray-200">{f.icon}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 flex-1">
+                    {f.label}{' '}
+                    {f.note ? (
+                      <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                        ({f.note})
+                      </span>
+                    ) : null}
                   </span>
-                ) : (
-                  <span className="text-xs text-success font-medium inline-flex items-center gap-1">
-                    <IconCheck className="w-3.5 h-3.5" />
-                    Free
-                  </span>
-                )}
-              </div>
-            ))}
+                  {enabled ? (
+                    <span className="text-xs text-success font-medium inline-flex items-center gap-1">
+                      <IconCheck className="w-3.5 h-3.5" />
+                      Enabled
+                    </span>
+                  ) : (
+                    <span className="text-xs bg-purple-700 text-white px-2 py-0.5 rounded-full font-bold">
+                      PRO
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 

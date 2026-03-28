@@ -25,7 +25,7 @@ function getFeatureFlags(tier: string): FeatureFlags {
     proactiveUpdates: Boolean(enabled.update_agent),
     unlimitedMindmap: Boolean(enabled['courses.unlimited']),
     priorityAgents: Boolean(enabled['agents.priority']),
-    managedApiKeys: false,
+    managedApiKeys: Boolean(enabled['keys.managed']),
     advancedAnalytics: Boolean(enabled['analytics.advanced']),
   };
 }
@@ -95,6 +95,10 @@ router.get('/', (req: Request, res: Response) => {
     billingMode: 'mock',
     managedKeyAccess: Boolean(features.managedApiKeys),
     features,
+
+    // Iter117: Capability-driven UI should consume server matrix (not bespoke tier strings).
+    capabilities: CAPABILITY_MATRIX[tier === 'pro' ? 'pro' : 'free'].enabled,
+
     invoices,
   });
 });
@@ -113,6 +117,9 @@ router.get('/status', (req: Request, res: Response) => {
     billingMode: 'mock',
     managedKeyAccess: Boolean(features.managedApiKeys),
     features,
+
+    // Iter117: Capability-driven UI should consume server matrix (not bespoke tier strings).
+    capabilities: CAPABILITY_MATRIX[tier === 'pro' ? 'pro' : 'free'].enabled,
   });
 });
 

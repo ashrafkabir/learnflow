@@ -105,6 +105,9 @@ const AboutPage = React.lazy(() =>
 const DocsPage = React.lazy(() =>
   import('./screens/marketing/Docs.js').then((m) => ({ default: m.DocsPage })),
 );
+const AboutMvpTruth = React.lazy(() =>
+  import('./screens/AboutMvpTruth.js').then((m) => ({ default: m.AboutMvpTruth })),
+);
 const Collaboration = React.lazy(() =>
   import('./screens/Collaboration.js').then((m) => ({ default: m.Collaboration })),
 );
@@ -381,6 +384,14 @@ export function App() {
                     element={
                       <ErrorBoundary>
                         <ProfileSettings />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/settings/about"
+                    element={
+                      <ErrorBoundary>
+                        <AboutMvpTruth />
                       </ErrorBoundary>
                     }
                   />

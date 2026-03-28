@@ -73,7 +73,10 @@ export function CreatorDashboard() {
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>('My Courses');
   const [showPublishForm, setShowPublishForm] = useState(false);
-  const [_loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<null | { kind: 'unauth' | 'error'; message: string }>(
+    null,
+  );
   const [creatorCourses, setCreatorCourses] = useState<CreatorCourse[]>([]);
   const [creatorAnalytics, setCreatorAnalytics] = useState(EMPTY_ANALYTICS);
   const [creatorEarnings, setCreatorEarnings] = useState(EMPTY_EARNINGS);
@@ -81,6 +84,7 @@ export function CreatorDashboard() {
   useEffect(() => {
     const loadDashboard = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
         if (forceDemo) throw new Error('demo');
         const data = (await apiGet('/marketplace/creator/dashboard')) as CreatorDashboardPayload;
@@ -128,8 +132,18 @@ export function CreatorDashboard() {
             status: p.status,
           })),
         });
-      } catch {
-        // keep mocks
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('forbidden')) {
+          setLoadError({
+            kind: 'unauth',
+            message: 'Please sign in to view your creator dashboard.',
+          });
+        } else if (msg === 'demo') {
+          // Demo mode: keep empty derived state and show demo badge/copy.
+        } else {
+          setLoadError({ kind: 'error', message: 'Failed to load creator dashboard.' });
+        }
       } finally {
         setLoading(false);
       }
@@ -144,6 +158,12 @@ export function CreatorDashboard() {
     topic: 'programming',
     difficulty: 'beginner',
     price: '0',
+
+    // MVP note: These QC inputs are currently user-provided.
+    // If/when we support linking to a real library courseId, the server can compute them.
+    lessonCount: '7',
+    attributionCount: '3',
+    readabilityScore: '0.7',
   });
 
   const statusBadge = (status: CreatorCourse['status']) => {
@@ -172,10 +192,18 @@ export function CreatorDashboard() {
         topic: newCourse.topic,
         difficulty: newCourse.difficulty,
         price: parseFloat(newCourse.price || '0'),
-        // MVP: placeholder quality inputs
-        lessonCount: 7,
-        attributionCount: 3,
-        readabilityScore: 0.7,
+
+        // MVP: QC inputs are user-provided (not computed from real course content).
+        // Server enforces minimums via qualityCheck().
+        lessonCount: Math.max(1, Math.floor(parseFloat(newCourse.lessonCount || '0') || 0)),
+        attributionCount: Math.max(
+          0,
+          Math.floor(parseFloat(newCourse.attributionCount || '0') || 0),
+        ),
+        readabilityScore: Math.max(
+          0,
+          Math.min(1, parseFloat(newCourse.readabilityScore || '0') || 0),
+        ),
       };
 
       await apiPost('/marketplace/courses', payload);
@@ -210,6 +238,9 @@ export function CreatorDashboard() {
         topic: 'programming',
         difficulty: 'beginner',
         price: '0',
+        lessonCount: '7',
+        attributionCount: '3',
+        readabilityScore: '0.7',
       });
     } catch {
       toast('Failed to publish course. Please try again.', 'error');
@@ -334,6 +365,52 @@ export function CreatorDashboard() {
                 />
                 <p className="text-xs text-gray-500 mt-1">Set to 0 for a free course</p>
               </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <label className="block">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">Lessons</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={newCourse.lessonCount}
+                    onChange={(e) => setNewCourse({ ...newCourse, lessonCount: e.target.value })}
+                    className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">Quality check requires ≥ 5</p>
+                </label>
+                <label className="block">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">
+                    Source attributions
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={newCourse.attributionCount}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, attributionCount: e.target.value })
+                    }
+                    className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">Quality check requires ≥ 3</p>
+                </label>
+                <label className="block">
+                  <span className="text-sm text-gray-600 dark:text-gray-300">
+                    Readability (0–1)
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={1}
+                    step={0.01}
+                    value={newCourse.readabilityScore}
+                    onChange={(e) =>
+                      setNewCourse({ ...newCourse, readabilityScore: e.target.value })
+                    }
+                    className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">Quality check requires ≥ 0.5</p>
+                </label>
+              </div>
               <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 text-sm space-y-1">
                 <p className="font-medium text-gray-900 dark:text-white">Review</p>
                 <p className="text-gray-600 dark:text-gray-300">Title: {newCourse.title || '—'}</p>
@@ -342,6 +419,10 @@ export function CreatorDashboard() {
                 </p>
                 <p className="text-gray-600 dark:text-gray-300">
                   Price: {Number(newCourse.price) === 0 ? 'Free' : `$${newCourse.price}`}
+                </p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400 pt-1">
+                  MVP note: quality checks use the inputs below (not computed from the course
+                  library yet).
                 </p>
               </div>
               <div className="flex gap-2">
@@ -540,6 +621,10 @@ export function CreatorDashboard() {
   const renderEarnings = () => (
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Earnings</h2>
+      <div className="mb-3 text-[11px] px-3 py-2 rounded-xl bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100 border border-amber-200/60 dark:border-amber-800/40">
+        Mock billing — payouts/earnings are simulated in MVP (no real money movement).
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-5 text-white">
           <p className="text-sm opacity-90">Total Earnings</p>
@@ -553,7 +638,7 @@ export function CreatorDashboard() {
           <p className="text-3xl font-bold mt-1">
             ${creatorEarnings.pendingPayout.toLocaleString()}
           </p>
-          <p className="text-sm opacity-75 mt-1">Next payout: Aug 1, 2025</p>
+          <p className="text-sm opacity-75 mt-1">Mock schedule: Aug 1, 2025</p>
         </div>
       </div>
 
@@ -620,6 +705,80 @@ export function CreatorDashboard() {
   );
 
   const usingDemoData = forceDemo;
+
+  if (loading) {
+    return (
+      <section
+        aria-label="Creator Dashboard"
+        data-screen="creator-dashboard"
+        className="min-h-screen bg-bg dark:bg-bg-dark"
+      >
+        <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
+          <div className="max-w-6xl mx-auto flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => nav('/marketplace')}>
+              ←
+            </Button>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-2">
+              <IconPalette className="w-5 h-5 text-accent" />
+              Creator Dashboard
+            </h1>
+          </div>
+        </header>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
+            <p className="text-sm text-gray-600 dark:text-gray-300">Loading…</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <section
+        aria-label="Creator Dashboard"
+        data-screen="creator-dashboard"
+        className="min-h-screen bg-bg dark:bg-bg-dark"
+      >
+        <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 sm:px-6 py-4">
+          <div className="max-w-6xl mx-auto flex items-center gap-3">
+            <Button variant="ghost" size="sm" onClick={() => nav('/marketplace')}>
+              ←
+            </Button>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-2">
+              <IconPalette className="w-5 h-5 text-accent" />
+              Creator Dashboard
+            </h1>
+          </div>
+        </header>
+
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 space-y-3">
+            <p className="text-sm font-medium text-gray-900 dark:text-white">{loadError.message}</p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              {loadError.kind === 'unauth'
+                ? 'Sign in, then return to Marketplace → Creator Dashboard.'
+                : 'Please try again.'}
+            </p>
+            <div className="flex gap-2">
+              {loadError.kind === 'unauth' ? (
+                <Button variant="primary" onClick={() => nav('/login')}>
+                  Go to Login
+                </Button>
+              ) : (
+                <Button variant="primary" onClick={() => window.location.reload()}>
+                  Retry
+                </Button>
+              )}
+              <Button variant="ghost" onClick={() => nav('/marketplace')}>
+                Back to Marketplace
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

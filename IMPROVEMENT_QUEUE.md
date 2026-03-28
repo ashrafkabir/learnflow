@@ -1,8 +1,147 @@
-# LearnFlow — Improvement Queue (Iter114)
+# LearnFlow — Improvement Queue (Iter118)
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-28 (Iteration 114 READY FOR BUILDER)
+Last updated: 2026-03-28 (Iteration 118 READY FOR BUILDER)
+
+Status: **DONE**
+
+## Recent shipped commits (git log -10 --oneline)
+
+- 57cddcb Iter116: remove misleading publish wording + strip demo marketplace metrics
+- 451f374 Iter115: BYOAI-only truth + marketplace deactivate + OpenAPI updates
+- 078ace0 Iter114: UI truth fixes + demo labels + screenshot NOTES
+- 87d3e2e Iter113: fix OpenAPI parity + document notifications scheduling
+- 5269ae1 Iter111 P0: remove fictional metrics; docs fixes; document WebSocket contract
+- 30f1ff9 Iter110 follow-ups: tick button enable + marketplace QC hardening + notifications screen
+- 4e42e09 Iter110 P0: Run now uses update-agent tick
+- 1935ef4 Iter110 P0: Run now uses update-agent tick
+- 485299c Iter108: parity fixes (screenshots outDir, spec limit, marketplace API)
+- 1cadf8e Iter107 P0: export MarketplaceAgentManifest, fix route typing, add dev:clean
+
+---
+
+## Queue hygiene (DO NOT SKIP)
+
+1. **Never regress the header iteration.** If you touch this file, the header must remain the _current_ iteration (now: Iter118).
+2. **Always set top-level Status** to one of: `READY FOR BUILDER` → `IN PROGRESS` → `DONE`.
+3. **Always include "Recent shipped commits"** from `git log -10 --oneline` after each planner/builder run.
+4. **Evidence-first tasks:** every task must cite at least one file, route, or screenshot.
+5. **OneDrive mirror is required after edits** (copy/sync without deleting history):
+   - Source: `/home/aifactory/.openclaw/workspace/learnflow/`
+   - Mirror: `/home/aifactory/onedrive-learnflow/learnflow/learnflow/`
+
+---
+
+## Iteration 118 — SPEC ↔ IMPLEMENTATION PARITY CHECK (post-Iter115/116)
+
+### Planner evidence (Iter118)
+
+Screenshots + notes captured into:
+
+- Desktop: `learnflow/screenshots/iter118/planner-run/desktop/`
+- Mobile: `learnflow/screenshots/iter118/planner-run/mobile/`
+- Notes: `learnflow/screenshots/iter118/planner-run/NOTES.md`
+
+Harness used:
+
+- Desktop: `node screenshot-all.mjs learnflow/screenshots/iter118/planner-run/desktop --base http://localhost:3001`
+- Mobile: `node screenshot-mobile.mjs learnflow/screenshots/iter118/planner-run/mobile --base http://localhost:3001`
+
+### Brutally honest parity summary (Iter118)
+
+- **Truth-in-UI has improved** materially in Iter115–Iter117 work (BYOAI-only, mock billing disclosure, pipeline publish wording, MVP truth panel, capability matrix). The remaining gaps are mostly about **empty states + capability semantics + docs/links hygiene + spec drift**.
+- **Iter117 appears not merged**: `BUILD_LOG_ITER117.md` exists, but `git log` does not show an Iter117 commit. Treat this as a release hygiene issue (see tasks).
+
+---
+
+## Iter118 — Top tasks (10–15) READY FOR BUILDER
+
+### P0 — Trust, correctness, and “don’t leak fake/host-specific links”
+
+1. **P0 — Remove hardcoded upstream GitHub link in MVP Truth page; make it deployment-local**
+
+- Problem: `AboutMvpTruth` links to `https://github.com/learnflow/learnflow/...` which may be wrong for forks / offline installs and is user-trust poison.
+- Evidence: `apps/client/src/screens/AboutMvpTruth.tsx`.
+- Fix options:
+  - Link to in-app `/docs` anchor (preferred), OR
+  - Link to a server-hosted `/api/v1/docs/spec` or static doc page served from this deployment.
+
+2. **P0 — Subscription `/api/v1/subscription` has contradictory feature flags (`managedApiKeys` always false) vs capability tiles**
+
+- Problem: server returns both `features` and `capabilities`; `features.managedApiKeys` is hardcoded false while UI is now capability-driven. Risk of drift/confusion.
+- Evidence: `apps/api/src/routes/subscription.ts` (`managedApiKeys: false`, plus `capabilities`).
+- Acceptance: either deprecate `features` or make it derived entirely from capabilities (no bespoke truth).
+
+3. **P0 — Creator Dashboard error handling still says “keep mocks” (but mocks are removed) → show explicit empty states instead of silent swallow**
+
+- Problem: `catch { // keep mocks }` now masks real failures and can show stale/empty UI without explanation.
+- Evidence: `apps/client/src/screens/marketplace/CreatorDashboard.tsx` catch block; screenshots: `learnflow/screenshots/iter118/planner-run/desktop/marketplace-*`.
+- Acceptance: show one of:
+  - “Please sign in to view creator dashboard”, or
+  - “No creator data yet”, or
+  - “Failed to load — retry”.
+
+4. **P0 — Iteration hygiene: reconcile Iter117 work vs git history (missing commit)**
+
+- Problem: Iter117 build log exists, but `git log` shows latest as Iter116. Risk: work not shipped or got squashed without updating queue.
+- Evidence: `BUILD_LOG_ITER117.md` vs `git log -10 --oneline`.
+- Acceptance: builder should confirm whether Iter117 changes exist on disk, were reverted, or simply not committed; then update `BUILD_LOG_ITER117.md` + commit history accordingly.
+
+### P1 — Product coherence / docs / capability semantics
+
+5. **P1 — Pro Features tile logic labels Free features incorrectly (currently uses `pro = !enabled`)**
+
+- Problem: In `ProfileSettings`, tiles are labeled “PRO” when capability disabled; but the list mixes descriptive strings like “3 courses” and “Basic agents” that should not be keyed to Pro gating.
+- Evidence: `apps/client/src/screens/ProfileSettings.tsx` Pro Features list.
+- Acceptance: split into two lists:
+  - “Included in Free” (static),
+  - “Unlocked with Pro” (capability-driven).
+
+6. **P1 — Export truth: capability `export.data` is true for Pro, but API still returns 501 for pdf/scorm**
+
+- Problem: capability indicates export exists; but some formats are explicitly unimplemented.
+- Evidence: `packages/shared/src/plan/index.ts` (`export.data: true`), API `apps/api/src/routes/export.ts` (501 for `pdf|scorm`).
+- Acceptance: capabilities should be format-specific (e.g. `export.json`, `export.md`) or UI must clearly gate formats.
+
+7. **P1 — Marketplace publish capability is enabled for Free (`marketplace.publish: true`) — confirm intended**
+
+- Problem: free users may be able to publish; if not intended, cap matrix is wrong.
+- Evidence: `packages/shared/src/plan/index.ts` for Free enabled `marketplace.publish: true`.
+- Acceptance: decide product policy and align server checks + UI.
+
+8. **P1 — WebSocket dev-auth doc should mirror exact server condition and mention `config.devMode` rate-limit behavior**
+
+- Evidence: docs `apps/docs/pages/websocket-events.md`; server `apps/api/src/websocket.ts` (dev token) + rate limiting uses `config.devMode`.
+- Acceptance: update docs for precise conditions; include troubleshooting snippet.
+
+9. **P1 — Update Agent scheduling docs + UI: ensure only one canonical “Run now” path is emphasized (`/update-agent/tick`)**
+
+- Evidence: `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`; API `apps/api/src/routes/update-agent.ts`.
+- Acceptance: audit any leftover surfaces calling `/notifications/generate` as primary.
+
+### P2 — QA / regression guards / docs parity
+
+10. **P2 — Add regression guard against IMPROVEMENT_QUEUE header regression (CI or pre-commit)**
+
+- Problem: file keeps regressing to Iter114 header across agent runs.
+- Evidence: repeated regression noted in planner context.
+- Acceptance: add a lightweight check script (e.g., fails if header iteration < highest shipped iter in BUILD*LOGs) OR document a manual rule (see hygiene above). *(Planner note: I did not modify prod code per constraints.)\_
+
+11. **P2 — Docs/contract parity: ensure OpenAPI contains the endpoints used by Settings and Marketplace**
+
+- Evidence: OpenAPI `apps/api/openapi.yaml`; routes under `apps/api/src/routes/*`; Settings hits `/profile/data-summary`, `/profile/context`, `/keys`, `/subscription`.
+- Acceptance: verify these are documented or explicitly excluded with a rationale.
+
+12. **P2 — Screenshot harness wrapper command**
+
+- Problem: two scripts run manually; still easy to forget mobile or NOTES.
+- Evidence: `screenshot-all.mjs`, `screenshot-mobile.mjs`.
+- Acceptance: add `npm run screenshots -- --iter 118 --base http://localhost:3001` wrapper script to run both and stamp NOTES (already created by scripts).
+
+---
+
+## Prior iterations (history — keep below)
 
 ---
 
@@ -184,10 +323,6 @@ Key evidence files/endpoints referenced below:
 - Evidence: `apps/client/src/screens/marketing/Docs.tsx` does this partially.
 - Acceptance:
   - Add a “What’s in MVP vs planned” screen in-app (Settings → About) that lists: mock billing, mock creator analytics, env-managed keys behavior, export stubs.
-
----
-
-## Prior iterations (history — keep below)
 
 ---
 

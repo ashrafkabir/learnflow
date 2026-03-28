@@ -147,6 +147,7 @@ interface AppState {
   streak: number;
   completedLessons: Set<string>;
   subscription: SubscriptionTier;
+  capabilities: Record<string, boolean>;
   notifications: Notification[];
 
   // Mindmap suggestions (dashed/dimmed nodes) emitted by the server.
@@ -176,6 +177,7 @@ type Action =
   | { type: 'COMPLETE_LESSON'; lessonId: string }
   | { type: 'UPDATE_PROFILE'; profile: Partial<UserProfile> }
   | { type: 'SET_SUBSCRIPTION'; tier: SubscriptionTier }
+  | { type: 'SET_CAPABILITIES'; capabilities: Record<string, boolean> }
   | { type: 'ADD_NOTIFICATION'; notification: Notification }
   | { type: 'DISMISS_NOTIFICATION'; id: string }
   | { type: 'SET_NOTIFICATIONS'; notifications: Notification[] }
@@ -243,6 +245,7 @@ const initialState: AppState = {
   completedLessons: new Set(),
   // Subscription is server-driven; default to free until hydrated from GET /subscription.
   subscription: 'free',
+  capabilities: {},
   notifications: safeLocalStorageGetJson('learnflow-notifications', [] as any),
   mindmapSuggestions: safeLocalStorageGetJson('learnflow-mindmap-suggestions', {} as any),
 };
@@ -364,6 +367,8 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_SUBSCRIPTION':
       // Subscription is server-driven; do not persist tier in localStorage.
       return { ...state, subscription: action.tier };
+    case 'SET_CAPABILITIES':
+      return { ...state, capabilities: action.capabilities || {} };
     case 'ADD_NOTIFICATION': {
       const notifs = [action.notification, ...state.notifications].slice(0, 50);
       localStorage.setItem('learnflow-notifications', JSON.stringify(notifs));
@@ -641,6 +646,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const sub = await apiGet('/subscription');
         if (sub?.tier) {
           dispatch({ type: 'SET_SUBSCRIPTION', tier: sub.tier });
+        }
+        if (sub?.capabilities && typeof sub.capabilities === 'object') {
+          dispatch({ type: 'SET_CAPABILITIES', capabilities: sub.capabilities });
         }
       } catch {
         // ignore
