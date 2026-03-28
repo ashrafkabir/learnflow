@@ -251,7 +251,7 @@ The primary interaction surface is a chat-style interface where the student conv
 
 - Nodes represent concepts; edges represent relationships
 
-- Color-coded by mastery level (not started, in progress, mastered)
+- Color-coded by progress level (MVP): not started / in progress / complete (lesson completion only; mastery scoring PLANNED)
 
 - Tap a node to expand with sub-concepts or jump to related lesson
 
