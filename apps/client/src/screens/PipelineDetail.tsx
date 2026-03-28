@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePipeline } from '../hooks/usePipeline.js';
+import { apiPost } from '../context/AppContext.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { Button } from '../components/Button.js';
 import { useToast } from '../components/Toast.js';
@@ -172,12 +173,7 @@ export function PipelineDetail() {
                 size="sm"
                 onClick={async () => {
                   try {
-                    const res = await fetch(`/api/v1/pipeline/${state.id}/restart`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                    });
-                    if (!res.ok) throw new Error('restart failed');
-                    const data = await res.json();
+                    const data = await apiPost(`/pipeline/${state.id}/restart`, {});
                     toast('Pipeline restarted', 'success');
                     if (data?.pipelineId) nav(`/pipeline/${data.pipelineId}`);
                   } catch {
