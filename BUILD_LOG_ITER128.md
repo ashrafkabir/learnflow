@@ -274,3 +274,24 @@ Source of truth: `learnflow/IMPROVEMENT_QUEUE.md` (Iter128)
 - ✅ Commit + push: `Iter128: show toasts for key client-side error catches`
 
 ---
+
+## Task 12 (P2) — MVP truth regression test suite
+
+### Change summary
+- Added `mvpTruthRegression.test.tsx` to assert key MVP truth disclosures remain present on the “MVP Truth” page.
+
+### Verification
+- `npm test` ✅
+- `npm run build` ✅
+- `npm run lint:check` ✅
+
+### Screenshots
+- `screenshots/iter128/builder-run-2/task-12/{desktop,mobile}` ✅
+
+### OneDrive sync
+- ✅ rsync to OneDrive mirror (non-destructive)
+
+### Git
+- ✅ Commit + push: `Iter128: add MVP truth regression test`
+
+---
