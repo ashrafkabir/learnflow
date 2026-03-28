@@ -106,6 +106,8 @@ export function MindmapExplorer() {
 
   const [customNodes, setCustomNodes] = useState<Array<{ id: string; label: string }>>([]);
 
+  const persistNoteId = 'mindmap-persistence-note';
+
   // Keep local customNodes in sync with the shared Yjs doc.
   useEffect(() => {
     const syncFromDoc = () => {
@@ -791,6 +793,25 @@ export function MindmapExplorer() {
                   </div>
                 </div>
               )}
+              {/* Persistence note */}
+              <div
+                id={persistNoteId}
+                className="absolute bottom-4 left-4 max-w-[320px] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-card z-10 text-[11px] text-gray-700 dark:text-gray-200"
+              >
+                <div className="font-semibold">What persists</div>
+                <ul className="mt-1 list-disc pl-4 space-y-0.5 text-gray-600 dark:text-gray-300">
+                  <li>
+                    Suggested topics (dashed) are <span className="font-semibold">saved</span> per
+                    course.
+                  </li>
+                  <li>
+                    Nodes you add locally (purple diamonds) are{' '}
+                    <span className="font-semibold">not yet saved</span> unless your org has the
+                    shared mindmap backend enabled.
+                  </li>
+                </ul>
+              </div>
+
               {/* Presence */}
               <div className="absolute top-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-card z-10 text-xs flex items-center gap-2">
                 <span className="text-gray-600 dark:text-gray-300">
