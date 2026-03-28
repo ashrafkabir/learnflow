@@ -205,7 +205,7 @@ Free-tier users provide their own API keys (OpenAI, Anthropic, Google, Mistral, 
 
 5.  Subscription Choice: clear Free vs Pro comparison; one-tap upgrade with Stripe/App Store billing
 
-6.  First Course Generation: orchestrator builds initial course in real-time with progress animation
+6.  First Course Setup (MVP): progress animation only; preferences are saved and the user creates their first course from the dashboard
 
 ■ **5.2.2 HOME DASHBOARD**
 
