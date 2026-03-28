@@ -268,9 +268,9 @@ Source of truth: `learnflow/IMPROVEMENT_QUEUE.md` (Iter128)
 - `screenshots/iter128/builder-run-2/task-11/{desktop,mobile}` ✅
 
 ### OneDrive sync
-- (pending)
+- ✅ rsync to OneDrive mirror (non-destructive)
 
 ### Git
-- (pending)
+- ✅ Commit + push: `Iter128: show toasts for key client-side error catches`
 
 ---
