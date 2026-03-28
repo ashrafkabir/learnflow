@@ -112,14 +112,20 @@ const browser = await chromium.launch();
 // 2) Authed route screenshots (force token + onboarding complete)
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  await ctx.addInitScript(() => {
+  await ctx.addInitScript((base) => {
     localStorage.setItem('learnflow-token', 'dev');
     // Iter86: tag harness-origin so API can suppress durable data/usage writes.
     localStorage.setItem('learnflow-origin', 'harness');
     localStorage.setItem('learnflow-onboarding-complete', 'true');
     // Prevent the dashboard tour overlay from blocking clicks
     localStorage.setItem('onboarding-tour-complete', 'true');
-  });
+
+    // Allow the client bundle to read the Playwright base URL without `process.env`.
+    globalThis.__LEARNFLOW_ENV__ = {
+      ...(globalThis.__LEARNFLOW_ENV__ || {}),
+      PLAYWRIGHT_BASE_URL: base,
+    };
+  }, BASE);
 
   for (const [path, name] of AUTHED_PAGES) {
     const page = await ctx.newPage();

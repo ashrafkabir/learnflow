@@ -460,19 +460,28 @@ export function apiBase(): string {
   // Prefer same-origin requests in real browser usage.
   // In tests (Vitest/jsdom) and in Node, default to the local API.
   const isVitest = typeof (globalThis as any).vi !== 'undefined';
-  const isPlaywright = Boolean(process.env.PLAYWRIGHT_BASE_URL);
+
+  // Playwright determinism: allow overriding env via a runtime global so tests
+  // don't depend on shell environment.
+  const runtimeEnv =
+    (globalThis as any)?.__LEARNFLOW_ENV__ &&
+    typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+      ? ((globalThis as any).__LEARNFLOW_ENV__ as Record<string, string | undefined>)
+      : null;
+
+  // Allow explicit override for E2E/CI (Vite) + Playwright runtime override.
+  const envBase =
+    runtimeEnv?.PLAYWRIGHT_BASE_URL ||
+    runtimeEnv?.VITE_API_BASE_URL ||
+    (import.meta as any)?.env?.VITE_API_BASE_URL;
+  if (envBase) return String(envBase).replace(/\/$/, '');
 
   // In real browser usage (no test runners), use same-origin.
   // In Vitest/jsdom, prefer relative to satisfy fetch stubs in tests.
-  if (typeof window !== 'undefined' && !isPlaywright && isVitest) return '';
+  if (typeof window !== 'undefined' && isVitest) return '';
+  if (typeof window !== 'undefined' && !isVitest) return '';
 
-  if (typeof window !== 'undefined' && !isPlaywright && !isVitest) return '';
-
-  // Allow explicit override for E2E/CI.
-  const envBase = process.env.PLAYWRIGHT_BASE_URL || process.env.VITE_API_BASE_URL;
-  if (envBase) return envBase.replace(/\/$/, '');
-
-  return 'http://localhost:3002';
+  return 'http://localhost:3000';
 }
 
 export async function apiPost(path: string, body: unknown) {
