@@ -141,38 +141,45 @@ export function AgentMarketplace() {
 
   const handleToggleActivate = async (agent: Agent) => {
     const isActive = activatedIds.has(agent.id);
-    if (isActive) {
-      setActivatedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(agent.id);
-        return next;
-      });
-      toast(`Deactivated "${agent.name}"`, 'info');
-      return;
-    }
 
     setActivating(agent.id);
     try {
       const token = localStorage.getItem('learnflow-token');
       if (!token) {
-        toast('Please log in to activate agents.', 'error');
+        toast('Please log in to manage agents.', 'error');
         return;
       }
 
-      const res = await fetch(`/api/v1/marketplace/agents/${agent.id}/activate`, {
+      const endpoint = isActive ? 'deactivate' : 'activate';
+      const res = await fetch(`/api/v1/marketplace/agents/${agent.id}/${endpoint}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
 
       if (!res.ok) {
-        toast(`Could not activate "${agent.name}". Please try again.`, 'error');
+        toast(
+          `Could not ${isActive ? 'deactivate' : 'activate'} "${agent.name}". Please try again.`,
+          'error',
+        );
         return;
       }
 
-      setActivatedIds((prev) => new Set([...prev, agent.id]));
-      toast(`Activated "${agent.name}"`, 'success');
+      setActivatedIds((prev) => {
+        const next = new Set(prev);
+        if (isActive) next.delete(agent.id);
+        else next.add(agent.id);
+        return next;
+      });
+
+      toast(
+        `${isActive ? 'Deactivated' : 'Activated'} "${agent.name}"`,
+        isActive ? 'info' : 'success',
+      );
     } catch {
-      toast(`Could not activate "${agent.name}". Please try again.`, 'error');
+      toast(
+        `Could not ${isActive ? 'deactivate' : 'activate'} "${agent.name}". Please try again.`,
+        'error',
+      );
     } finally {
       setActivating(null);
     }
@@ -220,9 +227,8 @@ export function AgentMarketplace() {
         <div className="mb-5 text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
           <p className="font-semibold text-gray-900 dark:text-white mb-1">MVP disclosure</p>
           <p className="text-gray-600 dark:text-gray-300">
-            Marketplace agents in this MVP influence routing and UI, but runtime still executes
-            LearnFlow’s built-in agents. Activation controls which capabilities are preferred for
-            your requests.
+            Marketplace agents in this MVP affect routing preference and UI labels only. LearnFlow
+            still runs its built-in agents at runtime.
           </p>
         </div>
 

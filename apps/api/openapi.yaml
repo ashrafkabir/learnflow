@@ -1215,6 +1215,49 @@ paths:
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
+
+  /api/v1/marketplace/agents/{id}/deactivate:
+    post:
+      summary: Deactivate marketplace agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent deactivated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/marketplace/agents/manifests/resolve:
+    post:
+      summary: Resolve activated marketplace agent manifests (routing preference)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agentIds:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - agentIds
+      responses:
+        '200':
+          description: Resolved manifests
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
   /api/v1/marketplace/creator/dashboard:
     get:
       summary: Creator dashboard

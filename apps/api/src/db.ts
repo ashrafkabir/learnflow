@@ -1037,6 +1037,9 @@ const stmts = {
   activateAgent: sqlite.prepare(
     `INSERT OR IGNORE INTO marketplace_agents_activated (userId, agentId) VALUES (?, ?)`,
   ),
+  deactivateAgent: sqlite.prepare(
+    `DELETE FROM marketplace_agents_activated WHERE userId = ? AND agentId = ?`,
+  ),
   getActivatedAgents: sqlite.prepare(
     `SELECT agentId FROM marketplace_agents_activated WHERE userId = ?`,
   ),
@@ -2644,6 +2647,10 @@ export const dbMarketplaceAgentSubmissions = {
 export const dbMarketplace = {
   activateAgent(userId: string, agentId: string): void {
     stmts.activateAgent.run(userId, agentId);
+  },
+
+  deactivateAgent(userId: string, agentId: string): void {
+    stmts.deactivateAgent.run(userId, agentId);
   },
 
   getActivatedAgents(userId: string): string[] {

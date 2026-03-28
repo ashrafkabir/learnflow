@@ -25,10 +25,11 @@ const DRY_RUN =
 const DIR =
   process.env.SCREENSHOT_DIR ||
   process.env.SCREENSHOT_OUT_DIR ||
-  // Preferred: positional first arg (node screenshot-mobile.mjs <outDir>)
-  process.argv[2] ||
+  // Preferred: explicit flag
   readArg('outDir') ||
   readArg('out') ||
+  // Preferred: positional first arg (node screenshot-mobile.mjs <outDir>)
+  process.argv[2] ||
   (AUTHED ? 'evals/screenshots/iter45-mobile-authed' : 'evals/screenshots/iter45-mobile');
 
 const resolvedDir = path.resolve(DIR);

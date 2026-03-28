@@ -204,7 +204,7 @@ function ReviewingPanel({
           onClick={handlePublish}
           className="flex-1 px-3 py-2 bg-success/10 text-success rounded-xl text-xs font-semibold hover:bg-success/20 transition-colors border border-success/20"
         >
-Mark Published
+          Mark Published
         </button>
         <button
           onClick={handlePersonal}

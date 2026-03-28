@@ -16,10 +16,11 @@ const DATE = new Date().toISOString().slice(0, 10);
 const DIR =
   process.env.SCREENSHOT_DIR ||
   process.env.SCREENSHOT_OUT ||
-  // Preferred: positional first arg (node screenshot-all.mjs <outDir>)
-  process.argv[2] ||
+  // Preferred: explicit flag
   readArg('outDir') ||
   readArg('out') ||
+  // Preferred: positional first arg (node screenshot-all.mjs <outDir>)
+  process.argv[2] ||
   `learnflow/screenshots/iter${ITER}-${DATE}`;
 
 console.log(`Using output dir: ${path.resolve(DIR)}`);

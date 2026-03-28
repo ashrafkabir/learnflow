@@ -44,33 +44,39 @@ Key evidence files/endpoints referenced below:
 
 ### What’s genuinely implemented end-to-end (MVP)
 
-1) **Web-first MVP is now consistently stated in marketing docs**
+1. **Web-first MVP is now consistently stated in marketing docs**
+
 - Evidence: `apps/client/src/screens/marketing/Docs.tsx` (Installation: “web-first MVP”).
 
-2) **API key vault encryption is real (AEAD default)**
+2. **API key vault encryption is real (AEAD default)**
+
 - Evidence: `apps/api/src/crypto.ts` defaults to `aes-256-gcm` (`encVersion: v2_gcm`), legacy CBC decrypt support.
 - Boot validation: `apps/api/src/index.ts` refuses prod startup without proper `ENCRYPTION_KEY` and non-fallback `JWT_SECRET`.
 
-3) **WebSocket product surface is real and documented**
+3. **WebSocket product surface is real and documented**
+
 - Server: `apps/api/src/websocket.ts`.
 - Orchestrator streaming + activity events: `apps/api/src/wsOrchestrator.ts`.
 - Docs: `apps/docs/pages/websocket-events.md`.
 - OpenAPI annotation: `apps/api/openapi.yaml` includes `x-learnflow.websocket.path: /ws` and `eventsDoc`.
 
-4) **Update Agent (Pro-only) runs exist with explicit “external cron” expectation**
+4. **Update Agent (Pro-only) runs exist with explicit “external cron” expectation**
+
 - Spec acknowledges manual tick + RSS-only MVP in §3.2.0.
 - Endpoint evidence: `POST /api/v1/update-agent/tick` in `apps/api/src/routes/update-agent.ts`.
 
-5) **Privacy: delete-my-data endpoint exists**
+5. **Privacy: delete-my-data endpoint exists**
+
 - Evidence: `DELETE /api/v1/delete-my-data` → `apps/api/src/routes/delete-my-data.ts` and UI callsite in `apps/client/src/screens/ProfileSettings.tsx`.
 
-6) **Free-tier course limit enforced server-side**
+6. **Free-tier course limit enforced server-side**
+
 - Evidence: `POST /api/v1/courses` enforces FREE_LIMIT=3 for non-pro: `apps/api/src/routes/courses.ts`.
 
 ### Where spec is still “future state” (and risks user trust if mirrored in user-facing copy)
 
 - Spec §1 + §5.1 claim macOS/Windows/iOS/Android native apps; repo is web-first MVP (though docs now say this correctly).
-- Spec talks about gRPC mesh/K8s/vector DB, but MVP section already flags this (§3.2.0). The problem is not the existence of future state — it’s *how easily a reader misses the MVP constraints*.
+- Spec talks about gRPC mesh/K8s/vector DB, but MVP section already flags this (§3.2.0). The problem is not the existence of future state — it’s _how easily a reader misses the MVP constraints_.
 
 ---
 
@@ -78,7 +84,8 @@ Key evidence files/endpoints referenced below:
 
 ### P0 — Correctness, trust, and “don’t lie in the UI”
 
-1) **P0 — Fix Plan/Capability mismatch: “Managed API keys” (server supports env keys, plan says not available)**
+1. **P0 — Fix Plan/Capability mismatch: “Managed API keys” (server supports env keys, plan says not available)**
+
 - Problem: Shared plan defs hard-disable `keys.managed`, and UI says “Managed API keys (not available in this build)”, but server can still use env-managed keys for Pro (`managed_env`) when env vars exist.
 - Evidence:
   - Plan defs: `packages/shared/src/plan/index.ts` sets `'keys.managed': false` for both free/pro.
@@ -91,19 +98,22 @@ Key evidence files/endpoints referenced below:
       - Add server capability detection (e.g., env vars present) → surface in `/api/v1/subscription` features.
       - Update UI copy to “Managed keys available on this deployment” only when true.
 
-2) **P0 — Settings: remove hardcoded “API calls this month 1,234 / 10,000”**
+2. **P0 — Settings: remove hardcoded “API calls this month 1,234 / 10,000”**
+
 - Problem: Fake numbers in a “Subscription Management” section are user-trust poison.
 - Evidence: `apps/client/src/screens/ProfileSettings.tsx` hardcodes `1,234 / 10,000`.
 - Acceptance:
   - Replace with real metrics from `GET /api/v1/usage/dashboard` or remove the entire meter until real.
 
-3) **P0 — Marketplace Creator Dashboard: remove/flag mock analytics + mock courses/earnings OR make it obviously demo**
+3. **P0 — Marketplace Creator Dashboard: remove/flag mock analytics + mock courses/earnings OR make it obviously demo**
+
 - Problem: Creator dashboard currently uses extensive `MOCK_*` datasets and falls back silently; looks real.
 - Evidence: `apps/client/src/screens/marketplace/CreatorDashboard.tsx` defines `MOCK_COURSES`, `MOCK_ANALYTICS`, `MOCK_EARNINGS` and “MVP: placeholder quality inputs”.
 - Acceptance:
   - Either wire all tiles to server payload and show empty-state when none, OR add a visible “Demo data” badge + explanatory copy.
 
-4) **P0 — Pipeline “Publish to Marketplace” is a stage flip, not a marketplace publish**
+4. **P0 — Pipeline “Publish to Marketplace” is a stage flip, not a marketplace publish**
+
 - Problem: UI lets users “Publish to Marketplace”, but API endpoint only flips pipeline stage to `published` — it does not create a marketplace course entry.
 - Evidence:
   - Client: `apps/client/src/components/pipeline/PipelineView.tsx` calls `POST /api/v1/pipeline/:id/publish`.
@@ -112,8 +122,9 @@ Key evidence files/endpoints referenced below:
 - Acceptance:
   - Either rename button to “Mark Published” / “Finish Pipeline”, OR actually call marketplace publish and create a published course record.
 
-5) **P0 — WebSocket docs: fix “token=dev accepted” claim to match server reality**
-- Problem: Docs say `token=dev` is accepted when `LEARNFLOW_DEV_AUTH=1`, but server checks `LEARNFLOW_DEV_AUTH` *and* `config.devMode` gates are elsewhere; users can get confused.
+5. **P0 — WebSocket docs: fix “token=dev accepted” claim to match server reality**
+
+- Problem: Docs say `token=dev` is accepted when `LEARNFLOW_DEV_AUTH=1`, but server checks `LEARNFLOW_DEV_AUTH` _and_ `config.devMode` gates are elsewhere; users can get confused.
 - Evidence:
   - Docs: `apps/docs/pages/websocket-events.md`.
   - Server: `apps/api/src/websocket.ts` dev token accepted only if `NODE_ENV!=production` and `LEARNFLOW_DEV_AUTH=1|true`.
@@ -122,24 +133,28 @@ Key evidence files/endpoints referenced below:
 
 ### P1 — Product coherence / gating / UX polish
 
-6) **P1 — Subscription endpoint: surface capabilities from shared plan definitions everywhere**
+6. **P1 — Subscription endpoint: surface capabilities from shared plan definitions everywhere**
+
 - Problem: `/api/v1/subscription` returns a bespoke `FeatureFlags` shape; it partially mirrors capabilities but also hardcodes `managedApiKeys: false`.
 - Evidence: `apps/api/src/routes/subscription.ts` and `apps/api/src/lib/capabilities.ts` + `packages/shared/src/plan/index.ts`.
 - Acceptance:
   - Return `capabilities` (CapabilityId → boolean) and let UI derive feature tiles from that; deprecate bespoke flags.
 
-7) **P1 — Export: reconcile spec + UI with reality (PDF/SCORM stubs)**
+7. **P1 — Export: reconcile spec + UI with reality (PDF/SCORM stubs)**
+
 - Evidence: `apps/api/src/routes/export.ts` returns 501 for `format=pdf|scorm`.
 - Acceptance:
   - Either implement minimal PDF/SCORM, or hide/gate endpoints and label in UI + docs as planned.
 
-8) **P1 — Marketplace checkout/payouts: ensure all UI surfaces clearly say “mock billing”**
+8. **P1 — Marketplace checkout/payouts: ensure all UI surfaces clearly say “mock billing”**
+
 - Problem: API returns `billingMode: 'mock'`, but UI should consistently disclose.
 - Evidence: `apps/api/src/routes/marketplace-full.ts`.
 - Acceptance:
   - Add badges/copy in marketplace checkout flows and creator earnings.
 
-9) **P1 — Usage + limits: formalize what “limits” exist for BYOAI and Pro**
+9. **P1 — Usage + limits: formalize what “limits” exist for BYOAI and Pro**
+
 - Problem: There is rate limiting + free course cap + token usage dashboards, but the product copy mixes “BYOK spend” with “platform limits”.
 - Evidence:
   - Rate limiter: `apps/api/src/rateLimit.ts` + `apps/api/src/app.ts`.
@@ -149,19 +164,22 @@ Key evidence files/endpoints referenced below:
 
 ### P2 — DevEx / QA / iteration hygiene
 
-10) **P2 — Screenshot harness: ensure it always writes NOTES.md automatically**
+10. **P2 — Screenshot harness: ensure it always writes NOTES.md automatically**
+
 - Problem: Iter114 required manual creation of `NOTES.md`.
 - Evidence: `learnflow/screenshots/iter114/planner-run/NOTES.md` was missing until created.
 - Acceptance:
   - Update `screenshot-all.mjs` / `screenshot-mobile.mjs` (or wrapper script) to always create/append a run notes template.
 
-11) **P2 — OpenAPI parity: add missing UI-used endpoints and verify docs paths**
+11. **P2 — OpenAPI parity: add missing UI-used endpoints and verify docs paths**
+
 - Problem: OpenAPI is good, but needs continuous parity with routes + WS contract doc references.
 - Evidence: `apps/api/openapi.yaml` includes `x-learnflow.websocket`, but other drift tends to accumulate each iteration.
 - Acceptance:
   - Add/keep CI test that diffs route registry vs openapi paths.
 
-12) **P2 — Make “MVP truth” impossible to miss (single canonical page in-app)**
+12. **P2 — Make “MVP truth” impossible to miss (single canonical page in-app)**
+
 - Problem: Spec has MVP section, but user-facing clarity should live in app/marketing.
 - Evidence: `apps/client/src/screens/marketing/Docs.tsx` does this partially.
 - Acceptance:

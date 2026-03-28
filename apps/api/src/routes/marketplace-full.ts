@@ -610,6 +610,25 @@ router.post(
   },
 );
 
+// POST /api/v1/marketplace/agents/:id/deactivate — deactivate agent (MVP: routing preference only)
+router.post(
+  '/agents/:id/deactivate',
+  validateBody(z.object({})),
+  async (req: Request, res: Response) => {
+    const agentId = String(req.params.id);
+
+    const agent = agentSubmissions.get(agentId) || ({ id: agentId, name: agentId } as any);
+
+    const mod = await import('../db.js');
+    mod.dbMarketplace.deactivateAgent(req.user!.sub, agent.id);
+
+    // Keep legacy in-memory map for existing tests / local behavior.
+    activatedAgents.get(req.user!.sub)?.delete(agent.id);
+
+    res.status(200).json({ message: `Agent "${agent.name}" deactivated`, agentId: agent.id });
+  },
+);
+
 // GET /api/v1/marketplace/creator/dashboard — creator analytics (S09-A10)
 router.get('/creator/dashboard', (req: Request, res: Response) => {
   const persisted = dbMarketplaceCourses.listByCreator(req.user!.sub).map((c) => ({

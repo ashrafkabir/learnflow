@@ -16,11 +16,11 @@ export type OpenAiClientResult = {
 /**
  * Get an OpenAI client for this request.
  *
- * Spec (Iter48+): Free tier uses BYOAI (per-user key). Pro may use managed keys.
- * MVP enforcement:
+ * MVP truth: LearnFlow is BYOAI-only in this build (no managed API keys).
+ *
+ * Enforcement:
  * - If request provides an apiKey override: use it.
  * - Else if user has an active OpenAI key stored: use it.
- * - Else if tier is pro and OPENAI_API_KEY is set: use managed env key.
  * - Else: return null.
  */
 export function getOpenAIForRequest(params: {
@@ -28,7 +28,7 @@ export function getOpenAIForRequest(params: {
   tier: 'free' | 'pro' | string;
   apiKeyOverride?: string;
 }): OpenAiClientResult {
-  const { userId, tier, apiKeyOverride } = params;
+  const { userId, apiKeyOverride } = params;
 
   if (apiKeyOverride && apiKeyOverride.trim().length > 0) {
     return {
@@ -48,16 +48,10 @@ export function getOpenAIForRequest(params: {
         source: { kind: 'user_key', keyId: activeOpenAiKey.id },
       };
     } catch {
-      // fall through to managed env if allowed
+      // fall through
     }
   }
 
-  if (tier === 'pro' && process.env.OPENAI_API_KEY) {
-    return {
-      client: new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
-      source: { kind: 'managed_env' },
-    };
-  }
-
+  // Intentionally no managed env fallback in MVP.
   return { client: null, source: { kind: 'none' } };
 }

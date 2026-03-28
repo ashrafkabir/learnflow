@@ -57,6 +57,20 @@ export default function HomePage() {
           LearnFlow creates personalized courses, notes, quizzes, and research from any topic —
           powered by a team of AI agents working together.
         </p>
+        <p
+          data-component="mvp-disclosure"
+          style={{
+            marginTop: 14,
+            fontSize: 14,
+            color: '#6b7280',
+            maxWidth: 640,
+            lineHeight: 1.5,
+            position: 'relative',
+          }}
+        >
+          Web-first MVP today (works on desktop + mobile browsers). Native iOS/Android and desktop
+          apps are planned.
+        </p>
         <div style={{ display: 'flex', gap: 16, marginTop: 40, position: 'relative' }}>
           <a
             href="/download"
@@ -195,7 +209,7 @@ export default function HomePage() {
             fontWeight: 600,
           }}
         >
-          Download LearnFlow
+          Open LearnFlow (Web)
         </a>
       </section>
     </div>

@@ -695,7 +695,8 @@ export function CreatorDashboard() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {usingDemoData && (
           <div className="mb-4 rounded-2xl border border-yellow-200 dark:border-yellow-900/40 bg-yellow-50 dark:bg-yellow-900/20 p-4 text-sm text-yellow-900 dark:text-yellow-200">
-            This dashboard is showing <strong>demo data</strong>. Publishing, earnings, and analytics are MVP placeholders.
+            This dashboard is showing <strong>demo data</strong>. Publishing, earnings, and
+            analytics are MVP placeholders.
           </div>
         )}
         {/* Tabs */}
