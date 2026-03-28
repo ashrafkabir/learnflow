@@ -204,3 +204,6 @@ Files touched:
 
 ### OneDrive sync
 - `rsync -av screenshots/iter121/builder-run/task-09/ /home/aifactory/onedrive-learnflow/learnflow/screenshots/iter121/builder-run/task-09/`
+
+### Note
+- `BUILD_LOG_ITER121.md` was previously ignored by `.gitignore` (`BUILD_LOG_ITER*.md`). For Iter121, committed it using `git add -f` so changes are tracked with the code.
