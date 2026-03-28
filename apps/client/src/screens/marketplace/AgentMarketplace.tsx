@@ -28,35 +28,10 @@ const CATEGORIES = ['All', 'Study', 'Research', 'Assessment', 'Creative', 'Produ
 type Category = (typeof CATEGORIES)[number];
 type SortOption = 'popularity' | 'rating' | 'newest';
 
-// NOTE: These are only used as UI fallbacks when the marketplace API returns no agents.
-// Real marketplace agents are fetched from `GET /api/v1/marketplace/agents`.
-const AGENTS_FALLBACK: Agent[] = [
-  {
-    id: 'a1',
-    name: 'Code Tutor (Demo)',
-    description:
-      'Demo agent. Reviews and explains code with detailed feedback. Supports Python, JavaScript, TypeScript, Rust, and Go.',
-    capabilities: ['code_review', 'explain_code'],
-    tier: 'free',
-    rating: 4.7,
-    usageCount: 3200,
-    requiredProvider: 'OpenAI',
-    category: 'Study',
-    official: true,
-  },
-  {
-    id: 'a2',
-    name: 'Research Pro (Demo)',
-    description: 'Demo agent. Deep research with academic paper access and citation generation.',
-    capabilities: ['deep_research', 'paper_analysis'],
-    tier: 'pro',
-    rating: 4.9,
-    usageCount: 1800,
-    requiredProvider: 'OpenAI',
-    category: 'Research',
-    official: true,
-  },
-];
+// NOTE: Marketplace agents are fetched from `GET /api/v1/marketplace/agents`.
+// This screen intentionally avoids hardcoded demo agents/ratings/usage counts to prevent
+// misleading "real metrics".
+const _AGENTS_FALLBACK: Agent[] = [];
 
 /** Spec §5.2.6, §7.2 — Agent Marketplace with activation flow, categories, search, sort */
 export function AgentMarketplace() {
@@ -114,11 +89,11 @@ export function AgentMarketplace() {
           };
         });
 
-        setAgents(normalized.length ? normalized : AGENTS_FALLBACK);
+        setAgents(normalized);
       })
       .catch((_e) => {
         setAgentsError('Could not load marketplace agents.');
-        setAgents(AGENTS_FALLBACK);
+        setAgents([]);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -307,7 +282,7 @@ export function AgentMarketplace() {
           <>
             {agentsError && (
               <div className="mb-4 text-sm text-orange-700 dark:text-orange-300 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/30 rounded-xl px-4 py-3">
-                {agentsError} Showing demo agents.
+                {agentsError}
               </div>
             )}
             {filteredAgents.length === 0 ? (

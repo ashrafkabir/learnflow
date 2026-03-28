@@ -21,7 +21,7 @@ const SECTIONS = [
       {
         title: 'Configuring API Keys',
         content:
-          'Go to Settings → API Vault to add your own OpenAI, Anthropic, or Google API keys. Keys are encrypted at rest. Some deployments may also provide managed keys for Pro users via server configuration (not guaranteed in OSS/dev).',
+          'Go to Settings → API Vault to add your own OpenAI, Anthropic, or Google API keys. Keys are encrypted at rest. This build is BYOAI-only (no managed keys).',
       },
     ],
   },

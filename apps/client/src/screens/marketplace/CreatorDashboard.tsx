@@ -49,61 +49,20 @@ interface CreatorDashboardPayload {
   }>;
 }
 
-const MOCK_COURSES: CreatorCourse[] = [
-  {
-    id: 'c1',
-    title: 'Introduction to Machine Learning',
-    status: 'published',
-    enrollments: 342,
-    rating: 4.7,
-    revenue: 1710,
-    created: '2025-03-15',
-  },
-  {
-    id: 'c2',
-    title: 'Advanced React Patterns',
-    status: 'published',
-    enrollments: 189,
-    rating: 4.5,
-    revenue: 945,
-    created: '2025-04-22',
-  },
-  {
-    id: 'c3',
-    title: 'Data Structures & Algorithms',
-    status: 'under_review',
-    enrollments: 0,
-    rating: 0,
-    revenue: 0,
-    created: '2025-07-10',
-  },
-  {
-    id: 'c4',
-    title: 'TypeScript Design Patterns',
-    status: 'draft',
-    enrollments: 0,
-    rating: 0,
-    revenue: 0,
-    created: '2025-07-18',
-  },
-];
+const _MOCK_COURSES: CreatorCourse[] = []; // retained for layout dev; not used by default
 
-const MOCK_ANALYTICS = {
-  totalViews: 12480,
-  enrollmentsThisMonth: 87,
-  completionRate: 68,
-  avgRating: 4.6,
-  viewsThisWeek: [320, 280, 410, 350, 390, 220, 180],
+const EMPTY_ANALYTICS = {
+  totalViews: 0,
+  enrollmentsThisMonth: 0,
+  completionRate: 0,
+  avgRating: 0,
+  viewsThisWeek: [0, 0, 0, 0, 0, 0, 0],
 };
 
-const MOCK_EARNINGS = {
-  totalEarnings: 2655,
-  pendingPayout: 420,
-  payoutHistory: [
-    { id: 'p1', date: '2025-07-01', amount: 890, status: 'paid' },
-    { id: 'p2', date: '2025-06-01', amount: 765, status: 'paid' },
-    { id: 'p3', date: '2025-05-01', amount: 580, status: 'paid' },
-  ],
+const EMPTY_EARNINGS = {
+  totalEarnings: 0,
+  pendingPayout: 0,
+  payoutHistory: [] as Array<{ id: string; date: string; amount: number; status: string }>,
 };
 
 /** Spec §5.2.7 — Creator Dashboard: publishing flow, analytics, earnings */
@@ -115,9 +74,9 @@ export function CreatorDashboard() {
   const [tab, setTab] = useState<Tab>('My Courses');
   const [showPublishForm, setShowPublishForm] = useState(false);
   const [_loading, setLoading] = useState(false);
-  const [creatorCourses, setCreatorCourses] = useState<CreatorCourse[]>(MOCK_COURSES);
-  const [creatorAnalytics, setCreatorAnalytics] = useState(MOCK_ANALYTICS);
-  const [creatorEarnings, setCreatorEarnings] = useState(MOCK_EARNINGS);
+  const [creatorCourses, setCreatorCourses] = useState<CreatorCourse[]>([]);
+  const [creatorAnalytics, setCreatorAnalytics] = useState(EMPTY_ANALYTICS);
+  const [creatorEarnings, setCreatorEarnings] = useState(EMPTY_EARNINGS);
   const [publishStep, setPublishStep] = useState(0);
   useEffect(() => {
     const loadDashboard = async () => {
@@ -143,22 +102,22 @@ export function CreatorDashboard() {
           created: (c.publishedAt || new Date().toISOString()).slice(0, 10),
         }));
 
-        setCreatorCourses(courses.length ? courses : MOCK_COURSES);
+        setCreatorCourses(courses);
 
-        // Derive high-level analytics from payload (keep mock chart series for now).
+        // Derive high-level analytics from payload.
         const avgRating = courses.length
           ? courses.reduce((sum, c) => sum + (c.rating || 0), 0) / courses.length
-          : MOCK_ANALYTICS.avgRating;
+          : 0;
 
         setCreatorAnalytics({
-          ...MOCK_ANALYTICS,
-          enrollmentsThisMonth: data.totalEnrollments ?? MOCK_ANALYTICS.enrollmentsThisMonth,
+          ...EMPTY_ANALYTICS,
+          enrollmentsThisMonth: data.totalEnrollments ?? 0,
           avgRating: Math.round(avgRating * 10) / 10,
         });
 
         setCreatorEarnings({
-          ...MOCK_EARNINGS,
-          totalEarnings: data.totalEarnings ?? MOCK_EARNINGS.totalEarnings,
+          ...EMPTY_EARNINGS,
+          totalEarnings: data.totalEarnings ?? 0,
           pendingPayout: (data.payouts || [])
             .filter((p) => p.status === 'pending')
             .reduce((sum, p) => sum + (p.creatorShare || 0), 0),
@@ -241,7 +200,7 @@ export function CreatorDashboard() {
         revenue: c.revenue ?? 0,
         created: (c.publishedAt || new Date().toISOString()).slice(0, 10),
       }));
-      setCreatorCourses(courses.length ? courses : MOCK_COURSES);
+      setCreatorCourses(courses);
 
       setShowPublishForm(false);
       setPublishStep(0);
@@ -531,7 +490,7 @@ export function CreatorDashboard() {
         </h3>
         <div className="flex items-end gap-2 h-32">
           {creatorAnalytics.viewsThisWeek.map((v, i) => {
-            const max = Math.max(...MOCK_ANALYTICS.viewsThisWeek);
+            const max = Math.max(...creatorAnalytics.viewsThisWeek, 1);
             const pct = (v / max) * 100;
             const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
             return (
@@ -660,7 +619,7 @@ export function CreatorDashboard() {
     </div>
   );
 
-  const usingDemoData = forceDemo || creatorCourses === MOCK_COURSES;
+  const usingDemoData = forceDemo;
 
   return (
     <section

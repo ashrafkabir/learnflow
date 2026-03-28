@@ -32,7 +32,7 @@ const PLANS = [
     desc: CAPABILITY_MATRIX.pro.tagline,
     features: CAPABILITY_MATRIX.pro.features,
     missing: CAPABILITY_MATRIX.pro.missing || [],
-    cta: 'Enable Pro (Mock)',
+    cta: 'Enable Pro (Mock billing)',
     highlight: true,
   },
 ];
@@ -40,7 +40,7 @@ const PLANS = [
 const FAQ = [
   {
     q: 'Can I use my own API keys?',
-    a: "Yes! Bring your own OpenAI, Anthropic, or Google API keys. They're encrypted and never shared. Managed keys are planned but not available in this build.",
+    a: "Yes! Bring your own OpenAI, Anthropic, or Google API keys. They're encrypted and never shared. This build is BYOAI-only (no managed keys).",
   },
   {
     q: 'What happens when I hit the course limit?',

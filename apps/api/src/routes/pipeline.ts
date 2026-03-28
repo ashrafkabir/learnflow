@@ -1961,7 +1961,7 @@ router.post(
   },
 );
 
-/** POST /api/v1/pipeline/:id/publish — Publish course to marketplace */
+/** POST /api/v1/pipeline/:id/publish — Mark pipeline as published (does NOT publish to Marketplace) */
 router.post('/:id/publish', validateBody(z.object({})), (req: Request, res: Response) => {
   const p = pipelines.get(String(req.params.id));
   if (!p) {
@@ -1977,7 +1977,7 @@ router.post('/:id/publish', validateBody(z.object({})), (req: Request, res: Resp
     return;
   }
   updatePipeline(p, { stage: 'published' });
-  res.json({ status: 'published', courseId: p.courseId });
+  res.json({ status: 'published', courseId: p.courseId, marketplacePublished: false });
 });
 
 /** POST /api/v1/pipeline/:id/personal — Keep course as personal */

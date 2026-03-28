@@ -12,11 +12,32 @@ import { App } from '../App.js';
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem('learnflow-token', 'test-token');
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
+
+  globalThis.fetch = (async (input: any) => {
+    const url = typeof input === 'string' ? input : String(input?.url || '');
+
+    if (url.includes('/api/v1/marketplace/agents')) {
+      return new Response(
+        JSON.stringify({
+          agents: [
+            {
+              id: 'a1',
+              name: 'Code Tutor',
+              description: 'Helps explain and review code.',
+              manifest: { tier: 'free', rating: 4.7, usageCount: 120 },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Generic API fallback used by other screens in the test harness.
+    return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    })) as typeof fetch;
+    });
+  }) as typeof fetch;
 });
 
 afterEach(() => cleanup());

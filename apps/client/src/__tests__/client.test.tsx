@@ -27,7 +27,25 @@ beforeEach(() => {
         : input instanceof URL
           ? input.href
           : (input as Request).url;
-    // Return empty success responses for all API calls
+
+    // Provide deterministic agents so the Agent Marketplace renders a catalog in tests.
+    if (url.includes('/api/v1/marketplace/agents')) {
+      return new Response(
+        JSON.stringify({
+          agents: [
+            {
+              id: 'a1',
+              name: 'Code Tutor',
+              description: 'Helps explain and review code.',
+              manifest: { tier: 'free', rating: 4.7, usageCount: 120 },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    // Return empty success responses for all other API calls
     if (url.includes('/api/') || url.startsWith('/')) {
       return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
         status: 200,

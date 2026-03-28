@@ -21,130 +21,7 @@ interface CourseDetailData {
   reviews?: { author: string; rating: number; text: string; date: string }[];
 }
 
-const SAMPLE_COURSES: Record<string, CourseDetailData> = {
-  'mc-1': {
-    id: 'mc-1',
-    title: 'Machine Learning Fundamentals',
-    description:
-      'A comprehensive introduction to ML concepts, algorithms, and practical applications. Covers supervised and unsupervised learning, neural networks, and real-world projects.',
-    topic: 'data-science',
-    difficulty: 'beginner',
-    price: 0,
-    rating: 4.5,
-    enrollmentCount: 1200,
-    lessonCount: 12,
-    creatorName: 'Dr. Sarah Chen',
-    creatorAvatar: 'creator-1',
-    syllabus: [
-      {
-        module: 'Introduction to ML',
-        lessons: ['What is Machine Learning?', 'Types of ML', 'Setting Up Your Environment'],
-      },
-      {
-        module: 'Supervised Learning',
-        lessons: ['Linear Regression', 'Classification', 'Decision Trees', 'Model Evaluation'],
-      },
-      {
-        module: 'Neural Networks',
-        lessons: ['Perceptrons', 'Backpropagation', 'CNNs', 'Practical Projects'],
-      },
-    ],
-    reviews: [
-      {
-        author: 'Alex R.',
-        rating: 5,
-        text: 'Excellent intro course. Clear explanations and great projects.',
-        date: '2025-06-15',
-      },
-      {
-        author: 'Mika T.',
-        rating: 4,
-        text: 'Good content, wish there were more exercises.',
-        date: '2025-06-10',
-      },
-    ],
-  },
-  'mc-2': {
-    id: 'mc-2',
-    title: 'Advanced Python Patterns',
-    description:
-      'Master design patterns, metaprogramming, and advanced Python techniques for production code.',
-    topic: 'programming',
-    difficulty: 'advanced',
-    price: 19.99,
-    rating: 4.8,
-    enrollmentCount: 800,
-    lessonCount: 15,
-    creatorName: 'Marcus Dev',
-    creatorAvatar: 'creator-2',
-    syllabus: [
-      { module: 'Design Patterns', lessons: ['Singleton', 'Factory', 'Observer', 'Strategy'] },
-      { module: 'Metaprogramming', lessons: ['Decorators', 'Metaclasses', 'Descriptors'] },
-      { module: 'Performance', lessons: ['Profiling', 'Concurrency', 'C Extensions'] },
-    ],
-    reviews: [
-      {
-        author: 'Jordan K.',
-        rating: 5,
-        text: 'Deep dive into Python. Highly recommend for experienced devs.',
-        date: '2025-07-01',
-      },
-    ],
-  },
-  'mc-3': {
-    id: 'mc-3',
-    title: 'Kubernetes in Production',
-    description: 'Deploy, scale, and manage containerized applications in production environments.',
-    topic: 'devops',
-    difficulty: 'intermediate',
-    price: 14.99,
-    rating: 4.6,
-    enrollmentCount: 650,
-    lessonCount: 10,
-    creatorName: 'Ops Team',
-    creatorAvatar: 'creator-3',
-    syllabus: [
-      {
-        module: 'Core Concepts',
-        lessons: ['Pods & Services', 'Deployments', 'ConfigMaps & Secrets'],
-      },
-      { module: 'Production Ready', lessons: ['Monitoring', 'Scaling', 'Security', 'CI/CD'] },
-    ],
-    reviews: [],
-  },
-  'mc-5': {
-    id: 'mc-5',
-    title: 'React & TypeScript Masterclass',
-    description: 'Build production-ready apps with React 19, TypeScript, and modern tooling.',
-    topic: 'programming',
-    difficulty: 'intermediate',
-    price: 24.99,
-    rating: 4.9,
-    enrollmentCount: 2100,
-    lessonCount: 20,
-    creatorName: 'Frontend Academy',
-    creatorAvatar: 'creator-4',
-    syllabus: [
-      {
-        module: 'TypeScript Foundations',
-        lessons: ['Types & Interfaces', 'Generics', 'Utility Types'],
-      },
-      {
-        module: 'React Patterns',
-        lessons: ['Hooks Deep Dive', 'Server Components', 'Suspense & Streaming'],
-      },
-      { module: 'Production', lessons: ['Testing', 'Performance', 'Deployment'] },
-    ],
-    reviews: [
-      {
-        author: 'Priya S.',
-        rating: 5,
-        text: 'Best React course I have taken. Period.',
-        date: '2025-07-10',
-      },
-    ],
-  },
-};
+const SAMPLE_COURSES: Record<string, CourseDetailData> = {};
 
 function getFallbackDetail(id: string): CourseDetailData {
   return (
@@ -155,7 +32,7 @@ function getFallbackDetail(id: string): CourseDetailData {
       topic: 'general',
       difficulty: 'beginner',
       price: 0,
-      rating: 4.0,
+      rating: 0,
       enrollmentCount: 0,
       syllabus: [],
       reviews: [],
