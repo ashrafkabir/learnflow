@@ -55,7 +55,11 @@ export function AttributionDrawer(props: {
             </h2>
             {sourceMode === 'mock' ? (
               <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
-                Demo mode: showing placeholder/mock sources.
+                Provenance: demo mode (placeholder/mock sources).
+              </p>
+            ) : sourceMode === 'real' ? (
+              <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                Provenance: live sources.
               </p>
             ) : null}
             {sourcesMissingReason ? (

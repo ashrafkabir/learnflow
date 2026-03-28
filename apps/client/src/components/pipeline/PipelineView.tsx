@@ -247,8 +247,15 @@ export function PipelineView({
           {state.sourceMode && (
             <span
               className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${state.sourceMode === 'real' ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}
+              title={
+                state.sourceMode === 'real'
+                  ? 'Provenance: content was generated using live sources fetched at runtime.'
+                  : 'Provenance: content was generated in demo/mock mode with placeholder sources.'
+              }
             >
-              {state.sourceMode === 'real' ? 'Live Sources' : 'Mock Sources'}
+              {state.sourceMode === 'real'
+                ? 'Provenance: live sources'
+                : 'Provenance: mock sources'}
             </span>
           )}
         </div>
