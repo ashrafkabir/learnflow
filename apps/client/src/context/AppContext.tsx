@@ -57,6 +57,10 @@ export interface Lesson {
   estimatedTime: number;
   wordCount: number;
   sources?: LessonSource[];
+
+  // Iter121 Task 2: UX transparency for demo/mock mode
+  sourcesMissingReason?: string;
+  sourceMode?: 'real' | 'mock';
 }
 
 export interface ChatMessage {
@@ -460,6 +464,8 @@ export function apiBase(): string {
 
   // In real browser usage (no test runners), use same-origin.
   // In Vitest/jsdom, prefer relative to satisfy fetch stubs in tests.
+  if (typeof window !== 'undefined' && !isPlaywright && isVitest) return '';
+
   if (typeof window !== 'undefined' && !isPlaywright && !isVitest) return '';
 
   // Allow explicit override for E2E/CI.

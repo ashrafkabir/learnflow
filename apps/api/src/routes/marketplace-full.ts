@@ -13,6 +13,7 @@ import {
   dbMarketplacePayments,
   dbMarketplaceAgentSubmissions,
   dbMarketplace,
+  dbCourses,
 } from '../db.js';
 import { CAPABILITY_MATRIX } from '../lib/capabilities.js';
 

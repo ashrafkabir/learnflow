@@ -3,13 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
 import { useToast } from '../../components/Toast.js';
-import {
-  IconCheck,
-  IconKey,
-  IconRobot,
-  IconSearch,
-  IconStar,
-} from '../../components/icons/index.js';
+import { IconCheck, IconKey, IconRobot, IconSearch } from '../../components/icons/index.js';
 
 interface Agent {
   id: string;
@@ -17,16 +11,17 @@ interface Agent {
   description: string;
   capabilities: string[];
   tier: string;
-  rating: number;
-  usageCount: number;
+  // MVP-safe: avoid implying real rating/usage analytics.
+  rating?: number;
+  usageCount?: number;
   requiredProvider: string;
   category: Category;
   official: boolean;
 }
 
-const CATEGORIES = ['All', 'Study', 'Research', 'Assessment', 'Creative', 'Productivity'] as const;
+const CATEGORIES = ['All'] as const;
 type Category = (typeof CATEGORIES)[number];
-type SortOption = 'popularity' | 'rating' | 'newest';
+type SortOption = 'newest';
 
 // NOTE: Marketplace agents are fetched from `GET /api/v1/marketplace/agents`.
 // This screen intentionally avoids hardcoded demo agents/ratings/usage counts to prevent
@@ -44,7 +39,7 @@ export function AgentMarketplace() {
   const [agentsError, setAgentsError] = useState<string>('');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState<Category>('All');
-  const [sortBy, setSortBy] = useState<SortOption>('popularity');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
 
   // Load marketplace agents from API. If none are returned, fall back to demo agents.
   useEffect(() => {
@@ -172,10 +167,9 @@ export function AgentMarketplace() {
       return true;
     });
     const sorted = [...filtered];
-    if (sortBy === 'popularity') sorted.sort((a, b) => b.usageCount - a.usageCount);
-    else if (sortBy === 'rating') sorted.sort((a, b) => b.rating - a.rating);
+    // MVP-safe: avoid implying real popularity/ratings when those metrics are not backed.
     // newest: reverse order by id
-    else sorted.sort((a, b) => b.id.localeCompare(a.id));
+    sorted.sort((a, b) => b.id.localeCompare(a.id));
     return sorted;
   }, [agents, search, category, sortBy]);
 
@@ -252,8 +246,6 @@ export function AgentMarketplace() {
             aria-label="Sort agents"
             className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white text-sm"
           >
-            <option value="popularity">Sort: Popularity</option>
-            <option value="rating">Sort: Rating</option>
             <option value="newest">Sort: Newest</option>
           </select>
         </div>
@@ -331,14 +323,7 @@ export function AgentMarketplace() {
                       <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
                         {a.description}
                       </p>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-300 mb-2">
-                        <span className="inline-flex items-center gap-1">
-                          <IconStar className="w-3.5 h-3.5 text-amber-500" />
-                          {a.rating}
-                        </span>
-                        <span>·</span>
-                        <span>{a.usageCount.toLocaleString()} uses</span>
-                      </div>
+                      {/* MVP: omit ratings/usage metrics (not backed by real data). */}
                       <div className="mb-3">
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-full font-medium">
                           <IconKey className="w-3.5 h-3.5" />

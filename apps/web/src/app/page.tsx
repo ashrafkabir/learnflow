@@ -105,20 +105,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Social proof */}
+      {/* Social proof (MVP-safe: no institutional claims) */}
       <section style={{ padding: '48px 24px', textAlign: 'center' }}>
-        <p style={{ fontSize: 14, color: '#9ca3af', marginBottom: 16 }}>Trusted by learners from</p>
+        <p style={{ fontSize: 14, color: '#9ca3af', marginBottom: 16 }}>Built for</p>
         <div
           style={{
             display: 'flex',
             justifyContent: 'center',
-            gap: 48,
+            gap: 20,
             flexWrap: 'wrap',
-            opacity: 0.5,
+            opacity: 0.8,
           }}
         >
-          {['MIT', 'Stanford', 'Google', 'Microsoft', 'Amazon'].map((name) => (
-            <span key={name} style={{ fontSize: 18, fontWeight: 600, color: '#374151' }}>
+          {['Self-learners', 'Teams', 'Bootcamps', 'Creators', 'Students'].map((name) => (
+            <span
+              key={name}
+              style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: '#374151',
+                border: '1px solid #e5e7eb',
+                padding: '8px 12px',
+                borderRadius: 999,
+                background: '#fff',
+              }}
+            >
               {name}
             </span>
           ))}

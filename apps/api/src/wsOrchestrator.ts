@@ -292,11 +292,17 @@ export async function handleWsMessage(
       if (String(a).toLowerCase().includes('export')) actionTargets[a] = '/settings?tab=export';
     }
 
+    // P0 Trust (Iter120): propagate ResearchAgent mock-mode flag so the client can disclose.
+    const researchSummary =
+      (result as any)?.agentResults?.find((ar: any) => ar?.agentName === 'research_agent')?.data
+        ?.summary || null;
+
     send(ws, 'response.end', {
       message_id: messageId,
       actions: mapActions(suggestedActions),
       actionTargets,
       sources: enrichedSources,
+      ...(researchSummary ? { researchSummary } : {}),
     });
     markMessageCompleted(user.sub, messageId);
   } catch (err: any) {

@@ -83,10 +83,20 @@ Subscribe to (and request) mindmap suggestions.
     "message_id": "...",
     "actions": [],
     "actionTargets": {},
-    "sources": []
+    "sources": [],
+    "researchSummary": {
+      "isMock": false,
+      "providersTried": ["firecrawl"],
+      "papersReviewed": 12,
+      "cached": false
+    }
   }
 }
 ```
+
+Notes:
+
+- `researchSummary` is optional. When present and `isMock=true`, the client should disclose that research sources may be placeholders (no provider configured).
 
 ### `agent.spawned` / `agent.complete`
 

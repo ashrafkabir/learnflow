@@ -12,6 +12,7 @@
     "test": "turbo run test",
     "screenshots": "node scripts/screenshots.mjs",
     "dev": "node scripts/check-ports.mjs && turbo run dev",
+    "dev:all": "node scripts/check-ports.mjs && turbo run dev",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint:check": "eslint .",

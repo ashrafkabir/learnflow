@@ -8,12 +8,13 @@ import {
   IconProgressRing,
   IconSpark,
 } from '../components/icons/index.js';
-import { toast } from '../components/Toast.js';
+import { useToast } from '../components/Toast.js';
 import { apiGet, apiPost } from '../context/AppContext.js';
 
 export function NotificationsScreen() {
   const { state, dispatch } = useApp();
   const nav = useNavigate();
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showAll, setShowAll] = useState(true);
 

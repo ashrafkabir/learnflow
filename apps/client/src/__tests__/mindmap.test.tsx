@@ -55,7 +55,7 @@ describe('Mindmap page', () => {
     expect(document.body.innerHTML.length).toBeGreaterThan(0);
   });
 
-  it('renders mastery legend colors', async () => {
+  it('renders progress legend content', async () => {
     renderAt('/mindmap');
     // Check that the page has rendered content
     await new Promise((r) => setTimeout(r, 500));

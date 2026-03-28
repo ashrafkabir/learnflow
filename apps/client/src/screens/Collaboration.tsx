@@ -194,9 +194,9 @@ export function Collaboration() {
           <span className="inline-flex items-center">
             <IconRocket className="w-4 h-4" />
           </span>
-          Collaboration is live (MVP): groups + messages are persisted. Study partner suggestions
-          are topic-based previews (not verified). Shared mindmaps are available for groups via live
-          sync links (Yjs).
+          Collaboration (MVP): groups + messages are persisted. Study partner matches are synthetic
+          suggestions (not verified / not real-time). Shared mindmaps use live sync links for group
+          members.
         </div>
 
         {/* Tabs */}

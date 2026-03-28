@@ -34,8 +34,9 @@ export function AttributionDrawer(props: {
   sources: AttributionSource[];
   images: AttributionImage[];
   sourcesMissingReason?: string;
+  sourceMode?: 'real' | 'mock';
 }) {
-  const { open, onClose, sources, images, sourcesMissingReason } = props;
+  const { open, onClose, sources, images, sourcesMissingReason, sourceMode } = props;
   if (!open) return null;
 
   return (
@@ -52,6 +53,11 @@ export function AttributionDrawer(props: {
             <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
               Sources & Attribution
             </h2>
+            {sourceMode === 'mock' ? (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
+                Demo mode: showing placeholder/mock sources.
+              </p>
+            ) : null}
             {sourcesMissingReason ? (
               <p className="text-[11px] text-amber-700 dark:text-amber-300 mt-0.5">
                 {sourcesMissingReason}

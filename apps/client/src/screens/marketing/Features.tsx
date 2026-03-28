@@ -44,7 +44,7 @@ const FEATURES = [
   {
     icon: <IconLesson className="w-6 h-6" />,
     title: 'Smart Note-Taking',
-    desc: 'Generate Cornell notes, flashcards, or Zettelkasten entries from any lesson. Notes are contextualized to your learning level.',
+    desc: 'Auto-format Cornell notes, flashcards, or Zettelkasten entries from any lesson (template-based in this MVP).',
     benefits: [
       'Three note formats',
       'Auto-generated cue questions',
@@ -54,14 +54,14 @@ const FEATURES = [
   {
     icon: <IconTestTube className="w-6 h-6" />,
     title: 'Adaptive Quizzes',
-    desc: 'Our Exam Agent generates quizzes that target your weak areas. Get explanations for every answer and track improvement over time.',
-    benefits: ['Gap analysis', 'Multiple question types', 'Spaced repetition ready'],
+    desc: 'Practice with quizzes and review the concepts you missed. Track progress over time.',
+    benefits: ['Review highlights', 'Multiple question types', 'Spaced repetition ready'],
   },
   {
     icon: <IconMindmap className="w-6 h-6" />,
     title: 'Knowledge Mindmap',
-    desc: 'Visualize your entire knowledge graph. Color-coded by mastery level — tap nodes to expand, jump to lessons, or add connections.',
-    benefits: ['Interactive vis-network graph', 'Mastery-based coloring', 'Click-to-navigate'],
+    desc: 'Visualize your knowledge graph. Color-coded by progress level — tap nodes to expand, jump to lessons, or add connections.',
+    benefits: ['Interactive vis-network graph', 'Progress-based coloring', 'Click-to-navigate'],
   },
   {
     icon: <IconChat className="w-6 h-6" />,
@@ -171,19 +171,19 @@ export function FeaturesPage() {
                 step: '1',
                 icon: <IconChat className="w-8 h-8" />,
                 title: 'Tell Us What to Learn',
-                desc: 'Enter a topic. Our AI agents begin researching from public web sources and synthesize a structured course with citations (URL ingestion is planned).',
+                desc: 'Enter a topic. Agents can research public web sources (when configured) and synthesize a structured course with citations (best-effort).',
               },
               {
                 step: '2',
                 icon: <IconSettings className="w-8 h-8" />,
-                title: 'AI Builds Your Course',
-                desc: 'Our multi-agent pipeline organizes sources, deduplicates content, checks quality, and synthesizes structured lessons with citations.',
+                title: 'Build Your Course',
+                desc: 'Our pipeline organizes sources, deduplicates content, checks quality, and synthesizes structured lessons with citations (best-effort).',
               },
               {
                 step: '3',
                 icon: <IconRocket className="w-8 h-8" />,
-                title: 'Learn & Master',
-                desc: 'Study at your pace with interactive lessons, adaptive quizzes, smart notes, and a knowledge mindmap that tracks your mastery.',
+                title: 'Learn & Practice',
+                desc: 'Study at your pace with interactive lessons, quizzes, smart notes, and a knowledge mindmap that reflects your progress.',
               },
             ].map((s) => (
               <div
@@ -299,48 +299,7 @@ export function FeaturesPage() {
           </div>
         </motion.div>
 
-        {/* Testimonials */}
-        <motion.div
-          className="mb-24"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeUp}
-        >
-          <h2 className="text-3xl font-bold text-center mb-10">What Learners Say</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                quote:
-                  'LearnFlow built me a better ML course than I found anywhere online — with real citations I could verify.',
-                name: 'Sarah K.',
-                role: 'Data Scientist',
-              },
-              {
-                quote:
-                  'The mindmap feature changed how I study. I can see exactly where my knowledge gaps are.',
-                name: 'James M.',
-                role: 'CS Student',
-              },
-              {
-                quote: 'Finally a learning tool that respects my privacy. BYOAI is brilliant.',
-                name: 'Priya L.',
-                role: 'Software Engineer',
-              },
-            ].map((t) => (
-              <div
-                key={t.name}
-                className="p-6 rounded-2xl border border-gray-100 dark:border-gray-800"
-              >
-                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4 italic">
-                  "{t.quote}"
-                </p>
-                <p className="text-sm font-semibold">{t.name}</p>
-                <p className="text-xs text-gray-500">{t.role}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+        {/* Testimonials removed (MVP trust): avoid unverified learner quotes/outcome claims. */}
 
         {/* CTA */}
         <motion.div

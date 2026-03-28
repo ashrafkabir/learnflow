@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiPost } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
-import { IconBag, IconStar } from '../../components/icons/index.js';
+import { IconBag } from '../../components/icons/index.js';
 
 interface MarketplaceCourse {
   id: string;
@@ -12,8 +12,10 @@ interface MarketplaceCourse {
   description: string;
   difficulty: string;
   price: number;
-  rating: number;
-  enrollmentCount: number;
+  // MVP-safe: do not treat rating/enrollment as real metrics unless backed by DB.
+  rating?: number;
+  enrollmentCount?: number;
+  isDemo?: boolean;
   creatorId?: string;
   lessonCount?: number;
 }
@@ -28,7 +30,7 @@ export function CourseMarketplace() {
   const [topicFilter, setTopicFilter] = useState('');
   const [maxPrice, _setMaxPrice] = useState('');
   const [category, setCategory] = useState('All');
-  const [sortBy, setSortBy] = useState<'popular' | 'rating' | 'newest' | 'price'>('popular');
+  const [sortBy, setSortBy] = useState<'newest' | 'price'>('newest');
   const [courses, setCourses] = useState<MarketplaceCourse[]>([]);
   const [loading, setLoading] = useState(false);
   const [enrolling, setEnrolling] = useState<string | null>(null);
@@ -74,13 +76,13 @@ export function CourseMarketplace() {
       return matchesSearch && matchesDifficulty && matchesCategory;
     })
     .sort((a, b) => {
-      if (sortBy === 'popular') return b.enrollmentCount - a.enrollmentCount;
-      if (sortBy === 'rating') return b.rating - a.rating;
       if (sortBy === 'price') return a.price - b.price;
-      return 0;
+      // newest: reverse by id as a stable, data-free sort
+      return String(b.id).localeCompare(String(a.id));
     });
 
-  const featured = courses.filter((c) => c.rating >= 4.7).slice(0, 3);
+  // MVP-safe: do not feature by rating (not backed)
+  const featured: MarketplaceCourse[] = [];
 
   const handleEnroll = async (course: MarketplaceCourse) => {
     setEnrolling(course.id);
@@ -208,8 +210,6 @@ export function CourseMarketplace() {
             aria-label="Sort by"
             className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
           >
-            <option value="popular">Most Popular</option>
-            <option value="rating">Highest Rated</option>
             <option value="newest">Newest</option>
             <option value="price">Lowest Price</option>
           </select>
@@ -261,13 +261,7 @@ export function CourseMarketplace() {
                 <span className="text-sm font-bold text-gray-900 dark:text-white">
                   {c.price === 0 ? 'Free' : `$${c.price}`}
                 </span>
-                <span className="text-xs text-gray-600 dark:text-gray-300">
-                  <span className="inline-flex items-center gap-1">
-                    <IconStar className="w-3.5 h-3.5 text-amber-500" />
-                    {c.rating}
-                  </span>
-                  · {c.enrollmentCount} enrolled
-                </span>
+                {/* MVP: omit rating/enrollment metrics (not backed by real data in public router). */}
               </div>
               <Button
                 variant="primary"

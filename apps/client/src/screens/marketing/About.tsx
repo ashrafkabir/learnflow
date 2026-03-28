@@ -86,9 +86,10 @@ export function AboutPage() {
         >
           <h1 className="text-4xl font-extrabold tracking-tight mb-6">Our Mission</h1>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            We believe everyone deserves a personal tutor — one that understands how they learn,
-            adapts in real-time, and draws from the entire web. LearnFlow makes that possible with
-            AI agents that research, teach, quiz, and track your mastery.
+            We believe everyone deserves a personal tutor — one that supports how they learn, adapts
+            over time, and can incorporate web sources (when configured). LearnFlow makes that
+            possible with agents that research, teach, and quiz — and a mindmap that reflects your
+            learning progress.
           </p>
         </motion.div>
 
@@ -159,8 +160,9 @@ export function AboutPage() {
               <em>
                 What if everyone could have a personal tutor that actually adapts to how they learn?
               </em>{' '}
-              Not a chatbot with canned answers, but an intelligent system that researches topics
-              from real sources, builds structured courses, and guides you through mastery.
+              Not a chatbot with canned answers, but a system that can research topics from web
+              sources (when configured), build structured courses, and guide you through steady
+              progress.
             </p>
             <p>
               Our team brought together expertise in machine learning, education science, and
@@ -169,9 +171,9 @@ export function AboutPage() {
               community.
             </p>
             <p>
-              Today, LearnFlow's AI agents crawl the web, organize knowledge, synthesize lessons,
-              and adapt to each learner's pace — all while citing every source so you can verify and
-              explore further.
+              Today, LearnFlow's agents can crawl the web (when a provider is configured), organize
+              knowledge, synthesize lessons, and help you learn at your pace — with citations when
+              sources are available.
             </p>
           </div>
         </motion.div>

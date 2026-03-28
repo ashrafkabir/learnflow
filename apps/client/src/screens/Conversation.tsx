@@ -384,6 +384,11 @@ export function Conversation() {
   const [streamingContent, setStreamingContent] = useState('');
   const [wsActions, setWsActions] = useState<Array<{ type: string; label: string }>>([]);
   const [wsActionTargets, setWsActionTargets] = useState<Record<string, string | undefined>>({});
+  const [researchMockNotice, setResearchMockNotice] = useState<{
+    visible: boolean;
+    message: string;
+    untilMessageId?: string;
+  } | null>(null);
   const [mindmapOpen, setMindmapOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -415,6 +420,24 @@ export function Conversation() {
           setStreamingContent((prev) => prev + (evt.data?.content_delta || ''));
           break;
         case 'response.end': {
+          // P0 Trust (Iter120): research agent can return mock papers when no API is configured.
+          // Surface that in the same screen where results appear.
+          try {
+            const isMock = Boolean((evt.data as any)?.researchSummary?.isMock);
+            if (isMock) {
+              setResearchMockNotice({
+                visible: true,
+                message:
+                  'Demo research mode: papers/sources may be placeholders (no research provider configured).',
+                untilMessageId: evt.data?.message_id,
+              });
+            } else {
+              // Clear any prior notice when we have real data.
+              setResearchMockNotice(null);
+            }
+          } catch {
+            // ignore
+          }
           // Use functional update to avoid stale closure on streamingContent
           setStreamingContent((prev) => {
             if (prev) {
@@ -720,8 +743,8 @@ export function Conversation() {
                 Ask me anything about your learning
               </h2>
               <p className="text-gray-600 dark:text-gray-300 max-w-md mx-auto text-sm leading-relaxed">
-                I can create courses, quiz you, generate study notes, and research topics with real
-                sources.
+                I can create courses, quiz you, auto-format study notes, and research topics with
+                real sources (when a provider is configured).
               </p>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-xl">
@@ -1056,6 +1079,14 @@ export function Conversation() {
       </div>
 
       {/* Source Drawer */}
+      {researchMockNotice?.visible && drawerSources.length > 0 && (
+        <div className="fixed bottom-20 left-4 right-4 md:left-auto md:right-6 md:max-w-md z-40">
+          <div className="text-xs bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/30 text-amber-900 dark:text-amber-200 rounded-xl px-3 py-2 shadow-card">
+            <span className="font-semibold">Demo research mode:</span>{' '}
+            <span>{researchMockNotice.message}</span>
+          </div>
+        </div>
+      )}
       <SourceDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}

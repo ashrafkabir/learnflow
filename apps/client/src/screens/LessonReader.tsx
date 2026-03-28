@@ -1659,6 +1659,8 @@ export function LessonReader() {
             imageReason: (i as any).imageReason,
           }))}
           sourcesMissingReason={(lesson as any)?.sourcesMissingReason}
+          // @ts-expect-error server may include sourceMode
+          sourceMode={(lesson as any)?.sourceMode}
         />
 
         {/* Previous / Next Lesson Navigation */}
@@ -1757,7 +1759,7 @@ export function LessonReader() {
                 Notes
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
-                Generate AI-powered notes or write your own:
+                Auto-format notes from this lesson (template-based) or write your own:
               </p>
               <div className="flex flex-wrap gap-2 mb-4">
                 {[
@@ -1820,7 +1822,7 @@ export function LessonReader() {
                 <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-medium text-accent uppercase">
-                      AI-Generated Notes
+                      Auto-formatted Notes
                     </span>
                     <Button
                       variant="ghost"

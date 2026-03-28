@@ -1841,7 +1841,19 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
   const sourcesMissingReason =
     sources.length >= 2
       ? ''
-      : persisted?.missingReason || 'attribution_gate: sources missing from lesson';
+      : persisted?.missingReason ||
+        'attribution_gate: sources missing from lesson (demo/mock mode may be enabled)';
+
+  const sourceMode: 'real' | 'mock' = (() => {
+    // Treat any explicit demo markers or mock providers as mock mode.
+    const reason = String(sourcesMissingReason || '').toLowerCase();
+    if (reason.includes('demo_mode') || reason.includes('mock')) return 'mock';
+    const anyMock = (sources || []).some((s: any) => {
+      const p = String(s?.provider || s?.sourceType || '').toLowerCase();
+      return p === 'mock' || p.includes('mock');
+    });
+    return anyMock ? 'mock' : 'real';
+  })();
 
   // Record an event for analytics.
   // Iter86: suppress if non-user/harness origin.
@@ -1860,7 +1872,7 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
     // best effort
   }
 
-  res.status(200).json({ ...lesson, sources, sourcesMissingReason });
+  res.status(200).json({ ...lesson, sources, sourcesMissingReason, sourceMode });
 });
 
 // POST /api/v1/courses/:id/add-topic - Add a new topic as a module+lesson to an existing course

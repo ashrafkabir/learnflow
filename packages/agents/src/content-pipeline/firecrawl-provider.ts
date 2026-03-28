@@ -164,7 +164,19 @@ export async function searchSources(
   const cfg = { ...getDefaultConfig(), ...config };
 
   if (!cfg.apiKey) {
-    // Mock mode: return realistic search results
+    const allowMock =
+      process.env.ALLOW_MOCK_SOURCES === '1' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true';
+
+    if (!allowMock) {
+      throw new Error(
+        '[Firecrawl] FIRECRAWL_API_KEY is missing. Web source discovery is disabled in non-demo mode. ' +
+          'Set FIRECRAWL_API_KEY to enable real web sources, or set ALLOW_MOCK_SOURCES=1 to explicitly enable demo/mock sources.',
+      );
+    }
+
+    // Explicit demo/mock mode: return realistic mock results
     return getMockSearchResults(topic);
   }
 
@@ -202,6 +214,18 @@ export async function scrapeUrl(
   const cfg = { ...getDefaultConfig(), ...config };
 
   if (!cfg.apiKey) {
+    const allowMock =
+      process.env.ALLOW_MOCK_SOURCES === '1' ||
+      process.env.NODE_ENV === 'test' ||
+      process.env.VITEST === 'true';
+
+    if (!allowMock) {
+      throw new Error(
+        '[Firecrawl] FIRECRAWL_API_KEY is missing. URL scraping is disabled in non-demo mode. ' +
+          'Set FIRECRAWL_API_KEY to enable real scraping, or set ALLOW_MOCK_SOURCES=1 to explicitly enable demo/mock scraping.',
+      );
+    }
+
     return getMockScrapedContent(url);
   }
 

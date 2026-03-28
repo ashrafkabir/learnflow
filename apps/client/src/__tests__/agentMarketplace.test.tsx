@@ -101,12 +101,13 @@ describe('AgentMarketplace screen', () => {
     );
   });
 
-  it('shows rating numbers', async () => {
+  it('does not imply real ratings/usage metrics (MVP-safe)', async () => {
     renderAt('/marketplace/agents');
     await waitFor(
       () => {
         const text = document.body.textContent || '';
-        expect(text.match(/4\.\d/)).toBeTruthy();
+        expect(text.match(/\buses\b/i)).toBeFalsy();
+        expect(text.match(/\b\d\.\d\b/)).toBeFalsy();
       },
       { timeout: 5000 },
     );

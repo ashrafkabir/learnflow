@@ -11,8 +11,11 @@ interface MarketplaceCourse {
   topic: string;
   difficulty: string;
   price: number;
-  rating: number;
-  enrollmentCount: number;
+  // MVP-safe: metrics are placeholders in this public in-memory router.
+  // Do not treat as real analytics.
+  rating?: number;
+  enrollmentCount?: number;
+  isDemo?: boolean;
 }
 
 interface MarketplaceAgent {
@@ -31,8 +34,7 @@ const marketplaceCourses: MarketplaceCourse[] = [
     topic: 'machine-learning',
     difficulty: 'beginner',
     price: 0,
-    rating: 4.5,
-    enrollmentCount: 1200,
+    isDemo: true,
   },
   {
     id: 'mc-2',
@@ -40,8 +42,7 @@ const marketplaceCourses: MarketplaceCourse[] = [
     topic: 'python',
     difficulty: 'advanced',
     price: 19.99,
-    rating: 4.8,
-    enrollmentCount: 800,
+    isDemo: true,
   },
 ];
 
@@ -108,8 +109,7 @@ router.post('/courses', validateBody(publishCourseSchema), (req: Request, res: R
     topic: category || 'general',
     difficulty: 'intermediate',
     price: price || 0,
-    rating: 0,
-    enrollmentCount: 0,
+    isDemo: true,
   };
   marketplaceCourses.push(newCourse);
   res.status(201).json({ message: 'Course published', course: newCourse });

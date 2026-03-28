@@ -12,10 +12,8 @@ import {
   IconCourse,
   IconLesson,
   IconLock,
-  IconGlobe,
   IconMarketplace,
   IconMindmap,
-  IconPeople,
   IconSearch,
   IconSettings,
   IconShield,
@@ -34,18 +32,18 @@ const stagger = { visible: { transition: { staggerChildren: 0.1 } } };
 const FEATURES = [
   {
     icon: <IconCourse className="w-6 h-6" />,
-    title: 'AI-Generated Courses',
+    title: 'Course Builder',
     desc: 'Enter a topic and get a full, structured course in minutes — synthesized from public web sources with citations (best-effort).',
   },
   {
     icon: <IconLesson className="w-6 h-6" />,
     title: 'Smart Note-Taking',
-    desc: 'Cornell notes, flashcards, and Zettelkasten — auto-generated from your lessons.',
+    desc: 'Cornell notes, flashcards, and Zettelkasten — auto-formatted from your lessons.',
   },
   {
     icon: <IconBrainSpark className="w-6 h-6" />,
     title: 'Adaptive Quizzes',
-    desc: 'AI identifies your weak spots and generates targeted quizzes to close gaps.',
+    desc: 'Quizzes highlight areas to review and help you practice key concepts.',
   },
   {
     icon: <IconMindmap className="w-6 h-6" />,
@@ -75,19 +73,19 @@ const DEMO_STEPS = [
   {
     icon: <IconChat className="w-6 h-6" />,
     title: 'Tell us your goal',
-    desc: 'Type any topic — "Learn Rust programming" or "Understand quantum mechanics." Our AI listens.',
+    desc: 'Type any topic — "Learn Rust programming" or "Understand quantum mechanics." We turn it into a plan.',
     color: 'from-blue-500 to-cyan-400',
   },
   {
     icon: <IconSettings className="w-6 h-6" />,
-    title: 'AI builds your course',
-    desc: 'Multiple agents research the web, curate content, build lessons, and generate quizzes — in minutes.',
+    title: 'Build your course',
+    desc: 'Agents research the web (when a provider is configured), curate content, build lessons, and generate quizzes.',
     color: 'from-violet-500 to-purple-400',
   },
   {
     icon: <IconTrophy className="w-6 h-6" />,
-    title: 'Learn and master',
-    desc: 'Study at your pace with adaptive quizzes, smart notes, and a mindmap that grows with your knowledge.',
+    title: 'Learn and practice',
+    desc: 'Study at your pace with quizzes, smart notes, and a mindmap that grows with your progress.',
     color: 'from-emerald-500 to-teal-400',
   },
 ];
@@ -214,7 +212,7 @@ export function HomePage() {
         >
           <h2 className="text-3xl font-bold mb-3">See how it works</h2>
           <p className="text-gray-600 dark:text-gray-300 max-w-xl mx-auto">
-            From idea to mastery in three simple steps.
+            From idea to progress in three simple steps.
           </p>
         </motion.div>
         <motion.div
@@ -291,7 +289,7 @@ export function HomePage() {
             variants={fadeUp}
           >
             <h2 className="text-3xl font-bold mb-3">How it works</h2>
-            <p className="text-gray-600 dark:text-gray-300">Three steps to mastery</p>
+            <p className="text-gray-600 dark:text-gray-300">Three steps to progress</p>
           </motion.div>
           <motion.div
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
@@ -332,7 +330,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Trust & Social Proof */}
+      {/* Trust (MVP-safe: no fabricated endorsements/testimonials) */}
       <section className="max-w-6xl mx-auto px-6 py-20">
         <motion.div
           className="text-center mb-12"
@@ -341,9 +339,12 @@ export function HomePage() {
           viewport={{ once: true }}
           variants={fadeUp}
         >
-          <h2 className="text-3xl font-bold mb-3">Trusted by learners worldwide</h2>
-          <p className="text-gray-600 dark:text-gray-300">See what our community says</p>
+          <h2 className="text-3xl font-bold mb-3">Built with honest defaults</h2>
+          <p className="text-gray-600 dark:text-gray-300">
+            Web-first MVP — outcomes vary by learner and content.
+          </p>
         </motion.div>
+
         <motion.div
           className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
           initial={false}
@@ -353,55 +354,38 @@ export function HomePage() {
         >
           {[
             {
-              quote:
-                "LearnFlow completely changed how I study. The AI-generated courses are better than most online courses I've paid for.",
-              name: 'Sarah Chen',
-              role: 'Software Engineer',
-              avatar: 'a1',
+              title: 'Bring your own AI',
+              desc: 'Connect your own OpenAI-compatible API key. LearnFlow does not provide a bundled model in this MVP.',
             },
             {
-              quote:
-                'The mindmap feature is incredible. I can finally see how all the concepts connect. My retention has improved dramatically.',
-              name: 'Marcus Johnson',
-              role: 'Data Scientist',
-              avatar: 'a2',
+              title: 'Clear demo labeling',
+              desc: 'When an agent runs in mock/demo mode, the UI will tell you in the same screen where results appear.',
             },
             {
-              quote:
-                'I used LearnFlow to prepare for my AWS certification and passed on the first try. The adaptive quizzes found my weak spots.',
-              name: 'Priya Patel',
-              role: 'Cloud Architect',
-              avatar: 'a3',
+              title: 'Privacy-conscious by design',
+              desc: 'We minimize data retention and keep the product simple while we iterate with early users.',
             },
-          ].map((t) => (
+          ].map((c) => (
             <motion.div
-              key={t.name}
+              key={c.title}
               variants={fadeUp}
               className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-6 shadow-card"
             >
-              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-4 italic">
-                "{t.quote}"
-              </p>
-              <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                  <IconPeople className="w-5 h-5 text-gray-600 dark:text-gray-200" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.name}</p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300">{t.role}</p>
-                </div>
-              </div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                {c.title}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{c.desc}</p>
             </motion.div>
           ))}
         </motion.div>
+
         <div className="flex flex-wrap justify-center gap-6 mb-12">
           {[
             {
               icon: <IconLock className="w-4 h-4" />,
-              label: 'API key encryption at rest (AES-256-GCM, AEAD)',
+              label: 'API keys encrypted at rest (AES-256-GCM, AEAD)',
             },
             { icon: <IconShield className="w-4 h-4" />, label: 'Security-first (MVP)' },
-            { icon: <IconGlobe className="w-4 h-4" />, label: 'GDPR Ready' },
             { icon: <IconShieldKey className="w-4 h-4" />, label: 'BYOK — Your Keys, Your Data' },
           ].map((b) => (
             <div

@@ -966,8 +966,8 @@ export function Dashboard() {
                 ))}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Explore your interactive knowledge graph — see mastery levels and connections across
-                all topics.
+                Explore your interactive knowledge graph — see progress levels and connections
+                across all topics.
               </p>
             </div>
 

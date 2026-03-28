@@ -232,10 +232,10 @@ export function MindmapExplorer() {
       );
       const coursePct = totalLessons > 0 ? completedLessons / totalLessons : 0;
 
-      // Color by mastery level:
+      // Color by progress level:
       // - not started → gray (#9CA3AF)
       // - in progress → amber (#F59E0B)
-      // - mastered → green (#16A34A)
+      // - complete → green (#16A34A)
       const courseColor = coursePct >= 1 ? '#16A34A' : coursePct > 0 ? '#F59E0B' : '#9CA3AF';
       nodes.push({
         id: courseNodeId,
@@ -819,10 +819,10 @@ export function MindmapExplorer() {
                 )}
               </div>
 
-              {/* Mastery legend */}
+              {/* Progress legend */}
               <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-3 shadow-card z-10 text-xs space-y-1.5">
                 <div className="font-semibold text-gray-700 dark:text-gray-200 mb-1">
-                  Mastery Level Legend
+                  Progress Legend
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full" style={{ background: '#9CA3AF' }} />{' '}
@@ -834,7 +834,7 @@ export function MindmapExplorer() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full" style={{ background: '#16A34A' }} />{' '}
-                  <span className="text-gray-600 dark:text-gray-300">Mastered</span>
+                  <span className="text-gray-600 dark:text-gray-300">Complete</span>
                 </div>
               </div>
               {/* Zoom controls */}
