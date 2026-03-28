@@ -4,22 +4,22 @@ Owner: Builder
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-28
 
-Status: **IN PROGRESS**
+Status: **DONE**
 
 ## Recent shipped commits (git log -10 --oneline)
 
-- e88d891 Iter123: update recent shipped commits
-- 6080caa Iter123: add dev:status helper
-- fe92930 Iter123: update improvement queue recent commits + parity notes
-- a972bff Iter123: persisted bookmarks + context slices + harness fixes
-- ff42a6c Iter121: mark improvement queue done
-- aaa5a89 Iter121: log note about build log tracking
-- 7d3ac34 Iter121: update build log
-- b7fd370 Iter121 Task9: clarify pipeline publish is not marketplace publish
-- f3128a1 Iter121 Task11: spec MVP truth (web-first, billing mock, native planned)
-- a59a3cb Iter121 Task10: add dev:attach to bypass port checks
+- d78ba55 Iter128: update build log for tasks 08-12
+- 86337a4 Iter128: add MVP truth regression test
+- 33f1854 Iter128: show toasts for key client-side error catches
+- ee06955 Iter128: document screenshot harness canonical command
+- bcce613 Iter128: add repo-local ripgrep script
+- a27e16e Iter128: label content provenance (live vs mock)
+- a02d75a Iter128: clarify mindmap persistence in UI
+- b000880 Iter128: add marketplace flow Playwright smoke test
+- 5d0ca15 Iter128: add WS message_id to shared types and tests
+- 3dd7d1b Iter128: add inline MVP disclosures for marketplace + pipelines
 
-**Brutal note:** There are still **no commits labeled Iter124–Iter128**. If work happened but wasn’t committed, it’s not shipped.
+(Iter128 shipped; see BUILD_LOG_ITER128.md for details.)
 
 ---
 
