@@ -86,7 +86,7 @@ const SECTIONS = [
       {
         title: 'REST API',
         content:
-          'See apps/docs/pages/api-reference.md for endpoint-by-endpoint reference (auth, keys, courses, analytics, marketplace, subscription).',
+          'See apps/docs/pages/api-reference.md for endpoint-by-endpoint reference (auth, keys, courses, analytics, marketplace, subscription). For Update Agent scheduling, see apps/docs/pages/update-agent-scheduling.md. For the Notifications trust-loop relationship, see apps/docs/pages/notifications-scheduling.md.',
       },
       {
         title: 'WebSocket Events',

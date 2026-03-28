@@ -1228,7 +1228,10 @@ paths:
               $ref: '#/components/headers/XRequestId'
   /api/v1/profile/context:
     get:
-      summary: Get Student Context Object
+      summary: Get Student Context summary (MVP)
+      description: |
+        MVP note: this endpoint returns a lightweight context summary (goals/topics/experience/preferences + tier/role).
+        It is not the full Student Context Object described in the product spec.
       security:
         - bearerAuth: []
       responses:
@@ -1299,9 +1302,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-  /api/v1/profile/delete:
-    post:
-      summary: Delete user profile data
+  /api/v1/delete-my-data:
+    delete:
+      summary: Delete all user data (MVP)
+      description: Server-first deletion of all user-associated data.
       security:
         - bearerAuth: []
       responses:
@@ -2054,9 +2058,97 @@ paths:
                     type: integer
                   deletedPipelines:
                     type: integer
+  /api/v1/update-agent/tick:
+    post:
+      summary: Run Update Agent tick (Pro)
+      description: Canonical scheduler entrypoint. Runs all enabled topics and sources for the user.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Run completed
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Requires Pro tier
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Tick already in progress
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/v1/update-agent/runs:
+    get:
+      summary: List Update Agent runs (Pro)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Runs
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Requires Pro tier
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
   /api/v1/update-agent/topics:
-    put:
-      summary: Update agent topics
+    get:
+      summary: List Update Agent topics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Topics
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      summary: Create Update Agent topic (Pro)
       security:
         - bearerAuth: []
       requestBody:
@@ -2066,21 +2158,124 @@ paths:
             schema:
               type: object
               required:
-                - topics
+                - topic
               properties:
-                topics:
-                  type: array
-                  items:
-                    type: string
+                topic:
+                  type: string
+                enabled:
+                  type: boolean
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Requires Pro tier
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+    delete:
+      summary: Delete Update Agent topic (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/topics/{id}:
+    delete:
+      summary: Delete Update Agent topic by id (Pro)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/topics/update:
+    post:
+      summary: Update Update Agent topic (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                topic:
+                  type: string
+                enabled:
+                  type: boolean
       responses:
         '200':
           description: Updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
+
   /api/v1/update-agent/sources:
-    put:
-      summary: Update agent sources
+    get:
+      summary: List Update Agent sources
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: topicId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sources
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+    post:
+      summary: Create Update Agent source (Pro)
       security:
         - bearerAuth: []
       requestBody:
@@ -2090,12 +2285,92 @@ paths:
             schema:
               type: object
               required:
-                - sources
+                - topicId
+                - url
               properties:
-                sources:
-                  type: array
-                  items:
-                    type: string
+                topicId:
+                  type: string
+                url:
+                  type: string
+                enabled:
+                  type: boolean
+                position:
+                  type: integer
+                sourceType:
+                  type: string
+                  enum: [rss, html]
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+    delete:
+      summary: Delete Update Agent source (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/sources/{id}:
+    delete:
+      summary: Delete Update Agent source by id (Pro)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/sources/update:
+    post:
+      summary: Update Update Agent source (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                url:
+                  type: string
+                enabled:
+                  type: boolean
+                position:
+                  type: integer
+                sourceType:
+                  type: string
+                  enum: [rss, html]
       responses:
         '200':
           description: Updated

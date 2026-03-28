@@ -22,6 +22,8 @@ describe('OpenAPI parity (best-effort)', () => {
       '/api/v1/analytics',
       '/api/v1/usage',
       '/api/v1/notifications',
+      '/api/v1/delete-my-data',
+      '/api/v1/update-agent',
       '/api/v1/daily',
       '/api/v1/events',
       '/api/v1/pipeline',
