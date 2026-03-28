@@ -6,6 +6,8 @@ import { Button } from '../../components/Button.js';
 import { IconCheck, IconRocket } from '../../components/icons/index.js';
 
 import { CAPABILITY_MATRIX } from '../../lib/capabilities.js';
+import { apiPost } from '../../context/AppContext.js';
+import { useToast } from '../../components/Toast.js';
 
 const PLANS = [
   {
@@ -31,6 +33,7 @@ const PLANS = [
 export function SubscriptionChoice() {
   const nav = useNavigate();
   const { dispatch } = useApp();
+  const { toast } = useToast();
   const [selected, setSelected] = useState('free');
   const [showModal, setShowModal] = useState(false);
   const [email, setEmail] = useState('');
@@ -52,23 +55,9 @@ export function SubscriptionChoice() {
     // MVP: billing is mock, but we still upgrade server-side so capability-gated UI unlocks.
     // If this fails, we continue onboarding but keep Free tier.
     try {
-      await fetch('/api/v1/subscription', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(() => {
-            try {
-              const token = localStorage.getItem('learnflow-token');
-              return token ? { Authorization: `Bearer ${token}` } : {};
-            } catch {
-              return {};
-            }
-          })(),
-        },
-        body: JSON.stringify({ action: 'upgrade' }),
-      });
+      await apiPost('/subscription', { action: 'upgrade' });
     } catch {
-      // ignore
+      toast('Upgrade could not be completed (MVP). Continuing on Free tier.', 'info');
     } finally {
       setUpgrading(false);
     }

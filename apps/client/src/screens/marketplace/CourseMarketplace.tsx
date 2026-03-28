@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiPost } from '../../context/AppContext.js';
+import { apiGet, apiPost } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
+import { useToast } from '../../components/Toast.js';
 import { IconBag } from '../../components/icons/index.js';
 
 interface MarketplaceCourse {
@@ -25,6 +26,7 @@ const CATEGORIES = ['All', 'Programming', 'Data Science', 'DevOps', 'Design', 'B
 /** Spec §7.1, §5.2.7 — Course Marketplace with API integration */
 export function CourseMarketplace() {
   const nav = useNavigate();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('');
   const [topicFilter, setTopicFilter] = useState('');
@@ -44,15 +46,12 @@ export function CourseMarketplace() {
         if (topicFilter) params.set('topic', topicFilter);
         if (difficultyFilter) params.set('difficulty', difficultyFilter);
         if (maxPrice) params.set('maxPrice', maxPrice);
-        const res = await fetch(`/api/v1/marketplace/courses?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.courses?.length > 0) {
-            setCourses(data.courses);
-          } else {
-            // Do not silently fall back to sample data; show an honest empty state.
-            setCourses([]);
-          }
+        const data: any = await apiGet(`/marketplace/courses?${params}`);
+        if (data?.courses?.length > 0) {
+          setCourses(data.courses);
+        } else {
+          // Do not silently fall back to sample data; show an honest empty state.
+          setCourses([]);
         }
       } catch {
         // Network failure: keep empty list and let UI show error/empty state.
@@ -95,8 +94,12 @@ export function CourseMarketplace() {
         }
       }
       nav('/dashboard');
-    } catch {
-      // silent fail
+    } catch (e: any) {
+      const msg = String(e?.message || '').trim();
+      toast(
+        `Could not enroll in "${course.title}". ${msg ? msg : 'Please try again.'}`.trim(),
+        'error',
+      );
     } finally {
       setEnrolling(null);
     }

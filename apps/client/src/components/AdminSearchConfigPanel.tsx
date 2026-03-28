@@ -1,6 +1,7 @@
 import React from 'react';
 import { useToast } from './Toast.js';
 import { Button } from './Button.js';
+import { apiGet, apiPut } from '../context/AppContext.js';
 
 type AdminSearchConfig = {
   stage1Templates: string[];
@@ -53,15 +54,7 @@ export function AdminSearchConfigPanel() {
   React.useEffect(() => {
     (async () => {
       try {
-        const token = localStorage.getItem('learnflow-token') || '';
-        const res = await fetch('/api/v1/admin/search-config', {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: token ? `Bearer ${token}` : '',
-          },
-        });
-        if (!res.ok) throw new Error('Failed to load admin config');
-        const data = await res.json();
+        const data: any = await apiGet('/admin/search-config');
         setConfig(data.config);
         setStage1Text((data.config.stage1Templates || []).join('\n'));
         setStage2Text((data.config.stage2Templates || []).join('\n'));
@@ -90,18 +83,7 @@ export function AdminSearchConfigPanel() {
         stage2Templates: parseLines(stage2Text),
       };
 
-      const token = localStorage.getItem('learnflow-token') || '';
-      const res = await fetch('/api/v1/admin/search-config', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: token ? `Bearer ${token}` : '',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.message || 'Failed to save');
+      const data: any = await apiPut('/admin/search-config', payload);
       setConfig(data.config);
       toast('Saved admin search settings', 'success');
     } catch (e: any) {

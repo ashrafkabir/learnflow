@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { validateQuery, validateBody } from '../validation.js';
+import { validateQuery } from '../validation.js';
 
 const router = Router();
 
@@ -75,49 +75,90 @@ const searchSchema = z.object({
 });
 
 // GET /api/v1/marketplace/courses - Browse course marketplace (public)
-router.get('/courses', validateQuery(searchSchema), (req: Request, res: Response) => {
-  let results = [...marketplaceCourses];
+// Iter129: make the public router a thin proxy to the DB-backed listing to avoid split-brain.
+router.get('/courses', validateQuery(searchSchema), async (req: Request, res: Response) => {
   const { keyword, topic, difficulty, maxPrice } = req.query as any;
+  const qs = new URLSearchParams();
+  if (keyword) qs.set('keyword', String(keyword));
+  if (topic) qs.set('topic', String(topic));
+  if (difficulty) qs.set('difficulty', String(difficulty));
+  if (maxPrice !== undefined) qs.set('maxPrice', String(maxPrice));
 
-  if (keyword) {
-    const kw = keyword.toLowerCase();
-    results = results.filter(
-      (c) => c.title.toLowerCase().includes(kw) || c.topic.toLowerCase().includes(kw),
-    );
+  try {
+    const mod = await import('../db.js');
+    let results: any[] = mod.dbMarketplaceCourses.listPublished().map((c: any) => ({
+      id: String(c.id),
+      title: String(c.title),
+      topic: String(c.topic),
+      description: String(c.description),
+      difficulty: String(c.difficulty),
+      price: Number(c.price || 0),
+      creatorId: String(c.creatorId),
+      status: (String(c.status) as any) || 'published',
+      lessonCount: Number(c.lessonCount || 0),
+      attributionCount: Number(c.attributionCount || 0),
+      readabilityScore: Number(c.readabilityScore || 0.7),
+      rating: Number(c.rating || 0),
+      enrollmentCount: Number(c.enrollmentCount || 0),
+      revenue: Number(c.revenue || 0),
+      publishedAt: c.publishedAt || null,
+    }));
+
+    // Apply same filtering behavior as marketplace-full.
+    if (keyword) {
+      const kw = String(keyword).toLowerCase();
+      results = results.filter(
+        (c: any) => c.title.toLowerCase().includes(kw) || c.topic.toLowerCase().includes(kw),
+      );
+    }
+    if (topic) results = results.filter((c: any) => c.topic === String(topic));
+    if (difficulty) results = results.filter((c: any) => c.difficulty === String(difficulty));
+    if (maxPrice !== undefined) results = results.filter((c: any) => c.price <= Number(maxPrice));
+
+    res.status(200).json({ courses: results });
+  } catch {
+    // Fallback to demo in-memory data if DB access fails.
+    let results = [...marketplaceCourses];
+    if (keyword) {
+      const kw = String(keyword).toLowerCase();
+      results = results.filter(
+        (c) => c.title.toLowerCase().includes(kw) || c.topic.toLowerCase().includes(kw),
+      );
+    }
+    if (topic) results = results.filter((c) => c.topic === topic);
+    if (difficulty) results = results.filter((c) => c.difficulty === difficulty);
+    if (maxPrice !== undefined) results = results.filter((c) => c.price <= maxPrice);
+    res.status(200).json({ courses: results });
   }
-  if (topic) results = results.filter((c) => c.topic === topic);
-  if (difficulty) results = results.filter((c) => c.difficulty === difficulty);
-  if (maxPrice !== undefined) results = results.filter((c) => c.price <= maxPrice);
-
-  res.status(200).json({ courses: results });
 });
 
 // POST /api/v1/marketplace/courses - Publish a course to marketplace
-const publishCourseSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  price: z.coerce.number().optional(),
-  category: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-});
-
-router.post('/courses', validateBody(publishCourseSchema), (req: Request, res: Response) => {
-  const { title, description: _description, price, category, tags: _tags } = req.body || {};
-  const newCourse: MarketplaceCourse = {
-    id: `mc-${Date.now()}`,
-    title: title || 'Untitled Course',
-    topic: category || 'general',
-    difficulty: 'intermediate',
-    price: price || 0,
-    isDemo: true,
-  };
-  marketplaceCourses.push(newCourse);
-  res.status(201).json({ message: 'Course published', course: newCourse });
+// Iter129: publishing stays auth-only in marketplace-full router.
+router.post('/courses', (_req: Request, res: Response) => {
+  res.status(405).json({
+    message: 'Publishing is not available on the public marketplace endpoint. Please log in.',
+  });
 });
 
 // GET /api/v1/marketplace/agents - Browse agent marketplace (public)
-router.get('/agents', (_req: Request, res: Response) => {
-  res.status(200).json({ agents: marketplaceAgents });
+// Iter129: proxy to approved agent submissions when possible.
+router.get('/agents', async (_req: Request, res: Response) => {
+  try {
+    const mod = await import('../db.js');
+    const persisted = mod.dbMarketplaceAgentSubmissions.listApproved();
+    const agents = persisted.map((a: any) => ({
+      id: String(a.id),
+      name: String(a.name),
+      description: String(a.description),
+      manifest: (a as any).manifest,
+      creatorId: String((a as any).creatorId || ''),
+      status: String((a as any).status || 'approved'),
+      submittedAt: String((a as any).submittedAt || ''),
+    }));
+    res.status(200).json({ agents });
+  } catch {
+    res.status(200).json({ agents: marketplaceAgents });
+  }
 });
 
 // NOTE: This router is mounted public. Agent activation + activated list live in the auth-protected

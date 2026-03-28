@@ -570,11 +570,48 @@ export async function apiGet(path: string) {
     const res = await fetch(`${apiBase()}${API}${path}`, { headers });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: 'Request failed' }));
+      if (res.status === 401) {
+        console.warn('[LearnFlow] 401 — unauthorized');
+        localStorage.removeItem('learnflow-token');
+        localStorage.removeItem('learnflow-refresh');
+        localStorage.removeItem('learnflow-user');
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
+      }
       throw new Error(toActionableHttpErrorMessage(res.status, err, res));
     }
     return res.json();
   } catch (err) {
     console.error('[LearnFlow] apiGet error:', err);
+    throw err;
+  }
+}
+
+export async function apiPut(path: string, body: unknown) {
+  await refreshTokenIfNeeded();
+  try {
+    const res = await fetch(`${apiBase()}${API}${path}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Request failed' }));
+      if (res.status === 401) {
+        console.warn('[LearnFlow] 401 — unauthorized');
+        localStorage.removeItem('learnflow-token');
+        localStorage.removeItem('learnflow-refresh');
+        localStorage.removeItem('learnflow-user');
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.href = '/login';
+        }
+      }
+      throw new Error(toActionableHttpErrorMessage(res.status, err, res));
+    }
+    return res.json();
+  } catch (err) {
+    console.error('[LearnFlow] apiPut error:', err);
     throw err;
   }
 }

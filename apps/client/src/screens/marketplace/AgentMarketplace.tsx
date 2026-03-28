@@ -4,6 +4,7 @@ import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
 import { useToast } from '../../components/Toast.js';
 import { IconCheck, IconKey, IconRobot, IconSearch } from '../../components/icons/index.js';
+import { apiGet, apiPost } from '../../context/AppContext.js';
 
 interface Agent {
   id: string;
@@ -43,18 +44,10 @@ export function AgentMarketplace() {
 
   // Load marketplace agents from API. If none are returned, fall back to demo agents.
   useEffect(() => {
-    const token = localStorage.getItem('learnflow-token');
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (token) headers.Authorization = `Bearer ${token}`;
-
     setLoading(true);
     setAgentsError('');
-    fetch('/api/v1/marketplace/agents', { headers })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return await r.json();
-      })
-      .then((data) => {
+    apiGet('/marketplace/agents')
+      .then((data: any) => {
         const rows = Array.isArray(data?.agents) ? data.agents : [];
 
         const normalized: Agent[] = rows.map((a: any) => {
@@ -95,13 +88,8 @@ export function AgentMarketplace() {
 
   // Load activated agents for this user from the API (so activation affects runtime).
   useEffect(() => {
-    const token = localStorage.getItem('learnflow-token');
-    if (!token) return;
-    fetch('/api/v1/marketplace/agents/activated', {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
+    apiGet('/marketplace/agents/activated')
+      .then((data: any) => {
         if (data?.activatedAgentIds && Array.isArray(data.activatedAgentIds)) {
           setActivatedIds(new Set(data.activatedAgentIds));
         }
@@ -116,25 +104,8 @@ export function AgentMarketplace() {
 
     setActivating(agent.id);
     try {
-      const token = localStorage.getItem('learnflow-token');
-      if (!token) {
-        toast('Please log in to manage agents.', 'error');
-        return;
-      }
-
       const endpoint = isActive ? 'deactivate' : 'activate';
-      const res = await fetch(`/api/v1/marketplace/agents/${agent.id}/${endpoint}`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      });
-
-      if (!res.ok) {
-        toast(
-          `Could not ${isActive ? 'deactivate' : 'activate'} "${agent.name}". Please try again.`,
-          'error',
-        );
-        return;
-      }
+      await apiPost(`/marketplace/agents/${agent.id}/${endpoint}`, {});
 
       setActivatedIds((prev) => {
         const next = new Set(prev);

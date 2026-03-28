@@ -164,14 +164,18 @@ export function Dashboard() {
       reason?: string;
     }>
   >([]);
+  const [todaysLimit, setTodaysLimit] = useState<number>(3);
+  const [todaysUnavailable, setTodaysUnavailable] = useState(false);
 
   useEffect(() => {
     (async () => {
+      setTodaysUnavailable(false);
       try {
         const data = await apiGet('/daily?limit=3');
+        if (typeof data?.limit === 'number') setTodaysLimit(data.limit);
         if (Array.isArray(data?.lessons)) setTodaysLessons(data.lessons);
       } catch {
-        // Fallback: keep empty and let other dashboard CTAs guide the user.
+        setTodaysUnavailable(true);
         setTodaysLessons([]);
       }
     })();
@@ -371,8 +375,12 @@ export function Dashboard() {
               </div>
               <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-3">
                 <p className="text-sm text-gray-800/80 dark:text-gray-200">Today</p>
-                <p className="text-3xl font-bold text-accent">0/3</p>
-                <p className="text-xs text-gray-800/80 dark:text-gray-200 mt-1">daily goal</p>
+                <p className="text-3xl font-bold text-accent">
+                  {todaysUnavailable ? '—' : `${todaysLessons.length}/${todaysLimit}`}
+                </p>
+                <p className="text-xs text-gray-800/80 dark:text-gray-200 mt-1">
+                  {todaysUnavailable ? 'unavailable (MVP)' : 'daily goal'}
+                </p>
               </div>
             </div>
 
