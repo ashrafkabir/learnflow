@@ -16,7 +16,7 @@ Table of Contents
 
 LearnFlow is a free, cross-platform agentic learning experience platform that empowers individuals to define learning goals, curate personalized courses through conversational AI, and achieve mastery through bite-sized lessons. The platform uses a multi-agent orchestration architecture where a central Orchestrator Agent dynamically spawns specialized agents for content creation, research, summarization, examination, peer collaboration, and more.
 
-The platform is available on macOS, Windows, Android, and iOS. Students bring their own AI API key (BYOAI) for free access, or subscribe to a professional tier for guaranteed skill updates, proactive learning experiences, and managed AI infrastructure. A two-sided marketplace allows creators to publish courses (free or paid) and students to discover agent-enhanced learning paths.
+MVP (this build): Web-first experience. Native apps (macOS/Windows/iOS/Android) are PLANNED, not shipped. Students bring their own AI API key (BYOAI) for free access, or subscribe to a professional tier for guaranteed skill updates, proactive learning experiences, and managed AI infrastructure. A two-sided marketplace allows creators to publish courses (free or paid) and students to discover agent-enhanced learning paths.
 
 ■ **CORE VALUE PROPOSITION**
 
@@ -69,7 +69,7 @@ LearnFlow follows a layered architecture with clear separation between the clien
 
 ■ **ARCHITECTURE LAYERS**
 
-- Client Layer: Native apps (macOS, Windows, iOS, Android) built with cross-platform framework (Flutter or React Native) sharing a unified design system
+- Client Layer (PLANNED): Native apps (macOS, Windows, iOS, Android) built with a cross-platform framework (Flutter or React Native) sharing a unified design system
 
 - API Gateway Layer: Rate limiting, authentication, API key validation, WebSocket upgrade for real-time agent communication
 
@@ -104,21 +104,21 @@ This repository currently implements an **MVP**, not the full production archite
 
 > The rest of §3.2 describes the planned production stack and should be read as **future state**.
 
-|                   |                                             |                                                             |
-| ----------------- | ------------------------------------------- | ----------------------------------------------------------- |
-| **Layer**         | **Technology**                              | **Rationale**                                               |
-| Client Framework  | Flutter (Dart) or React Native (TypeScript) | Single codebase for all 4 platforms with native performance |
-| API Gateway       | Kong / AWS API Gateway + Lambda authorizers | Scalable, managed, supports WebSocket                       |
-| Backend Services  | Node.js (TypeScript) + FastAPI (Python)     | TS for API layer, Python for ML/agent orchestration         |
-| Orchestration     | Custom agent runtime on LangGraph / CrewAI  | Stateful multi-agent workflows with tool-use support        |
-| Vector Database   | Pinecone or Weaviate                        | Semantic search over curated content and user context       |
-| Primary Database  | PostgreSQL (Supabase)                       | ACID compliance, JSON support, real-time subscriptions      |
-| Cache / Sessions  | Redis Cluster                               | Sub-millisecond session state for orchestrator context      |
-| Object Storage    | AWS S3 / Cloudflare R2                      | Course assets, exported PDFs, mindmap images                |
-| Search / Scraping | Firecrawl / Playwright + Cheerio            | Reliable web content extraction with JS rendering           |
-| Auth              | Supabase Auth / Clerk                       | Social login, API key management, RBAC                      |
-| CI/CD             | GitHub Actions + Docker + K8s (EKS/GKE)     | Automated testing, canary deploys, agent versioning         |
-| Monitoring        | Datadog / Grafana + LangSmith               | Full-stack observability + LLM trace debugging              |
+|                            |                                             |                                                             |
+| -------------------------- | ------------------------------------------- | ----------------------------------------------------------- |
+| **Layer**                  | **Technology**                              | **Rationale**                                               |
+| Client Framework (PLANNED) | Flutter (Dart) or React Native (TypeScript) | Single codebase for all 4 platforms with native performance |
+| API Gateway                | Kong / AWS API Gateway + Lambda authorizers | Scalable, managed, supports WebSocket                       |
+| Backend Services           | Node.js (TypeScript) + FastAPI (Python)     | TS for API layer, Python for ML/agent orchestration         |
+| Orchestration              | Custom agent runtime on LangGraph / CrewAI  | Stateful multi-agent workflows with tool-use support        |
+| Vector Database            | Pinecone or Weaviate                        | Semantic search over curated content and user context       |
+| Primary Database           | PostgreSQL (Supabase)                       | ACID compliance, JSON support, real-time subscriptions      |
+| Cache / Sessions           | Redis Cluster                               | Sub-millisecond session state for orchestrator context      |
+| Object Storage             | AWS S3 / Cloudflare R2                      | Course assets, exported PDFs, mindmap images                |
+| Search / Scraping          | Firecrawl / Playwright + Cheerio            | Reliable web content extraction with JS rendering           |
+| Auth                       | Supabase Auth / Clerk                       | Social login, API key management, RBAC                      |
+| CI/CD                      | GitHub Actions + Docker + K8s (EKS/GKE)     | Automated testing, canary deploys, agent versioning         |
+| Monitoring                 | Datadog / Grafana + LangSmith               | Full-stack observability + LLM trace debugging              |
 
 # 4. Multi-Agent Architecture
 
@@ -182,6 +182,8 @@ Free-tier users provide their own API keys (OpenAI, Anthropic, Google, Mistral, 
 
 ## 5.1 Platform Matrix
 
+**MVP note:** LearnFlow is currently delivered as a web app. The native app rows below are **PLANNED / NOT IN MVP**.
+
 |              |                                               |                      |                            |
 | ------------ | --------------------------------------------- | -------------------- | -------------------------- |
 | **Platform** | **Distribution**                              | **Min Version**      | **Framework**              |
@@ -203,7 +205,7 @@ Free-tier users provide their own API keys (OpenAI, Anthropic, Google, Mistral, 
 
 4.  API Key Setup (BYOAI): guided key entry with provider selection, validation, and privacy assurance
 
-5.  Subscription Choice: clear Free vs Pro comparison; one-tap upgrade with Stripe/App Store billing
+5.  Subscription Choice (MVP): clear Free vs Pro comparison; billing is MOCK in this build (Stripe/App Store/Play billing PLANNED)
 
 6.  First Course Setup (MVP): progress animation only; preferences are saved and the user creates their first course from the dashboard
 
@@ -395,7 +397,7 @@ The course marketplace is a two-sided platform where creators publish structured
 
 ## 7.2 Agent Marketplace
 
-The agent marketplace enables developers to publish specialized agents that extend LearnFlow's capabilities. All marketplace agents are free to use (the student's own API key covers LLM costs). Agents must conform to the LearnFlow Agent SDK specification.
+The agent marketplace enables developers to publish specialized agents that extend LearnFlow's capabilities. All marketplace agents are free to use (the student's own API key covers LLM costs). Agents must conform to the LearnFlow Agent SDK specification (PLANNED; MVP uses built-in agents + lightweight manifests only).
 
 ■ **AGENT SDK REQUIREMENTS**
 
@@ -424,6 +426,8 @@ The agent marketplace enables developers to publish specialized agents that exte
 - Export/Integration: LMS connectors, Notion/Obsidian sync, PDF generators (planned)
 
 # 8. Subscription & Monetization
+
+**MVP note:** Billing flows are mock/demo in this build (no real Stripe/IAP charges).
 
 |                   |                                  |                                                              |
 | ----------------- | -------------------------------- | ------------------------------------------------------------ |
