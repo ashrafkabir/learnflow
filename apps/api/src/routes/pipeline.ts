@@ -1003,6 +1003,32 @@ async function runPipeline(pipelineId: string) {
       try {
         appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'plan_ready' });
 
+        const withTimeout = async <T>(
+          label: string,
+          ms: number,
+          fn: () => Promise<T>,
+        ): Promise<T> => {
+          // Keep pipeline from being marked stalled while awaiting long network ops.
+          const keepAlive = setInterval(() => {
+            try {
+              updatePipeline(p, {} as any);
+            } catch {
+              // ignore
+            }
+          }, 20_000).unref();
+
+          const t = new Promise<T>((_, reject) => {
+            const id = setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms);
+            (reject as any)._timeoutId = id;
+          });
+
+          try {
+            return await Promise.race([fn(), t]);
+          } finally {
+            clearInterval(keepAlive);
+          }
+        };
+
         // ── Per-lesson source scraping ──
         console.log(`[Pipeline] Scraping sources for lesson: "${les.title}"`);
         let lessonSources: FirecrawlSource[];
@@ -1037,18 +1063,14 @@ async function runPipeline(pipelineId: string) {
             );
             updatePipeline(p, { searchRuns: sr2 });
 
-            lessonSources = await searchForLesson(
-              topic,
-              modules[mi].title,
-              les.title,
-              les.description,
-              {
+            lessonSources = await withTimeout('lesson_scrape', 90_000, async () =>
+              searchForLesson(topic, modules[mi].title, les.title, les.description, {
                 stage2Templates: searchCfg.stage2Templates,
                 enabledSources: searchCfg.enabledSources,
                 perQueryLimit: searchCfg.perQueryLimit,
                 maxStage2Queries: searchCfg.maxStage2Queries,
                 maxSourcesPerLesson: searchCfg.maxSourcesPerLesson,
-              } as any,
+              } as any),
             );
           }
         } catch (err: any) {
@@ -1100,15 +1122,17 @@ async function runPipeline(pipelineId: string) {
               : '';
           const temp = attempt >= 2 ? 0.9 : 0.7;
           try {
-            content = await generateLesson(
-              topic,
-              modules[mi].title,
-              les.title,
-              les.description,
-              lessonSources,
-              openai,
-              minWordHint,
-              temp,
+            content = await withTimeout('lesson_synthesize', 120_000, async () =>
+              generateLesson(
+                topic,
+                modules[mi].title,
+                les.title,
+                les.description,
+                lessonSources,
+                openai,
+                minWordHint,
+                temp,
+              ),
             );
             content = `${content}${formatFurtherReadingBlock(further)}`;
           } catch (err: any) {
@@ -1161,7 +1185,9 @@ async function runPipeline(pipelineId: string) {
           estimatedTime: Math.max(5, Math.ceil(wc / 200)),
           wordCount: wc,
         });
-      } catch {
+      } catch (err: any) {
+        const msg = safeErrorMessage(err);
+        appendLog(p, 'error', `lesson_failed | lesson="${les.title}" | message="${msg}"`);
         appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'draft_ready' });
         // NOTE: in failure mode we do not emit quality_passed.
         syntheses[synthIdx].status = 'failed';
@@ -1191,7 +1217,7 @@ async function runPipeline(pipelineId: string) {
     }
   }
 
-  const synthesisSummary = `Generated ${allLessons.length} lessons across ${modules.length} modules using ${uniqueSources.length} primary sources. Key themes: ${themes.slice(0, 5).join(', ') || 'N/A'}.`;
+  const synthesisSummary = `Generated ${allLessons.length} lessons across ${modules.length} modules using ${uniqueSources.length} primary sources. Key themes: ${themes.slice(0, 5).join(', ') || 'N/A'}. (Synthesis is best-effort; timeouts fall back to snippet-based drafts.)`;
   updatePipeline(p, { progress: 82, synthesisSummary });
 
   // ── STAGE 4: Quality Check ─────────────────────────────────────────────
@@ -1669,9 +1695,16 @@ router.get('/:id', (req: Request, res: Response) => {
 
   // Always prefer persisted state so UI reflects latest, and tests can force stale timestamps.
   const persisted = dbPipelines.getById(id) as PipelineState | undefined;
-  const p = (persisted || pipelines.get(id)) as PipelineState | undefined;
+  const p = (persisted || pipelines.get(id)) as (PipelineState & { userId?: string }) | undefined;
 
   if (!p) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  // Enforce ownership: only the pipeline owner can read it.
+  // (Dev auth still sets req.user, so this holds in dev/test too.)
+  if (p.userId && req.user?.sub && p.userId !== req.user.sub) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
@@ -1704,8 +1737,14 @@ router.get('/:id', (req: Request, res: Response) => {
 router.get('/:id/events', (req: Request, res: Response) => {
   const id = String(req.params.id);
   const persisted = dbPipelines.getById(id) as PipelineState | undefined;
-  const p = (persisted || pipelines.get(id)) as PipelineState | undefined;
+  const p = (persisted || pipelines.get(id)) as (PipelineState & { userId?: string }) | undefined;
   if (!p) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  // Enforce ownership
+  if (p.userId && req.user?.sub && p.userId !== req.user.sub) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }
@@ -1737,31 +1776,44 @@ router.get('/:id/events', (req: Request, res: Response) => {
 });
 
 /** GET /api/v1/pipeline — List all pipelines */
-router.get('/', (_req: Request, res: Response) => {
+router.get('/', (req: Request, res: Response) => {
   // Proactively prevent stuck run accumulation
   cleanupStalePipelines();
 
-  const all = Array.from(pipelines.values()).map((p) => ({
-    id: p.id,
-    courseId: p.courseId,
-    topic: p.topic,
-    status: p.status,
-    stage: p.stage,
-    progress: p.progress,
-    courseTitle: p.courseTitle,
-    startedAt: p.startedAt,
-    updatedAt: p.updatedAt,
-    finishedAt: p.finishedAt,
-    failReason: p.failReason,
-  }));
+  const userId = req.user?.sub;
+  const all = Array.from(pipelines.values())
+    .filter((p: any) => {
+      // Only show pipelines for the current user. If userId is missing (shouldn't happen with auth), return none.
+      if (!userId) return false;
+      return !p.userId || p.userId === userId;
+    })
+    .map((p: any) => ({
+      id: p.id,
+      courseId: p.courseId,
+      topic: p.topic,
+      status: p.status,
+      stage: p.stage,
+      progress: p.progress,
+      courseTitle: p.courseTitle,
+      startedAt: p.startedAt,
+      updatedAt: p.updatedAt,
+      finishedAt: p.finishedAt,
+      failReason: p.failReason,
+    }));
   res.json({ pipelines: all });
 });
 
 /** POST /api/v1/pipeline/:id/restart — Restart a failed/stalled pipeline by creating a new run id */
 router.post('/:id/restart', validateBody(z.object({})), (req: Request, res: Response) => {
   const id = String(req.params.id);
-  const old = pipelines.get(id);
+  const old = pipelines.get(id) as any;
   if (!old) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  // Enforce ownership
+  if (old.userId && req.user?.sub && old.userId !== req.user.sub) {
     sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
     return;
   }

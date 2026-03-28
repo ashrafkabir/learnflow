@@ -1,182 +1,218 @@
-# LearnFlow — Improvement Queue (Iter129)
+# LearnFlow — Improvement Queue (Iter133)
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-28
 
-Status: **DONE**
-
-## Recent shipped commits (git log -10 --oneline)
-
-- 3378903 Iter128: mark improvement queue done + refresh shipped commits
-- d78ba55 Iter128: update build log for tasks 08-12
-- 86337a4 Iter128: add MVP truth regression test
-- 33f1854 Iter128: show toasts for key client-side error catches
-- ee06955 Iter128: document screenshot harness canonical command
-- bcce613 Iter128: add repo-local ripgrep script
-- a27e16e Iter128: label content provenance (live vs mock)
-- a02d75a Iter128: clarify mindmap persistence in UI
-- b000880 Iter128: add marketplace flow Playwright smoke test
-- 5d0ca15 Iter128: add WS message_id to shared types and tests
+Status: **IN PROGRESS**
 
 ---
 
-## Evidence captured (Iter129 planner run)
+## Evidence captured (Iter133 planner run)
 
 Screenshots + notes captured into:
 
-- Desktop: `learnflow/screenshots/iter129/planner-run/desktop/`
-- Mobile: `learnflow/screenshots/iter129/planner-run/mobile/`
-- Notes: `learnflow/screenshots/iter129/planner-run/NOTES.md`
+- Desktop: `learnflow/screenshots/iter133/planner-run/desktop/`
+- Mobile: `learnflow/screenshots/iter133/planner-run/mobile/`
+- Notes: `learnflow/screenshots/iter133/planner-run/NOTES.md`
 
-Representative desktop screenshots:
+Representative screenshots to reference in PRs:
 
-- `learnflow/screenshots/iter129/planner-run/desktop/landing-home.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/auth-login.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/onboarding-4-api-keys.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/app-dashboard.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/app-conversation.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/app-mindmap.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/marketplace-courses.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/marketplace-agents.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/app-pipelines.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/pipeline-detail.png`
-- `learnflow/screenshots/iter129/planner-run/desktop/settings-about-mvp-truth.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/landing-home.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/onboarding-4-api-keys.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/app-dashboard.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/course-create-after-click.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/app-conversation.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/app-mindmap.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/marketplace-courses.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/marketplace-agents.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/app-collaboration.png`
+- `learnflow/screenshots/iter133/planner-run/desktop/settings-about-mvp-truth.png`
 
-Dev runtime ports (expected): `DEV_PORTS.md`.
-Dev status evidence: `node scripts/dev-status.mjs` shows API:3000, client:3001, web:3003.
+Dev runtime ports (repo convention; verified during run):
+
+- API: http://localhost:3000 (`GET /health`)
+- Client (app): http://localhost:3001
+- Web/marketing (Next): http://localhost:3003
 
 ---
 
-## Brutally honest spec ↔ implementation parity (Iter129)
+## Brutally honest spec ↔ implementation parity (Iter133)
 
-This repo is in a good place on “MVP truth” compared to earlier iterations, but there are still a few spots where the _implementation_ is honest while _the behavior_ is misleading or brittle.
+### What’s real (shipped MVP capabilities)
 
-Key reality checks (with evidence):
+- **Web-first MVP** with onboarding screens that match spec §5.2.1 (welcome → goals → topics → API keys → subscription choice → first course).
+  - Evidence (UI): `learnflow/screenshots/iter133/planner-run/desktop/onboarding-*.png`
 
-1. **BYOAI key management is real and fairly robust** (encrypted at rest, validation endpoint, activation semantics).
-   - Evidence: `apps/api/src/keys.ts` mounted at `apps/api/src/app.ts` (`/api/v1/keys`).
-   - UI evidence: onboarding keys screen `.../desktop/onboarding-4-api-keys.png`.
+- **WebSocket streaming contract exists** and is documented.
+  - Evidence (code): `apps/api/src/websocket.ts`
+  - Evidence (docs): `apps/docs/pages/websocket-events.md`
 
-2. **Marketplace is split-brain**: a public in-memory router and an authed DB-backed router share the same mount.
-   - Evidence: `apps/api/src/routes/marketplace.ts` (public, in-memory demo) + `apps/api/src/routes/marketplace-full.ts` (authed, DB-backed, checkout/publish/reviews).
-   - Risk: inconsistent data between logged-out browse and logged-in flows, plus duplicated endpoints (`/courses`) with different behavior.
+- **Mindmap suggestions + update events exist** (but are heuristic / best-effort).
+  - Evidence (code): `apps/api/src/routes/mindmap.ts` (heuristic suggestions) and `apps/api/src/websocket.ts` (`mindmap.subscribe` → `mindmap.update`)
+  - Evidence (UI): `learnflow/screenshots/iter133/planner-run/desktop/app-mindmap.png`
 
-3. **Client API routing is inconsistent**: some screens use `apiPost/apiGet` (base + auth), others use raw `fetch('/api/v1/...')`.
-   - Evidence: raw fetches in:
-     - `apps/client/src/screens/marketplace/AgentMarketplace.tsx`
-     - `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`
-     - `apps/client/src/components/AdminSearchConfigPanel.tsx`
-   - Risk: breaks if API base is not same-origin; also repeats auth header logic.
+- **Collaboration exists, but is explicitly synthetic** (matches are derived from profile topics; group chat is basic CRUD).
+  - Evidence (code): `apps/api/src/routes/collaboration.ts` (`source: 'synthetic'`)
+  - Evidence (UI): `learnflow/screenshots/iter133/planner-run/desktop/app-collaboration.png`
 
-4. **Dashboard “Today 0/3 daily goal” is hardcoded**, while the API has a real `/api/v1/daily` endpoint.
+- **Subscription/billing is MOCK** and capabilities are returned by server.
+  - Evidence (code): `apps/api/src/routes/subscription.ts` returns `billingMode: 'mock'` and `capabilities`
+  - Evidence (UI): `learnflow/screenshots/iter133/planner-run/desktop/onboarding-5-subscription.png`
+
+- **Marketplace endpoints exist**, but checkout is MOCK and marketplace “agents” are not third‑party code execution.
+  - Evidence (code): `apps/api/src/routes/marketplace-full.ts` `/checkout` → `{ billingMode: 'mock' }`
+  - Evidence (UI truth): `apps/client/src/screens/AboutMvpTruth.tsx`
+
+### Biggest parity / trust gaps (where spec implies more than shipped)
+
+1. **Marketing website spec §12 is “implemented twice” but neither path is cleanly canonical.**
+   - The repo has a Next.js marketing app (`apps/web`, :3003) _and_ a full marketing screen set in the client (`apps/client/src/screens/marketing/*`).
+   - The client router explicitly says marketing is canonical in `apps/web`, but the client still **renders** a marketing HomePage at `/` and screenshot harness captures `/features`, `/pricing`, `/download`, `/blog`, `/about`, `/docs` from the client base URL.
+   - Evidence (code): `apps/client/src/App.tsx` comment says marketing is served by `apps/web`, but `PUBLIC_PAGES` in `screenshot-all.mjs` uses `BASE` (default :3001) and includes marketing routes.
+   - Evidence (harness): `screenshot-all.mjs` `PUBLIC_PAGES` includes `/features` etc.
+
+2. **Spec §4.4 promises BYOAI usage tracking dashboards; MVP has BYOAI storage/validation but not real per-agent usage reporting.**
+   - Evidence (spec): LearnFlow_Product_Spec.md lines ~169–179.
+   - Evidence (code reality): key routes exist (`apps/api/src/routes/keys.ts`, `apps/api/src/keys.ts`), but there’s no clear token usage accounting surfaced in UI.
+
+3. **Spec §5.2.3 promises quick-action chips + agent activity indicators + source drawer; MVP has parts, but not consistently or not wired to real sources.**
+   - Evidence (spec): LearnFlow_Product_Spec.md lines ~224–237.
+   - Evidence (code): `apps/client/src/components/SourceDrawer.tsx` exists, but source objects depend on orchestrator returning them.
+
+---
+
+## Iter133 — Evidence-first tasks (10–15)
+
+Each task includes: priority, evidence, acceptance criteria. **Prefer removing misleading UX/copy** over shipping half-features.
+
+### P0 — Canonical surfaces, trust, and broken nav
+
+1. **P0 — Fix marketing split-brain by making ONE canonical marketing surface + fixing client routes accordingly.**
    - Evidence:
-     - UI hardcode: `apps/client/src/screens/Dashboard.tsx` shows `0/3`.
-     - API exists: `apps/api/src/routes/daily.ts` returns deterministic recommendations.
-   - Result: users see a fake metric even though a real endpoint exists.
+     - `apps/web/*` exists (Next marketing on :3003).
+     - `apps/client/src/screens/marketing/*` exists (duplicate marketing UI).
+     - `apps/client/src/App.tsx` says marketing should be served by `apps/web` but still mounts `HomePage` at `/`.
+     - Screenshot harness captures marketing pages against :3001: `screenshot-all.mjs` `PUBLIC_PAGES` includes `/features`, `/pricing`, `/docs`, etc.
+   - Acceptance:
+     - Choose one canonical approach:
+       - **Option A:** client app hosts all marketing routes → add `<Route path="/features" ...>` etc, and remove/disable `apps/web` (or make :3003 redirect).
+       - **Option B (recommended):** `apps/web` is canonical → client app should NOT have marketing screens except a minimal “Go to app” landing; `/features` etc must not be referenced by client marketing nav.
+     - Screenshot harness updated so marketing screenshots are taken from the canonical base URL (likely :3003), not :3001.
+
+2. **P0 — Fix broken marketing navigation in the client (currently links to routes the router does not define).**
+   - Evidence:
+     - Client marketing navbar links: `apps/client/src/screens/marketing/MarketingLayout.tsx` NAV_LINKS `/features`, `/pricing`, `/download`, `/blog`, `/about`, `/docs`.
+     - Client router has no routes for these (only `/` mounts marketing HomePage): `apps/client/src/App.tsx`.
+     - Evidence (UI): `learnflow/screenshots/iter133/planner-run/desktop/marketing-*.png` exist but may represent NotFound or inconsistent routing.
+   - Acceptance:
+     - If client marketing stays: implement the routes.
+     - If marketing moves to `apps/web`: remove NAV_LINKS usage from client and ensure `/` routes into app login/register or redirects to :3003.
+
+3. **P0 — Ensure all purchase/subscription CTAs are explicit “MOCK billing” and cannot be interpreted as real money movement.**
+   - Evidence:
+     - API: `apps/api/src/routes/subscription.ts` returns `billingMode: 'mock'`.
+     - Marketplace checkout confirm is mock: `apps/api/src/routes/marketplace-full.ts`.
+     - UI exists: `learnflow/screenshots/iter133/planner-run/desktop/onboarding-5-subscription.png`, `marketplace-courses.png`.
+   - Acceptance:
+     - Every “Upgrade/Subscribe/Checkout/Buy” screen includes a visible “Mock billing” badge.
+     - No UI states say “paid”, “charged”, “receipt”, “invoice” unless explicitly labeled mock.
+
+4. **P0 — Make collaboration honesty unavoidable (synthetic matches must be labeled in UI).**
+   - Evidence:
+     - API returns `source: 'synthetic'`: `apps/api/src/routes/collaboration.ts`.
+     - UI exists: `learnflow/screenshots/iter133/planner-run/desktop/app-collaboration.png`.
+   - Acceptance:
+     - Collaboration screen shows an explicit label like “Suggestions are synthetic (derived from your topics)” when `source === 'synthetic'`.
+     - If/when real matching is added, the label changes automatically based on `source`.
+
+### P1 — Spec parity that improves product reliability (not just more screens)
+
+5. **P1 — Add progress.update WS event end-to-end validation + client handling audit.**
+   - Evidence:
+     - Spec §11.2 lists `progress.update`.
+     - Server mentions `progress.update` in `apps/api/src/websocket.ts` comment; course completion routes exist in `apps/api/src/routes/courses.ts`.
+   - Acceptance:
+     - A minimal Playwright test (or WS unit test) sends a completion event and asserts the client updates dashboard progress.
+     - If client does not support it, either implement support or remove spec-claiming UI.
+
+6. **P1 — BYOAI: add minimal “usage transparency” panel (even if coarse) or remove the spec promise from in-app copy/docs.**
+   - Evidence:
+     - Spec §4.4 promises per-agent token counts.
+     - Current app does key entry (`onboarding-4-api-keys.png`) but no visible usage stats.
+   - Acceptance:
+     - Either:
+       - Implement coarse usage stats (requests count per agent/provider per day) and show in Settings/Profile, OR
+       - Update docs + marketing copy to remove “usage dashboards” language.
+
+7. **P1 — Source citations: enforce “best-effort citations” contract and show a UI state when sources are empty.**
+   - Evidence:
+     - Spec requires citations; marketing claims citations.
+     - UI component exists: `apps/client/src/components/SourceDrawer.tsx`.
+     - WebSocket response schema allows sources: `apps/docs/pages/websocket-events.md`.
+   - Acceptance:
+     - For any lesson/chat response, if `sources.length===0`, the UI shows a truthful badge: “No sources available (provider not configured or no results)”.
+     - If sources exist, they are clickable and render in SourceDrawer.
+
+8. **P1 — Marketplace: remove “real analytics” implication; ratings/enrollment numbers must be labeled placeholders unless backed by DB events.**
+   - Evidence:
+     - Marketplace list includes rating/enrollmentCount fields in `apps/api/src/routes/marketplace.ts` (and DB-backed listing can return defaults).
+     - UI exists: `learnflow/screenshots/iter133/planner-run/desktop/marketplace-courses.png`.
+   - Acceptance:
+     - UI labels metrics as “demo” unless there is a review/enrollment event table and it’s computed.
+     - If metrics are demo-only, show `isDemo` badge.
+
+9. **P1 — Course create pipeline: show server error details clearly (no dead-end “nothing happened”).**
+   - Evidence:
+     - Recent commits indicate create-course pipeline issues were fixed: `c36c8b4`, `292f2ae`.
+     - Evidence (UI): `course-create-after-click.png` exists; failures should be visible.
+   - Acceptance:
+     - If course creation fails, dashboard shows actionable error and a “View pipeline” link to `PipelineDetail` (`/pipeline/:pipelineId`).
+
+### P2 — Cleanup + tests to prevent regression
+
+10. **P2 — Screenshot harness must capture marketing from the correct app (and fail loudly on NotFound).**
+
+- Evidence:
+  - Harness currently screenshots marketing routes from :3001: `screenshot-all.mjs` `PUBLIC_PAGES`.
+- Acceptance:
+  - Add a simple “not-found detector” in harness (e.g., check for `[data-screen="not-found"]`) and fail.
+  - Split runs: `--baseClient` and `--baseWeb` or equivalent.
+
+11. **P2 — Update LearnFlow_Product_Spec.md “MVP architecture” section to explicitly call out current marketing routing decision.**
+
+- Evidence:
+  - Spec §12 defines a marketing website; repo currently has two competing implementations.
+- Acceptance:
+  - Spec includes one paragraph describing what is canonical in THIS repo and what is planned.
+
+12. **P2 — Add a truth-first UI lint list for marketing claims (ban unbacked “ratings”, “App Store available”, “managed keys” etc).**
+
+- Evidence:
+  - Existing honesty tests exist for structured data: `apps/client/src/__tests__/marketing-structured-data.test.ts`.
+- Acceptance:
+  - Extend to scan rendered HTML for banned phrases/JSON-LD fields across both marketing surfaces.
 
 ---
 
-## Iter129 — Evidence-first tasks (10–15)
+## Recent shipped commits (git log -10)
 
-Each task includes priority, evidence, and acceptance criteria.
-
-### P0 (trust + correctness)
-
-1. **P0 — Eliminate raw `fetch('/api/v1/...')` usage in the client; standardize on `apiGet/apiPost` + `apiBase()`.**
-   - Evidence: `apps/client/src/screens/marketplace/AgentMarketplace.tsx`, `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`, `apps/client/src/components/AdminSearchConfigPanel.tsx`.
-   - Why: prevents auth/header drift and makes non-same-origin API deployments viable.
-   - Acceptance:
-     - `./rg -n "fetch\('/api/v1" apps/client/src` returns **0 matches**.
-     - Those screens continue to work in dev and in Playwright harness.
-
-2. **P0 — Marketplace router consolidation: remove/retire public in-memory `/marketplace` router or make it a thin proxy to DB-backed listing.**
-   - Evidence: `apps/api/src/routes/marketplace.ts` vs `apps/api/src/routes/marketplace-full.ts`, both mounted at `/api/v1/marketplace` in `apps/api/src/app.ts`.
-   - Why: current dual-router behavior can yield inconsistent course/agent lists depending on auth and creates maintenance risk.
-   - Acceptance:
-     - `GET /api/v1/marketplace/courses` returns the same shape and data source regardless of auth.
-     - `GET /api/v1/marketplace/agents` is single-sourced (manifest DB or file manifests) with clear MVP labeling.
-
-3. **P0 — Fix silent-failure enroll flow in Course Marketplace (must toast on failure).**
-   - Evidence: `apps/client/src/screens/marketplace/CourseMarketplace.tsx` has `catch { // silent fail }`.
-   - Screenshot context: `.../desktop/marketplace-courses.png` shows marketplace entrypoint where failures are user-visible.
-   - Acceptance:
-     - Enroll failures show an error toast with next steps.
-     - Errors include HTTP status/message when available (without leaking secrets).
-
-4. **P0 — Replace Dashboard hardcoded “Today 0/3” with real `/api/v1/daily` data + honest empty state.**
-   - Evidence: hardcoded `0/3` in `apps/client/src/screens/Dashboard.tsx`; API exists: `apps/api/src/routes/daily.ts`.
-   - Acceptance:
-     - Dashboard “Today” card reflects actual returned count/limit from `/api/v1/daily?limit=3`.
-     - If API fails, show “Today: unavailable (MVP)” instead of fake 0/3.
-     - Screenshot update: `screenshots/iter130/.../desktop/app-dashboard.png` shows non-hardcoded UI.
-
-### P1 (parity, reliability, and reducing misleading UX)
-
-5. **P1 — Agent Marketplace: route all requests through `apiBase()` and unify activation/list calls.**
-   - Evidence: `apps/client/src/screens/marketplace/AgentMarketplace.tsx` uses raw `fetch` and manual auth headers for list + activated + activate/deactivate.
-   - Acceptance:
-     - Switch to `apiGet('/marketplace/agents')`, `apiGet('/marketplace/agents/activated')`, `apiPost('/marketplace/agents/:id/activate')`.
-     - No duplicated token header code remains in this screen.
-
-6. **P1 — Subscription upgrade onboarding should use `apiPost('/subscription', ...)` and surface failure to the user.**
-   - Evidence: `apps/client/src/screens/onboarding/SubscriptionChoice.tsx` uses raw `fetch('/api/v1/subscription')` and ignores failures.
-   - Acceptance:
-     - Uses `apiPost('/subscription', { action: 'upgrade' })`.
-     - If upgrade fails, user sees an info toast: onboarding continues, but tier remains Free.
-
-7. **P1 — Admin Search Config Panel: use `apiGet/apiPut` helpers + handle 401/403 clearly.**
-   - Evidence: `apps/client/src/components/AdminSearchConfigPanel.tsx` uses raw fetch and generic errors.
-   - Acceptance:
-     - Uses centralized helpers.
-     - If non-admin hits it, display “Admin only” callout rather than generic failure.
-
-8. **P1 — Marketplace course detail consistency: ensure list→detail always works for a newly published course.**
-   - Evidence: detail route exists in full router (`apps/api/src/routes/marketplace-full.ts` `/courses/:id`), but list sources differ today.
-   - Acceptance:
-     - E2E/Playwright: publish course → verify it appears in list → open detail → enroll.
-     - Add/extend Playwright test (start from `b000880` coverage) to include detail open.
-
-9. **P1 — Pipeline screens: ensure all displayed pipeline data is provenance-labeled (real vs mock) on the screen.**
-   - Evidence: `apps/client/src/screens/PipelineView.tsx` uses `MOCK_PIPELINES`; screenshot `.../desktop/app-pipelines.png` shows pipelines entrypoint.
-   - Acceptance:
-     - A visible label on list screen: “Demo pipelines (mock data)” when mock array is in use.
-     - If/when real pipeline list exists, label flips to “Live pipelines”.
-
-### P2 (hygiene + docs + test coverage)
-
-10. **P2 — Add a small unit test to prevent re-introducing raw `/api/v1` fetches in client screens.**
-
-- Evidence: repeated reintroduction risk (multiple files currently use raw fetch).
-- Acceptance:
-  - A test (or lint rule) fails when `fetch('/api/v1/` appears under `apps/client/src/`.
-
-11. **P2 — Update docs: clarify that marketing pages are served by `apps/web` and client app has separate marketing screens; reduce ambiguity.**
-
-- Evidence: spec references `apps/web` and screenshots harness currently hits client routes (`/features`, `/pricing`, `/docs`).
-  - `apps/web/src/app/page.tsx` contains marketing homepage.
-  - Client also has marketing screens under `apps/client/src/screens/marketing/*`.
-- Acceptance:
-  - `README.md` (or a short `ARCHITECTURE.md` section) states which host/port serves which marketing surface in dev and in production.
-
-12. **P2 — Improve “MVP truth” discoverability: add a persistent Settings link or footer link from Dashboard to MVP truth.**
-
-- Evidence: MVP truth exists (`apps/client/src/screens/AboutMvpTruth.tsx`, screenshot `.../desktop/settings-about-mvp-truth.png`) but is buried.
-- Acceptance:
-  - Dashboard has an “About this MVP” link.
-  - Playwright screenshot `app-dashboard.png` clearly shows the link.
-
-13. **P2 — Add API contract test ensuring `/api/v1/daily` response schema stays stable.**
-
-- Evidence: endpoint in `apps/api/src/routes/daily.ts`; UI will depend on it after Task #4.
-- Acceptance:
-  - Test asserts keys: `date`, `limit`, `lessons[]` with `courseId, lessonId, estimatedTime, reason`.
+c36c8b4 Surface create-course pipeline errors instead of dead list
+292f2ae Fix Create Course button: pipeline hook uses apiPost/apiGet
+8521846 Filter courses list to user-owned courses
+d41006c Iter129: mark improvement queue done
+0280d5a Iter129: standardize API calls + marketplace parity + dashboard today
+3378903 Iter128: mark improvement queue done + refresh shipped commits
+d78ba55 Iter128: update build log for tasks 08-12
+86337a4 Iter128: add MVP truth regression test
+33f1854 Iter128: show toasts for key client-side error catches
+ee06955 Iter128: document screenshot harness canonical command
 
 ---
 
 ## OneDrive sync (required)
 
-After updating this queue + adding Iter129 screenshots/notes, run a non-destructive mirror sync:
+After updating this queue + adding Iter133 screenshots/notes, run a non-destructive mirror sync:
 
 ```bash
 rsync -av --progress \
