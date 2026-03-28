@@ -1,13 +1,14 @@
-# LearnFlow — Improvement Queue (Iter118)
+# LearnFlow — Improvement Queue (Iter119)
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
-Last updated: 2026-03-28 (Iteration 118 READY FOR BUILDER)
+Last updated: 2026-03-28 (Iteration 119 READY FOR BUILDER)
 
-Status: **DONE**
+Status: **IN PROGRESS**
 
 ## Recent shipped commits (git log -10 --oneline)
 
+- d82121a Iter118: MVP truth link + subscription flags + creator dashboard errors
 - 57cddcb Iter116: remove misleading publish wording + strip demo marketplace metrics
 - 451f374 Iter115: BYOAI-only truth + marketplace deactivate + OpenAPI updates
 - 078ace0 Iter114: UI truth fixes + demo labels + screenshot NOTES
@@ -17,13 +18,12 @@ Status: **DONE**
 - 4e42e09 Iter110 P0: Run now uses update-agent tick
 - 1935ef4 Iter110 P0: Run now uses update-agent tick
 - 485299c Iter108: parity fixes (screenshots outDir, spec limit, marketplace API)
-- 1cadf8e Iter107 P0: export MarketplaceAgentManifest, fix route typing, add dev:clean
 
 ---
 
 ## Queue hygiene (DO NOT SKIP)
 
-1. **Never regress the header iteration.** If you touch this file, the header must remain the _current_ iteration (now: Iter118).
+1. **Never regress the header iteration.** If you touch this file, the header must remain the _current_ iteration (now: Iter119).
 2. **Always set top-level Status** to one of: `READY FOR BUILDER` → `IN PROGRESS` → `DONE`.
 3. **Always include "Recent shipped commits"** from `git log -10 --oneline` after each planner/builder run.
 4. **Evidence-first tasks:** every task must cite at least one file, route, or screenshot.
@@ -33,465 +33,121 @@ Status: **DONE**
 
 ---
 
-## Iteration 118 — SPEC ↔ IMPLEMENTATION PARITY CHECK (post-Iter115/116)
+## Iteration 119 — SPEC ↔ IMPLEMENTATION PARITY CHECK (March 2026 spec)
 
-### Planner evidence (Iter118)
+### Planner evidence (Iter119)
 
 Screenshots + notes captured into:
 
-- Desktop: `learnflow/screenshots/iter118/planner-run/desktop/`
-- Mobile: `learnflow/screenshots/iter118/planner-run/mobile/`
-- Notes: `learnflow/screenshots/iter118/planner-run/NOTES.md`
+- Desktop: `learnflow/screenshots/iter119/planner-run/desktop/`
+- Mobile: `learnflow/screenshots/iter119/planner-run/mobile/`
+- Notes: `learnflow/screenshots/iter119/planner-run/NOTES.md`
 
 Harness used:
 
-- Desktop: `node screenshot-all.mjs learnflow/screenshots/iter118/planner-run/desktop --base http://localhost:3001`
-- Mobile: `node screenshot-mobile.mjs learnflow/screenshots/iter118/planner-run/mobile --base http://localhost:3001`
+- Desktop: `node screenshot-all.mjs learnflow/screenshots/iter119/planner-run/desktop --base http://localhost:3001`
+- Mobile: `node screenshot-mobile.mjs learnflow/screenshots/iter119/planner-run/mobile --base http://localhost:3001`
 
-### Brutally honest parity summary (Iter118)
+### Brutally honest parity summary (Iter119)
 
-- **Truth-in-UI has improved** materially in Iter115–Iter117 work (BYOAI-only, mock billing disclosure, pipeline publish wording, MVP truth panel, capability matrix). The remaining gaps are mostly about **empty states + capability semantics + docs/links hygiene + spec drift**.
-- **Iter117 appears not merged**: `BUILD_LOG_ITER117.md` exists, but `git log` does not show an Iter117 commit. Treat this as a release hygiene issue (see tasks).
+**This repo is a web-first MVP and is fairly honest about that (spec §3.2.0), but many other spec sections still read like production (native apps, gRPC mesh, Stripe/IAP, etc.).** The implementation is strongest in:
+
+- **Auth + profile context**: `/api/v1/auth/*` (`apps/api/src/auth.ts`), `/api/v1/profile/context` (`apps/api/src/routes/profile.ts`).
+- **BYOAI API key vault**: CRUD + encryption-at-rest using AES-256-GCM (`apps/api/src/keys.ts`, `apps/api/src/crypto.ts`).
+- **WebSocket streaming contract**: `/ws` server implements spec §11.2 event names (`apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`).
+- **Update Agent (Pro) scheduling entrypoint**: canonical `POST /api/v1/update-agent/tick` (`apps/api/src/routes/update-agent.ts`) + UI “Run now” uses tick (`apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`).
+- **Exports**: `GET /api/v1/export?format=md|json|zip` with Pro gating (JSON/ZIP), plus source provenance in payload (`apps/api/src/routes/export.ts`, Settings UI `apps/client/src/screens/ProfileSettings.tsx`).
+- **Marketplace (MVP)**: publish/search/detail/reviews/creator dashboard, plus agent activation list (routing-preference only) (`apps/api/src/routes/marketplace-full.ts`, `apps/client/src/screens/marketplace/*`).
+
+The **largest gaps vs spec** are:
+
+- **Native apps** (spec §5.1): not implemented; marketing and onboarding correctly position “web-first MVP” in places (`apps/client/src/screens/marketing/Pricing.tsx` FAQ; spec needs stronger cross-links).
+- **Billing** (spec §5.2.1 + §8): still mock. Server literally returns `billingMode: 'mock'` (`apps/api/src/routes/subscription.ts`); UI discloses mock billing (`apps/client/src/screens/marketing/Pricing.tsx`).
+- **Agent marketplace “SDK + sandboxed third-party code loading”** (spec §7.2): not real; server supports agent submission + activation, but execution is routed to built-in agents with disclosure (`apps/api/src/routes/marketplace-full.ts`, `apps/api/src/wsOrchestrator.ts`).
 
 ---
 
-## Iter118 — Top tasks (10–15) READY FOR BUILDER
+## Iter119 — Top tasks (10–15) READY FOR BUILDER
 
-### P0 — Trust, correctness, and “don’t leak fake/host-specific links”
+### P0 — Trust & parity (users should never infer features that do not exist)
 
-1. **P0 — Remove hardcoded upstream GitHub link in MVP Truth page; make it deployment-local**
+1. **P0 — Spec §5.1 platform claims vs actual web-first MVP: add prominent “MVP platform matrix” callouts in marketing + docs**
 
-- Problem: `AboutMvpTruth` links to `https://github.com/learnflow/learnflow/...` which may be wrong for forks / offline installs and is user-trust poison.
-- Evidence: `apps/client/src/screens/AboutMvpTruth.tsx`.
-- Fix options:
-  - Link to in-app `/docs` anchor (preferred), OR
-  - Link to a server-hosted `/api/v1/docs/spec` or static doc page served from this deployment.
+- Evidence: spec claims native apps (§5.1); marketing already says “web-first MVP” in Pricing FAQ (`apps/client/src/screens/marketing/Pricing.tsx`).
+- Deliverable: add a small, consistent callout block on **Home / Download / Docs** that clarifies what’s shipping in this deployment (web only) + what is planned.
+- Files: `apps/client/src/screens/marketing/Home.tsx`, `apps/client/src/screens/marketing/Download.tsx`, `apps/client/src/screens/marketing/Docs.tsx`, plus maybe `LearnFlow_Product_Spec.md` cross-link.
 
-2. **P0 — Subscription `/api/v1/subscription` has contradictory feature flags (`managedApiKeys` always false) vs capability tiles**
+2. **P0 — Subscription: unify truth between `features` and `capabilities` to eliminate drift**
 
-- Problem: server returns both `features` and `capabilities`; `features.managedApiKeys` is hardcoded false while UI is now capability-driven. Risk of drift/confusion.
-- Evidence: `apps/api/src/routes/subscription.ts` (`managedApiKeys: false`, plus `capabilities`).
-- Acceptance: either deprecate `features` or make it derived entirely from capabilities (no bespoke truth).
+- Problem: `/api/v1/subscription` returns both `features` and `capabilities` (`apps/api/src/routes/subscription.ts`). UI is capability-driven in multiple places; `features` is now redundant and can contradict.
+- Acceptance: Either (a) remove `features` from server response, OR (b) derive `features` entirely from `CAPABILITY_MATRIX` and document `features` as deprecated.
+- Files: `apps/api/src/routes/subscription.ts`, `apps/client/src/screens/ProfileSettings.tsx`.
 
-3. **P0 — Creator Dashboard error handling still says “keep mocks” (but mocks are removed) → show explicit empty states instead of silent swallow**
+3. **P0 — Onboarding “Start Pro” flow doesn’t actually upgrade tier; either call upgrade API or label as “choose later”**
 
-- Problem: `catch { // keep mocks }` now masks real failures and can show stale/empty UI without explanation.
-- Evidence: `apps/client/src/screens/marketplace/CreatorDashboard.tsx` catch block; screenshots: `learnflow/screenshots/iter118/planner-run/desktop/marketplace-*`.
-- Acceptance: show one of:
-  - “Please sign in to view creator dashboard”, or
-  - “No creator data yet”, or
-  - “Failed to load — retry”.
+- Evidence: `apps/client/src/screens/onboarding/SubscriptionChoice.tsx` collects email in modal but never calls `/api/v1/subscription`.
+- Acceptance: If user selects Pro in onboarding, call `POST /api/v1/subscription { action:'upgrade' }` (mock) and reflect Pro in settings/capabilities; OR rename to “Interested in Pro” and don’t imply upgrade.
+- Files: `apps/client/src/screens/onboarding/SubscriptionChoice.tsx`, API: `apps/api/src/routes/subscription.ts`.
 
-4. **P0 — Iteration hygiene: reconcile Iter117 work vs git history (missing commit)**
+4. **P0 — Marketplace publish: reconcile “quality checks” with spec requirement for attribution compliance**
 
-- Problem: Iter117 build log exists, but `git log` shows latest as Iter116. Risk: work not shipped or got squashed without updating queue.
-- Evidence: `BUILD_LOG_ITER117.md` vs `git log -10 --oneline`.
-- Acceptance: builder should confirm whether Iter117 changes exist on disk, were reverted, or simply not committed; then update `BUILD_LOG_ITER117.md` + commit history accordingly.
+- Evidence: server QC checks are based on numeric inputs and/or best-effort computed from library course (`qualityCheck()` in `apps/api/src/routes/marketplace-full.ts`). Creator dashboard currently asks user to input QC numbers (MVP note) (`apps/client/src/screens/marketplace/CreatorDashboard.tsx`).
+- Acceptance: For publish flow using `courseId`, compute QC server-side and **remove manual QC inputs** (or hide them behind “advanced/debug”).
+- Files: `apps/client/src/screens/marketplace/CreatorDashboard.tsx`, `apps/api/src/routes/marketplace-full.ts`.
 
-### P1 — Product coherence / docs / capability semantics
+5. **P0 — API keys: implement usage dashboard requirements from spec §4.4 (“per-agent token counts”) or reword spec-facing copy**
 
-5. **P1 — Pro Features tile logic labels Free features incorrectly (currently uses `pro = !enabled`)**
+- Evidence: keys list includes usageCount/lastUsed in `GET /api/v1/keys` (`apps/api/src/keys.ts`), but not per-agent tokens by key; WS usage persistence is best-effort with tokensTotal placeholder (`apps/api/src/wsOrchestrator.ts`).
+- Acceptance: either produce a real usage dashboard endpoint (by provider + agent + time window) and use it in Settings, OR remove “token counts” promises from user-facing copy.
+- Files: `apps/api/src/routes/usage.ts`, `apps/api/src/keys.ts`, `apps/api/src/wsOrchestrator.ts`, `apps/client/src/screens/ProfileSettings.tsx`.
 
-- Problem: In `ProfileSettings`, tiles are labeled “PRO” when capability disabled; but the list mixes descriptive strings like “3 courses” and “Basic agents” that should not be keyed to Pro gating.
-- Evidence: `apps/client/src/screens/ProfileSettings.tsx` Pro Features list.
-- Acceptance: split into two lists:
-  - “Included in Free” (static),
-  - “Unlocked with Pro” (capability-driven).
+### P1 — UX completeness & empty states
 
-6. **P1 — Export truth: capability `export.data` is true for Pro, but API still returns 501 for pdf/scorm**
+6. **P1 — Creator dashboard: add explicit empty state + retry; avoid silent “demo swallow” behavior**
 
-- Problem: capability indicates export exists; but some formats are explicitly unimplemented.
-- Evidence: `packages/shared/src/plan/index.ts` (`export.data: true`), API `apps/api/src/routes/export.ts` (501 for `pdf|scorm`).
-- Acceptance: capabilities should be format-specific (e.g. `export.json`, `export.md`) or UI must clearly gate formats.
+- Evidence: `CreatorDashboard.tsx` has `loadError` state but demo mode can mask real failures.
+- Acceptance: show: (a) unauth gate, (b) no courses yet, (c) error + retry button.
+- Files: `apps/client/src/screens/marketplace/CreatorDashboard.tsx`.
 
-7. **P1 — Marketplace publish capability is enabled for Free (`marketplace.publish: true`) — confirm intended**
+7. **P1 — Marketplace courses: implement “filter by duration/rating/free/paid” spec subset or remove those UI affordances**
 
-- Problem: free users may be able to publish; if not intended, cap matrix is wrong.
-- Evidence: `packages/shared/src/plan/index.ts` for Free enabled `marketplace.publish: true`.
-- Acceptance: decide product policy and align server checks + UI.
+- Evidence: spec §5.2.7; current API search supports keyword/topic/difficulty/maxPrice (`apps/api/src/routes/marketplace-full.ts` searchSchema; `apps/api/src/routes/marketplace.ts`).
+- Acceptance: either expand server schema and UI filters, or keep only what’s supported and document constraints in UI.
+- Files: `apps/client/src/screens/marketplace/CourseMarketplace.tsx`, `apps/api/src/routes/marketplace-full.ts`.
 
-8. **P1 — WebSocket dev-auth doc should mirror exact server condition and mention `config.devMode` rate-limit behavior**
+8. **P1 — Conversation UI: add “agent activity indicator” parity with spec §5.2.3 using existing WS events**
 
-- Evidence: docs `apps/docs/pages/websocket-events.md`; server `apps/api/src/websocket.ts` (dev token) + rate limiting uses `config.devMode`.
-- Acceptance: update docs for precise conditions; include troubleshooting snippet.
+- Evidence: server emits `agent.spawned/agent.complete` + `response.start/chunk/end` (`apps/api/src/wsOrchestrator.ts`), spec explicitly requires this (§5.2.3).
+- Acceptance: show a subtle indicator listing current agent(s) working, derived from WS events.
+- Files: `apps/client/src/screens/Conversation.tsx`, `apps/client/src/hooks/useWebSocket.ts`.
 
-9. **P1 — Update Agent scheduling docs + UI: ensure only one canonical “Run now” path is emphasized (`/update-agent/tick`)**
+9. **P1 — Profile > Data: implement “view everything tracked about you” (spec §9.3) in UI**
 
-- Evidence: `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`; API `apps/api/src/routes/update-agent.ts`.
-- Acceptance: audit any leftover surfaces calling `/notifications/generate` as primary.
+- Evidence: spec says Profile > Data; server provides `GET /api/v1/profile/context` and `GET /api/v1/profile/data-summary` (`apps/api/src/routes/profile.ts`).
+- Acceptance: add a “Data” tab in Settings that surfaces the server’s data summary in a user-auditable list.
+- Files: `apps/client/src/screens/ProfileSettings.tsx`, API: `apps/api/src/routes/profile.ts`.
 
-### P2 — QA / regression guards / docs parity
+### P2 — Docs & engineering hygiene
 
-10. **P2 — Add regression guard against IMPROVEMENT_QUEUE header regression (CI or pre-commit)**
+10. **P2 — OpenAPI parity audit: ensure endpoints used by the client are present (or explicitly excluded)**
 
-- Problem: file keeps regressing to Iter114 header across agent runs.
-- Evidence: repeated regression noted in planner context.
-- Acceptance: add a lightweight check script (e.g., fails if header iteration < highest shipped iter in BUILD*LOGs) OR document a manual rule (see hygiene above). *(Planner note: I did not modify prod code per constraints.)\_
+- Evidence: spec §11; OpenAPI file: `apps/api/openapi.yaml`; routes include keys/profile/subscription/export/marketplace/update-agent.
+- Acceptance: verify all client-called endpoints are documented; if not, add or add a “not documented in MVP” section.
 
-11. **P2 — Docs/contract parity: ensure OpenAPI contains the endpoints used by Settings and Marketplace**
+11. **P2 — Screenshot harness wrapper**
 
-- Evidence: OpenAPI `apps/api/openapi.yaml`; routes under `apps/api/src/routes/*`; Settings hits `/profile/data-summary`, `/profile/context`, `/keys`, `/subscription`.
-- Acceptance: verify these are documented or explicitly excluded with a rationale.
+- Evidence: we run `screenshot-all.mjs` + `screenshot-mobile.mjs` manually; Iter119 artifacts exist (73 files) under `learnflow/screenshots/iter119/planner-run/`.
+- Acceptance: add `npm run screenshots -- --iter 119 --base http://localhost:3001` wrapper that runs both scripts and updates NOTES.md.
+- Files: `package.json`, `screenshot-*.mjs`.
 
-12. **P2 — Screenshot harness wrapper command**
+12. **P2 — Spec hygiene: add a "MVP reality" banner at the top of future-state sections (native apps, gRPC mesh, Stripe/IAP, third-party agent sandbox)**
 
-- Problem: two scripts run manually; still easy to forget mobile or NOTES.
-- Evidence: `screenshot-all.mjs`, `screenshot-mobile.mjs`.
-- Acceptance: add `npm run screenshots -- --iter 118 --base http://localhost:3001` wrapper script to run both and stamp NOTES (already created by scripts).
+- Evidence: spec has an MVP disclaimer in §3.2.0, but later sections (e.g., §5.1, §8, §7.2) still read as shipped.
+- Acceptance: small callouts in spec itself clarifying “planned / not in this build”.
+- Files: `LearnFlow_Product_Spec.md`.
 
 ---
 
 ## Prior iterations (history — keep below)
 
----
-
-## Iteration 114 — SPEC ↔ IMPLEMENTATION PARITY AUDIT + PRIORITIZED FIX LIST
-
-Status: **DONE**
-
-### Planner evidence (Iter114)
-
-Screenshots + notes captured into:
-
-- Desktop: `learnflow/screenshots/iter114/planner-run/`
-- Mobile: `learnflow/screenshots/iter114/planner-run/mobile/`
-- Notes: `learnflow/screenshots/iter114/planner-run/NOTES.md`
-
-Harness used:
-
-- Desktop: `node screenshot-all.mjs screenshots/iter114/planner-run --base http://localhost:3001`
-- Mobile: `node screenshot-mobile.mjs screenshots/iter114/planner-run/mobile --base http://localhost:3001`
-
-Key evidence files/endpoints referenced below:
-
-- Spec: `LearnFlow_Product_Spec.md` (explicit MVP disclosure exists in §3.2.0, but many other sections still read as future-state)
-- UI routes (client): `apps/client/src/App.tsx` + `apps/client/src/screens/*`
-- API routers (not exhaustive):
-  - Auth + tiers: `apps/api/src/auth.ts`, `apps/api/src/routes/subscription.ts`
-  - Keys vault + encryption: `apps/api/src/keys.ts`, `apps/api/src/crypto.ts`, `apps/api/src/llm/providers.ts`
-  - WebSockets: `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`, docs `apps/docs/pages/websocket-events.md`
-  - Update Agent: `apps/api/src/routes/update-agent.ts` + RSS runner `apps/api/src/utils/updateAgent/runTopic.ts`
-  - Export: `apps/api/src/routes/export.ts`
-  - Marketplace full (mock checkout/payouts): `apps/api/src/routes/marketplace-full.ts`
-  - Privacy delete: `DELETE /api/v1/delete-my-data` → `apps/api/src/routes/delete-my-data.ts`
-  - Usage: `apps/api/src/routes/usage.ts`
-- OpenAPI: `apps/api/openapi.yaml` (includes `x-learnflow.websocket`)
-
----
-
-## Brutally honest parity summary (Iter114)
-
-### What’s genuinely implemented end-to-end (MVP)
-
-1. **Web-first MVP is now consistently stated in marketing docs**
-
-- Evidence: `apps/client/src/screens/marketing/Docs.tsx` (Installation: “web-first MVP”).
-
-2. **API key vault encryption is real (AEAD default)**
-
-- Evidence: `apps/api/src/crypto.ts` defaults to `aes-256-gcm` (`encVersion: v2_gcm`), legacy CBC decrypt support.
-- Boot validation: `apps/api/src/index.ts` refuses prod startup without proper `ENCRYPTION_KEY` and non-fallback `JWT_SECRET`.
-
-3. **WebSocket product surface is real and documented**
-
-- Server: `apps/api/src/websocket.ts`.
-- Orchestrator streaming + activity events: `apps/api/src/wsOrchestrator.ts`.
-- Docs: `apps/docs/pages/websocket-events.md`.
-- OpenAPI annotation: `apps/api/openapi.yaml` includes `x-learnflow.websocket.path: /ws` and `eventsDoc`.
-
-4. **Update Agent (Pro-only) runs exist with explicit “external cron” expectation**
-
-- Spec acknowledges manual tick + RSS-only MVP in §3.2.0.
-- Endpoint evidence: `POST /api/v1/update-agent/tick` in `apps/api/src/routes/update-agent.ts`.
-
-5. **Privacy: delete-my-data endpoint exists**
-
-- Evidence: `DELETE /api/v1/delete-my-data` → `apps/api/src/routes/delete-my-data.ts` and UI callsite in `apps/client/src/screens/ProfileSettings.tsx`.
-
-6. **Free-tier course limit enforced server-side**
-
-- Evidence: `POST /api/v1/courses` enforces FREE_LIMIT=3 for non-pro: `apps/api/src/routes/courses.ts`.
-
-### Where spec is still “future state” (and risks user trust if mirrored in user-facing copy)
-
-- Spec §1 + §5.1 claim macOS/Windows/iOS/Android native apps; repo is web-first MVP (though docs now say this correctly).
-- Spec talks about gRPC mesh/K8s/vector DB, but MVP section already flags this (§3.2.0). The problem is not the existence of future state — it’s _how easily a reader misses the MVP constraints_.
-
----
-
-## Iter114 — Top tasks (10–15) DONE
-
-### P0 — Correctness, trust, and “don’t lie in the UI”
-
-1. **P0 — Fix Plan/Capability mismatch: “Managed API keys” (server supports env keys, plan says not available)**
-
-- Problem: Shared plan defs hard-disable `keys.managed`, and UI says “Managed API keys (not available in this build)”, but server can still use env-managed keys for Pro (`managed_env`) when env vars exist.
-- Evidence:
-  - Plan defs: `packages/shared/src/plan/index.ts` sets `'keys.managed': false` for both free/pro.
-  - UI label: `apps/client/src/screens/ProfileSettings.tsx` (“Managed API keys (not available in this build)”).
-  - Server behavior: `apps/api/src/llm/providers.ts` returns `{ kind: 'managed_env' }` when `tier === 'pro' && envKey`.
-- Acceptance:
-  - Decide product truth and implement consistently:
-    - Option A (recommended): keep `keys.managed` **false** and remove/disable env fallback for Pro, OR
-    - Option B: make `keys.managed` **conditional** on server config and expose it:
-      - Add server capability detection (e.g., env vars present) → surface in `/api/v1/subscription` features.
-      - Update UI copy to “Managed keys available on this deployment” only when true.
-
-2. **P0 — Settings: remove hardcoded “API calls this month 1,234 / 10,000”**
-
-- Problem: Fake numbers in a “Subscription Management” section are user-trust poison.
-- Evidence: `apps/client/src/screens/ProfileSettings.tsx` hardcodes `1,234 / 10,000`.
-- Acceptance:
-  - Replace with real metrics from `GET /api/v1/usage/dashboard` or remove the entire meter until real.
-
-3. **P0 — Marketplace Creator Dashboard: remove/flag mock analytics + mock courses/earnings OR make it obviously demo**
-
-- Problem: Creator dashboard currently uses extensive `MOCK_*` datasets and falls back silently; looks real.
-- Evidence: `apps/client/src/screens/marketplace/CreatorDashboard.tsx` defines `MOCK_COURSES`, `MOCK_ANALYTICS`, `MOCK_EARNINGS` and “MVP: placeholder quality inputs”.
-- Acceptance:
-  - Either wire all tiles to server payload and show empty-state when none, OR add a visible “Demo data” badge + explanatory copy.
-
-4. **P0 — Pipeline “Publish to Marketplace” is a stage flip, not a marketplace publish**
-
-- Problem: UI lets users “Publish to Marketplace”, but API endpoint only flips pipeline stage to `published` — it does not create a marketplace course entry.
-- Evidence:
-  - Client: `apps/client/src/components/pipeline/PipelineView.tsx` calls `POST /api/v1/pipeline/:id/publish`.
-  - API: `apps/api/src/routes/pipeline.ts` `/publish` just `updatePipeline(p, { stage: 'published' })`.
-  - Real marketplace publish lives elsewhere: `apps/api/src/routes/marketplace-full.ts`.
-- Acceptance:
-  - Either rename button to “Mark Published” / “Finish Pipeline”, OR actually call marketplace publish and create a published course record.
-
-5. **P0 — WebSocket docs: fix “token=dev accepted” claim to match server reality**
-
-- Problem: Docs say `token=dev` is accepted when `LEARNFLOW_DEV_AUTH=1`, but server checks `LEARNFLOW_DEV_AUTH` _and_ `config.devMode` gates are elsewhere; users can get confused.
-- Evidence:
-  - Docs: `apps/docs/pages/websocket-events.md`.
-  - Server: `apps/api/src/websocket.ts` dev token accepted only if `NODE_ENV!=production` and `LEARNFLOW_DEV_AUTH=1|true`.
-- Acceptance:
-  - Clarify exact env requirements in docs (mirror the condition precisely).
-
-### P1 — Product coherence / gating / UX polish
-
-6. **P1 — Subscription endpoint: surface capabilities from shared plan definitions everywhere**
-
-- Problem: `/api/v1/subscription` returns a bespoke `FeatureFlags` shape; it partially mirrors capabilities but also hardcodes `managedApiKeys: false`.
-- Evidence: `apps/api/src/routes/subscription.ts` and `apps/api/src/lib/capabilities.ts` + `packages/shared/src/plan/index.ts`.
-- Acceptance:
-  - Return `capabilities` (CapabilityId → boolean) and let UI derive feature tiles from that; deprecate bespoke flags.
-
-7. **P1 — Export: reconcile spec + UI with reality (PDF/SCORM stubs)**
-
-- Evidence: `apps/api/src/routes/export.ts` returns 501 for `format=pdf|scorm`.
-- Acceptance:
-  - Either implement minimal PDF/SCORM, or hide/gate endpoints and label in UI + docs as planned.
-
-8. **P1 — Marketplace checkout/payouts: ensure all UI surfaces clearly say “mock billing”**
-
-- Problem: API returns `billingMode: 'mock'`, but UI should consistently disclose.
-- Evidence: `apps/api/src/routes/marketplace-full.ts`.
-- Acceptance:
-  - Add badges/copy in marketplace checkout flows and creator earnings.
-
-9. **P1 — Usage + limits: formalize what “limits” exist for BYOAI and Pro**
-
-- Problem: There is rate limiting + free course cap + token usage dashboards, but the product copy mixes “BYOK spend” with “platform limits”.
-- Evidence:
-  - Rate limiter: `apps/api/src/rateLimit.ts` + `apps/api/src/app.ts`.
-  - Usage endpoints: `apps/api/src/routes/usage.ts`.
-- Acceptance:
-  - Make pricing page + settings show the correct constraints (course count, update agent, export, etc.) and not invented “10,000 calls”.
-
-### P2 — DevEx / QA / iteration hygiene
-
-10. **P2 — Screenshot harness: ensure it always writes NOTES.md automatically**
-
-- Problem: Iter114 required manual creation of `NOTES.md`.
-- Evidence: `learnflow/screenshots/iter114/planner-run/NOTES.md` was missing until created.
-- Acceptance:
-  - Update `screenshot-all.mjs` / `screenshot-mobile.mjs` (or wrapper script) to always create/append a run notes template.
-
-11. **P2 — OpenAPI parity: add missing UI-used endpoints and verify docs paths**
-
-- Problem: OpenAPI is good, but needs continuous parity with routes + WS contract doc references.
-- Evidence: `apps/api/openapi.yaml` includes `x-learnflow.websocket`, but other drift tends to accumulate each iteration.
-- Acceptance:
-  - Add/keep CI test that diffs route registry vs openapi paths.
-
-12. **P2 — Make “MVP truth” impossible to miss (single canonical page in-app)**
-
-- Problem: Spec has MVP section, but user-facing clarity should live in app/marketing.
-- Evidence: `apps/client/src/screens/marketing/Docs.tsx` does this partially.
-- Acceptance:
-  - Add a “What’s in MVP vs planned” screen in-app (Settings → About) that lists: mock billing, mock creator analytics, env-managed keys behavior, export stubs.
-
----
-
-# LearnFlow — Improvement Queue (Iter111)
-
-Owner: Builder  
-Planner: Ash (planner subagent)  
-Last updated: 2026-03-28 (Iteration 111 READY FOR BUILDER)
-
----
-
-## Iteration 111 — SPEC ↔ IMPLEMENTATION PARITY AUDIT + PRIORITIZED FIX LIST
-
-Status: **DONE**
-
-### Planner evidence (Iter111)
-
-Screenshots + notes captured into:
-
-- Desktop: `learnflow/screenshots/iter111/planner-run/desktop/`
-- Mobile: `learnflow/screenshots/iter111/planner-run/mobile/`
-- Notes: `learnflow/screenshots/iter111/planner-run/NOTES.md`
-
-Harness used:
-
-- Desktop: `node screenshot-all.mjs ... --base http://localhost:3001 --iter 111`
-- Mobile: `node screenshot-mobile.mjs ... --base http://localhost:3001 --iter 111`
-
-Key evidence files/endpoints referenced below:
-
-- Spec: `LearnFlow_Product_Spec.md` (includes explicit “MVP architecture (this repo, today)” section §3.2.0)
-- UI routes (client): `apps/client/src/App.tsx` + `apps/client/src/screens/*`
-- Marketing site (Next): `apps/web/src/app/*`
-- API routers:
-  - Update Agent: `apps/api/src/routes/update-agent.ts` + RSS runner `apps/api/src/utils/updateAgent/runTopic.ts`
-  - Export: `apps/api/src/routes/export.ts`
-  - Marketplace full: `apps/api/src/routes/marketplace-full.ts`
-  - Marketplace agent manifest resolution: `apps/api/src/routes/marketplace-agent-manifests.ts`, `apps/api/src/lib/marketplaceAgents.ts`
-  - WebSockets: `apps/api/src/websocket.ts`, orchestrator `apps/api/src/wsOrchestrator.ts`
-- Core routing: `packages/core/src/orchestrator/intent-router.ts`
-
-### Brutally honest parity summary (Iter111)
-
-#### What’s genuinely implemented end-to-end (MVP)
-
-- **Onboarding flow (6 screens)** exists and is screenshot-harnessed.
-  - Evidence: screenshots `onboarding-1..6-*.png` + client onboarding screens.
-
-- **Conversation screen with WebSocket streaming** exists and shows agent activity.
-  - Evidence:
-    - WS server: `apps/api/src/websocket.ts` (events: `response.start/chunk/end`, `agent.spawned/complete`, etc.)
-    - Client handling: `apps/client/src/screens/Conversation.tsx` (`agent.spawned`, `response.chunk`, etc.)
-
-- **Update Agent (Pro) is real as an RSS/Atom-only trust loop** with:
-  - Global per-user lock and in-process guard
-  - Per-source backoff via `nextEligibleAt`
-  - Run history endpoint
-  - Evidence:
-    - `POST /api/v1/update-agent/tick` + `GET /api/v1/update-agent/runs`: `apps/api/src/routes/update-agent.ts`
-    - RSS run: `apps/api/src/utils/updateAgent/runTopic.ts`
-    - Scheduling docs: `apps/docs/pages/update-agent-scheduling.md`
-
-- **Marketplace course publishing QC has improved**: server can compute QC fields if a `courseId` is provided.
-  - Evidence: `apps/api/src/routes/marketplace-full.ts` publish route recomputes `lessonCount`, best-effort `attributionCount`, and `readabilityScore`.
-
-- **Secrets hardening in production is present**.
-  - Evidence: boot-time validation refuses to start in `NODE_ENV=production` if `JWT_SECRET` is fallback or `ENCRYPTION_KEY` not 64-hex: `apps/api/src/index.ts`.
-
-#### Where the spec is “future state” vs repo reality (expected) — but still needs clearer product truth
-
-The spec does include §3.2.0 acknowledging MVP vs future stack; however, several _user-facing_ surfaces still imply stronger capabilities than delivered:
-
-- **Marketing metrics are fictional** (likely intended as placeholders, but they read as claims):
-  - Evidence: `apps/client/src/screens/marketing/Home.tsx` hardcodes "50,000+ courses", "12,000+ learners", etc.
-
-- **Docs contain at least one contradiction about collaboration/mindmaps**:
-  - Evidence: `apps/client/src/screens/marketing/Docs.tsx` says “Real-time shared mindmaps are planned (not yet available)”, but Yjs real-time mindmap sync exists in this repo (`apps/api/src/yjsServer.ts`, client `useMindmapYjs.ts`).
-
-- **WebSocket is a first-class product surface, but it’s not in OpenAPI**.
-  - Evidence: `/ws` not present in `apps/api/openapi.yaml`; WS contract exists in `apps/api/src/websocket.ts` and tests (e.g., `apps/api/src/__tests__/ws-contract.test.ts`).
-
-- **Export formats PDF/SCORM are still stubs**.
-  - Evidence: `apps/api/src/routes/export.ts` returns 501 for `format=pdf|scorm`; UI already labels them “Coming soon” in `apps/client/src/screens/ProfileSettings.tsx`.
-
-- **Marketplace agents are “routing manifests”, not executable third-party code** (this is disclosed in UI, which is good).
-  - Evidence:
-    - UI disclosure: `apps/client/src/screens/marketplace/AgentMarketplace.tsx`
-    - Routing: `packages/core/src/orchestrator/intent-router.ts`
-    - Manifest resolver: `apps/api/src/lib/marketplaceAgents.ts`
-
----
-
-## Iter111 — Top tasks (10–15) READY FOR BUILDER
-
-### P0 — User trust / contradictions / correctness
-
-1. **P0 — Remove or clearly label fictional marketing metrics**
-
-- **Problem**: Hardcoded “50,000+ courses / 12,000+ learners / 4.9 rating / 98% completion” reads like real traction claims.
-- **Evidence**: `apps/client/src/screens/marketing/Home.tsx` (`METRICS` constant).
-- **Acceptance**: Replace with (a) no metrics, (b) “beta” counters from real analytics, or (c) explicit “demo” labeling.
-
-2. **P0 — Docs correctness: fix real-time mindmap/collaboration statements**
-
-- **Problem**: Docs say real-time shared mindmaps are not available; in repo they are (Yjs).
-- **Evidence**: `apps/client/src/screens/marketing/Docs.tsx` vs `apps/api/src/yjsServer.ts` + client `apps/client/src/hooks/useMindmapYjs.ts`.
-- **Acceptance**: Update docs to accurately describe what is real now, and what is planned.
-
-3. **P0 — WebSocket contract documentation: add /ws to OpenAPI (or a dedicated contract doc surfaced in Docs)**
-
-- **Problem**: WebSocket is essential (conversation streaming + agent activity), but the main API contract file does not mention it.
-- **Evidence**: `/ws` missing from `apps/api/openapi.yaml`; contract emitted at connect: `apps/api/src/websocket.ts` (sends `ws.contract`).
-- **Acceptance**:
-  - Either extend OpenAPI with a WS section (nonstandard but documented), OR
-  - Add `/docs` page that enumerates event names, inbound/outbound shapes, requestId semantics.
-
-4. **P0 — Update Agent: ensure “tick” is the primary UX path everywhere; keep “selected topic only” as explicitly advanced**
-
-- **Problem**: This was a prior mismatch in Iter110; current UI now has both (good), but ensure copy and buttons align with “canonical scheduler entrypoint.”
-- **Evidence**: `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx` uses `/update-agent/tick` for “Run now” and `/notifications/generate` for advanced.
-- **Acceptance**: Keep as-is but confirm labeling + any other surfaces still calling `/notifications/generate` for main run.
-
-5. **P0 — Export: prevent dead-end 501s from being discoverable via URL guessing (optional)**
-
-- **Problem**: Pro users can hit `/api/v1/export?format=pdf` and get 501.
-- **Evidence**: `apps/api/src/routes/export.ts`.
-- **Acceptance**: Either implement minimal PDF/SCORM MVP, or return 403/404 with clearer messaging + docs, or gate behind feature flag.
-
-### P1 — Product completeness / platform coherence
-
-6. **P1 — Platform matrix truth: spec says native (mac/win/iOS/Android), repo is web MVP**
-
-- **Problem**: Spec §1/§5.1 claims 4 native platforms; MVP is web-first.
-- **Evidence**: spec §5.1 vs actual code: `apps/client` (React SPA) + `apps/web` (Next marketing).
-- **Acceptance**: Add a prominent “MVP: web-first” disclaimer to user-facing docs/marketing (not only buried in spec §3.2.0).
-
-7. **P1 — Marketplace Agents: tighten the taxonomy mismatch (capabilities vs taskTypes vs requiredProviders)**
-
-- **Problem**: Agent manifests in `packages/agents/*/manifest.json` use varied fields (`capabilities`, `requiredProviders`) while marketplace routing expects `taskTypes` and `routesToAgentName`.
-- **Evidence**: `packages/core/src/orchestrator/intent-router.ts` uses `taskType` matching; marketplace resolver reads `taskTypes || capabilities` in `apps/api/src/lib/marketplaceAgents.ts`.
-- **Acceptance**: Standardize on one vocabulary across built-in agent manifests + marketplace manifests; document it.
-
-8. **P1 — Subscription feature flags: managedApiKeys remains false even when env-managed keys exist**
-
-- **Problem**: Subscription status response says `managedKeyAccess` false even though Pro can use env-managed keys in some deployments.
-- **Evidence**: `apps/api/src/routes/subscription.ts` sets `managedApiKeys: false`; providers selection logic in `apps/api/src/llm/providers.ts` (managed keys exist when env vars provided).
-- **Acceptance**: Reflect reality: if server has managed keys configured, expose that in `features` and UI.
-
-9. **P1 — Collaboration: spec implies real-time messaging + peer matching; current is CRUD-style**
-
-- **Problem**: Collaboration is present but not “real-time chat”; set expectations in UI.
-- **Evidence**: API `apps/api/src/routes/collaboration.ts` + client `apps/client/src/screens/Collaboration.tsx`.
-- **Acceptance**: Update copy + add basic realtime via WS (or explicitly label “async/groups MVP”).
-
-### P2 — DevEx / QA / operational polish
-
-10. **P2 — Screenshot harness: create a single command that captures both desktop+mobile to an iteration folder**
-
-- **Problem**: We run two scripts manually.
-- **Evidence**: `screenshot-all.mjs`, `screenshot-mobile.mjs`.
-- **Acceptance**: Add `npm run screenshots -- --iter 111` wrapper that writes `NOTES.md` and runs both.
-
-11. **P2 — Add a lightweight “Spec parity checklist” doc (or extend IMPLEMENTED_VS_SPEC.md)**
-
-- **Problem**: `IMPLEMENTED_VS_SPEC.md` exists but is Iter106 and can drift.
-- **Evidence**: `IMPLEMENTED_VS_SPEC.md` header says Iter106.
-- **Acceptance**: Update that file per iteration, or add a new rolling parity doc with dated entries.
-
-12. **P2 — OpenAPI parity: ensure newly added endpoints are documented (Update Agent runs, marketplace agent manifest resolve, etc.)**
-
-- **Evidence**: OpenAPI exists; WS missing; verify update-agent runs + agent manifest resolve are present and correct.
-- **Acceptance**: CI/test to block drift.
+(kept in `IMPROVEMENT_QUEUE.backup.iter118.md` for Iter118+ history retention)

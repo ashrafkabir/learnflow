@@ -72,12 +72,19 @@ router.post('/', validateBody(subscriptionSchema), (req: Request, res: Response)
   user.updatedAt = new Date();
   db.updateUser(user);
 
+  const tier = user.tier;
+  const capabilities = CAPABILITY_MATRIX[tier === 'pro' ? 'pro' : 'free'].enabled;
+
   res.status(200).json({
     message: `Subscription ${action} processed`,
-    tier: user.tier,
-    plan: user.tier,
+    tier,
+    plan: tier,
     status: action === 'cancel' ? 'cancelled' : 'active',
-    features: getFeatureFlags(user.tier),
+
+    // MVP: keep features for backwards-compat, but derive it from the server capabilities matrix.
+    // Treat `features` as deprecated; prefer `capabilities` for gating in the UI.
+    features: getFeatureFlags(tier),
+    capabilities,
   });
 });
 
@@ -89,15 +96,18 @@ router.get('/', (req: Request, res: Response) => {
   const features = getFeatureFlags(tier);
   const invoices = dbInvoices.getByUser(userId);
 
+  const capabilities = CAPABILITY_MATRIX[tier === 'pro' ? 'pro' : 'free'].enabled;
+
   res.status(200).json({
     tier,
     status: tier === 'pro' ? 'active' : 'inactive',
     billingMode: 'mock',
     managedKeyAccess: Boolean(features.managedApiKeys),
-    features,
 
-    // Iter117: Capability-driven UI should consume server matrix (not bespoke tier strings).
-    capabilities: CAPABILITY_MATRIX[tier === 'pro' ? 'pro' : 'free'].enabled,
+    // MVP: keep features for backwards-compat, but derive it from the server capabilities matrix.
+    // Treat `features` as deprecated; prefer `capabilities` for gating in the UI.
+    features,
+    capabilities,
 
     invoices,
   });
@@ -110,16 +120,19 @@ router.get('/status', (req: Request, res: Response) => {
   const tier = user?.tier || 'free';
   const features = getFeatureFlags(tier);
 
+  const capabilities = CAPABILITY_MATRIX[tier === 'pro' ? 'pro' : 'free'].enabled;
+
   res.status(200).json({
     tier,
     plan: tier,
     status: tier === 'pro' ? 'active' : 'inactive',
     billingMode: 'mock',
     managedKeyAccess: Boolean(features.managedApiKeys),
-    features,
 
-    // Iter117: Capability-driven UI should consume server matrix (not bespoke tier strings).
-    capabilities: CAPABILITY_MATRIX[tier === 'pro' ? 'pro' : 'free'].enabled,
+    // MVP: keep features for backwards-compat, but derive it from the server capabilities matrix.
+    // Treat `features` as deprecated; prefer `capabilities` for gating in the UI.
+    features,
+    capabilities,
   });
 });
 

@@ -141,11 +141,31 @@ export function HomePage() {
           </motion.h1>
           <motion.p
             variants={fadeUp}
-            className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-10 leading-relaxed"
+            className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-6 leading-relaxed"
           >
             Set your goals, and intelligent agents build your personalized learning path from the
             best content on the web. Free with your own API key.
           </motion.p>
+
+          <motion.div variants={fadeUp} className="max-w-2xl mx-auto mb-10">
+            <div className="rounded-2xl border border-amber-200/70 dark:border-amber-400/30 bg-amber-50/70 dark:bg-amber-950/30 px-5 py-4 text-left">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                Platform availability (this build)
+              </p>
+              <ul className="text-sm text-amber-900/90 dark:text-amber-100/90 space-y-1">
+                <li>
+                  <span className="font-medium">Web app:</span> available (recommended)
+                </li>
+                <li>
+                  <span className="font-medium">iOS / Android:</span> planned (not shipped in this
+                  MVP)
+                </li>
+                <li>
+                  <span className="font-medium">Desktop:</span> planned (not shipped in this MVP)
+                </li>
+              </ul>
+            </div>
+          </motion.div>
           <motion.div variants={fadeUp} className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button variant="primary" size="large" onClick={() => nav('/download')}>
               Get Started Free

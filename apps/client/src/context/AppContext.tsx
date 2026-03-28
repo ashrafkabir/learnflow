@@ -492,7 +492,9 @@ export async function apiPost(path: string, body: unknown) {
           // (Subscription is server-driven; we keep it in memory only.)
           if (typeof window !== 'undefined') {
             window.dispatchEvent(
-              new CustomEvent('learnflow:subscription', { detail: { tier: sub.tier } }),
+              new CustomEvent('learnflow:subscription', {
+                detail: { tier: sub.tier, capabilities: sub.capabilities || {} },
+              }),
             );
           }
         }
@@ -603,8 +605,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const onSub = (ev: Event) => {
       try {
-        const tier = (ev as CustomEvent).detail?.tier as SubscriptionTier | undefined;
+        const detail = (ev as CustomEvent).detail || {};
+        const tier = detail?.tier as SubscriptionTier | undefined;
         if (tier) dispatch({ type: 'SET_SUBSCRIPTION', tier });
+        if (detail?.capabilities && typeof detail.capabilities === 'object') {
+          dispatch({ type: 'SET_CAPABILITIES', capabilities: detail.capabilities });
+        }
       } catch {
         /* ignore */
       }

@@ -201,6 +201,18 @@ export function DocsPage() {
           <p className="text-gray-600 dark:text-gray-300">
             Everything you need to get the most out of LearnFlow.
           </p>
+
+          <div className="mt-4 max-w-3xl">
+            <div className="rounded-2xl border border-amber-200/70 dark:border-amber-400/30 bg-amber-50/70 dark:bg-amber-950/30 px-5 py-4">
+              <p className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">
+                Platform availability (this build)
+              </p>
+              <p className="text-sm text-amber-900/90 dark:text-amber-100/90">
+                This deployment ships the web app. Native iOS/Android and desktop apps are planned
+                for a future release.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Search */}

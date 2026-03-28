@@ -34,6 +34,7 @@ export function SubscriptionChoice() {
   const [selected, setSelected] = useState('free');
   const [showModal, setShowModal] = useState(false);
   const [email, setEmail] = useState('');
+  const [upgrading, setUpgrading] = useState(false);
 
   const next = () => {
     if (selected === 'pro') {
@@ -44,8 +45,34 @@ export function SubscriptionChoice() {
     nav('/onboarding/ready');
   };
 
-  const continueAfterModal = () => {
+  const continueAfterModal = async () => {
+    setUpgrading(true);
     setShowModal(false);
+
+    // MVP: billing is mock, but we still upgrade server-side so capability-gated UI unlocks.
+    // If this fails, we continue onboarding but keep Free tier.
+    try {
+      await fetch('/api/v1/subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(() => {
+            try {
+              const token = localStorage.getItem('learnflow-token');
+              return token ? { Authorization: `Bearer ${token}` } : {};
+            } catch {
+              return {};
+            }
+          })(),
+        },
+        body: JSON.stringify({ action: 'upgrade' }),
+      });
+    } catch {
+      // ignore
+    } finally {
+      setUpgrading(false);
+    }
+
     dispatch({ type: 'SET_ONBOARDING_STEP', step: 5 });
     nav('/onboarding/ready');
   };
@@ -158,8 +185,8 @@ export function SubscriptionChoice() {
               </div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Pro Upgrade</h2>
               <p className="text-sm text-gray-500 dark:text-gray-300 mb-4">
-                This is a sandbox flow in the MVP. Enter an email if you'd like product updates,
-                then continue.
+                This is a mock billing flow in the MVP. Continuing will enable Pro capabilities in
+                this sandbox.
               </p>
             </div>
             <input
@@ -167,14 +194,20 @@ export function SubscriptionChoice() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent text-sm"
+              disabled={upgrading}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent text-sm disabled:opacity-60"
             />
             <div className="flex gap-3">
-              <Button variant="secondary" fullWidth onClick={() => setShowModal(false)}>
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={() => setShowModal(false)}
+                disabled={upgrading}
+              >
                 Cancel
               </Button>
-              <Button variant="primary" fullWidth onClick={continueAfterModal}>
-                Continue
+              <Button variant="primary" fullWidth onClick={continueAfterModal} disabled={upgrading}>
+                {upgrading ? 'Enabling Pro…' : 'Continue'}
               </Button>
             </div>
           </div>

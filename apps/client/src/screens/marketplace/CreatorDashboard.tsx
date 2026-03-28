@@ -81,6 +81,9 @@ export function CreatorDashboard() {
   const [creatorAnalytics, setCreatorAnalytics] = useState(EMPTY_ANALYTICS);
   const [creatorEarnings, setCreatorEarnings] = useState(EMPTY_EARNINGS);
   const [publishStep, setPublishStep] = useState(0);
+  // UI-only copy in MVP; server enforces Pro-only for price > 0.
+  // (kept as a constant so we can wire it to subscription/capabilities later without rewriting UI.)
+  const _paidLocked = false;
   useEffect(() => {
     const loadDashboard = async () => {
       setLoading(true);
@@ -256,6 +259,16 @@ export function CreatorDashboard() {
         <Button variant="primary" size="sm" onClick={() => setShowPublishForm(true)}>
           + Publish New Course
         </Button>
+      </div>
+
+      <div className="rounded-2xl border border-amber-200/70 dark:border-amber-400/30 bg-amber-50/70 dark:bg-amber-950/30 px-5 py-4 text-sm">
+        <p className="font-semibold text-amber-900 dark:text-amber-200 mb-1">
+          Marketplace pricing (MVP)
+        </p>
+        <p className="text-amber-900/90 dark:text-amber-100/90">
+          You can publish free courses on any plan. Paid course publishing (price &gt; $0) requires
+          Pro.
+        </p>
       </div>
 
       {/* Publish New Course Form (multi-step) */}
