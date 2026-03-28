@@ -324,6 +324,9 @@ export function AgentMarketplace() {
                         {a.description}
                       </p>
                       {/* MVP: omit ratings/usage metrics (not backed by real data). */}
+                      <div className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                        Ratings & usage metrics: <span className="font-medium">Planned</span>
+                      </div>
                       <div className="mb-3">
                         <span className="inline-flex items-center gap-1 text-xs px-2 py-1 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 rounded-full font-medium">
                           <IconKey className="w-3.5 h-3.5" />

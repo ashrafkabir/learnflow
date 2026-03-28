@@ -9,7 +9,7 @@ import {
   makeSourcesFromLesson,
 } from './orchestratorShared.js';
 import { scoreSourceCredibility } from './utils/sourceCredibility.js';
-import { db } from './db.js';
+import { db, dbLessonSources } from './db.js';
 import { createRequestId } from './errors.js';
 import { isDuplicateCompletedMessage, markMessageCompleted } from './wsIdempotency.js';
 import { hasWsFlag, setWsFlag } from './wsSessionFlags.js';
@@ -259,7 +259,19 @@ export async function handleWsMessage(
       });
     }
 
-    const rawLessonSources = lesson?.content ? makeSourcesFromLesson(lesson.content) : [];
+    const rawLessonSources = (() => {
+      try {
+        // Prefer persisted structured sources (includes license + accessedAt).
+        if (!lesson?.id) return [];
+        const persisted = dbLessonSources.get(lesson.id) as any;
+        const storedSources = (persisted as any)?.sources || [];
+        if (Array.isArray(storedSources) && storedSources.length > 0) return storedSources;
+      } catch {
+        // ignore
+      }
+      return lesson?.content ? makeSourcesFromLesson(lesson.content) : [];
+    })();
+
     const enrichedSources = rawLessonSources.map((s: any) => {
       const url = String(s?.url || '');
       const domain = (() => {
@@ -275,15 +287,19 @@ export async function handleWsMessage(
       return {
         title: String(s?.title || url),
         url,
-        domain,
+        domain: String(s?.domain || domain || '') || undefined,
         author: s?.author || undefined,
         publication: s?.publication || undefined,
         year: typeof s?.year === 'number' ? s.year : undefined,
-        accessedAt: new Date().toISOString(),
+        // Prefer persisted fields when available.
+        license: s?.license || undefined,
+        accessedAt: s?.accessedAt || new Date().toISOString(),
         credibilityScore: cred?.credibilityScore ?? 0,
         credibilityLabel: cred?.credibilityLabel ?? 'Unknown',
         whyCredible: cred?.whyCredible ?? 'Credibility unknown (heuristic).',
-        sourceType: cred?.sourceType,
+        sourceType: s?.sourceType || cred?.sourceType,
+        summary: s?.summary || undefined,
+        whyThisMatters: s?.whyThisMatters || undefined,
       };
     });
 

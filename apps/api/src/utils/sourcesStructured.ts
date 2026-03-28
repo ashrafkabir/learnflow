@@ -1,4 +1,5 @@
 import type { FirecrawlSource } from '@learnflow/agents';
+import type { LessonSource } from './sources.js';
 
 export type StructuredLessonSource = {
   url: string;
@@ -65,19 +66,19 @@ function normalizeTitle(title: string): string {
     .trim();
 }
 
-function bestEffortPublication(x: FirecrawlSource): string | undefined {
-  const p = String(x.source || '').trim();
+function bestEffortPublication(x: FirecrawlSource | LessonSource): string | undefined {
+  const p = String((x as any).source || '').trim();
   if (p && p !== 'unknown') return p;
-  const d = String(x.domain || '').trim();
+  const d = String((x as any).domain || '').trim();
   if (d && d !== 'unknown') return d;
   const u = safeDomain(x.url);
   return u || undefined;
 }
 
-function bestEffortYear(x: FirecrawlSource): number | undefined {
+function bestEffortYear(x: FirecrawlSource | LessonSource): number | undefined {
   // 1) publishDate if parseable
-  if (x.publishDate) {
-    const dt = new Date(x.publishDate);
+  if ((x as any).publishDate) {
+    const dt = new Date((x as any).publishDate);
     const y = dt.getFullYear();
     if (!Number.isNaN(dt.getTime()) && y >= 1900 && y <= new Date().getFullYear() + 1) return y;
   }
@@ -93,7 +94,7 @@ function bestEffortYear(x: FirecrawlSource): number | undefined {
 }
 
 export function toStructuredLessonSources(
-  sources: FirecrawlSource[] | undefined,
+  sources: FirecrawlSource[] | LessonSource[] | undefined,
   opts?: { limit?: number; accessedAt?: string },
 ): StructuredLessonSource[] {
   const limit = opts?.limit ?? 4;
@@ -103,7 +104,7 @@ export function toStructuredLessonSources(
   return s
     .filter((x) => !!x?.url)
     .map((x) => {
-      const domain = safeDomain(x.url) || x.domain || undefined;
+      const domain = safeDomain(x.url) || (x as any).domain || undefined;
       const publication = bestEffortPublication(x);
       const year = bestEffortYear(x);
       const title = normalizeTitle(x.title || x.url);

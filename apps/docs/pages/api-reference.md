@@ -115,6 +115,7 @@ Common prefixes referenced in the product spec/tests:
 - `/api/v1/subscription`
 - `/api/v1/marketplace`
 - `/api/v1/profile`
+- `/api/v1/bookmarks` (list/create/delete)
 
 ## WebSocket events (MVP)
 

@@ -1,4 +1,4 @@
-# LearnFlow — Improvement Queue (Iter121)
+# LearnFlow — Improvement Queue (Iter123)
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
@@ -8,223 +8,194 @@ Status: **DONE**
 
 ## Recent shipped commits (git log -10 --oneline)
 
-- 1fa82c5 Iter119: mark queue DONE
-- 1db5d85 Iter119: MVP platform truth + onboarding Pro upgrade + subscription capabilities
-- d82121a Iter118: MVP truth link + subscription flags + creator dashboard errors
-- 57cddcb Iter116: remove misleading publish wording + strip demo marketplace metrics
-- 451f374 Iter115: BYOAI-only truth + marketplace deactivate + OpenAPI updates
-- 078ace0 Iter114: UI truth fixes + demo labels + screenshot NOTES
-- 87d3e2e Iter113: fix OpenAPI parity + document notifications scheduling
-- 5269ae1 Iter111 P0: remove fictional metrics; docs fixes; document WebSocket contract
-- 30f1ff9 Iter110 follow-ups: tick button enable + marketplace QC hardening + notifications screen
-- 4e42e09 Iter110 P0: Run now uses update-agent tick
+- ff42a6c Iter121: mark improvement queue done
+- aaa5a89 Iter121: log note about build log tracking
+- 7d3ac34 Iter121: update build log
+- b7fd370 Iter121 Task9: clarify pipeline publish is not marketplace publish
+- f3128a1 Iter121 Task11: spec MVP truth (web-first, billing mock, native planned)
+- a59a3cb Iter121 Task10: add dev:attach to bypass port checks
+- a70f2d1 Iter121 Task6: spec mindmap mastery claims -> MVP progress
+- a789c2e Iter121 Task5: screenshot harness infers iteration from args/outdir
+- bf96c8c Iter121 Task4: add routing-only disclosure on agent activation
+- 671b867 Iter121 Task3: spec onboarding step 6 reflects MVP
 
 ---
 
-## Queue hygiene (DO NOT SKIP)
-
-1. **Never regress the header iteration.** If you touch this file, the header must remain the _current_ iteration (now: Iter121).
-2. **Always set top-level Status** to one of: `READY FOR BUILDER` → `IN PROGRESS` → `DONE`.
-3. **Always include "Recent shipped commits"** from `git log -10 --oneline` after each planner/builder run.
-4. **Evidence-first tasks:** every task must cite at least one file, route, or screenshot.
-5. **OneDrive mirror is required after edits** (copy/sync without deleting history):
-   - Source: `/home/aifactory/.openclaw/workspace/learnflow/`
-   - Mirror: `/home/aifactory/onedrive-learnflow/learnflow/learnflow/`
-
----
-
-## Iteration 121 — Planner evidence
+## Iter123 — Planner evidence
 
 Screenshots + notes captured into:
 
-- Desktop+mobile screenshots: `learnflow/screenshots/iter121/planner-run/` (72 PNGs)
-- Notes: `learnflow/screenshots/iter121/planner-run/NOTES.md`
+- Desktop+mobile screenshots: `learnflow/screenshots/iter123/planner-run/{desktop,mobile}/`
+- Notes: `learnflow/screenshots/iter123/planner-run/NOTES.md`
 
-Services observed (already running; `npm run dev` aborted due to port conflicts):
+Key desktop screenshots (non-exhaustive):
 
-- API: http://localhost:3000 (Express) — `apps/api/src/index.ts`
-- Client: http://localhost:3001 (Vite) — `apps/client/package.json`
-- Web: http://localhost:3003 (Next) — `apps/web/package.json`
-- Yjs mindmap: ws://localhost:3002/yjs — `apps/api/src/index.ts`
+- `learnflow/screenshots/iter123/planner-run/desktop/app-dashboard.png`
+- `learnflow/screenshots/iter123/planner-run/desktop/app-conversation.png`
+- `learnflow/screenshots/iter123/planner-run/desktop/app-settings.png`
+- `learnflow/screenshots/iter123/planner-run/desktop/app-mindmap.png`
+- `learnflow/screenshots/iter123/planner-run/desktop/lesson-reader.png`
+- `learnflow/screenshots/iter123/planner-run/desktop/marketplace-agents.png`
+- `learnflow/screenshots/iter123/planner-run/desktop/marketplace-courses.png`
 
-Harness used:
+Test status (sanity):
 
-- Desktop: `node screenshot-all.mjs --outDir screenshots/iter121/planner-run`
-- Mobile: `node screenshot-mobile.mjs --outDir screenshots/iter121/planner-run/mobile`
+- `npm test` passes (API suite): `apps/api/src/__tests__/*` (observed 66 files / 206 tests)
 
----
+Dev entrypoint used:
 
-## Iter121 — Brutally honest spec ↔ implementation parity audit (major sections)
-
-### 1) Product positioning (Spec §1–2)
-
-- **Partially aligned**: app is clearly an MVP and includes an explicit “MVP truth” panel.
-  - Evidence: `apps/client/src/screens/AboutMvpTruth.tsx`
-- **Spec over-claims**: spec still reads like shipped native multi-platform apps + marketplace SDK + real billing in many sections; actual is web-first MVP with mock billing + no third-party agent execution.
-  - Evidence: spec §5.1 platform matrix vs marketing copy in `apps/client/src/screens/marketing/Download.tsx` (“web-first MVP”).
-
-### 2) Architecture (Spec §3)
-
-- **Aligned with MVP subsection**: spec’s §3.2.0 “MVP architecture (this repo)” matches reality (Express + SQLite + WS + Yjs, no gRPC/mesh).
-  - Evidence: `apps/api/src/index.ts`, `apps/api/src/db.ts`, `apps/api/src/websocket.ts`, `apps/api/src/yjsServer.ts`
-
-### 3) Multi-agent system (Spec §4, §10)
-
-- **Implemented, but simplified**:
-  - Intent routing is keyword-based (deterministic), not LLM/DAG planning beyond a small DAG.
-    - Evidence: `packages/core/src/orchestrator/intent-router.ts`, `packages/core/src/orchestrator/orchestrator.ts`
-  - Orchestrator can run multi-task DAG (primary + summarizer; course_builder → mindmap extension).
-    - Evidence: `packages/core/src/orchestrator/orchestrator.ts`
-  - Marketplace agents are **routing preferences only**, no third-party code.
-    - Evidence: `apps/client/src/screens/AboutMvpTruth.tsx`; marketplace manifest routing in `packages/core/src/orchestrator/intent-router.ts`
-- **Trust footgun remains**: Firecrawl provider silently runs in mock mode when key absent (returns mock sources), which can produce “sources” that look real.
-  - Evidence: `packages/agents/src/content-pipeline/firecrawl-provider.ts` (`if (!cfg.apiKey) return getMockSearchResults(topic);`)
-
-### 4) BYOAI key management (Spec §4.4)
-
-- **Core storage/encryption exists** (AES-256-GCM default; legacy CBC support).
-  - Evidence: `apps/api/src/crypto.ts`, `apps/api/src/keys.ts`, boot validation in `apps/api/src/index.ts`
-- **Usage dashboard exists (MVP)**.
-  - Evidence: `apps/api/src/routes/usage.ts`, `apps/api/src/app.ts` mount `/api/v1/usage`
-
-### 5) Client UX / screens (Spec §5.2)
-
-- **Most screens exist**, but several are still thin/stub-like.
-  - Evidence: screenshots `screenshots/iter121/planner-run/app-*.png`, `onboarding-*.png`
-- **Spec mismatch: onboarding step 6 implies “First Course Generation”**.
-  - Current code explicitly does **not** auto-create a course during onboarding.
-  - Evidence: `apps/client/src/screens/onboarding/FirstCourse.tsx` comment + behavior.
-
-### 6) API + WS contract (Spec §11)
-
-- **Routes broadly exist and are documented in OpenAPI**.
-  - Evidence: routers mounted in `apps/api/src/app.ts`; OpenAPI at `apps/api/openapi.yaml`
-- **WS events exist and are emitted** (response.start/chunk/end, agent.spawned/complete, etc.).
-  - Evidence: `apps/api/src/wsOrchestrator.ts`, docs at `apps/docs/pages/websocket-events.md` (mentioned in client marketing docs).
-
-### 7) Marketplace + billing (Spec §7–8)
-
-- Marketplace endpoints exist, but **billing is mock** and payouts are simulated.
-  - Evidence: `apps/api/src/routes/marketplace-full.ts` (mock statuses), `apps/api/src/routes/subscription.ts` (`billingMode: 'mock'`), UI note in `apps/client/src/screens/marketing/Pricing.tsx`.
+- `npm run dev:attach` (background)
+- Screenshot harness: `node scripts/screenshots.mjs --iter 123 --base http://localhost:3001 --outDir learnflow/screenshots/iter123/planner-run/run-001`
 
 ---
 
-## Iter121 — Prioritized tasks (10–15) — evidence-first
+## Iter123 — Brutally honest spec ↔ implementation parity (major areas)
 
-### P0 — Trust & truth (stop shipping “looks real but isn’t”)
+### Product / UX (Spec §5.2)
 
-1. **P0 — Force explicit “mock mode” disclosures anywhere mock content/sources can appear**
+- **Mostly implemented**: onboarding, dashboard, conversation, mindmap, lesson reader, notifications, pipelines, collaboration, settings.
+  - Evidence: screenshots under `learnflow/screenshots/iter123/planner-run/desktop/`
+- **Bookmarks exist but are local-only** (localStorage), not in Student Context Object persistence.
+  - Evidence: `apps/client/src/screens/LessonReader.tsx` (`learnflow-bookmarks`)
 
-- Evidence:
-  - Firecrawl provider returns mock search + scraped content when no key: `packages/agents/src/content-pipeline/firecrawl-provider.ts`
-  - Client already has a precedent for truth panels: `apps/client/src/screens/AboutMvpTruth.tsx`
-  - Conversation shows “System mode (MVP)” copy: `apps/client/src/screens/Conversation.tsx` (line near the `deterministic routing` comment)
-- Do:
-  - Propagate `sourceMode: 'real'|'mock'` (or `isMock`) to relevant API responses (pipeline/course/lesson/research) and surface a visible banner in the same screen (Conversation, Lesson Reader, Pipelines).
-- Acceptance:
-  - If any lesson/research/sources were produced without live web retrieval, the UI clearly states “Demo/mock mode” and explains why.
+### Student Context Object (Spec §6.2)
 
-2. **P0 — Remove the silent mock fallbacks (or make them opt-in via env) for content discovery**
+- **Context builder includes fields for browseHistory/searchQueries/bookmarkedContent** but they are currently empty and not persisted.
+  - Evidence: `apps/api/src/orchestratorShared.ts` (initial SCO has empty arrays)
+  - No API routes found for bookmarks/history persistence.
 
-- Evidence: `packages/agents/src/content-pipeline/firecrawl-provider.ts` “silently returns mock results” behavior.
-- Do:
-  - In non-test runtime: if Firecrawl key missing, either (a) hard-fail with a clear error instructing user to configure a provider, or (b) require `ALLOW_MOCK_SOURCES=1` to enable mock sources.
-- Acceptance:
-  - No “real-looking” sources are produced unless they are actually fetched from the internet OR user explicitly opted into demo mode.
+### Marketplace (Spec §7)
 
-3. **P0 — Align spec onboarding language OR implement real “first course generation” during onboarding**
+- **Course marketplace exists** (search, detail, enroll, creator dashboard); **checkout/billing remains MVP/mock**.
+  - Evidence: `apps/api/src/routes/marketplace-full.ts`; client screens in `apps/client/src/screens/marketplace/*`
+- **Agent marketplace exists** with activation state; MVP disclosure is shown; **ratings/usage metrics are intentionally omitted** to avoid misleading “real metrics,” which conflicts with spec §5.2.6.
+  - Evidence: `apps/client/src/screens/marketplace/AgentMarketplace.tsx` (disclosure + “omit ratings/usage”)
 
-- Evidence:
-  - Spec §5.2.1 step 6 describes real-time first course generation.
-  - Code says the opposite: `apps/client/src/screens/onboarding/FirstCourse.tsx`.
-  - Screenshot: `screenshots/iter121/planner-run/onboarding-6-first-course.png`
-- Options:
-  - (A) Implement a real small starter course generation based on goal/topic selections, OR
-  - (B) Update spec + in-app copy to say “preferences saved; create your first course next”.
-- Acceptance:
-  - No mismatch between spec, onboarding UI, and actual behavior.
+### API + WebSocket (Spec §11)
 
-4. **P0 — Marketplace “agents”: ensure every surface repeats the truth that no third-party code executes**
+- **WS event protocol broadly matches spec** (message, response.start/chunk/end, agent.spawned/complete, mindmap.update, progress.update) with MVP additions (`connected`, `ws.contract`).
+  - Evidence: `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`, `apps/client/src/screens/Conversation.tsx`
+- **Web search endpoint exists** (`GET /api/v1/search`) returning trimmed results with domain attribution.
+  - Evidence: `apps/api/src/routes/search.ts`, `apps/client/src/context/AppContext.tsx` (`webSearch`)
 
-- Evidence:
-  - Truth panel exists: `apps/client/src/screens/AboutMvpTruth.tsx`
-  - Routing is manifest-based but routes to built-in agent: `packages/core/src/orchestrator/intent-router.ts`
-  - WS disclosure already exists once-per-session: `apps/api/src/wsOrchestrator.ts`
-- Do:
-  - Add a short disclosure line on Agent Marketplace + agent activation confirmation.
-- Acceptance:
-  - A user cannot activate an “agent” without seeing “routing preference only in MVP” language at least once.
+---
 
-### P1 — Spec parity & product coherence
+## Iter123 — Improvement tasks (evidence-first, 10–15)
 
-5. **P1 — Make “agent activity indicator” truly visible and useful during chat**
+### P0 — Spec-trust alignment (don’t promise what isn’t stored / computed)
 
-- Evidence: WS emits `agent.spawned`/`agent.complete`: `apps/api/src/wsOrchestrator.ts`; client handles those events: `apps/client/src/screens/Conversation.tsx`; screenshot `screenshots/iter121/planner-run/app-conversation.png` doesn’t show an obvious indicator.
-- Do:
-  - Show a persistent inline status pill (agent name + kind + elapsed) while work is running.
-- Acceptance:
-  - When a WS message is processing, the user sees which agent is running and when it completes.
-
-6. **P1 — Mindmap: either implement mastery coloring/legend or remove mastery language**
+1. **P0 — Implement server-backed bookmarks (and wire to Student Context Object)** ✅
 
 - Evidence:
-  - Spec §5.2.5 claims mastery-coded nodes.
-  - Screenshot `screenshots/iter121/planner-run/app-mindmap.png` looks like a basic graph without mastery legend.
-- Acceptance:
-  - UI must either (a) show mastery state (legend + colors + persisted mastery fields) or (b) be relabeled as “concept map” without mastery claims.
-
-7. **P1 — Collaboration matches: don’t imply ML matching if it’s heuristic**
-
-- Evidence: route comment: `apps/api/src/routes/collaboration.ts` (“MVP: … no ML matching yet”). Screenshot: `screenshots/iter121/planner-run/app-collaboration.png`.
+  - Bookmarks are local-only: `apps/client/src/screens/LessonReader.tsx` (`learnflow-bookmarks`)
+  - Spec expects bookmarks in SCO: `LearnFlow_Product_Spec.md` §6.2 (“bookmarked content”)
+  - SCO currently empty arrays: `apps/api/src/orchestratorShared.ts`
 - Do:
-  - Ensure UI copy explicitly says “heuristic matches” or remove ranking/scoring UI.
+  - Add API: `POST/GET/DELETE /api/v1/bookmarks` (or embed into `/profile/context`), persist in DB.
+  - Update SCO builder to populate `bookmarkedContent` from DB.
+  - Update Lesson Reader to use API (fallback to local storage migration optional).
 - Acceptance:
-  - No “smart matching” claims unless there’s real signal beyond tags.
+  - Bookmarks persist across browsers/devices and appear in `/api/v1/profile/context`.
 
-8. **P1 — Marketplace publishing: enforce “publish ≠ paid marketplace launch” clarity**
+2. **P0 — Implement search query and browse history persistence (minimal MVP)** ✅
 
-- Evidence: API note: `apps/api/src/routes/pipeline.ts` `POST /api/v1/pipeline/:id/publish` says “does NOT publish to Marketplace”. Screenshot: `screenshots/iter121/planner-run/app-pipelines.png`, `pipeline-detail.png`.
-- Acceptance:
-  - Any “Publish” UI/CTA clearly states what it does and does not do in MVP.
-
-### P2 — Engineering hygiene / operability / parity guards
-
-9. **P2 — Fix screenshot NOTES template bug (wrong iteration value)**
-
-- Evidence: `screenshots/iter121/planner-run/NOTES.md` originally had “Iteration: 102”; corrected manually in this run.
+- Evidence: SCO defines `browseHistory`, `searchQueries` as empty: `apps/api/src/orchestratorShared.ts`
 - Do:
-  - Update screenshot harness template so it uses the passed `--outDir` or extracts the iteration folder name.
+  - Add lightweight event endpoints (or piggyback on existing routes):
+    - Record search queries when calling `GET /api/v1/search`.
+    - Record lesson reads / course views.
+  - Expose in `GET /api/v1/profile/context`.
 - Acceptance:
-  - New screenshot runs always write correct Iter value.
+  - `profile/context` returns last N searches + last N viewed lessons with timestamps.
 
-10. **P2 — Add a single, reliable “start stack” command that can coexist with running services**
+3. **P0 — Close the Agent Marketplace spec mismatch: either (A) show real rating/usage, or (B) explicitly mark those fields as PLANNED in spec & UI** ✅
 
-- Evidence: `npm run dev` fails fast on port conflicts (reported by `scripts/check-ports.mjs`). Ports were already in use: API pid 451621 (3000/3002), Vite pid 440374 (3001), Next pid 440434 (3003).
+- Evidence:
+  - Spec demands rating/usage display: `LearnFlow_Product_Spec.md` §5.2.6
+  - UI intentionally omits: `apps/client/src/screens/marketplace/AgentMarketplace.tsx` (“omit ratings/usage metrics”)
 - Do:
-  - Provide `npm run dev:attach` that skips port checks and prints detected running URLs, OR auto-picks free ports for the harness.
+  - Option A: add real metrics (count activations / runs, rating + reviews) stored server-side.
+  - Option B (MVP-safe): keep hidden, but add a “PLANNED metrics” line + update spec section to reflect MVP.
 - Acceptance:
-  - Planner/builder can reliably run screenshots without manual process management.
+  - No “phantom” metrics; spec and UI agree.
 
-11. **P2 — OpenAPI/spec drift guard: ensure all routers mounted in `apps/api/src/app.ts` are represented in `apps/api/openapi.yaml`**
+4. **P0 — Ensure all “Attribution recording” claims have real persistence hooks (URL/author/publication/date/license/accessedAt)** ✅
 
-- Evidence: router mounts in `apps/api/src/app.ts`; OpenAPI exists but can drift.
+- Evidence:
+  - Spec requires full chain: `LearnFlow_Product_Spec.md` §6.3, §11, and bullet “Attribution Recording” (line ~347)
+  - WS response sources include fields but may be derived heuristically: `apps/api/src/wsOrchestrator.ts` (enrichedSources)
+- Do:
+  - Standardize a `SourceAttribution` type and persist with lessons/courses.
+  - Include `license` and `accessedAt` on stored sources.
 - Acceptance:
-  - Tests fail if a mounted `/api/v1/*` router lacks OpenAPI entries (or an explicit "MVP: undocumented" allowlist).
+  - Lesson detail endpoint returns persisted attributions (not only computed at response time).
 
-12. **P2 — Spec honesty pass: add “PLANNED / NOT IN MVP” callouts to sections that still read as shipped**
+### P1 — UX completion & “what happens when I click” clarity
 
-- Evidence: spec platform matrix §5.1 and marketplace/billing sections vs current “web-first MVP + mock billing” in `apps/client/src/screens/marketing/Download.tsx` and `apps/api/src/routes/subscription.ts`.
+5. **P1 — Add a real “Bookmarks” UI surface (list + jump to lesson)** ✅
+
+- Evidence: bookmark toggle exists only in Lesson Reader: `apps/client/src/screens/LessonReader.tsx`
+- Do:
+  - Add Settings tab or Dashboard card listing bookmarks.
 - Acceptance:
-  - Spec cannot be read as a promise of shipped native apps / real Stripe / agent SDK unless clearly labeled as future.
+  - User can review/remove bookmarks without reopening each lesson.
+
+6. **P1 — Conversation: show a visible agent activity pill with kind + elapsed time**
+
+- Evidence:
+  - WS events provide `kind` + `startedAt`: `apps/api/src/wsOrchestrator.ts`
+  - Client stores `activeAgentKind/activeAgentStartedAt`: `apps/client/src/screens/Conversation.tsx`
+  - Screenshot doesn’t show a clear pill: `learnflow/screenshots/iter123/planner-run/desktop/app-conversation.png`
+- Acceptance:
+  - While streaming, header shows “Research Agent • running • 3.2s” (or similar).
+
+7. **P1 — Mindmap: clarify “suggestions” vs “knowledge graph” in UI copy**
+
+- Evidence:
+  - `mindmap.update` currently sends `suggestions` plus empty `nodes_added/edges_added`: `apps/api/src/websocket.ts`
+  - Client treats as suggestions: `apps/client/src/screens/Conversation.tsx` (SET_MINDMAP_SUGGESTIONS)
+- Do:
+  - Label suggestions as “Suggested next topics” and differentiate from persisted graph.
+- Acceptance:
+  - No implied persistence of nodes unless actually stored.
+
+### P2 — Platform hygiene / operability
+
+8. **P2 — Add API endpoints for bookmarks/history/searchQueries to OpenAPI and docs** ✅
+
+- Evidence:
+  - API reference points to OpenAPI: `apps/docs/pages/api-reference.md`
+- Acceptance:
+  - New endpoints are documented in `apps/api/openapi.yaml` and `apps/docs/pages/api-reference.md`.
+
+9. **P2 — Add tests for bookmarks/history persistence + SCO hydration** ✅
+
+- Evidence:
+  - Test suite exists and runs fast: `apps/api/src/__tests__/*` (206 tests observed)
+- Acceptance:
+  - New tests cover CRUD + `/profile/context` integration.
+
+10. **P2 — Consolidate “NOTES.md” location in screenshot harness (avoid duplicate templates)** ✅
+
+- Evidence:
+  - Harness created a template under `desktop/NOTES.md` while planner needs root notes; fixed by writing `learnflow/screenshots/iter123/planner-run/NOTES.md`.
+- Acceptance:
+  - Future runs write ONLY `learnflow/screenshots/<iter>/planner-run/NOTES.md`.
+
+11. **P2 — Add a single “dev status” command that prints URLs + pids for API/client/web**
+
+- Evidence: planner previously had to kill/restart processes; ports can conflict.
+- Acceptance:
+  - `npm run dev:status` (or similar) prints which services are running and where.
 
 ---
 
 ## OneDrive sync (required)
 
-After this planner run, sync was executed with a non-destructive mirror command:
+After updating this queue + adding Iter123 notes, run a non-destructive mirror sync:
 
 ```bash
 rsync -av --progress /home/aifactory/.openclaw/workspace/learnflow/ /home/aifactory/onedrive-learnflow/learnflow/learnflow/
 ```
 
-(If rsync is not available in a future environment, use `cp -R` but do NOT delete history.)
+(Planner will confirm once executed.)

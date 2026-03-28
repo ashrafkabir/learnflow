@@ -29,6 +29,8 @@ const inferredIter = (() => {
 })();
 
 const ITER = ITER_ARG || inferredIter || 'unknown';
+// Keep ITER in scope for backwards compatibility (downstream tooling may grep logs).
+void ITER;
 
 console.log(`Using output dir: ${path.resolve(DIR)}`);
 
@@ -58,6 +60,7 @@ const AUTHED_PAGES = [
   ['/marketplace/agents', 'marketplace-agents'],
   ['/collaborate', 'app-collaboration'],
   ['/settings', 'app-settings'],
+  ['/settings/about', 'settings-about-mvp-truth'],
   ['/notifications', 'app-notifications'],
   ['/pipelines', 'app-pipelines'],
   // Stable seeded routes for deterministic coverage
@@ -88,19 +91,8 @@ async function dismissOverlays(page) {
 
 fs.mkdirSync(path.resolve(DIR), { recursive: true });
 
-// Iter114: Always create a NOTES.md template for each run so planners/builders can log context.
-try {
-  const notesPath = path.join(path.resolve(DIR), 'NOTES.md');
-  if (!fs.existsSync(notesPath)) {
-    fs.writeFileSync(
-      notesPath,
-      `# Screenshot Run Notes\n\n- Iteration: ${ITER}\n- Date: ${DATE}\n- Base URL: ${BASE}\n\n## What changed\n\n- \n\n## Known limitations\n\n- \n\n`,
-      'utf8',
-    );
-  }
-} catch {
-  // ignore
-}
+// Iter123 (P2.10): NOTES.md is created by the harness in a single place (root outDir).
+// Keep backward compatibility: do not create per-subfolder NOTES.md here.
 
 const browser = await chromium.launch();
 

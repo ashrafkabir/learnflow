@@ -1283,6 +1283,84 @@ paths:
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
+  /api/v1/bookmarks:
+    get:
+      summary: List bookmarks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        '200':
+          description: Bookmarks
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookmarks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bookmark'
+    post:
+      summary: Create bookmark
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - lessonId
+              properties:
+                courseId:
+                  type: string
+                lessonId:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+
+  /api/v1/bookmarks/{lessonId}:
+    delete:
+      summary: Delete bookmark
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
   /api/v1/profile/goals:
     post:
       summary: Save learning goals
@@ -2470,6 +2548,17 @@ components:
           type: string
         status:
           type: integer
+    Bookmark:
+      type: object
+      properties:
+        courseId:
+          type: string
+        lessonId:
+          type: string
+        createdAt:
+          type: string
+          description: ISO timestamp
+
     Source:
       type: object
       properties:

@@ -35,19 +35,8 @@ const DIR =
 const resolvedDir = path.resolve(DIR);
 fs.mkdirSync(resolvedDir, { recursive: true });
 
-// Iter114: Always create a NOTES.md template for each run so planners/builders can log context.
-try {
-  const notesPath = path.join(resolvedDir, 'NOTES.md');
-  if (!fs.existsSync(notesPath)) {
-    fs.writeFileSync(
-      notesPath,
-      `# Screenshot Run Notes\n\n- Mobile run\n- Date: ${new Date().toISOString().slice(0, 10)}\n- Base URL: ${BASE}\n- Authed: ${AUTHED}\n\n## What changed\n\n- \n\n## Known limitations\n\n- \n\n`,
-      'utf8',
-    );
-  }
-} catch {
-  // ignore
-}
+// Iter123 (P2.10): NOTES.md is created by the harness in a single place (root outDir).
+// Keep backward compatibility: do not create per-subfolder NOTES.md here.
 
 console.log(`Using output dir: ${resolvedDir}`);
 

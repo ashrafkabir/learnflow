@@ -8,6 +8,7 @@ import { useTheme } from '../design-system/ThemeProvider.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { usePipeline } from '../hooks/usePipeline.js';
 import { Button } from '../components/Button.js';
+import { useBookmarks } from '../hooks/useBookmarks.js';
 import { SkeletonDashboard } from '../components/Skeleton.js';
 import { OnboardingTooltips } from '../components/OnboardingTooltips.js';
 import {
@@ -46,6 +47,7 @@ export function Dashboard() {
   const { start: startPipeline, loading: pipelineLoading } = useStartPipeline();
   const { pipelines: pipelineList, refresh: refreshPipelines } = usePipelineList();
   const { state: activePipelineState } = usePipeline(activePipelineId);
+  const { bookmarks, remove: removeBookmark } = useBookmarks();
 
   const FREE_COURSE_LIMIT = 3;
   const canCreateCourse = state.subscription === 'pro' || state.courses.length < FREE_COURSE_LIMIT;
@@ -286,6 +288,52 @@ export function Dashboard() {
                 </Button>
               </div>
             ) : null}
+
+            {/* Bookmarks */}
+            {bookmarks.length > 0 && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5 card">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Bookmarks</h2>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {bookmarks.length} saved
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {bookmarks.slice(0, 5).map((b) => (
+                    <div
+                      key={b.lessonId}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-gray-800 p-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          Lesson: {b.lessonId}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          Course: {b.courseId}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => nav(`/courses/${b.courseId}/lessons/${b.lessonId}`)}
+                        >
+                          Open
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeBookmark(b.lessonId).catch(() => {})}
+                          aria-label="Remove bookmark"
+                        >
+                          <IconTrash size={16} decorative />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Streak & Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

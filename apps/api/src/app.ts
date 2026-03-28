@@ -20,6 +20,7 @@ import { usageRouter } from './routes/usage.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { deleteMyDataRouter } from './routes/delete-my-data.js';
 import { updateAgentRouter } from './routes/update-agent.js';
+import { bookmarksRouter } from './routes/bookmarks.js';
 import { yjsRouter } from './yjsRouter.js';
 import { adminSearchConfigRouter } from './routes/admin-search-config.js';
 import { adminCleanupRouter } from './routes/admin-cleanup.js';
@@ -309,6 +310,7 @@ export function createApp(options?: { devMode?: boolean }) {
     marketplaceAgentManifestsRouter,
   );
   app.use('/api/v1/profile', protectedAuth, rateLimiter, writeRateLimiter, profileRouter);
+  app.use('/api/v1/bookmarks', protectedAuth, rateLimiter, writeRateLimiter, bookmarksRouter);
   app.use('/api/v1/subscription', protectedAuth, rateLimiter, writeRateLimiter, subscriptionRouter);
   app.use('/api/v1/analytics', protectedAuth, rateLimiter, analyticsRouter);
   app.use('/api/v1/usage', protectedAuth, rateLimiter, usageRouter);

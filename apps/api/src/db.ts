@@ -163,6 +163,21 @@ if (!isTest) {
       sqlite.exec(`ALTER TABLE users ADD COLUMN telemetryEnabled INTEGER NOT NULL DEFAULT 1;`);
     }
 
+    // Iter123: server-backed bookmarks table (legacy DBs)
+    try {
+      sqlite.exec(
+        `CREATE TABLE IF NOT EXISTS bookmarks (userId TEXT NOT NULL, courseId TEXT NOT NULL, lessonId TEXT NOT NULL, createdAt TEXT NOT NULL, PRIMARY KEY (userId, lessonId));`,
+      );
+      sqlite.exec(
+        `CREATE INDEX IF NOT EXISTS idx_bookmarks_user_created ON bookmarks(userId, createdAt DESC);`,
+      );
+      sqlite.exec(
+        `CREATE INDEX IF NOT EXISTS idx_bookmarks_user_course ON bookmarks(userId, courseId);`,
+      );
+    } catch {
+      // ignore
+    }
+
     if (!hasColumn('mindmaps', 'yjsState')) {
       sqlite.exec(`ALTER TABLE mindmaps ADD COLUMN yjsState TEXT;`);
     }
@@ -693,6 +708,17 @@ sqlite.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_annotations_lesson ON annotations(lessonId);
 
+  -- Iter123: server-backed bookmarks (per-user) for lessons.
+  CREATE TABLE IF NOT EXISTS bookmarks (
+    userId TEXT NOT NULL,
+    courseId TEXT NOT NULL,
+    lessonId TEXT NOT NULL,
+    createdAt TEXT NOT NULL,
+    PRIMARY KEY (userId, lessonId)
+  );
+  CREATE INDEX IF NOT EXISTS idx_bookmarks_user_created ON bookmarks(userId, createdAt DESC);
+  CREATE INDEX IF NOT EXISTS idx_bookmarks_user_course ON bookmarks(userId, courseId);
+
   -- Iter68: global admin-configurable web search settings used during course creation
   CREATE TABLE IF NOT EXISTS app_settings (
     key TEXT PRIMARY KEY,
@@ -1002,6 +1028,18 @@ const stmts = {
   ),
   getLastLearningEventAtByUserAllOrigins: sqlite.prepare(
     `SELECT MAX(createdAt) as lastAt FROM learning_events WHERE userId = ?`,
+  ),
+
+  // Bookmarks (Iter123)
+  upsertBookmark: sqlite.prepare(
+    `INSERT OR REPLACE INTO bookmarks (userId, courseId, lessonId, createdAt) VALUES (?, ?, ?, ?)`,
+  ),
+  deleteBookmark: sqlite.prepare(`DELETE FROM bookmarks WHERE userId = ? AND lessonId = ?`),
+  listBookmarksByUser: sqlite.prepare(
+    `SELECT * FROM bookmarks WHERE userId = ? ORDER BY createdAt DESC LIMIT ?`,
+  ),
+  getBookmarkByUserLesson: sqlite.prepare(
+    `SELECT * FROM bookmarks WHERE userId = ? AND lessonId = ?`,
   ),
 
   // Pipelines
@@ -1362,6 +1400,7 @@ class SqliteDb {
     progress: { completedCount: number; lastCompletedAt: string | null };
     usageRecords: { count: number; lastUsedAt: string | null };
     notifications: { count: number; lastNotificationAt: string | null };
+    bookmarks: { count: number; lastBookmarkedAt: string | null };
     generatedAt: string;
   } {
     const leCount = (stmts as any).countLearningEventsByUser.get(userId) as any;
@@ -1376,6 +1415,14 @@ class SqliteDb {
     const notifCount = (stmts as any).countNotificationsByUser.get(userId) as any;
     const notifLast = (stmts as any).getLastNotificationAtByUser.get(userId) as any;
 
+    // Bookmarks (Iter123)
+    const bmCount = sqlite
+      .prepare(`SELECT COUNT(*) as n FROM bookmarks WHERE userId = ?`)
+      .get(userId) as any;
+    const bmLast = sqlite
+      .prepare(`SELECT MAX(createdAt) as lastAt FROM bookmarks WHERE userId = ?`)
+      .get(userId) as any;
+
     return {
       learningEvents: {
         count: Number(leCount?.n || 0),
@@ -1393,6 +1440,10 @@ class SqliteDb {
         count: Number(notifCount?.n || 0),
         lastNotificationAt: notifLast?.lastAt ? String(notifLast.lastAt) : null,
       },
+      bookmarks: {
+        count: Number(bmCount?.n || 0),
+        lastBookmarkedAt: bmLast?.lastAt ? String(bmLast.lastAt) : null,
+      },
       generatedAt: new Date().toISOString(),
     };
   }
@@ -1403,6 +1454,7 @@ class SqliteDb {
     progress: { completedCount: number; lastCompletedAt: string | null };
     usageRecords: { count: number; lastUsedAt: string | null };
     notifications: { count: number; lastNotificationAt: string | null };
+    bookmarks: { count: number; lastBookmarkedAt: string | null };
     generatedAt: string;
   } {
     const leCount = (stmts as any).countLearningEventsByUserAllOrigins.get(userId) as any;
@@ -1417,6 +1469,14 @@ class SqliteDb {
     const notifCount = (stmts as any).countNotificationsByUserAllOrigins.get(userId) as any;
     const notifLast = (stmts as any).getLastNotificationAtByUserAllOrigins.get(userId) as any;
 
+    // Bookmarks (Iter123)
+    const bmCount = sqlite
+      .prepare(`SELECT COUNT(*) as n FROM bookmarks WHERE userId = ?`)
+      .get(userId) as any;
+    const bmLast = sqlite
+      .prepare(`SELECT MAX(createdAt) as lastAt FROM bookmarks WHERE userId = ?`)
+      .get(userId) as any;
+
     return {
       learningEvents: {
         count: Number(leCount?.n || 0),
@@ -1433,6 +1493,10 @@ class SqliteDb {
       notifications: {
         count: Number(notifCount?.n || 0),
         lastNotificationAt: notifLast?.lastAt ? String(notifLast.lastAt) : null,
+      },
+      bookmarks: {
+        count: Number(bmCount?.n || 0),
+        lastBookmarkedAt: bmLast?.lastAt ? String(bmLast.lastAt) : null,
       },
       generatedAt: new Date().toISOString(),
     };
@@ -2319,6 +2383,28 @@ export const dbEvents = {
 
   list(userId: string, limit = 200): any[] {
     return stmts.getLearningEventsByUser.all(userId, limit) as any[];
+  },
+};
+
+// ── Bookmarks helpers (Iter123) ─────────────────────────────────────────────
+
+export const dbBookmarks = {
+  add(userId: string, courseId: string, lessonId: string): void {
+    const now = new Date().toISOString();
+    stmts.upsertBookmark.run(userId, courseId, lessonId, now);
+  },
+
+  remove(userId: string, lessonId: string): void {
+    stmts.deleteBookmark.run(userId, lessonId);
+  },
+
+  list(userId: string, limit = 200): any[] {
+    return stmts.listBookmarksByUser.all(userId, limit) as any[];
+  },
+
+  isBookmarked(userId: string, lessonId: string): boolean {
+    const row = stmts.getBookmarkByUserLesson.get(userId, lessonId) as any;
+    return Boolean(row);
   },
 };
 

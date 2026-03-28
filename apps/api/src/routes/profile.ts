@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { db, dbProgress } from '../db.js';
+import { db, dbProgress, dbBookmarks, dbEvents } from '../db.js';
 import { isAdmin } from '../lib/admin.js';
 import { validateBody } from '../validation.js';
 
@@ -16,6 +16,57 @@ router.get('/context', (req: Request, res: Response) => {
 
   const user = db.findUserById(userId);
   const stats = dbProgress.getUserStats(userId);
+
+  // Iter123: hydrate minimal persistent context arrays.
+  // Keep this small + safe; we only expose last N and only for user origin.
+  const bookmarkRows = dbBookmarks.list(userId, 200) as Array<{
+    courseId: string;
+    lessonId: string;
+    createdAt: string;
+  }>;
+  const bookmarkedContent = bookmarkRows.map((b) => ({
+    kind: 'lesson' as const,
+    courseId: b.courseId,
+    lessonId: b.lessonId,
+    createdAt: b.createdAt,
+  }));
+
+  const events = dbEvents.list(userId, 500) as Array<{
+    type: string;
+    courseId?: string;
+    lessonId?: string;
+    meta?: string;
+    createdAt: string;
+  }>;
+
+  const searchQueries: Array<{ query: string; createdAt: string }> = [];
+  const browseHistory: Array<{
+    kind: 'lesson';
+    courseId?: string;
+    lessonId?: string;
+    createdAt: string;
+  }> = [];
+
+  for (const e of events) {
+    if (e.type === 'search.query') {
+      try {
+        const meta = JSON.parse((e as any).meta || '{}') as any;
+        const q = String(meta?.query || '').trim();
+        if (q) searchQueries.push({ query: q, createdAt: e.createdAt });
+      } catch {
+        // ignore
+      }
+    }
+
+    if (e.type === 'lesson.view_start') {
+      browseHistory.push({
+        kind: 'lesson',
+        courseId: (e as any).courseId,
+        lessonId: (e as any).lessonId,
+        createdAt: e.createdAt,
+      });
+    }
+  }
 
   res.status(200).json({
     userId,
@@ -39,6 +90,10 @@ router.get('/context', (req: Request, res: Response) => {
       lessonsCompleted: stats.totalLessonsCompleted,
       currentCourse: null,
     },
+    // New: persisted context slices
+    bookmarkedContent,
+    searchQueries: searchQueries.slice(0, 50),
+    browseHistory: browseHistory.slice(0, 50),
     preferences: {
       notifications: true,
       darkMode: false,

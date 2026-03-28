@@ -1,4 +1,4 @@
-import { db, dbMarketplace, dbMarketplaceAgentSubmissions } from './db.js';
+import { db, dbMarketplace, dbMarketplaceAgentSubmissions, dbBookmarks, dbEvents } from './db.js';
 import { resolveMarketplaceAgentManifest } from './lib/marketplaceAgents.js';
 import type { StudentContextObject } from '@learnflow/core';
 import { AgentRegistry, Orchestrator } from '@learnflow/core';
@@ -47,9 +47,48 @@ export function buildStudentContext(userId: string): StudentContextObject {
 
     goalDetails: user.goals.map((g) => ({ goal: g, priority: 'medium' as const })),
     interests: [],
-    browseHistory: [],
-    searchQueries: [],
-    bookmarkedContent: [],
+    // Iter123: hydrate minimal persisted slices.
+    // NOTE: StudentContextObject contract expects string[] for these fields.
+    browseHistory: (() => {
+      try {
+        const events = dbEvents.list(userId, 200) as any[];
+        const out: string[] = [];
+        for (const e of events) {
+          if (e.type === 'lesson.view_start' && e.lessonId) out.push(String(e.lessonId));
+        }
+        return out.slice(0, 50);
+      } catch {
+        return [];
+      }
+    })(),
+    searchQueries: (() => {
+      try {
+        const events = dbEvents.list(userId, 200) as any[];
+        const out: string[] = [];
+        for (const e of events) {
+          if (e.type === 'search.query') {
+            try {
+              const meta = JSON.parse(e.meta || '{}');
+              const q = String(meta?.query || '').trim();
+              if (q) out.push(q);
+            } catch {
+              // ignore
+            }
+          }
+        }
+        return out.slice(0, 50);
+      } catch {
+        return [];
+      }
+    })(),
+    bookmarkedContent: (() => {
+      try {
+        const rows = dbBookmarks.list(userId, 200) as any[];
+        return rows.map((b: any) => String(b.lessonId)).slice(0, 200);
+      } catch {
+        return [];
+      }
+    })(),
     sessionFrequency: 0,
     preferredTimeOfDay: 'morning',
     preferredLessonLength: 10,

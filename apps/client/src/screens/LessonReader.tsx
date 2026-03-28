@@ -10,6 +10,7 @@ import { Button } from '../components/Button.js';
 import { AttributionDrawer } from '../components/AttributionDrawer.js';
 import { useSwipe } from '../hooks/useSwipe.js';
 import { analytics } from '../lib/analytics.js';
+import { useBookmarks } from '../hooks/useBookmarks.js';
 import {
   IconBookmark,
   IconBook,
@@ -156,6 +157,9 @@ export function LessonReader() {
   const [generatingIllustration, setGeneratingIllustration] = useState(false);
   const [generatingNoteFormat, setGeneratingNoteFormat] = useState<string | null>(null);
   const [aiNoteContent, setAiNoteContent] = useState<string | null>(null);
+
+  // Iter123: server-backed bookmarks
+  const { isBookmarked, add: addBookmark, remove: removeBookmark } = useBookmarks();
 
   // Feature 1: Inline Illustrations
   const [sectionIllustrations, setSectionIllustrations] = useState<Illustration[]>([]);
@@ -731,32 +735,31 @@ export function LessonReader() {
               variant="ghost"
               size="icon"
               onClick={() => {
+                const lid = String(lessonId || '');
+                const cid = String(courseId || '');
+                if (!lid || !cid) return;
+
+                // Best-effort: if server call fails, fall back to localStorage so the UX still works offline.
                 const key = 'learnflow-bookmarks';
-                const bookmarks = JSON.parse(localStorage.getItem(key) || '[]') as string[];
-                const lid = lessonId || '';
-                if (bookmarks.includes(lid)) {
-                  localStorage.setItem(
-                    key,
-                    JSON.stringify(bookmarks.filter((b: string) => b !== lid)),
-                  );
+                const local = JSON.parse(localStorage.getItem(key) || '[]') as string[];
+
+                const nowBookmarked = isBookmarked(lid);
+                if (nowBookmarked) {
+                  removeBookmark(lid).catch(() => {
+                    localStorage.setItem(key, JSON.stringify(local.filter((b) => b !== lid)));
+                  });
                 } else {
-                  localStorage.setItem(key, JSON.stringify([...bookmarks, lid]));
+                  addBookmark(cid, lid).catch(() => {
+                    localStorage.setItem(key, JSON.stringify(Array.from(new Set([...local, lid]))));
+                  });
                 }
                 setShowConfetti((prev) => prev);
               }}
-              aria-label={
-                JSON.parse(localStorage.getItem('learnflow-bookmarks') || '[]').includes(
-                  lessonId || '',
-                )
-                  ? 'Remove bookmark'
-                  : 'Add bookmark'
-              }
+              aria-label={isBookmarked(String(lessonId || '')) ? 'Remove bookmark' : 'Add bookmark'}
               title="Bookmark this lesson"
               className="text-lg"
             >
-              {JSON.parse(localStorage.getItem('learnflow-bookmarks') || '[]').includes(
-                lessonId || '',
-              ) ? (
+              {isBookmarked(String(lessonId || '')) ? (
                 <IconBookmark className="w-4 h-4" />
               ) : (
                 <IconBook className="w-4 h-4" />

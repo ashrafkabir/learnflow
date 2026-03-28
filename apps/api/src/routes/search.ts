@@ -4,6 +4,7 @@ import { searchSources } from '@learnflow/agents';
 import type { FirecrawlSearchResult } from '@learnflow/agents';
 import { sendError } from '../errors.js';
 import { validateQueryFrom } from '../validation.js';
+import { db, dbEvents } from '../db.js';
 
 const router = Router();
 
@@ -23,6 +24,23 @@ router.get(
   async (req: Request, res: Response) => {
     const q = (req.query as any).query;
     const limit = (req.query as any).limit ?? 5;
+
+    // Iter123: persist search queries into learning_events (origin=user only; respects telemetryEnabled)
+    try {
+      const userId = req.user?.sub;
+      if (userId) {
+        const user = db.findUserById(userId);
+        if (user?.telemetryEnabled !== false) {
+          dbEvents.add(userId, {
+            type: 'search.query',
+            meta: { query: String(q || '') },
+            origin: 'user',
+          });
+        }
+      }
+    } catch {
+      // best-effort
+    }
 
     try {
       const results = (await searchSources(q)) as FirecrawlSearchResult[];

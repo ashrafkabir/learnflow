@@ -263,7 +263,8 @@ The primary interaction surface is a chat-style interface where the student conv
 
 - Browsable catalog of available agents organized by category
 
-- Each agent card shows: name, description, rating, usage count, required API provider
+- Each agent card shows: name, description, required API provider
+  - Rating + usage count: **PLANNED** (intentionally omitted in MVP UI to avoid implying real metrics without stored analytics)
 
 - One-tap activation; agent appears in Orchestrator's available tools
 
