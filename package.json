@@ -17,7 +17,8 @@
     "format:check": "prettier --check .",
     "lint:check": "eslint .",
     "prepare": "husky",
-    "dev:attach": "node scripts/attach-ports.mjs && turbo run dev"
+    "dev:attach": "node scripts/attach-ports.mjs && turbo run dev",
+    "dev:status": "node scripts/dev-status.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
