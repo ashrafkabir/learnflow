@@ -5,7 +5,6 @@ info:
   description: AI-powered learning platform API
 servers:
   - url: http://localhost:3000
-
 paths:
   /health:
     get:
@@ -24,7 +23,6 @@ paths:
                   status:
                     type: string
                     example: ok
-
   /api/v1/auth/register:
     post:
       summary: Create account
@@ -34,11 +32,19 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password, displayName]
+              required:
+                - email
+                - password
+                - displayName
               properties:
-                email: { type: string, format: email }
-                password: { type: string, minLength: 8 }
-                displayName: { type: string }
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                displayName:
+                  type: string
       responses:
         '201':
           description: Account created
@@ -49,7 +55,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [user, accessToken, refreshToken]
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
                 properties:
                   user:
                     $ref: '#/components/schemas/User'
@@ -66,7 +75,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/auth/login:
     post:
       summary: Authenticate
@@ -76,10 +84,15 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, password]
+              required:
+                - email
+                - password
               properties:
-                email: { type: string, format: email }
-                password: { type: string }
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
       responses:
         '200':
           description: JWT returned
@@ -90,7 +103,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [user, accessToken, refreshToken]
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
                 properties:
                   user:
                     $ref: '#/components/schemas/User'
@@ -107,7 +123,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/auth/refresh:
     post:
       summary: Refresh access token
@@ -117,7 +132,8 @@ paths:
           application/json:
             schema:
               type: object
-              required: [refreshToken]
+              required:
+                - refreshToken
               properties:
                 refreshToken:
                   type: string
@@ -131,10 +147,14 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [accessToken, refreshToken]
+                required:
+                  - accessToken
+                  - refreshToken
                 properties:
-                  accessToken: { type: string }
-                  refreshToken: { type: string }
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
         '400':
           description: Missing token
           headers:
@@ -153,7 +173,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/auth/google/callback:
     get:
       summary: Google OAuth callback (mock)
@@ -161,7 +180,8 @@ paths:
         - name: code
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: JWT returned
@@ -172,7 +192,10 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [user, accessToken, refreshToken]
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
                 properties:
                   user:
                     $ref: '#/components/schemas/User'
@@ -189,18 +212,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/keys:
     post:
       summary: Add API key
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [provider, apiKey]
+              required:
+                - provider
+                - apiKey
               properties:
                 provider:
                   type: string
@@ -226,25 +251,28 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
     get:
       summary: List API keys
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Key list
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/keys/validate:
     post:
       summary: Validate API key format
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [provider, apiKey]
+              required:
+                - provider
+                - apiKey
               properties:
                 provider:
                   type: string
@@ -265,16 +293,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/keys/{provider}:
     delete:
       summary: Delete provider key
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: provider
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '204':
           description: Deleted
@@ -290,23 +319,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/chat:
     post:
       summary: Send message to Orchestrator
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [text]
+              required:
+                - text
               properties:
-                text: { type: string }
-                courseId: { type: string }
-                lessonId: { type: string }
-                apiKey: { type: string, description: Optional per-request API key override }
+                text:
+                  type: string
+                courseId:
+                  type: string
+                lessonId:
+                  type: string
+                apiKey:
+                  type: string
+                  description: Optional per-request API key override
       responses:
         '200':
           description: Orchestrator response
@@ -318,14 +353,20 @@ paths:
               schema:
                 type: object
                 properties:
-                  message_id: { type: string }
-                  agentName: { type: string }
-                  content: { type: string }
-                  response: { type: string }
-                  reply: { type: string }
+                  message_id:
+                    type: string
+                  agentName:
+                    type: string
+                  content:
+                    type: string
+                  response:
+                    type: string
+                  reply:
+                    type: string
                   actions:
                     type: array
-                    items: { type: string }
+                    items:
+                      type: string
                   sources:
                     type: array
                     items:
@@ -356,11 +397,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/courses:
     get:
       summary: List courses
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Course list
@@ -369,20 +410,27 @@ paths:
               $ref: '#/components/headers/XRequestId'
     post:
       summary: Create/generate course
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [topic]
+              required:
+                - topic
               properties:
-                topic: { type: string }
-                title: { type: string }
-                description: { type: string }
-                depth: { type: string }
-                max_lessons: { type: number }
+                topic:
+                  type: string
+                title:
+                  type: string
+                description:
+                  type: string
+                depth:
+                  type: string
+                max_lessons:
+                  type: number
       responses:
         '201':
           description: Course created
@@ -398,16 +446,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/courses/{id}:
     get:
       summary: Get course detail
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Course detail
@@ -425,12 +474,14 @@ paths:
                 $ref: '#/components/schemas/ErrorEnvelope'
     delete:
       summary: Delete course
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '204':
           description: Deleted
@@ -446,20 +497,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/courses/{id}/lessons/{lessonId}:
     get:
       summary: Get lesson content
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Lesson content
@@ -475,27 +528,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/courses/{id}/add-topic:
     post:
       summary: Add topic to an existing course
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [topic]
+              required:
+                - topic
               properties:
-                topic: { type: string }
+                topic:
+                  type: string
                 parentLessonId:
-                  { type: string, description: Optional (ignored server-side for now) }
+                  type: string
+                  description: Optional (ignored server-side for now)
       responses:
         '201':
           description: Added
@@ -511,40 +568,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/courses/{id}/lessons/{lessonId}/complete:
     post:
       summary: Mark lesson complete
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Lesson marked complete
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/courses/{id}/lessons/{lessonId}/notes:
     get:
       summary: Get notes
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Notes
@@ -553,16 +614,19 @@ paths:
               $ref: '#/components/headers/XRequestId'
     post:
       summary: Create notes
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '201':
           description: Created
@@ -571,56 +635,63 @@ paths:
               $ref: '#/components/headers/XRequestId'
     put:
       summary: Update notes
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/courses/{id}/lessons/{lessonId}/notes/illustrate:
     post:
       summary: Generate an illustration for notes
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Illustration
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/courses/{id}/lessons/{lessonId}/illustrations:
     get:
       summary: List illustrations
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Illustrations
@@ -629,91 +700,106 @@ paths:
               $ref: '#/components/headers/XRequestId'
     post:
       summary: Create illustration
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '201':
           description: Created
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/courses/{id}/lessons/{lessonId}/illustrations/{illId}:
     delete:
       summary: Delete illustration
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: illId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '204':
           description: Deleted
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/courses/{id}/lessons/{lessonId}/compare:
     post:
       summary: Compare lesson concepts
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Comparison
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/courses/{id}/lessons/{lessonId}/selection-tools/preview:
     post:
       summary: Selection tools preview (discover/illustrate/mark)
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [tool, selectedText]
+              required:
+                - tool
+                - selectedText
               properties:
                 tool:
                   type: string
-                  enum: [discover, illustrate, mark]
+                  enum:
+                    - discover
+                    - illustrate
+                    - mark
                 selectedText:
                   type: string
                 apiKey:
@@ -733,40 +819,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/courses/{id}/lessons/{lessonId}/notes/mark-takeaways:
     post:
       summary: Append key takeaways to notes
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/courses/{id}/lessons/{lessonId}/annotations:
     get:
       summary: List annotations
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Annotations
@@ -775,138 +865,153 @@ paths:
               $ref: '#/components/headers/XRequestId'
     post:
       summary: Create annotation
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '201':
           description: Created
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/courses/{id}/lessons/{lessonId}/annotations/{annId}:
     delete:
       summary: Delete annotation
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: annId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '204':
           description: Deleted
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/mindmap:
     get:
       summary: Get knowledge graph
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Mindmap data
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/mindmap/suggest:
     post:
       summary: Compute suggested expansion nodes for a course
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [courseId]
+              required:
+                - courseId
               properties:
-                courseId: { type: string }
+                courseId:
+                  type: string
       responses:
         '200':
           description: Suggestions saved
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/mindmap/suggestions:
     get:
       summary: Get persisted suggestions
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: courseId
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Suggestions
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/mindmap/accept:
     post:
       summary: Accept a suggestion
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [courseId, suggestionId]
+              required:
+                - courseId
+                - suggestionId
               properties:
-                courseId: { type: string }
-                suggestionId: { type: string }
+                courseId:
+                  type: string
+                suggestionId:
+                  type: string
       responses:
         '200':
           description: Updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/courses:
     get:
       summary: Browse course marketplace
       parameters:
         - name: keyword
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: topic
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: difficulty
           in: query
-          schema: { type: string }
+          schema:
+            type: string
         - name: maxPrice
           in: query
-          schema: { type: number }
+          schema:
+            type: number
       responses:
         '200':
           description: Marketplace courses
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/courses/{id}:
     get:
       summary: Marketplace course detail
@@ -914,7 +1019,8 @@ paths:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Course
@@ -930,11 +1036,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/marketplace/publish:
     post:
       summary: Publish a course
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -942,89 +1048,112 @@ paths:
             schema:
               type: object
               required:
-                [title, topic, description, difficulty, price, lessonCount, attributionCount]
+                - title
+                - topic
+                - description
+                - difficulty
+                - price
+                - lessonCount
+                - attributionCount
               properties:
-                title: { type: string }
-                topic: { type: string }
-                description: { type: string }
-                difficulty: { type: string }
-                price: { type: number }
-                lessonCount: { type: number }
-                attributionCount: { type: number }
-                readabilityScore: { type: number }
+                title:
+                  type: string
+                topic:
+                  type: string
+                description:
+                  type: string
+                difficulty:
+                  type: string
+                price:
+                  type: number
+                lessonCount:
+                  type: number
+                attributionCount:
+                  type: number
+                readabilityScore:
+                  type: number
       responses:
         '201':
           description: Published
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/courses/{id}/reviews:
     post:
       summary: Create a course review
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [rating]
+              required:
+                - rating
               properties:
-                rating: { type: integer, minimum: 1, maximum: 5 }
-                text: { type: string }
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                text:
+                  type: string
       responses:
         '201':
           description: Created
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/checkout:
     post:
       summary: Start checkout (mock)
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [courseId]
+              required:
+                - courseId
               properties:
-                courseId: { type: string }
+                courseId:
+                  type: string
       responses:
         '200':
           description: Created
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/checkout/confirm:
     post:
       summary: Confirm checkout (mock)
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [paymentIntentId]
+              required:
+                - paymentIntentId
               properties:
-                paymentIntentId: { type: string }
+                paymentIntentId:
+                  type: string
       responses:
         '200':
           description: Confirmed
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/agents:
     get:
       summary: Browse agent marketplace
@@ -1034,11 +1163,11 @@ paths:
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/agents/submit:
     post:
       summary: Submit an agent
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1046,91 +1175,95 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
-                description: { type: string }
-                manifest: { type: object }
+                name:
+                  type: string
+                description:
+                  type: string
+                manifest:
+                  type: object
       responses:
         '201':
           description: Submitted
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/agents/activated:
     get:
       summary: List activated agents for current user
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Activated agent IDs
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/agents/{id}/activate:
     post:
       summary: Activate marketplace agent
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Agent activated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/marketplace/creator/dashboard:
     get:
       summary: Creator dashboard
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Dashboard
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/profile/context:
     get:
       summary: Get Student Context Object
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Student context
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/profile/goals:
     post:
       summary: Save learning goals
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Saved
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/profile/onboarding/complete:
     post:
       summary: Mark onboarding complete
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/profile/data-summary:
     get:
       summary: Get profile data summary
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Summary
@@ -1142,12 +1275,21 @@ paths:
               schema:
                 type: object
                 properties:
-                  coursesCount: { type: integer }
-                  pipelinesCount: { type: integer }
-                  notificationsCount: { type: integer }
-                  lastCourseCreatedAt: { type: string, nullable: true }
-                  lastPipelineCreatedAt: { type: string, nullable: true }
-                  lastNotificationCreatedAt: { type: string, nullable: true }
+                  coursesCount:
+                    type: integer
+                  pipelinesCount:
+                    type: integer
+                  notificationsCount:
+                    type: integer
+                  lastCourseCreatedAt:
+                    type: string
+                    nullable: true
+                  lastPipelineCreatedAt:
+                    type: string
+                    nullable: true
+                  lastNotificationCreatedAt:
+                    type: string
+                    nullable: true
         '401':
           description: Unauthorized
           headers:
@@ -1157,11 +1299,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/profile/delete:
     post:
       summary: Delete user profile data
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Deleted
@@ -1173,7 +1315,8 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
+                  ok:
+                    type: boolean
         '401':
           description: Unauthorized
           headers:
@@ -1183,64 +1326,84 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/subscription:
     post:
       summary: Subscribe/upgrade/downgrade
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [action]
+              required:
+                - action
               properties:
-                action: { type: string, enum: [subscribe, upgrade, downgrade, cancel] }
-                plan: { type: string, enum: [free, pro] }
+                action:
+                  type: string
+                  enum:
+                    - subscribe
+                    - upgrade
+                    - downgrade
+                    - cancel
+                plan:
+                  type: string
+                  enum:
+                    - free
+                    - pro
       responses:
         '200':
           description: Subscription updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
     get:
       summary: Get subscription status
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Status
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/subscription/status:
     get:
       summary: Subscription status alias
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Status
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/subscription/iap:
     post:
       summary: Validate IAP receipt (mock)
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [platform, receipt, productId]
+              required:
+                - platform
+                - receipt
+                - productId
               properties:
-                platform: { type: string, enum: [ios, android] }
-                receipt: { type: string }
-                productId: { type: string }
+                platform:
+                  type: string
+                  enum:
+                    - ios
+                    - android
+                receipt:
+                  type: string
+                productId:
+                  type: string
       responses:
         '200':
           description: Valid
@@ -1256,61 +1419,71 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/analytics:
     get:
       summary: Get learning analytics
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Analytics data
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/usage/summary:
     get:
       summary: Usage summary
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: days
           in: query
-          schema: { type: integer, minimum: 1, maximum: 90, default: 7 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
       responses:
         '200':
           description: Summary
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/notifications:
     get:
       summary: List notifications
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: limit
           in: query
-          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
       responses:
         '200':
           description: Notifications
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/notifications/read:
     post:
       summary: Mark notification read
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [id]
+              required:
+                - id
               properties:
-                id: { type: string }
+                id:
+                  type: string
       responses:
         '200':
           description: OK
@@ -1326,11 +1499,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/notifications/read-all:
     post:
       summary: Mark all notifications as read
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1349,8 +1522,10 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  updated: { type: integer }
+                  ok:
+                    type: boolean
+                  updated:
+                    type: integer
         '400':
           description: Validation error
           headers:
@@ -1360,20 +1535,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/notifications/generate:
     post:
       summary: Generate notifications (MVP)
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [topic]
+              required:
+                - topic
               properties:
-                topic: { type: string }
+                topic:
+                  type: string
       responses:
         '201':
           description: Created
@@ -1398,78 +1575,89 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/daily:
     get:
       summary: Get daily lesson recommendations
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: limit
           in: query
-          schema: { type: integer, minimum: 1, maximum: 10, default: 3 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 3
       responses:
         '200':
           description: Recommendations
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/events:
     post:
       summary: Append a learning event
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '201':
           description: OK
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/pipeline:
     post:
       summary: Start a new course creation pipeline
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [topic]
+              required:
+                - topic
               properties:
-                topic: { type: string }
+                topic:
+                  type: string
       responses:
         '201':
           description: Created
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
     get:
       summary: List pipelines
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Pipelines
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/pipeline/add-topic:
     post:
       summary: Add suggested topic to an existing course with pipeline UX
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [courseId, topic]
+              required:
+                - courseId
+                - topic
               properties:
-                courseId: { type: string }
-                topic: { type: string }
-                parentLessonId: { type: string }
+                courseId:
+                  type: string
+                topic:
+                  type: string
+                parentLessonId:
+                  type: string
       responses:
         '201':
           description: Created
@@ -1485,16 +1673,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/pipeline/{id}:
     get:
       summary: Get pipeline state
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: State
@@ -1510,113 +1699,126 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/pipeline/{id}/events:
     get:
       summary: Pipeline events (SSE)
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: SSE stream
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/pipeline/{id}/lessons:
     get:
       summary: Get all lessons for a pipeline's course
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Lessons
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/pipeline/{id}/lessons/{lessonId}/edit:
     post:
       summary: Edit a lesson with a prompt
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: lessonId
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [prompt]
+              required:
+                - prompt
               properties:
-                prompt: { type: string }
-                apiKey: { type: string }
+                prompt:
+                  type: string
+                apiKey:
+                  type: string
       responses:
         '200':
           description: Updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/pipeline/{id}/publish:
     post:
       summary: Publish pipeline course to marketplace
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Published
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/pipeline/{id}/personal:
     post:
       summary: Keep pipeline course as personal
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: OK
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/search:
     get:
       summary: Web search
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: q
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
         - name: limit
           in: query
-          schema: { type: integer, minimum: 1, maximum: 10 }
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
       responses:
         '200':
           description: Results
@@ -1632,15 +1834,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/export:
     get:
       summary: Export courses
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: format
           in: query
-          schema: { type: string, enum: [json, md, markdown, zip, pdf, scorm] }
+          schema:
+            type: string
+            enum:
+              - json
+              - md
+              - markdown
+              - zip
+              - pdf
+              - scorm
       responses:
         '200':
           description: Export payload
@@ -1665,112 +1875,121 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
   /api/v1/yjs/mindmap:
     get:
       summary: Get Yjs mindmap snapshot
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: courseId
           in: query
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Snapshot
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/collaboration/matches:
     get:
       summary: Collaboration matches
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Matches
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/collaboration/groups:
     post:
       summary: Create collaboration group
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [name]
+              required:
+                - name
               properties:
-                name: { type: string }
-                topic: { type: string }
+                name:
+                  type: string
+                topic:
+                  type: string
                 memberIds:
                   type: array
-                  items: { type: string }
+                  items:
+                    type: string
       responses:
         '201':
           description: Created
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
     get:
       summary: List collaboration groups
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Groups
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/collaboration/groups/{id}/messages:
     post:
       summary: Create group message
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [content]
+              required:
+                - content
               properties:
-                content: { type: string }
+                content:
+                  type: string
       responses:
         '201':
           description: Created
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
     get:
       summary: List group messages
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
-          schema: { type: string }
+          schema:
+            type: string
       responses:
         '200':
           description: Messages
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/admin/search-config:
     get:
       summary: Get admin search config
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Config
@@ -1795,10 +2014,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
-
     put:
       summary: Update admin search config
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -1811,11 +2030,11 @@ paths:
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/admin/cleanup:
     post:
       summary: Admin cleanup
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: Cleanup complete
@@ -1827,101 +2046,127 @@ paths:
               schema:
                 type: object
                 properties:
-                  ok: { type: boolean }
-                  deletedNotifications: { type: integer }
-                  deletedCourses: { type: integer }
-                  deletedPipelines: { type: integer }
-
+                  ok:
+                    type: boolean
+                  deletedNotifications:
+                    type: integer
+                  deletedCourses:
+                    type: integer
+                  deletedPipelines:
+                    type: integer
   /api/v1/update-agent/topics:
     put:
       summary: Update agent topics
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [topics]
+              required:
+                - topics
               properties:
                 topics:
                   type: array
-                  items: { type: string }
+                  items:
+                    type: string
       responses:
         '200':
           description: Updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
   /api/v1/update-agent/sources:
     put:
       summary: Update agent sources
-      security: [{ bearerAuth: [] }]
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [sources]
+              required:
+                - sources
               properties:
                 sources:
                   type: array
-                  items: { type: string }
+                  items:
+                    type: string
       responses:
         '200':
           description: Updated
           headers:
             x-request-id:
               $ref: '#/components/headers/XRequestId'
-
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
   headers:
     XRequestId:
       description: Request identifier for tracing
       schema:
         type: string
-
   schemas:
     User:
       type: object
       properties:
-        id: { type: string }
-        email: { type: string }
-        displayName: { type: string }
-        role: { type: string }
-        tier: { type: string }
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+        tier:
+          type: string
         onboardingCompletedAt:
           type: string
           nullable: true
           description: ISO timestamp when onboarding completed
-
     ErrorEnvelope:
       type: object
-      required: [error, requestId]
+      required:
+        - error
+        - requestId
       properties:
         error:
           type: object
-          required: [code, message]
+          required:
+            - code
+            - message
           properties:
-            code: { type: string }
-            message: { type: string }
+            code:
+              type: string
+            message:
+              type: string
             details: {}
         requestId:
           type: string
         status:
           type: integer
-
     Source:
       type: object
       properties:
-        title: { type: string }
-        url: { type: string }
-        author: { type: string }
+        title:
+          type: string
+        url:
+          type: string
+        author:
+          type: string
+x-learnflow:
+  websocket:
+    path: /ws
+    description: WebSocket endpoint for streaming responses, agent activity, and mindmap
+      updates. See apps/docs/pages/websocket-events.md for the current event contract.
+    auth:
+      queryParam: token
+      type: jwt
+    eventsDoc: apps/docs/pages/websocket-events.md

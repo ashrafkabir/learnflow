@@ -64,18 +64,11 @@ const FEATURES = [
   },
 ];
 
-const METRICS = {
-  courses: '50,000+',
-  learners: '12,000+',
-  rating: '4.9',
-  satisfaction: '98%',
-};
-
 const STATS = [
-  { value: METRICS.courses, label: 'Courses Created' },
-  { value: METRICS.learners, label: 'Active Learners' },
-  { value: METRICS.rating, label: 'App Store Rating' },
-  { value: METRICS.satisfaction, label: 'Completion Rate' },
+  { value: 'Web-first MVP', label: 'Built for rapid learning loops' },
+  { value: 'BYOK', label: 'Use your own API keys' },
+  { value: 'Citations', label: 'Best-effort sources in lessons' },
+  { value: 'Real-time', label: 'Streaming + live mindmap sync' },
 ];
 
 const DEMO_STEPS = [
@@ -403,11 +396,11 @@ export function HomePage() {
         <div className="text-center">
           <div className="flex flex-wrap justify-center gap-12">
             {[
-              { value: METRICS.courses, label: 'Courses created' },
-              { value: METRICS.learners, label: 'Active learners' },
+              { value: 'Security-first', label: 'Encrypted API keys at rest' },
+              { value: 'Marketplace', label: 'Share and discover courses' },
               {
-                value: METRICS.rating,
-                label: 'Average rating',
+                value: 'Beta',
+                label: 'Early product — feedback welcome',
                 icon: <IconStar className="w-4 h-4 text-amber-500" />,
               },
             ].map((stat) => (
@@ -433,7 +426,7 @@ export function HomePage() {
       >
         <h2 className="text-3xl font-bold mb-4">Ready to learn smarter?</h2>
         <p className="text-gray-600 dark:text-gray-300 mb-8 max-w-lg mx-auto">
-          Join thousands of learners using AI to master new topics faster than ever.
+          Start learning with a web-first MVP designed for fast iteration and honest defaults.
         </p>
         <Button variant="primary" size="large" onClick={() => nav('/register')}>
           Start Learning for Free

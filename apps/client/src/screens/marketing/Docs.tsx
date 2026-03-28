@@ -56,7 +56,7 @@ const SECTIONS = [
       {
         title: 'Collaboration',
         content:
-          'Find study partners by selecting interest tags. Create or join study groups around specific topics. Real-time shared mindmaps are planned (not yet available in the current MVP).',
+          'Find study partners by selecting interest tags. Create or join study groups around specific topics. Real-time mindmap collaboration is available in the MVP (live sync via Yjs); real-time chat and richer collaboration features are planned.',
       },
     ],
   },
@@ -91,7 +91,7 @@ const SECTIONS = [
       {
         title: 'WebSocket Events',
         content:
-          'The websocket surface includes /ws events like agent.spawned/agent.complete and pipeline stage updates. Documented partially in apps/docs/pages/architecture.md; expand as we stabilize schemas.',
+          'LearnFlow uses a WebSocket at /ws for response streaming, agent activity, and mindmap updates. For the current MVP contract (event names + payload shapes), see apps/docs/pages/websocket-events.md.',
       },
     ],
   },
@@ -156,7 +156,7 @@ const QUICK_START_STEPS = [
   {
     step: 3,
     title: 'Add Your API Key',
-    desc: 'Go to Settings → API Vault and add your OpenAI, Anthropic, or Google API key. Keys are encrypted locally.',
+    desc: 'Go to Settings → API Vault and add your OpenAI, Anthropic, or Google API key. Keys are encrypted at rest on the server.',
   },
   {
     step: 4,

@@ -44,7 +44,17 @@ function renderAt(path: string) {
 describe('404 Not Found page', () => {
   it('renders for unknown routes', async () => {
     renderAt('/this-page-does-not-exist-xyz');
-    await new Promise((r) => setTimeout(r, 500));
+
+    // NotFound is lazy-loaded under Suspense; give it a moment to resolve in jsdom.
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 50));
+      const html = document.body.innerHTML.toLowerCase();
+      if (html.match(/404|not found|page.*not|doesn.*exist/)) {
+        expect(html).toMatch(/404|not found|page.*not|doesn.*exist/);
+        return;
+      }
+    }
+
     const html = document.body.innerHTML.toLowerCase();
     expect(html).toMatch(/404|not found|page.*not|doesn.*exist/);
   });

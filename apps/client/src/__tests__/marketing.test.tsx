@@ -88,10 +88,15 @@ describe('Marketing pages', () => {
 
   it('pricing has plan cards', async () => {
     renderAt('/pricing');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/free|pro|enterprise/i)).toBeTruthy();
-    });
+
+    // Pricing is lazy-loaded; in jsdom it can take a couple ticks to resolve.
+    await waitFor(
+      () => {
+        const text = document.body.textContent || '';
+        expect(text.match(/free|pro/i)).toBeTruthy();
+      },
+      { timeout: 3000 },
+    );
   });
 
   it('renders about page', async () => {

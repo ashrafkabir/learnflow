@@ -116,7 +116,11 @@ Common prefixes referenced in the product spec/tests:
 - `/api/v1/marketplace`
 - `/api/v1/profile`
 
-## WebSocket events (Spec §11.2)
+## WebSocket events (MVP)
+
+A more complete event-level contract lives here:
+
+- `apps/docs/pages/websocket-events.md`
 
 ### Client → Server
 
