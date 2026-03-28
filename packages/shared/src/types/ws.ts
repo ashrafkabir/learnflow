@@ -14,6 +14,8 @@ export type WsClientMessage = {
     // Optional client-provided request correlation id. If provided, server will echo
     // it in error envelopes for this message.
     requestId?: string;
+    // Client-provided message id for idempotency/correlation (Spec §11.2).
+    message_id?: string;
     // Non-spec additions used for better context routing:
     courseId?: string;
     lessonId?: string;
