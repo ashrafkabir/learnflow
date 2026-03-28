@@ -8,6 +8,7 @@ Status: **DONE**
 
 ## Recent shipped commits (git log -10 --oneline)
 
+- 6080caa Iter123: add dev:status helper
 - a972bff Iter123: persisted bookmarks + context slices + harness fixes
 - ff42a6c Iter121: mark improvement queue done
 - aaa5a89 Iter121: log note about build log tracking
