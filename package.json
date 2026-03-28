@@ -16,7 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint:check": "eslint .",
-    "prepare": "husky"
+    "prepare": "husky",
+    "dev:attach": "node scripts/attach-ports.mjs && turbo run dev"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.11.1",
