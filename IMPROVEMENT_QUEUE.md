@@ -8,6 +8,7 @@ Status: **DONE**
 
 ## Recent shipped commits (git log -10 --oneline)
 
+- a972bff Iter123: persisted bookmarks + context slices + harness fixes
 - ff42a6c Iter121: mark improvement queue done
 - aaa5a89 Iter121: log note about build log tracking
 - 7d3ac34 Iter121: update build log
@@ -17,7 +18,6 @@ Status: **DONE**
 - a70f2d1 Iter121 Task6: spec mindmap mastery claims -> MVP progress
 - a789c2e Iter121 Task5: screenshot harness infers iteration from args/outdir
 - bf96c8c Iter121 Task4: add routing-only disclosure on agent activation
-- 671b867 Iter121 Task3: spec onboarding step 6 reflects MVP
 
 ---
 
@@ -55,8 +55,8 @@ Dev entrypoint used:
 
 - **Mostly implemented**: onboarding, dashboard, conversation, mindmap, lesson reader, notifications, pipelines, collaboration, settings.
   - Evidence: screenshots under `learnflow/screenshots/iter123/planner-run/desktop/`
-- **Bookmarks exist but are local-only** (localStorage), not in Student Context Object persistence.
-  - Evidence: `apps/client/src/screens/LessonReader.tsx` (`learnflow-bookmarks`)
+- **Bookmarks are server-backed** (SQLite) and used to hydrate the Student Context Object.
+  - Evidence: `apps/api/src/routes/bookmarks.ts`, `apps/api/src/db.ts` (`bookmarks` table), `apps/api/src/orchestratorShared.ts` hydration
 
 ### Student Context Object (Spec §6.2)
 
