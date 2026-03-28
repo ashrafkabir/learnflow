@@ -142,7 +142,7 @@ export function AgentMarketplace() {
       });
 
       toast(
-        `${isActive ? 'Deactivated' : 'Activated'} "${agent.name}"`,
+        `${isActive ? 'Deactivated' : 'Activated'} "${agent.name}". MVP note: activation changes routing preference only (no third-party agent code runs).`,
         isActive ? 'info' : 'success',
       );
     } catch {
