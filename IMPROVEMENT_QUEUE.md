@@ -4,10 +4,11 @@ Owner: Builder
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-28 (Iteration 119 READY FOR BUILDER)
 
-Status: **IN PROGRESS**
+Status: **DONE**
 
 ## Recent shipped commits (git log -10 --oneline)
 
+- 1db5d85 Iter119: MVP platform truth + onboarding Pro upgrade + subscription capabilities
 - d82121a Iter118: MVP truth link + subscription flags + creator dashboard errors
 - 57cddcb Iter116: remove misleading publish wording + strip demo marketplace metrics
 - 451f374 Iter115: BYOAI-only truth + marketplace deactivate + OpenAPI updates
