@@ -185,16 +185,10 @@ export function ProfileSettings() {
               Subscription Management
             </h2>
             <div className="flex items-center gap-3 text-sm text-gray-800/80 dark:text-gray-200">
-              <span>
-                <span className="inline-flex items-center gap-2">
-                  <IconChart className="w-4 h-4" />
-                  API calls this month:{' '}
-                </span>
-                <strong className="text-gray-900 dark:text-white">1,234 / 10,000</strong>
+              <span className="inline-flex items-center gap-2">
+                <IconChart className="w-4 h-4" />
+                Usage is shown below (best-effort).
               </span>
-            </div>
-            <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full bg-accent rounded-full" style={{ width: '12.34%' }} />
             </div>
             <div className="flex gap-3 pt-2">
               <Button
@@ -256,7 +250,7 @@ export function ProfileSettings() {
               },
               {
                 icon: <IconKey className="w-5 h-5" />,
-                label: 'Managed API keys (not available in this build)',
+                label: 'Managed API keys (coming soon)',
                 pro: true,
               },
               { icon: <IconRefresh className="w-5 h-5" />, label: 'Update Agent', pro: true },

@@ -470,6 +470,9 @@ async function runAddTopicPipeline(pipelineId: string) {
 
   let crawledSources: FirecrawlSource[] = [];
 
+  // In test mode, keep pipeline offline + deterministic.
+  const testMode = process.env.NODE_ENV === 'test';
+
   for (let i = 0; i < threads.length; i++) {
     threads[i].status = 'crawling';
     updatePipeline(p, {
@@ -479,14 +482,46 @@ async function runAddTopicPipeline(pipelineId: string) {
   }
 
   try {
-    // Prefer web-search provider over paid scraping where possible.
-    // NOTE: @learnflow/agents currently exports the Firecrawl provider by default,
-    // which may 402 in some environments. Fall back to the internal free provider.
-    try {
-      crawledSources = await searchTopicTrending(topic);
-    } catch {
-      const mod = await import('@learnflow/agents/dist/content-pipeline/web-search-provider.js');
-      crawledSources = await mod.searchTopicTrending(topic);
+    if (testMode) {
+      crawledSources = [
+        {
+          url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
+          title: 'JavaScript — MDN Web Docs',
+          author: 'MDN contributors',
+          domain: 'developer.mozilla.org',
+          source: 'mdn',
+          content:
+            'JavaScript is a programming language that allows you to implement complex features on web pages. It is used to create dynamic content, control multimedia, animate images, and more.',
+          credibilityScore: 0.9,
+          recencyScore: 0.8,
+          relevanceScore: 0.8,
+          wordCount: 30,
+        },
+        {
+          url: 'https://en.wikipedia.org/wiki/JavaScript',
+          title: 'JavaScript - Wikipedia',
+          author: 'Wikipedia contributors',
+          domain: 'en.wikipedia.org',
+          source: 'wikipedia',
+          content:
+            'JavaScript is a high-level, often just-in-time compiled language that conforms to the ECMAScript specification. It has curly-bracket syntax, dynamic typing, and first-class functions.',
+          credibilityScore: 0.7,
+          recencyScore: 0.6,
+          relevanceScore: 0.7,
+          wordCount: 33,
+        },
+      ] as any;
+      appendLog(p, 'info', `(test) using deterministic sources: ${crawledSources.length}`);
+    } else {
+      // Prefer web-search provider over paid scraping where possible.
+      // NOTE: @learnflow/agents currently exports the Firecrawl provider by default,
+      // which may 402 in some environments. Fall back to the internal free provider.
+      try {
+        crawledSources = await searchTopicTrending(topic);
+      } catch {
+        const mod = await import('@learnflow/agents/dist/content-pipeline/web-search-provider.js');
+        crawledSources = await mod.searchTopicTrending(topic);
+      }
     }
 
     updatePipeline(p, {
@@ -972,46 +1007,50 @@ async function runPipeline(pipelineId: string) {
         console.log(`[Pipeline] Scraping sources for lesson: "${les.title}"`);
         let lessonSources: FirecrawlSource[];
         try {
-          // Document Stage 2 searches (templates + resolved queries)
-          const stage2TemplatesUsed = searchCfg.stage2Templates;
-          const stage2Queries = stage2TemplatesUsed
-            .map((t) =>
-              t
-                .replaceAll('{courseTopic}', topic)
-                .replaceAll('{moduleTitle}', modules[mi].title)
-                .replaceAll('{lessonTitle}', les.title)
-                .replaceAll('{lessonDescription}', les.description),
-            )
-            .slice(0, searchCfg.maxStage2Queries);
+          if (process.env.NODE_ENV === 'test') {
+            lessonSources = uniqueSources.slice(0, 6);
+          } else {
+            // Document Stage 2 searches (templates + resolved queries)
+            const stage2TemplatesUsed = searchCfg.stage2Templates;
+            const stage2Queries = stage2TemplatesUsed
+              .map((t) =>
+                t
+                  .replaceAll('{courseTopic}', topic)
+                  .replaceAll('{moduleTitle}', modules[mi].title)
+                  .replaceAll('{lessonTitle}', les.title)
+                  .replaceAll('{lessonDescription}', les.description),
+              )
+              .slice(0, searchCfg.maxStage2Queries);
 
-          const sr2: any[] = Array.isArray((p as any).searchRuns)
-            ? (p as any).searchRuns
-            : searchRuns;
-          sr2.push(
-            makeStage2Log({
-              templatesUsed: stage2TemplatesUsed,
-              queries: stage2Queries,
-              perQueryLimit: searchCfg.perQueryLimit,
-              enabledSources: searchCfg.enabledSources,
-              moduleTitle: modules[mi].title,
-              lessonTitle: les.title,
-            }),
-          );
-          updatePipeline(p, { searchRuns: sr2 });
+            const sr2: any[] = Array.isArray((p as any).searchRuns)
+              ? (p as any).searchRuns
+              : searchRuns;
+            sr2.push(
+              makeStage2Log({
+                templatesUsed: stage2TemplatesUsed,
+                queries: stage2Queries,
+                perQueryLimit: searchCfg.perQueryLimit,
+                enabledSources: searchCfg.enabledSources,
+                moduleTitle: modules[mi].title,
+                lessonTitle: les.title,
+              }),
+            );
+            updatePipeline(p, { searchRuns: sr2 });
 
-          lessonSources = await searchForLesson(
-            topic,
-            modules[mi].title,
-            les.title,
-            les.description,
-            {
-              stage2Templates: searchCfg.stage2Templates,
-              enabledSources: searchCfg.enabledSources,
-              perQueryLimit: searchCfg.perQueryLimit,
-              maxStage2Queries: searchCfg.maxStage2Queries,
-              maxSourcesPerLesson: searchCfg.maxSourcesPerLesson,
-            } as any,
-          );
+            lessonSources = await searchForLesson(
+              topic,
+              modules[mi].title,
+              les.title,
+              les.description,
+              {
+                stage2Templates: searchCfg.stage2Templates,
+                enabledSources: searchCfg.enabledSources,
+                perQueryLimit: searchCfg.perQueryLimit,
+                maxStage2Queries: searchCfg.maxStage2Queries,
+                maxSourcesPerLesson: searchCfg.maxSourcesPerLesson,
+              } as any,
+            );
+          }
         } catch (err: any) {
           // Log provider errors (esp. auth) without leaking secrets.
           const statusCode = extractStatusCode(err);

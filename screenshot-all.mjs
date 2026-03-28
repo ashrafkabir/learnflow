@@ -80,6 +80,20 @@ async function dismissOverlays(page) {
 
 fs.mkdirSync(path.resolve(DIR), { recursive: true });
 
+// Iter114: Always create a NOTES.md template for each run so planners/builders can log context.
+try {
+  const notesPath = path.join(path.resolve(DIR), 'NOTES.md');
+  if (!fs.existsSync(notesPath)) {
+    fs.writeFileSync(
+      notesPath,
+      `# Screenshot Run Notes\n\n- Iteration: ${ITER}\n- Date: ${DATE}\n- Base URL: ${BASE}\n\n## What changed\n\n- \n\n## Known limitations\n\n- \n\n`,
+      'utf8',
+    );
+  }
+} catch {
+  // ignore
+}
+
 const browser = await chromium.launch();
 
 // 1) Public route screenshots (no auth)

@@ -164,6 +164,7 @@ function ReviewingPanel({
 
   const handlePublish = async () => {
     await fetch(`/api/v1/pipeline/${state.id}/publish`, { method: 'POST' });
+    // NOTE: This does not publish to the marketplace. It only marks the pipeline stage as published.
     if (onViewCourse) onViewCourse(state.courseId);
   };
 
@@ -203,7 +204,7 @@ function ReviewingPanel({
           onClick={handlePublish}
           className="flex-1 px-3 py-2 bg-success/10 text-success rounded-xl text-xs font-semibold hover:bg-success/20 transition-colors border border-success/20"
         >
-          Publish to Marketplace
+Mark Published
         </button>
         <button
           onClick={handlePersonal}

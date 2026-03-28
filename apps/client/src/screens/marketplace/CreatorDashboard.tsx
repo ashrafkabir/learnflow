@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/Button.js';
 import { apiGet, apiPost } from '../../context/AppContext.js';
 import { useToast } from '../../components/Toast.js';
@@ -109,6 +109,8 @@ const MOCK_EARNINGS = {
 /** Spec §5.2.7 — Creator Dashboard: publishing flow, analytics, earnings */
 export function CreatorDashboard() {
   const nav = useNavigate();
+  const location = useLocation();
+  const forceDemo = new URLSearchParams(location.search).get('demo') === '1';
   const { toast } = useToast();
   const [tab, setTab] = useState<Tab>('My Courses');
   const [showPublishForm, setShowPublishForm] = useState(false);
@@ -121,6 +123,7 @@ export function CreatorDashboard() {
     const loadDashboard = async () => {
       setLoading(true);
       try {
+        if (forceDemo) throw new Error('demo');
         const data = (await apiGet('/marketplace/creator/dashboard')) as CreatorDashboardPayload;
 
         const courses: CreatorCourse[] = (data.courses || []).map((c) => ({
@@ -657,6 +660,8 @@ export function CreatorDashboard() {
     </div>
   );
 
+  const usingDemoData = forceDemo || creatorCourses === MOCK_COURSES;
+
   return (
     <section
       aria-label="Creator Dashboard"
@@ -668,10 +673,17 @@ export function CreatorDashboard() {
           <Button variant="ghost" size="sm" onClick={() => nav('/marketplace')}>
             ←
           </Button>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-2">
-            <IconPalette className="w-5 h-5 text-accent" />
-            Creator Dashboard
-          </h1>
+          <div className="inline-flex items-center gap-3">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white inline-flex items-center gap-2">
+              <IconPalette className="w-5 h-5 text-accent" />
+              Creator Dashboard
+            </h1>
+            {usingDemoData && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 font-medium">
+                Demo data
+              </span>
+            )}
+          </div>
           <div className="ml-auto">
             <Button variant="primary" onClick={() => setShowPublishForm(true)}>
               + Create Course
@@ -681,6 +693,11 @@ export function CreatorDashboard() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {usingDemoData && (
+          <div className="mb-4 rounded-2xl border border-yellow-200 dark:border-yellow-900/40 bg-yellow-50 dark:bg-yellow-900/20 p-4 text-sm text-yellow-900 dark:text-yellow-200">
+            This dashboard is showing <strong>demo data</strong>. Publishing, earnings, and analytics are MVP placeholders.
+          </div>
+        )}
         {/* Tabs */}
         <nav
           className="flex gap-1 mb-6 bg-gray-100 dark:bg-gray-800 rounded-xl p-1"

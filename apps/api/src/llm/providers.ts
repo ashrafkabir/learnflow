@@ -53,9 +53,11 @@ export function getApiKeyForProvider(params: {
     tavily: process.env.TAVILY_API_KEY,
   };
 
+  // MVP truth: this build does NOT support managed API keys. Even if env keys exist,
+  // do not silently treat them as managed keys for Pro.
   const envKey = envMap[provider];
   if (tier === 'pro' && envKey) {
-    return { apiKey: envKey, source: { kind: 'managed_env' } };
+    return { apiKey: undefined, source: { kind: 'none' } };
   }
 
   return { apiKey: undefined, source: { kind: 'none' } };
