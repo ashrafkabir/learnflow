@@ -199,8 +199,6 @@ export function useStartPipeline() {
         const data = await apiPost('/pipeline', { topic });
         if (!data?.pipelineId) return null;
         return data;
-      } catch {
-        return null;
       } finally {
         setLoading(false);
       }

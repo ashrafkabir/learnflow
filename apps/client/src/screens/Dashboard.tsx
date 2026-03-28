@@ -68,8 +68,10 @@ export function Dashboard() {
         setActivePipelineId(result.pipelineId);
         refreshPipelines();
       }
-    } catch {
-      // stay on dashboard
+    } catch (err: any) {
+      // Show the real reason (auth, tier limit, server error) instead of failing silently.
+      const msg = String(err?.message || '').trim();
+      toast(msg || 'Could not start course creation. Please try again.', 'error');
     } finally {
       setCreating(false);
       setNewTopic('');
