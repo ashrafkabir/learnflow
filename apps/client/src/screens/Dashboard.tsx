@@ -595,9 +595,11 @@ export function Dashboard() {
                   <div className="w-full rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100">
                     <div className="flex items-center justify-between gap-3">
                       <span>{upgradeMessage}</span>
-                      <Button variant="secondary" size="sm" onClick={() => nav('/pricing')}>
-                        View plans
-                      </Button>
+                      <a href="/pricing" className="inline-flex">
+                        <Button variant="secondary" size="sm">
+                          View plans
+                        </Button>
+                      </a>
                     </div>
                   </div>
                 )}

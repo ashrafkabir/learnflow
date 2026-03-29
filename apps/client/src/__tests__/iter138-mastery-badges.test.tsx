@@ -16,6 +16,8 @@ beforeEach(() => {
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
   );
 
+  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url =
       typeof input === 'string'
@@ -24,31 +26,7 @@ beforeEach(() => {
           ? input.href
           : (input as Request).url;
 
-    if (url.includes('/api/v1/courses/c-1')) {
-      // Course fetch
-      if (!url.includes('/mastery')) {
-        return new Response(
-          JSON.stringify({
-            id: 'c-1',
-            title: 'Test Course',
-            description: 'desc',
-            modules: [
-              {
-                id: 'm1',
-                title: 'Module 1',
-                objective: 'obj',
-                description: 'd',
-                lessons: [
-                  { id: 'l1', title: 'Lesson 1', description: 'd1', content: '' },
-                  { id: 'l2', title: 'Lesson 2', description: 'd2', content: '' },
-                ],
-              },
-            ],
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        );
-      }
-
+    if (url.includes('/api/v1/courses/c-1/mastery')) {
       // Mastery fetch
       return new Response(
         JSON.stringify({
@@ -64,6 +42,30 @@ beforeEach(() => {
               lastQuizAt: new Date().toISOString(),
               gaps: ['x'],
               updatedAt: new Date().toISOString(),
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (url.includes('/api/v1/courses/c-1')) {
+      // Course fetch
+      return new Response(
+        JSON.stringify({
+          id: 'c-1',
+          title: 'Test Course',
+          description: 'desc',
+          modules: [
+            {
+              id: 'm1',
+              title: 'Module 1',
+              objective: 'obj',
+              description: 'd',
+              lessons: [
+                { id: 'l1', title: 'Lesson 1', description: 'd1', content: '' },
+                { id: 'l2', title: 'Lesson 2', description: 'd2', content: '' },
+              ],
             },
           ],
         }),

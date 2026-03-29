@@ -10,6 +10,7 @@ import { ToastProvider } from '../components/Toast.js';
 import { App } from '../App.js';
 
 beforeEach(() => {
+  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem(
     'learnflow-token',
@@ -108,6 +109,8 @@ describe('Iter138: lesson reader review due banner', () => {
     renderAt('/courses/c-1/lessons/l1');
     await new Promise((r) => setTimeout(r, 800));
 
+    // Banner is intentionally hidden on xs (`hidden sm:flex`). In jsdom we don't emulate
+    // responsive breakpoints, so assert presence + copy regardless of `hidden` class.
     const banner = document.querySelector('[data-testid="review-due-banner"]');
     expect(banner).toBeTruthy();
     expect(banner?.textContent || '').toContain('Review due');

@@ -18,6 +18,7 @@ import {
 import { AdminSearchConfigPanel } from '../components/AdminSearchConfigPanel.js';
 import { AppStateDebugPanel } from '../components/AppStateDebugPanel.js';
 import { ModeProvidersDebugPanel } from '../components/ModeProvidersDebugPanel.js';
+import { LearningStateDebugPanel } from '../components/LearningStateDebugPanel.js';
 import { UpdateAgentSettingsPanel } from '../components/update-agent/UpdateAgentSettingsPanel.js';
 
 export function ProfileSettings() {
@@ -865,6 +866,9 @@ export function ProfileSettings() {
 
         {/* Dev-only: mode + provider truth panel (Iter137 P2.10) */}
         <ModeProvidersDebugPanel />
+
+        {/* Dev-only: adaptive loop diagnostics (Iter138 P2.10) */}
+        <LearningStateDebugPanel />
 
         {/* Dev-only cleanup (Iter86) */}
         {serverRole === 'admin' && (window as any)?.location?.hostname !== 'test' ? (

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useApp, apiPost, apiGet } from '../context/AppContext.js';
+import { useApp, apiPost, apiGet, apiBase } from '../context/AppContext.js';
 import { CitationTooltip, Source } from '../components/CitationTooltip.js';
 import { LessonMindmap } from '../components/LessonMindmap.js';
 import { parseSources } from '../lib/sources.js';
@@ -259,7 +259,7 @@ export function LessonReader() {
 
   useEffect(() => {
     if (courseId) {
-      fetch(`/api/v1/courses/${courseId}`)
+      fetch(`${apiBase()}/api/v1/courses/${courseId}`)
         .then((r) => (r.ok ? r.json() : null))
         .then((course) => {
           if (!course?.modules) return;
@@ -318,7 +318,7 @@ export function LessonReader() {
         .finally(() => setLoading(false));
 
       // Best-effort: hydrate mastery state for in-lesson review banner.
-      fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/mastery`, {
+      fetch(`${apiBase()}/api/v1/courses/${courseId}/lessons/${lessonId}/mastery`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('learnflow-token') || ''}`,
         },

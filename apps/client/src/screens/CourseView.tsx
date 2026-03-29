@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useApp } from '../context/AppContext.js';
+import { useApp, apiBase } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
 import { SkeletonCourseView } from '../components/Skeleton.js';
 import { CitationTooltip, type Source } from '../components/CitationTooltip.js';
@@ -88,7 +88,7 @@ export function CourseView() {
 
     (async () => {
       try {
-        const res = await fetch(`/api/v1/courses/${courseId}/mastery`, {
+        const res = await fetch(`${apiBase()}/api/v1/courses/${courseId}/mastery`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('learnflow-token') || ''}`,
           },
