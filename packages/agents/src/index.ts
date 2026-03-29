@@ -26,6 +26,8 @@ export {
   writeCourseResearch,
   writeLessonResearch,
   writeLessonPlan,
+  writeCourseResearchMarkdown,
+  writeLessonPlanMarkdown,
   readCourseResearch,
   readLessonResearch,
   listLessonResearchBundles,

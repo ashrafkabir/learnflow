@@ -166,6 +166,150 @@ export async function writeLessonPlan(courseId: string, plan: unknown): Promise<
   return outPath;
 }
 
+function formatMdTableRow(cols: string[]): string {
+  const esc = (s: string) =>
+    String(s || '')
+      .replace(/\|/g, '\\|')
+      .replace(/\r?\n/g, ' ')
+      .trim();
+  return `| ${cols.map(esc).join(' | ')} |`;
+}
+
+function boundText(input: string, maxChars: number): string {
+  const s = String(input || '').trim();
+  if (!s) return '';
+  if (s.length <= maxChars) return s;
+  return s.slice(0, maxChars).trimEnd() + '\n\n…(truncated)…\n';
+}
+
+export async function writeCourseResearchMarkdown(courseId: string): Promise<string> {
+  const root = courseArtifactsRoot(courseId);
+  const courseRoot = join(root, 'research', 'course');
+
+  const sourcesRaw = await readFile(join(courseRoot, 'sources.json'), 'utf8');
+  const sourcesJson = JSON.parse(sourcesRaw);
+  const topic = String(sourcesJson?.topic || '');
+  const sources = Array.isArray(sourcesJson?.sources) ? sourcesJson.sources : [];
+
+  let images: any[] = [];
+  try {
+    const imagesRaw = await readFile(join(courseRoot, 'images.json'), 'utf8');
+    const imagesJson = JSON.parse(imagesRaw);
+    images = Array.isArray(imagesJson?.images) ? imagesJson.images : [];
+  } catch {
+    images = [];
+  }
+
+  // Best-effort read extracted markdown (already has bounded extractedText too)
+  let extractedIndex: Record<string, string> = {};
+  try {
+    const extractedDir = join(courseRoot, 'extracted');
+    const files = (await readdir(extractedDir)).filter((n) => n.endsWith('.md')).slice(0, 80);
+    for (const f of files) {
+      try {
+        extractedIndex[f] = await readFile(join(extractedDir, f), 'utf8');
+      } catch {
+        // ignore
+      }
+    }
+  } catch {
+    extractedIndex = {};
+  }
+
+  const generatedAt = new Date().toISOString();
+
+  let md = '';
+  md += `# Course Research\n\n`;
+  md += `- **Topic:** ${topic || '(unknown)'}\n`;
+  md += `- **courseId:** ${courseId}\n`;
+  md += `- **generatedAt:** ${generatedAt}\n\n`;
+
+  md += `## Sources index\n\n`;
+  md += formatMdTableRow(['#', 'Title', 'URL', 'Publisher', 'AccessedAt']) + '\n';
+  md += formatMdTableRow(['---', '---', '---', '---', '---']) + '\n';
+  sources.forEach((s: any, i: number) => {
+    md +=
+      formatMdTableRow([
+        String(i + 1),
+        String(s?.title || ''),
+        String(s?.url || ''),
+        String(s?.publisher || ''),
+        String(s?.accessedAt || ''),
+      ]) + '\n';
+  });
+  md += '\n';
+
+  md += `## Per-source extracts\n\n`;
+
+  sources.forEach((s: any, i: number) => {
+    const url = String(s?.url || '');
+    const title = String(s?.title || url);
+    const publisher = s?.publisher ? String(s.publisher) : '';
+    const accessedAt = s?.accessedAt ? String(s.accessedAt) : '';
+    const snippet = s?.snippet ? String(s.snippet) : '';
+
+    md += `### [${i + 1}] ${title}\n\n`;
+    md += `- **URL:** ${url}\n`;
+    if (publisher) md += `- **Publisher:** ${publisher}\n`;
+    if (accessedAt) md += `- **AccessedAt:** ${accessedAt}\n`;
+    md += '\n';
+
+    if (snippet) {
+      md += `**Snippet**\n\n`;
+      md += `> ${boundText(snippet, 800).replace(/\n/g, '\n> ')}\n\n`;
+    }
+
+    const extractedFromJson = s?.extractedText ? String(s.extractedText) : '';
+    const extracted = boundText(extractedFromJson, 12_000);
+
+    md += `**Extracted text (bounded)**\n\n`;
+    md += extracted ? extracted + '\n\n' : '(no extracted text)\n\n';
+
+    // List related extracted/*.md files as traceability (not guaranteed 1:1 mapping)
+    const extractedFiles = Object.keys(extractedIndex);
+    if (extractedFiles.length) {
+      md += `**Extracted files present**\n\n`;
+      md += extractedFiles
+        .slice(0, 20)
+        .map((f) => `- research/course/extracted/${f}`)
+        .join('\n');
+      md += '\n\n';
+    }
+
+    const imgs = images.filter((img: any) => String(img?.sourceUrl || '') === url);
+    if (imgs.length) {
+      md += `**Images (license/attribution)**\n\n`;
+      for (const img of imgs.slice(0, 12)) {
+        md += `- ${String(img?.url || '')}`;
+        const parts = [
+          img?.alt ? `alt: ${String(img.alt)}` : null,
+          img?.credit ? `credit: ${String(img.credit)}` : null,
+          img?.license ? `license: ${String(img.license)}` : null,
+        ].filter(Boolean);
+        if (parts.length) md += ` (${parts.join(' | ')})`;
+        md += '\n';
+      }
+      md += '\n';
+    }
+
+    md += `---\n\n`;
+  });
+
+  const outPath = join(root, 'course-research.md');
+  await writeText(outPath, md);
+  return outPath;
+}
+
+export async function writeLessonPlanMarkdown(
+  courseId: string,
+  lessonPlanMd: string,
+): Promise<string> {
+  const root = courseArtifactsRoot(courseId);
+  const outPath = join(root, 'lessonplan.md');
+  await writeText(outPath, String(lessonPlanMd || '').trim() + '\n');
+  return outPath;
+}
+
 export async function readCourseResearch(courseId: string): Promise<ResearchBundle | null> {
   try {
     const root = join(courseArtifactsRoot(courseId), 'research', 'course');

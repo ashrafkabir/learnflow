@@ -7,6 +7,9 @@ import {
   writeLessonResearch,
   readLessonResearch,
   searchWikimediaCommonsImages,
+  courseArtifactsRoot,
+  writeCourseResearchMarkdown,
+  writeLessonPlanMarkdown,
   type FirecrawlSource,
 } from '@learnflow/agents';
 import { getOpenAIForRequest } from '../llm/openai.js';
@@ -942,6 +945,82 @@ async function runPipeline(pipelineId: string) {
     });
 
     appendLog(p, 'info', 'artifacts:course research bundle written');
+
+    // Consolidate artifacts into a single human-readable markdown file.
+    try {
+      const outPath = await writeCourseResearchMarkdown(`course-${p.courseId || p.id}`);
+      appendLog(p, 'info', `artifacts:course-research.md written path=${outPath}`);
+    } catch (err: any) {
+      appendLog(
+        p,
+        'warn',
+        `artifacts:course-research.md write failed | message="${safeErrorMessage(err)}"`,
+      );
+    }
+
+    // Generate lessonplan.md from course-research.md as context.
+    try {
+      const { readFile } = await import('node:fs/promises');
+      const path = await import('node:path');
+
+      const researchPath = path.join(
+        courseArtifactsRoot(`course-${p.courseId || p.id}`),
+        'course-research.md',
+      );
+      const researchMd = await readFile(researchPath, 'utf8');
+
+      const lessonplanReq = {
+        model: 'gpt-4o-mini',
+        temperature: 0.4,
+        max_tokens: 3000,
+        messages: [
+          {
+            role: 'system' as const,
+            content:
+              'You are a curriculum designer. Create a markdown lesson plan. Requirements:\n' +
+              '- Output VALID markdown only.\n' +
+              '- Provide 4-6 modules, each with 3-5 lessons.\n' +
+              '- Each lesson must include: objectives (3-5 bullets) and recommended sources (2-4 URLs) pulled ONLY from the Sources index in the provided research.\n' +
+              '- Include a short assessment idea per module.\n' +
+              '- If sources are insufficient, note gaps explicitly and still propose a plan.',
+          },
+          {
+            role: 'user' as const,
+            content:
+              'Using the following course research as the only source of truth, produce a lesson plan.\n\n' +
+              researchMd,
+          },
+        ],
+      };
+
+      if (!openai) throw new Error('openai_unavailable');
+      const lessonplanResp = await openai.chat.completions.create(lessonplanReq as any);
+
+      await logOpenAIRequestResponse({
+        p,
+        courseId: `course-${p.courseId || p.id}`,
+        kind: 'lesson_plan_md',
+        request: lessonplanReq,
+        response: lessonplanResp,
+      });
+
+      const lessonPlanMd =
+        (lessonplanResp as any)?.choices?.[0]?.message?.content ||
+        (lessonplanResp as any)?.output_text ||
+        '';
+
+      // Heartbeat so long-running builds don't stall while LLM generates.
+      updatePipeline(p, { updatedAt: new Date().toISOString() });
+
+      const outPath = await writeLessonPlanMarkdown(`course-${p.courseId || p.id}`, lessonPlanMd);
+      appendLog(p, 'info', `artifacts:lessonplan.md written path=${outPath}`);
+    } catch (err: any) {
+      appendLog(
+        p,
+        'warn',
+        `artifacts:lessonplan.md generation failed | message="${safeErrorMessage(err)}"`,
+      );
+    }
   } catch (err: any) {
     appendLog(
       p,
@@ -1954,6 +2033,8 @@ router.get('/:id/artifacts', async (req: Request, res: Response) => {
     };
 
     const known = [
+      'course-research.md',
+      'lessonplan.md',
       'research/course/sources.json',
       'research/course/images.json',
       'research/course/extracted',

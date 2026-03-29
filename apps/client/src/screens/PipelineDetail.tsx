@@ -349,6 +349,20 @@ export function PipelineDetail() {
                 {(
                   artifacts?.known || [
                     {
+                      rel: 'course-research.md',
+                      exists: false,
+                      isFile: true,
+                      isDir: false,
+                      size: 0,
+                    },
+                    {
+                      rel: 'lessonplan.md',
+                      exists: false,
+                      isFile: true,
+                      isDir: false,
+                      size: 0,
+                    },
+                    {
                       rel: 'research/course/sources.json',
                       exists: false,
                       isFile: true,
