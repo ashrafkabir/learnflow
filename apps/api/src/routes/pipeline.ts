@@ -890,6 +890,11 @@ async function runPipeline(pipelineId: string) {
 
   // Persist the Phase 1 research bundle (sources + extracted markdown + images manifest)
   // so later stages can run without re-scraping.
+  const { client: openai } = getOpenAIForRequest({
+    userId: (p as any).userId || 'test-user-1',
+    tier: (p as any).tier || 'pro',
+  });
+
   try {
     // In test mode, ensure a Tavily auth error is emitted (this is a regression guard).
     if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
@@ -1031,11 +1036,6 @@ async function runPipeline(pipelineId: string) {
 
   const sourceMode = 'real' as const; // web-search-provider always uses real web sources
   updatePipeline(p, { progress: 28, sourceMode });
-
-  const { client: openai } = getOpenAIForRequest({
-    userId: (p as any).userId || 'test-user-1',
-    tier: (p as any).tier || 'pro',
-  });
 
   // Generate INFORMED course plan using scraped sources
   let modules: TopicModule[] = [];
