@@ -317,20 +317,23 @@ interface QuickChip {
   message: string;
 }
 
-function getContextChips(content: string): QuickChip[] {
+function getContextChips(content: string, hasSources: boolean): QuickChip[] {
   const lower = content.toLowerCase();
+  const maybeSources = hasSources ? [{ label: 'See Sources', message: '__open_sources__' }] : [];
+
   if (lower.includes('course') && (lower.includes('created') || lower.includes('ready')))
     return [
       { label: 'Take Notes', message: 'Take detailed notes on this lesson' },
       { label: 'Quiz Me', message: 'Generate a quiz to test my understanding' },
       { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
+      ...maybeSources,
     ];
   if (lower.includes('lesson') || lower.includes('module'))
     return [
       { label: 'Take Notes', message: 'Take detailed notes on this lesson' },
       { label: 'Quiz Me', message: 'Generate a quiz to test my understanding' },
       { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
-      { label: 'See Sources', message: '__open_sources__' },
+      ...maybeSources,
     ];
   if (lower.includes('quiz') || lower.includes('question'))
     return [
@@ -338,17 +341,19 @@ function getContextChips(content: string): QuickChip[] {
       { label: 'Try Again', message: 'Generate a new quiz on the same topic' },
       { label: 'Take Notes', message: 'Take detailed notes on what I got wrong' },
       { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
+      ...maybeSources,
     ];
   if (lower.includes('notes') || lower.includes('cornell') || lower.includes('flashcard'))
     return [
       { label: 'Quiz Me', message: 'Generate a quiz to test my understanding' },
       { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
+      ...maybeSources,
     ];
   return [
     { label: 'Take Notes', message: 'Take detailed notes on this lesson' },
     { label: 'Quiz Me', message: 'Generate a quiz to test my understanding' },
     { label: 'Go Deeper', message: 'Research this topic in more depth with sources' },
-    { label: 'See Sources', message: '__open_sources__' },
+    ...maybeSources,
   ];
 }
 
@@ -889,14 +894,25 @@ export function Conversation() {
                         {a.label}
                       </Button>
                     ))
-                  : getContextChips(msg.content).map((chip) => (
+                  : getContextChips(msg.content, drawerSources.length > 0).map((chip) => (
                       <Button
                         key={chip.label}
                         variant="ghost"
                         size="sm"
                         onClick={() => {
                           if (chip.message === '__open_sources__') {
-                            setDrawerOpen(true);
+                            if (drawerSources.length > 0) {
+                              setDrawerOpen(true);
+                            } else {
+                              dispatch({
+                                type: 'ADD_MESSAGE',
+                                payload: {
+                                  role: 'assistant',
+                                  content: 'No sources available for this response.',
+                                  ts: new Date().toISOString(),
+                                },
+                              });
+                            }
                           } else {
                             send(chip.message);
                           }

@@ -17,7 +17,13 @@ const DATE = new Date().toISOString().slice(0, 10);
 
 // Determine iteration early so default outDir is always in learnflow/screenshots/iter<iter>/...
 const inferredIterFromArgs = (() => {
-  const raw = [readArg('outDir'), readArg('out'), process.argv[2]].find(Boolean);
+  const raw = [
+    process.env.SCREENSHOT_DIR,
+    process.env.SCREENSHOT_OUT,
+    readArg('outDir'),
+    readArg('out'),
+    process.argv[2],
+  ].find(Boolean);
   const m = raw ? String(raw).match(/iter(\d+)/i) : null;
   return m ? m[1] : undefined;
 })();
@@ -86,6 +92,15 @@ async function safeGoto(page, path) {
   await page.waitForTimeout(800);
 }
 
+async function safeGotoWeb(page, path) {
+  try {
+    await page.goto(`${BASE_WEB}${path}`, { waitUntil: 'networkidle', timeout: 20000 });
+  } catch {
+    // best effort; still screenshot whatever rendered
+  }
+  await page.waitForTimeout(800);
+}
+
 async function dismissOverlays(page) {
   // Our onboarding tooltip tour uses an overlay that can intercept clicks.
   try {
@@ -123,14 +138,8 @@ function isNotFound(page) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   for (const [p, name] of MARKETING_PAGES) {
     const page = await ctx.newPage();
-    await safeGoto(page, p);
-    // NOTE: marketing uses BASE_WEB
-    try {
-      await page.goto(`${BASE_WEB}${p}`, { waitUntil: 'networkidle', timeout: 20000 });
-    } catch {
-      // best effort
-    }
-    await page.waitForTimeout(800);
+    // NOTE: marketing must only use BASE_WEB (avoid flakiness + wasted request)
+    await safeGotoWeb(page, p);
 
     if (await isNotFound(page)) {
       await page.screenshot({ path: `${DIR}/${name}__NOT_FOUND.png`, fullPage: true });
