@@ -31,11 +31,18 @@ describe('export zip contents', () => {
     expect(zip.file('learnflow-export.md')).toBeTruthy();
     expect(zip.file('learnflow-export.json')).toBeTruthy();
     expect(zip.file('metadata.json')).toBeTruthy();
+    expect(zip.file('provenance.json')).toBeTruthy();
 
     const metaRaw = await zip.file('metadata.json')!.async('string');
     const meta = JSON.parse(metaRaw);
     expect(typeof meta.exportedAt).toBe('string');
     expect(typeof meta.appVersion).toBe('string');
     expect(typeof meta.schemaVersion).toBe('string');
+
+    const provRaw = await zip.file('provenance.json')!.async('string');
+    const prov = JSON.parse(provRaw);
+    expect(prov.schemaVersion).toBe('v1');
+    expect(Array.isArray(prov.exportFiles)).toBe(true);
+    expect(prov.exportFiles.some((f: any) => f.path === 'learnflow-export.json')).toBe(true);
   });
 });

@@ -1,0 +1,23 @@
+{
+  "topic": "Test Pipeline Topic / Foundations of Test Pipeline Topic / History and Evolution of Test Pipeline Topic",
+  "lessonId": "course-072ed486-b935-4ed3-a11a-204b06df6e55-m0-l1",
+  "sourcesMissingReason": null,
+  "sources": [
+    {
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+      "title": "JavaScript — MDN Web Docs",
+      "publisher": "developer.mozilla.org",
+      "accessedAt": "2026-03-29T19:59:05.948Z",
+      "snippet": "JavaScript is a programming language that allows you to implement complex features on web pages. It is used to create dynamic content, control multimedia, animate images, and more.",
+      "extractedText": "JavaScript is a programming language that allows you to implement complex features on web pages. It is used to create dynamic content, control multimedia, animate images, and more."
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/JavaScript",
+      "title": "JavaScript - Wikipedia",
+      "publisher": "en.wikipedia.org",
+      "accessedAt": "2026-03-29T19:59:05.948Z",
+      "snippet": "JavaScript is a high-level, often just-in-time compiled language that conforms to the ECMAScript specification. It has curly-bracket syntax, dynamic typing, and first-class functions.",
+      "extractedText": "JavaScript is a high-level, often just-in-time compiled language that conforms to the ECMAScript specification. It has curly-bracket syntax, dynamic typing, and first-class functions."
+    }
+  ]
+}

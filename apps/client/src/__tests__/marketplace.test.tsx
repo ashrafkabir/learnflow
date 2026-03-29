@@ -40,6 +40,14 @@ beforeEach(() => {
       });
     }
 
+    // Support legacy /marketplace alias route used in some navigation/tests.
+    if (url.includes('/api/v1/marketplace')) {
+      return new Response(JSON.stringify({ courses: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     if (url.includes('/api/v1/marketplace/checkout')) {
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,

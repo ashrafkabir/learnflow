@@ -34,9 +34,13 @@ if (
 
 // ── No-silent-crashes gate ────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const originalLog = console.log.bind(console);
-const originalError = console.error.bind(console);
-const originalWarn = console.warn.bind(console);
+const _originalLog = console.log.bind(console);
+const _originalError = console.error.bind(console);
+const _originalWarn = console.warn.bind(console);
+
+// Fully suppress console output in tests. Vitest's RPC console bridge can still
+// be mid-flight during teardown, causing EnvironmentTeardownError.
+// We keep fail-fast for warnings/errors via throwing, but avoid any log events.
 
 const ALLOWLIST_SUBSTRINGS: string[] = [
   '[LearnFlow]',
@@ -84,26 +88,31 @@ function shouldAllow(args: unknown[]): boolean {
 }
 
 // Silence stdout spam; reduces flakiness/noise in test runs.
+// IMPORTANT: In node environment (api/agents), Vitest can still track console logs and
+// can throw EnvironmentTeardownError if log events are emitted during shutdown.
+// To keep deterministic shutdown, always return synchronously with no async work.
 console.log = (..._args: unknown[]) => {
   return;
 };
 
 // Drain console log queue at end-of-test to avoid Vitest EnvironmentTeardownError
 // (Closing rpc while "onUserConsoleLog" was pending).
-// This is a pragmatic harness stabilizer; it doesn't change product behavior.
+// Only relevant for jsdom/UI tests; avoid adding async teardown in node env.
 afterEach(async () => {
+  const env = (globalThis as any).window ? 'jsdom' : 'node';
+  if (env !== 'jsdom') return;
   await new Promise((r) => setTimeout(r, 0));
 });
 
 console.error = (...args: unknown[]) => {
   if (shouldAllow(args)) return;
-  originalError(...args);
+  // Don't forward to originalError to avoid RPC console bridging issues.
   throw new Error(`console.error during test: ${msgFromArgs(args)}`);
 };
 
 console.warn = (...args: unknown[]) => {
   if (shouldAllow(args)) return;
-  originalWarn(...args);
+  // Don't forward to originalWarn to avoid RPC console bridging issues.
   throw new Error(`console.warn during test: ${msgFromArgs(args)}`);
 };
 

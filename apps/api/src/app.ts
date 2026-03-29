@@ -24,6 +24,7 @@ import { bookmarksRouter } from './routes/bookmarks.js';
 import { yjsRouter } from './yjsRouter.js';
 import { adminSearchConfigRouter } from './routes/admin-search-config.js';
 import { adminCleanupRouter } from './routes/admin-cleanup.js';
+import { diagnosticsRouter } from './routes/diagnostics.js';
 import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from './middleware.js';
 import { errorHandler, notFoundHandler, requestIdMiddleware, sendError } from './errors.js';
 import jwt from 'jsonwebtoken';
@@ -337,6 +338,7 @@ export function createApp(options?: { devMode?: boolean }) {
   app.use('/api/v1/yjs', protectedAuth, rateLimiter, yjsRouter);
   app.use('/api/v1/admin', protectedAuth, rateLimiter, writeRateLimiter, adminSearchConfigRouter);
   app.use('/api/v1/admin', protectedAuth, rateLimiter, writeRateLimiter, adminCleanupRouter);
+  app.use('/api/v1/diagnostics', protectedAuth, rateLimiter, diagnosticsRouter);
 
   // Pro-only endpoint for RBAC testing
   app.get('/api/v1/pro/features', authMiddleware, requireTier('pro'), (_req, res) => {

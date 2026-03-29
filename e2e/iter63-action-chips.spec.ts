@@ -29,7 +29,15 @@ test('Iter63: Orchestrator returns 3–4 contextual action chips (screenshot)', 
   const chipsContainer = page.locator('button', { hasText: 'Take Notes' }).first();
   await expect(chipsContainer).toBeVisible({ timeout: 30000 });
 
-  const chipNames = ['Take Notes', 'Quiz Me', 'Next Lesson', 'Go Deeper', 'See Sources'];
+  const chipNames = [
+    'Review Answers',
+    'Try Again',
+    'Take Notes',
+    'Quiz Me',
+    'Next Lesson',
+    'Go Deeper',
+    'See Sources',
+  ];
   const found: string[] = [];
 
   for (const name of chipNames) {

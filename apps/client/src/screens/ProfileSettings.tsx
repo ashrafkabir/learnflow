@@ -17,6 +17,7 @@ import {
 } from '../components/icons/index.js';
 import { AdminSearchConfigPanel } from '../components/AdminSearchConfigPanel.js';
 import { AppStateDebugPanel } from '../components/AppStateDebugPanel.js';
+import { ModeProvidersDebugPanel } from '../components/ModeProvidersDebugPanel.js';
 import { UpdateAgentSettingsPanel } from '../components/update-agent/UpdateAgentSettingsPanel.js';
 
 export function ProfileSettings() {
@@ -861,6 +862,9 @@ export function ProfileSettings() {
 
         {/* Dev-only app state inspector (Iter136) */}
         <AppStateDebugPanel />
+
+        {/* Dev-only: mode + provider truth panel (Iter137 P2.10) */}
+        <ModeProvidersDebugPanel />
 
         {/* Dev-only cleanup (Iter86) */}
         {serverRole === 'admin' && (window as any)?.location?.hostname !== 'test' ? (

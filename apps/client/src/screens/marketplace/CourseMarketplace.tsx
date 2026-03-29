@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../lib/routes.js';
 import { apiGet, apiPost } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
@@ -251,7 +252,7 @@ export function CourseMarketplace() {
               <Button variant="primary" size="sm" onClick={() => nav('/dashboard')}>
                 Create a course
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => nav('/marketplace/creator')}>
+              <Button variant="ghost" size="sm" onClick={() => nav(ROUTES.marketplaceCreator)}>
                 Creator dashboard
               </Button>
               <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>

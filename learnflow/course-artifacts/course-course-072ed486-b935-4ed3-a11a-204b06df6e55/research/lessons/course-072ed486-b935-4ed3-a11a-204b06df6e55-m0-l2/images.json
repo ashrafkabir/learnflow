@@ -1,0 +1,60 @@
+{
+  "images": [
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg",
+      "alt": "File:Figma-logo.svg",
+      "credit": "Figma, Inc.",
+      "license": "CC BY 4.0",
+      "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/6/6a/JavaScript-logo.png",
+      "alt": "File:JavaScript-logo.png",
+      "credit": "Chris Williams (SVG), Public domain",
+      "license": "Public domain",
+      "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg",
+      "alt": "File:Python-logo-notext.svg",
+      "credit": "Python Software Foundation, GPL-compatible",
+      "license": "GPL",
+      "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg",
+      "alt": "File:React-icon.svg",
+      "credit": "Facebook, Inc. and its affiliates",
+      "license": "MIT",
+      "sourceUrl": "https://developer.mozilla.org/en-US/docs/Web/JavaScript"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg",
+      "alt": "File:Figma-logo.svg",
+      "credit": "Figma, Inc.",
+      "license": "CC BY 4.0",
+      "sourceUrl": "https://en.wikipedia.org/wiki/JavaScript"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/6/6a/JavaScript-logo.png",
+      "alt": "File:JavaScript-logo.png",
+      "credit": "Chris Williams (SVG), Public domain",
+      "license": "Public domain",
+      "sourceUrl": "https://en.wikipedia.org/wiki/JavaScript"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Python-logo-notext.svg",
+      "alt": "File:Python-logo-notext.svg",
+      "credit": "Python Software Foundation, GPL-compatible",
+      "license": "GPL",
+      "sourceUrl": "https://en.wikipedia.org/wiki/JavaScript"
+    },
+    {
+      "url": "https://upload.wikimedia.org/wikipedia/commons/a/a7/React-icon.svg",
+      "alt": "File:React-icon.svg",
+      "credit": "Facebook, Inc. and its affiliates",
+      "license": "MIT",
+      "sourceUrl": "https://en.wikipedia.org/wiki/JavaScript"
+    }
+  ]
+}
