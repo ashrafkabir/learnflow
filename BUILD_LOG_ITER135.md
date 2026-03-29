@@ -107,3 +107,47 @@ Change request: implement pipeline heartbeat so long-running scraping/generation
 ### Tests
 - `npm test` (turbo) — PASS
 
+---
+
+## Iter135 — P2 Reliability cleanup (Mar 29, 2026)
+
+### P2 Task 9 — dev:clean (avoid duplicate dev processes)
+
+What changed:
+- Added `npm run dev:clean`.
+- Enhanced `scripts/dev-clean.mjs`:
+  - frees ports 3000/3001/3003 by terminating only node/vite/next listeners on those ports
+  - also terminates orphaned `turbo run dev` processes started from this repo (common after terminal interruptions)
+
+Evidence / manual checks:
+```bash
+node scripts/dev-status.mjs
+node scripts/dev-clean.mjs
+node scripts/dev-status.mjs
+```
+
+### P2 Task 10 — Playwright EPIPE robustness for list mode
+
+Problem:
+- `npx playwright test --list | head` can crash with `Error: write EPIPE` on Node 22 when the pipe is closed early.
+
+Fix:
+- Added wrapper `scripts/playwright-list.mjs` and `npm run pw:list`.
+
+Evidence:
+```bash
+npm run pw:list | head -n 20
+# exits 0 without EPIPE
+```
+
+Files:
+- `package.json`
+- `README.md`
+- `scripts/dev-clean.mjs`
+- `scripts/playwright-list.mjs`
+
+Commits:
+- `e6e2834` Iter135 P2: add dev:clean + robust playwright list wrapper
+- `b652ab8` Iter135 P2: dev-clean also terminates orphaned turbo dev processes
+
+

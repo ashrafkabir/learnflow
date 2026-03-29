@@ -211,19 +211,26 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
 ### P2 — Reliability + cleanup to prevent regressions
 
 9. **P2 — Remove/avoid duplicate dev processes (`dev-status` shows leftover turbo pids).**
+   - Status: DONE (builder)
    - Evidence:
-     - `node scripts/dev-status.mjs` lists multiple turbo dev processes from old sessions.
-   - Acceptance:
-     - Add a safe `npm run dev:clean` step (or improve `scripts/dev-clean.mjs`) that finds and terminates only LearnFlow dev processes.
-     - Document it in root README.
+     - Added `npm run dev:clean` and improved `scripts/dev-clean.mjs` to:
+       - free ports 3000/3001/3003 safely (only kills node/vite/next listeners on those ports)
+       - terminate orphaned `turbo run dev` processes started from this repo
+     - README updated with `dev:clean` usage.
+     - Files:
+       - `scripts/dev-clean.mjs`
+       - `package.json` (scripts)
+       - `README.md`
 
 10. **P2 — Playwright robustness: avoid EPIPE crashes on `--list` piping.**
 
+- Status: DONE (builder)
 - Evidence:
-  - Running `npx playwright test --list | head` can throw EPIPE in Node 22.
-- Acceptance:
-  - Document “don’t pipe Playwright list mode to head” and/or adjust CI scripts to not pipe.
-  - Optional: add a tiny node wrapper that catches EPIPE for `--list` commands.
+  - Added wrapper `scripts/playwright-list.mjs` + `npm run pw:list`.
+  - Verified: `npm run pw:list | head` exits 0 (no EPIPE crash).
+  - Files:
+    - `scripts/playwright-list.mjs`
+    - `package.json` (scripts)
 
 11. **P2 — Align client vs web marketing routing decisions (reduce split-brain).**
 
