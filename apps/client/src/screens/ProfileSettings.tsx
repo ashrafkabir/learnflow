@@ -167,12 +167,22 @@ export function ProfileSettings() {
             </div>
             {state.subscription === 'free' ? (
               <div className="flex flex-col items-end">
-                <a
-                  href="/pricing"
-                  className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 bg-white text-purple-600 hover:bg-white/90 border-0 shadow-card font-medium text-sm"
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await apiPost('/subscription', { action: 'upgrade', plan: 'pro' });
+                      dispatch({ type: 'SET_SUBSCRIPTION', tier: 'pro' });
+                      toast('Upgraded to Pro (mock billing)', 'success');
+                    } catch {
+                      toast('Failed to upgrade', 'error');
+                    }
+                  }}
+                  className="bg-white text-purple-600 hover:bg-white/90"
                 >
                   Upgrade to Pro
-                </a>
+                </Button>
                 <p className="mt-2 text-xs opacity-90">
                   Billing is in mock mode in this MVP (no real charges).
                 </p>
