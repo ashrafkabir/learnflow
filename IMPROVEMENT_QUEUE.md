@@ -234,19 +234,23 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
 
 11. **P2 — Align client vs web marketing routing decisions (reduce split-brain).**
 
+- Status: DONE (builder)
+- Decision:
+  - Chose **(A)**: `apps/web` is canonical for marketing/pricing. Removed the legacy client marketing screen bundle.
 - Evidence:
-  - Client comment: `apps/client/src/App.tsx` says marketing is served by `apps/web`.
-  - Client still has marketing screen files and screenshot harness captures marketing pages.
-- Acceptance:
-  - Either (A) delete client marketing screens and ensure client `/` becomes LandingApp/login, OR (B) make client marketing canonical and delete `apps/web`.
-  - Screenshot harness updated accordingly.
+  - Deleted `apps/client/src/screens/marketing/*`.
+  - Updated client tests to assert against `apps/web` pricing disclosures:
+    - `apps/client/src/__tests__/mockBillingCopyRegression.test.tsx`
+    - `apps/client/src/__tests__/subscription-upgrade.test.tsx`
+  - Full suite: `npm test`
 
 12. **P2 — Add a single “Spec claims vs MVP reality” checklist in docs and keep it current.**
 
+- Status: DONE (builder)
 - Evidence:
-  - `apps/client/src/screens/AboutMvpTruth.tsx` exists, but it’s app-only.
-- Acceptance:
-  - Add `apps/docs/pages/mvp-truth.md` (or equivalent) and link it from Settings + marketing footer.
+  - Added `apps/docs/pages/mvp-truth-checklist.md`.
+  - Linked from `apps/docs/pages/mvp-truth.md`.
+  - `npm -w @learnflow/docs test`
 
 ---
 
