@@ -102,6 +102,17 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
 
 ### P0 — Fix correctness + credibility (dev/runtime + user trust)
 
+- **[DONE] Iter134 — Fix course research discovery (OpenAI web_search parsing + multi-query expansion) + persist sources/topics/queries + request/response logs**
+  - Evidence:
+    - `packages/agents/src/content-pipeline/openai-websearch-provider.ts` now uses `extractResultsFromResponse()` and query expansion.
+    - `apps/api/src/routes/pipeline.ts` passes `topics/queries/rawCount/parsedResultsCount` into `writeCourseResearch()`.
+    - `packages/agents/src/content-pipeline/artifact-writer.ts` writes these fields into `research/course/sources.json` and includes them in `course-research.md`.
+    - Raw OpenAI web_search req/resp now persisted under `course-artifacts/<courseId>/logs/openai/*web_search*_request.json` + `*_response.json` (hooked via API route).
+
+- **[DONE] Iter134 — Fix "Start Reading" failure in dev auth bypass mode**
+  - Evidence:
+    - `apps/client/src/context/AppContext.tsx` now fully respects `VITE_DEV_AUTH_BYPASS=1` (no refresh, no forced /login redirects on 401, no Authorization header injection).
+
 1. **P0 — Fix `apps/web` static export + middleware incompatibility (choose one).**
    - Evidence:
      - `apps/web/next.config.js` sets `output: 'export'`.
