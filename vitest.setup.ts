@@ -33,7 +33,6 @@ if (
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 // ── No-silent-crashes gate ────────────────────────────────────────────────
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _originalLog = console.log.bind(console);
 const _originalError = console.error.bind(console);
 const _originalWarn = console.warn.bind(console);
