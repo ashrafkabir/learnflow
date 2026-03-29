@@ -79,12 +79,16 @@ function renderAt(path: string) {
 describe('Marketplace', () => {
   it('renders course marketplace', async () => {
     renderAt('/marketplace');
-    await waitFor(() => expect(document.querySelector('[data-screen]')).toBeTruthy());
+    await waitFor(() =>
+      expect(document.querySelector('[data-screen="course-marketplace"]')).toBeTruthy(),
+    );
   });
 
   it('renders agent marketplace', async () => {
     renderAt('/marketplace/agents');
-    await waitFor(() => expect(document.querySelector('[data-screen]')).toBeTruthy());
+    await waitFor(() =>
+      expect(document.querySelector('[data-screen="agent-marketplace"]')).toBeTruthy(),
+    );
   });
 
   it('renders creator dashboard', async () => {

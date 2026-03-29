@@ -41,7 +41,7 @@ const SECTIONS = [
       {
         title: 'Knowledge Mindmap',
         content:
-          'Visualize your knowledge graph. Nodes are color-coded by progress level: green (complete), amber (in progress), gray (not started). Click to expand, jump to lessons, or add connections. Use keyboard navigation for accessibility. Press "?" for keyboard shortcuts.',
+          'Visualize your course map (courses/modules/lessons). Nodes are color-coded by progress level: green (complete), amber (in progress), gray (not started). Click nodes to jump to lessons. Adding custom concept connections is planned.',
       },
       {
         title: 'Lesson Reader',

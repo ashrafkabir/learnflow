@@ -22,7 +22,7 @@ const TEAM = [
     name: 'Alex Rivera',
     role: 'Founder & CEO',
     icon: <IconPeople className="w-8 h-8" />,
-    bio: 'Former ML engineer at Google. Passionate about democratizing education through AI.',
+    bio: 'Former ML engineer. Passionate about democratizing education through AI.',
   },
   {
     name: 'Priya Sharma',
@@ -57,8 +57,8 @@ const VALUES = [
   },
   {
     icon: <IconBook className="w-7 h-7" />,
-    title: 'Attribution Always',
-    desc: 'Every piece of AI-generated content cites its sources. We believe in giving credit and enabling verification.',
+    title: 'Attribution (Best-Effort)',
+    desc: 'When sources are available, AI-generated content can include citations. We believe in giving credit and enabling verification.',
   },
   {
     icon: <IconInfo className="w-7 h-7" />,

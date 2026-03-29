@@ -38,21 +38,18 @@ Chat with LearnFlow's AI orchestrator:
 
 ### Course Builder
 
-Generate courses from any topic:
+Generate courses from any topic (best-effort):
 
 1. Enter a topic and select difficulty
-2. The builder researches via Firecrawl web scraping
-3. Sources are scored for credibility (0-1 scale)
-4. A syllabus is generated with prerequisite ordering
-5. Each lesson includes content with inline citations
+2. If a web source provider is configured, the builder discovers public sources and extracts text
+3. Basic quality signals may be applied (e.g., domain heuristics, recency/readability approximations)
+4. A syllabus is generated and lessons are drafted
+5. Lessons include citations when sources are available
 
-**Source Quality**:
+**Notes**:
 
-- Academic (.edu, arxiv.org) → 0.9-1.0
-- Official docs (rust-lang.org) → 0.9-1.0
-- Major publications → 0.8-0.9
-- Quality blogs → 0.6-0.8
-- Sources below 0.5 are rejected
+- Source coverage varies by topic and provider configuration.
+- Quality scoring is heuristic and not a guarantee of credibility.
 
 ### Notes Agent
 
@@ -73,11 +70,11 @@ AI-generated assessments:
 
 ### Research Agent
 
-Find and synthesize academic papers:
+Find and synthesize sources (best-effort):
 
-- Semantic Scholar integration
+- Can use web search providers and/or curated sources depending on deployment configuration
 - Structured research summaries
-- Citation management
+- Citation management (when source metadata is available)
 
 ### Summarizer Agent
 

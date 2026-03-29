@@ -12,7 +12,15 @@ import { colors, typography, breakpoints } from '../design-system/tokens.js';
 
 import { beforeEach } from 'vitest';
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Preload lazy-loaded onboarding modules so Suspense resolves deterministically in jsdom.
+  await import('../screens/onboarding/Welcome.js');
+  await import('../screens/onboarding/Goals.js');
+  await import('../screens/onboarding/Topics.js');
+  await import('../screens/onboarding/ApiKeys.js');
+  await import('../screens/onboarding/SubscriptionChoice.js');
+  await import('../screens/onboarding/FirstCourse.js');
+
   // Mark onboarding complete and set token so routes don't redirect
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem(

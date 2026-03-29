@@ -759,905 +759,954 @@ async function runAddTopicPipeline(pipelineId: string) {
   broadcast(p.id, 'pipeline:complete', { courseId });
 }
 
+function startPipelineHeartbeat(p: PipelineState): () => void {
+  // Keep updatedAt fresh while long async steps are in-flight so the stall watchdog
+  // doesn't kill legitimate long generations.
+  //
+  // In Vitest, worker teardown can produce EnvironmentTeardownError if any interval is
+  // still present; disable heartbeats in test runs.
+  if (process.env.VITEST || process.env.NODE_ENV === 'test') return () => {};
+
+  const intervalMs = Number(process.env.PIPELINE_HEARTBEAT_MS || 15_000);
+  const t = setInterval(
+    () => {
+      try {
+        updatePipeline(p, { updatedAt: new Date().toISOString() });
+      } catch {
+        // ignore
+      }
+    },
+    Math.max(1_000, intervalMs),
+  );
+  (t as any).unref?.();
+  return () => clearInterval(t);
+}
+
 async function runPipeline(pipelineId: string) {
-  console.log('[Pipeline] Starting pipeline', pipelineId);
+  // Avoid noisy stdout in tests; Vitest can surface EnvironmentTeardownError when
+  // console output is still being flushed during worker shutdown.
+  if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+    console.log('[Pipeline] Starting pipeline', pipelineId);
+  }
   const p = pipelines.get(pipelineId);
   if (!p) return;
 
   updatePipeline(p, { status: 'RUNNING', startedAt: p.startedAt || new Date().toISOString() });
   appendLog(p, 'info', `run started id=${pipelineId}`);
 
-  const topic = p.topic;
+  const stopHeartbeat = startPipelineHeartbeat(p);
+  try {
+    const topic = p.topic;
 
-  // ── STAGE 1: Scraping (bulk research) ──────────────────────────────────
-  updatePipeline(p, { stage: 'scraping', progress: 5 });
-  appendLog(p, 'info', `stage=scraping topic="${topic}"`);
+    // ── STAGE 1: Scraping (bulk research) ──────────────────────────────────
+    updatePipeline(p, { stage: 'scraping', progress: 5 });
+    appendLog(p, 'info', `stage=scraping topic="${topic}"`);
 
-  // Threads are used only for UI progress visualization. Query generation is handled
-  // by OpenAI web_search + extraction.
-  const threads: CrawlThread[] = Array.from({ length: 5 }).map((_, i) => ({
-    id: `thread-${i}`,
-    // Placeholder shown in UI; real queries are logged from OpenAI web_search.
-    url: `Research thread ${i + 1}`,
-    status: 'pending' as const,
-  }));
-  updatePipeline(p, { crawlThreads: threads });
+    // Threads are used only for UI progress visualization. Query generation is handled
+    // by OpenAI web_search + extraction.
+    const threads: CrawlThread[] = Array.from({ length: 5 }).map((_, i) => ({
+      id: `thread-${i}`,
+      // Placeholder shown in UI; real queries are logged from OpenAI web_search.
+      url: `Research thread ${i + 1}`,
+      status: 'pending' as const,
+    }));
+    updatePipeline(p, { crawlThreads: threads });
 
-  // Use OpenAI web_search for bulk research
-  let crawledSources: FirecrawlSource[] = [];
+    // Use OpenAI web_search for bulk research
+    let crawledSources: FirecrawlSource[] = [];
 
-  // Update threads visually as we go
-  for (let i = 0; i < threads.length; i++) {
-    threads[i].status = 'crawling';
-    updatePipeline(p, {
-      crawlThreads: [...threads],
-      progress: 5 + Math.round((i / threads.length) * 20),
-    });
-  }
+    // Update threads visually as we go
+    for (let i = 0; i < threads.length; i++) {
+      threads[i].status = 'crawling';
+      updatePipeline(p, {
+        crawlThreads: [...threads],
+        progress: 5 + Math.round((i / threads.length) * 20),
+      });
+    }
 
-  const testMode = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
+    const testMode = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
 
-  // OpenAI-only Phase 1: single research pass via OpenAI web_search.
-  // In test mode, keep offline + deterministic.
-  if (testMode) {
-    crawledSources = [
-      {
-        url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
-        title: 'JavaScript — MDN Web Docs',
-        author: 'MDN contributors',
-        domain: 'developer.mozilla.org',
-        source: 'mdn',
-        content:
-          'JavaScript is a programming language that allows you to implement complex features on web pages. It is used to create dynamic content, control multimedia, animate images, and more.',
-        credibilityScore: 0.9,
-        recencyScore: 0.8,
-        relevanceScore: 0.8,
-        wordCount: 30,
-        provider: 'test_deterministic',
-      },
-      {
-        url: 'https://en.wikipedia.org/wiki/JavaScript',
-        title: 'JavaScript - Wikipedia',
-        author: 'Wikipedia contributors',
-        domain: 'en.wikipedia.org',
-        source: 'wikipedia',
-        content:
-          'JavaScript is a high-level, often just-in-time compiled language that conforms to the ECMAScript specification. It has curly-bracket syntax, dynamic typing, and first-class functions.',
+    // OpenAI-only Phase 1: single research pass via OpenAI web_search.
+    // In test mode, keep offline + deterministic.
+    if (testMode) {
+      crawledSources = [
+        {
+          url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
+          title: 'JavaScript — MDN Web Docs',
+          author: 'MDN contributors',
+          domain: 'developer.mozilla.org',
+          source: 'mdn',
+          content:
+            'JavaScript is a programming language that allows you to implement complex features on web pages. It is used to create dynamic content, control multimedia, animate images, and more.',
+          credibilityScore: 0.9,
+          recencyScore: 0.8,
+          relevanceScore: 0.8,
+          wordCount: 30,
+          provider: 'test_deterministic',
+        },
+        {
+          url: 'https://en.wikipedia.org/wiki/JavaScript',
+          title: 'JavaScript - Wikipedia',
+          author: 'Wikipedia contributors',
+          domain: 'en.wikipedia.org',
+          source: 'wikipedia',
+          content:
+            'JavaScript is a high-level, often just-in-time compiled language that conforms to the ECMAScript specification. It has curly-bracket syntax, dynamic typing, and first-class functions.',
+          credibilityScore: 0.7,
+          recencyScore: 0.6,
+          relevanceScore: 0.7,
+          wordCount: 33,
+          provider: 'test_deterministic',
+        },
+      ] as any;
+      appendLog(p, 'info', `(test) using deterministic sources: ${crawledSources.length}`);
+    } else {
+      appendLog(p, 'info', `openai_web_search:course topic="${topic}"`);
+      const extractedCourse = await searchAndExtractTopic({
+        topic,
+        maxResults: 12,
+        perPageTimeoutMs: 12_000,
+        // Log raw web_search req/resp into pipeline logs + disk artifacts.
+        onOpenAIWebSearch: async ({
+          request,
+          response,
+        }: {
+          request: unknown;
+          response: unknown;
+        }) => {
+          await logOpenAIRequestResponse({
+            p,
+            courseId: `course-${p.courseId || p.id}`,
+            kind: 'web_search',
+            request,
+            response,
+          });
+        },
+      } as any);
+
+      crawledSources = extractedCourse.sources.map((s: any) => ({
+        url: s.url,
+        title: s.title,
+        author: s.author,
+        domain: s.publisher || new URL(s.url).hostname,
+        source: 'openai_web_search',
+        content: s.extractedText || s.snippet || '',
+        wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
         credibilityScore: 0.7,
         recencyScore: 0.6,
         relevanceScore: 0.7,
-        wordCount: 33,
-        provider: 'test_deterministic',
-      },
-    ] as any;
-    appendLog(p, 'info', `(test) using deterministic sources: ${crawledSources.length}`);
-  } else {
-    appendLog(p, 'info', `openai_web_search:course topic="${topic}"`);
-    const extractedCourse = await searchAndExtractTopic({
-      topic,
-      maxResults: 12,
-      perPageTimeoutMs: 12_000,
-      // Log raw web_search req/resp into pipeline logs + disk artifacts.
-      onOpenAIWebSearch: async ({ request, response }: { request: unknown; response: unknown }) => {
-        await logOpenAIRequestResponse({
-          p,
-          courseId: `course-${p.courseId || p.id}`,
-          kind: 'web_search',
-          request,
-          response,
-        });
-      },
-    } as any);
+        provider: 'openai_web_search',
+      })) as any;
 
-    crawledSources = extractedCourse.sources.map((s: any) => ({
-      url: s.url,
-      title: s.title,
-      author: s.author,
-      domain: s.publisher || new URL(s.url).hostname,
-      source: 'openai_web_search',
-      content: s.extractedText || s.snippet || '',
-      wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
-      credibilityScore: 0.7,
-      recencyScore: 0.6,
-      relevanceScore: 0.7,
-      provider: 'openai_web_search',
-    })) as any;
-
-    appendLog(p, 'info', `openai_web_search:course results=${crawledSources.length}`);
-  }
-
-  // Persist the actual sources discovered so the UI can attribute what was used.
-  updatePipeline(p, {
-    sources: crawledSources.map((s) => ({
-      url: s.url,
-      title: s.title,
-      domain: s.domain,
-      author: s.author,
-      publishDate: s.publishDate || undefined,
-      credibilityScore: s.credibilityScore,
-      provider: (s as any).provider || s.source || s.domain,
-      summary: (s.content || '').slice(0, 240),
-    })),
-  });
-
-  for (let i = 0; i < threads.length; i++) {
-    threads[i].status = 'done';
-    const chunk = crawledSources.slice(i * 4, (i + 1) * 4);
-    threads[i].title = chunk.length > 0 ? `Found ${chunk.length} sources` : 'Completed';
-    threads[i].contentPreview = chunk
-      .map((s) => s.title)
-      .join(', ')
-      .slice(0, 100);
-    threads[i].wordCount = chunk.reduce((s, c) => s + c.wordCount, 0);
-  }
-
-  // OpenAI-only: if Phase 1 returned no sources, proceed with an empty bundle (MVP truth).
-  updatePipeline(p, { crawlThreads: [...threads], progress: 25 });
-
-  // Persist the Phase 1 research bundle (sources + extracted markdown + images manifest)
-  // so later stages can run without re-scraping.
-  const { client: openai } = getOpenAIForRequest({
-    userId: (p as any).userId || 'test-user-1',
-    tier: (p as any).tier || 'pro',
-  });
-
-  // Generate INFORMED course plan using scraped sources
-  let modules: TopicModule[] = [];
-
-  try {
-    // In test mode, ensure a Tavily auth error is emitted (this is a regression guard).
-    if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
-      logAuthIssue(
-        p.id,
-        'Tavily',
-        401,
-        'Unauthorized: missing or invalid API key.',
-        'TAVILY_API_KEY',
-      );
+      appendLog(p, 'info', `openai_web_search:course results=${crawledSources.length}`);
     }
 
-    const { client: openaiForResearch } = getOpenAIForRequest({
+    // Persist the actual sources discovered so the UI can attribute what was used.
+    updatePipeline(p, {
+      sources: crawledSources.map((s) => ({
+        url: s.url,
+        title: s.title,
+        domain: s.domain,
+        author: s.author,
+        publishDate: s.publishDate || undefined,
+        credibilityScore: s.credibilityScore,
+        provider: (s as any).provider || s.source || s.domain,
+        summary: (s.content || '').slice(0, 240),
+      })),
+    });
+
+    for (let i = 0; i < threads.length; i++) {
+      threads[i].status = 'done';
+      const chunk = crawledSources.slice(i * 4, (i + 1) * 4);
+      threads[i].title = chunk.length > 0 ? `Found ${chunk.length} sources` : 'Completed';
+      threads[i].contentPreview = chunk
+        .map((s) => s.title)
+        .join(', ')
+        .slice(0, 100);
+      threads[i].wordCount = chunk.reduce((s, c) => s + c.wordCount, 0);
+    }
+
+    // OpenAI-only: if Phase 1 returned no sources, proceed with an empty bundle (MVP truth).
+    updatePipeline(p, { crawlThreads: [...threads], progress: 25 });
+
+    // Persist the Phase 1 research bundle (sources + extracted markdown + images manifest)
+    // so later stages can run without re-scraping.
+    const { client: openai } = getOpenAIForRequest({
       userId: (p as any).userId || 'test-user-1',
       tier: (p as any).tier || 'pro',
     });
 
-    const web = await searchAndExtractTopic({
-      topic,
-      openai: openaiForResearch || undefined,
-      maxResults: 12,
-      maxPagesToExtract: 6,
-      perPageTimeoutMs: 12_000,
-      onOpenAIWebSearch: async ({ request, response }: { request: unknown; response: unknown }) => {
+    // Generate INFORMED course plan using scraped sources
+    let modules: TopicModule[] = [];
+
+    try {
+      // In test mode, ensure a Tavily auth error is emitted (this is a regression guard).
+      if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
+        logAuthIssue(
+          p.id,
+          'Tavily',
+          401,
+          'Unauthorized: missing or invalid API key.',
+          'TAVILY_API_KEY',
+        );
+      }
+
+      const { client: openaiForResearch } = getOpenAIForRequest({
+        userId: (p as any).userId || 'test-user-1',
+        tier: (p as any).tier || 'pro',
+      });
+
+      const web = await searchAndExtractTopic({
+        topic,
+        openai: openaiForResearch || undefined,
+        maxResults: 12,
+        maxPagesToExtract: 6,
+        perPageTimeoutMs: 12_000,
+        onOpenAIWebSearch: async ({
+          request,
+          response,
+        }: {
+          request: unknown;
+          response: unknown;
+        }) => {
+          await logOpenAIRequestResponse({
+            p,
+            courseId: `course-${p.courseId || p.id}`,
+            kind: 'web_search',
+            request,
+            response,
+          });
+        },
+      } as any);
+
+      // Attach a few Wikimedia Commons license-safe images per topic (best-effort)
+      const images = await searchWikimediaCommonsImages(topic, { limit: 4 }).catch(() => []);
+
+      await writeCourseResearch(`course-${p.courseId || p.id}`, {
+        topic: web.topic,
+        sourcesMissingReason: web.sourcesMissingReason,
+        topics: (web as any).topics,
+        queries: (web as any).queries,
+        parsedResultsCount: (web as any).parsedResultsCount,
+        rawCount: (web as any).rawCount,
+        sources: (web.sources || []).map((s) => ({
+          ...s,
+          images: (s.images || []).concat(
+            images.slice(0, 4).map((img) => ({
+              url: img.url,
+              alt: img.title,
+              credit: img.author,
+              license: img.license,
+              sourceUrl: img.sourcePageUrl,
+            })),
+          ),
+        })),
+      });
+
+      appendLog(p, 'info', 'artifacts:course research bundle written');
+
+      // Consolidate artifacts into a single human-readable markdown file.
+      try {
+        const outPath = await writeCourseResearchMarkdown(`course-${p.courseId || p.id}`);
+        appendLog(p, 'info', `artifacts:course-research.md written path=${outPath}`);
+      } catch (err: any) {
+        appendLog(
+          p,
+          'warn',
+          `artifacts:course-research.md write failed | message="${safeErrorMessage(err)}"`,
+        );
+      }
+
+      // Generate lessonplan.md from course-research.md as context.
+      try {
+        const { readFile } = await import('node:fs/promises');
+        const path = await import('node:path');
+
+        const researchPath = path.join(
+          courseArtifactsRoot(`course-${p.courseId || p.id}`),
+          'course-research.md',
+        );
+        const researchMd = await readFile(researchPath, 'utf8');
+
+        const lessonplanReq = {
+          model: 'gpt-4o-mini',
+          temperature: 0.4,
+          max_tokens: 3000,
+          messages: [
+            {
+              role: 'system' as const,
+              content:
+                'You are a curriculum designer. Create a markdown lesson plan. Requirements:\n' +
+                '- Output VALID markdown only.\n' +
+                '- Provide 4-6 modules, each with 3-5 lessons.\n' +
+                '- Each lesson must include: objectives (3-5 bullets) and recommended sources (2-4 URLs) pulled ONLY from the Sources index in the provided research.\n' +
+                '- Include a short assessment idea per module.\n' +
+                '- If sources are insufficient, note gaps explicitly and still propose a plan.',
+            },
+            {
+              role: 'user' as const,
+              content:
+                'Using the following course research as the only source of truth, produce a lesson plan.\n\n' +
+                researchMd,
+            },
+          ],
+        };
+
+        if (!openai) throw new Error('openai_unavailable');
+        const lessonplanResp = await openai.chat.completions.create(lessonplanReq as any);
+
         await logOpenAIRequestResponse({
           p,
           courseId: `course-${p.courseId || p.id}`,
-          kind: 'web_search',
-          request,
-          response,
+          kind: 'lesson_plan_md',
+          request: lessonplanReq,
+          response: lessonplanResp,
         });
-      },
-    } as any);
 
-    // Attach a few Wikimedia Commons license-safe images per topic (best-effort)
-    const images = await searchWikimediaCommonsImages(topic, { limit: 4 }).catch(() => []);
+        const lessonPlanMd =
+          (lessonplanResp as any)?.choices?.[0]?.message?.content ||
+          (lessonplanResp as any)?.output_text ||
+          '';
 
-    await writeCourseResearch(`course-${p.courseId || p.id}`, {
-      topic: web.topic,
-      sourcesMissingReason: web.sourcesMissingReason,
-      topics: (web as any).topics,
-      queries: (web as any).queries,
-      parsedResultsCount: (web as any).parsedResultsCount,
-      rawCount: (web as any).rawCount,
-      sources: (web.sources || []).map((s) => ({
-        ...s,
-        images: (s.images || []).concat(
-          images.slice(0, 4).map((img) => ({
-            url: img.url,
-            alt: img.title,
-            credit: img.author,
-            license: img.license,
-            sourceUrl: img.sourcePageUrl,
-          })),
-        ),
-      })),
-    });
+        // Heartbeat so long-running builds don't stall while LLM generates.
+        updatePipeline(p, { updatedAt: new Date().toISOString() });
 
-    appendLog(p, 'info', 'artifacts:course research bundle written');
+        const outPath = await writeLessonPlanMarkdown(`course-${p.courseId || p.id}`, lessonPlanMd);
+        appendLog(p, 'info', `artifacts:lessonplan.md written path=${outPath}`);
+      } catch (err: any) {
+        const msg = safeErrorMessage(err);
+        appendLog(p, 'warn', `artifacts:lessonplan.md generation failed | message="${msg}"`);
 
-    // Consolidate artifacts into a single human-readable markdown file.
-    try {
-      const outPath = await writeCourseResearchMarkdown(`course-${p.courseId || p.id}`);
-      appendLog(p, 'info', `artifacts:course-research.md written path=${outPath}`);
+        // Best-effort fallback so the artifact always exists (useful in dev/test without keys).
+        try {
+          const fallbackMd = `# Lesson Plan\n\n`;
+          const outPath = await writeLessonPlanMarkdown(
+            `course-${p.courseId || p.id}`,
+            fallbackMd +
+              `*(Fallback plan generated because lesson plan LLM call failed: ${msg})*\n\n` +
+              `## Modules\n\n` +
+              modules
+                .map(
+                  (m, i) =>
+                    `### Module ${i + 1}: ${m.title}\n\n- Objective: ${m.objective}\n\n` +
+                    (m.lessons?.length
+                      ? m.lessons
+                          .map(
+                            (l: any, j: number) =>
+                              `#### Lesson ${i + 1}.${j + 1}: ${l.title}\n\n- Objectives:\n- (add objectives)\n\n- Recommended sources:\n- (no sources available)\n`,
+                          )
+                          .join('\n')
+                      : ''),
+                )
+                .join('\n\n'),
+          );
+          appendLog(p, 'info', `artifacts:lessonplan.md fallback written path=${outPath}`);
+        } catch (err2: any) {
+          appendLog(
+            p,
+            'warn',
+            `artifacts:lessonplan.md fallback write failed | message="${safeErrorMessage(err2)}"`,
+          );
+        }
+      }
     } catch (err: any) {
       appendLog(
         p,
         'warn',
-        `artifacts:course-research.md write failed | message="${safeErrorMessage(err)}"`,
+        `artifacts:course research bundle write failed | message="${safeErrorMessage(err)}"`,
       );
     }
 
-    // Generate lessonplan.md from course-research.md as context.
+    const sourceMode = 'real' as const; // web-search-provider always uses real web sources
+    updatePipeline(p, { progress: 28, sourceMode });
+
     try {
-      const { readFile } = await import('node:fs/promises');
-      const path = await import('node:path');
-
-      const researchPath = path.join(
-        courseArtifactsRoot(`course-${p.courseId || p.id}`),
-        'course-research.md',
-      );
-      const researchMd = await readFile(researchPath, 'utf8');
-
-      const lessonplanReq = {
+      // Log the OpenAI request/response for the syllabus generation into pipeline logs + disk artifacts.
+      // We reconstruct the request payload here to avoid threading pipeline state into helpers.
+      const sourceContext = crawledSources
+        .slice(0, 15)
+        .map(
+          (s, i) =>
+            `[Source ${i + 1}] "${s.title}" (${(s as any).domain || ''})\n${String((s as any).content || '').slice(0, 800)}`,
+        )
+        .join('\n---\n');
+      const hasRealSources = crawledSources.length > 0;
+      const syllabusReq = {
         model: 'gpt-4o-mini',
-        temperature: 0.4,
+        temperature: 0.7,
         max_tokens: 3000,
+        response_format: { type: 'json_object' as const },
         messages: [
           {
             role: 'system' as const,
-            content:
-              'You are a curriculum designer. Create a markdown lesson plan. Requirements:\n' +
-              '- Output VALID markdown only.\n' +
-              '- Provide 4-6 modules, each with 3-5 lessons.\n' +
-              '- Each lesson must include: objectives (3-5 bullets) and recommended sources (2-4 URLs) pulled ONLY from the Sources index in the provided research.\n' +
-              '- Include a short assessment idea per module.\n' +
-              '- If sources are insufficient, note gaps explicitly and still propose a plan.',
+            content: `You are a curriculum designer. Generate a detailed course syllabus as JSON. Return:\n{\n  "courseTitle": "A specific, compelling course title",\n  "courseDescription": "2-3 sentence description",\n  "modules": [\n    {\n      "title": "Module title specific to the topic",\n      "objective": "What the learner will achieve",\n      "lessons": [\n        { "title": "Specific lesson title", "description": "What this lesson covers" }\n      ]\n    }\n  ]\n}\nRules:\n- Generate 4-6 modules, each with 3-5 lessons\n- Titles must be SPECIFIC to the topic (not generic like "Foundations of X")\n- Lessons should progress from fundamentals to advanced\n- Include practical/hands-on lessons\n- Each lesson title should be unique and descriptive\n${hasRealSources ? `- You have REAL scraped web sources below. Use them to inform what topics are trending, important, and practically relevant. Base your module/lesson titles on what the sources actually cover — not generic templates.` : ''}`,
           },
           {
             role: 'user' as const,
-            content:
-              'Using the following course research as the only source of truth, produce a lesson plan.\n\n' +
-              researchMd,
+            content: `Create a comprehensive intermediate-level course syllabus for: "${topic}"${hasRealSources ? `\n\nHere are real sources scraped from the web to inform your plan:\n\n${sourceContext}` : ''}`,
           },
         ],
       };
 
       if (!openai) throw new Error('openai_unavailable');
-      const lessonplanResp = await openai.chat.completions.create(lessonplanReq as any);
-
+      const syllabusResp = await openai.chat.completions.create(syllabusReq as any);
       await logOpenAIRequestResponse({
         p,
         courseId: `course-${p.courseId || p.id}`,
-        kind: 'lesson_plan_md',
-        request: lessonplanReq,
-        response: lessonplanResp,
+        kind: 'course_syllabus',
+        request: syllabusReq,
+        response: syllabusResp,
       });
 
-      const lessonPlanMd =
-        (lessonplanResp as any)?.choices?.[0]?.message?.content ||
-        (lessonplanResp as any)?.output_text ||
-        '';
-
-      // Heartbeat so long-running builds don't stall while LLM generates.
-      updatePipeline(p, { updatedAt: new Date().toISOString() });
-
-      const outPath = await writeLessonPlanMarkdown(`course-${p.courseId || p.id}`, lessonPlanMd);
-      appendLog(p, 'info', `artifacts:lessonplan.md written path=${outPath}`);
+      // Reuse the existing parser by passing the sources + openai client
+      modules = await generateModulesForTopic(topic, crawledSources, openai);
     } catch (err: any) {
+      // OpenAI invalid_api_key / 401/403 should be clearly visible in pipeline logs.
+      const statusCode = extractStatusCode(err);
       const msg = safeErrorMessage(err);
-      appendLog(p, 'warn', `artifacts:lessonplan.md generation failed | message="${msg}"`);
-
-      // Best-effort fallback so the artifact always exists (useful in dev/test without keys).
-      try {
-        const fallbackMd = `# Lesson Plan\n\n`;
-        const outPath = await writeLessonPlanMarkdown(
-          `course-${p.courseId || p.id}`,
-          fallbackMd +
-            `*(Fallback plan generated because lesson plan LLM call failed: ${msg})*\n\n` +
-            `## Modules\n\n` +
-            modules
-              .map(
-                (m, i) =>
-                  `### Module ${i + 1}: ${m.title}\n\n- Objective: ${m.objective}\n\n` +
-                  (m.lessons?.length
-                    ? m.lessons
-                        .map(
-                          (l: any, j: number) =>
-                            `#### Lesson ${i + 1}.${j + 1}: ${l.title}\n\n- Objectives:\n- (add objectives)\n\n- Recommended sources:\n- (no sources available)\n`,
-                        )
-                        .join('\n')
-                    : ''),
-              )
-              .join('\n\n'),
-        );
-        appendLog(p, 'info', `artifacts:lessonplan.md fallback written path=${outPath}`);
-      } catch (err2: any) {
+      const code = String(err?.code || '').toLowerCase();
+      const type = String(err?.type || '').toLowerCase();
+      const looksAuth =
+        statusCode === 401 ||
+        statusCode === 403 ||
+        code.includes('invalid_api_key') ||
+        type.includes('invalid_api_key');
+      if (looksAuth) {
+        logAuthIssue(p.id, 'OpenAI', statusCode, msg, 'OPENAI_API_KEY');
+      } else {
         appendLog(
           p,
           'warn',
-          `artifacts:lessonplan.md fallback write failed | message="${safeErrorMessage(err2)}"`,
+          `OpenAI error while generating modules (continuing with generic) | message="${msg}"`,
         );
       }
+      modules = getGenericModules(topic);
     }
-  } catch (err: any) {
-    appendLog(
-      p,
-      'warn',
-      `artifacts:course research bundle write failed | message="${safeErrorMessage(err)}"`,
+    const totalLessons = modules.reduce((s, m) => s + m.lessons.length, 0);
+
+    const llmTitle = (generateModulesForTopic as any)._lastTitle;
+    const llmDesc = (generateModulesForTopic as any)._lastDescription;
+
+    p.moduleCount = modules.length;
+    p.lessonCount = totalLessons;
+    p.courseTitle = llmTitle || `Mastering ${topic}`;
+    p.courseDescription =
+      llmDesc ||
+      `Build practical skill in ${topic} through guided lessons and worked examples (intermediate level).`;
+
+    updatePipeline(p, { progress: 30 });
+
+    // ── STAGE 2: Organizing ────────────────────────────────────────────────
+    updatePipeline(p, { stage: 'organizing', progress: 35 });
+
+    // Deduplicate and score
+    const uniqueSources = crawledSources.filter(
+      (s, i, arr) => arr.findIndex((x) => x.url === s.url) === i,
     );
-  }
+    const credScores = uniqueSources.map((s) => s.credibilityScore);
+    const themes = [...new Set(modules.map((m) => m.title))];
 
-  const sourceMode = 'real' as const; // web-search-provider always uses real web sources
-  updatePipeline(p, { progress: 28, sourceMode });
-
-  try {
-    // Log the OpenAI request/response for the syllabus generation into pipeline logs + disk artifacts.
-    // We reconstruct the request payload here to avoid threading pipeline state into helpers.
-    const sourceContext = crawledSources
-      .slice(0, 15)
-      .map(
-        (s, i) =>
-          `[Source ${i + 1}] "${s.title}" (${(s as any).domain || ''})\n${String((s as any).content || '').slice(0, 800)}`,
-      )
-      .join('\n---\n');
-    const hasRealSources = crawledSources.length > 0;
-    const syllabusReq = {
-      model: 'gpt-4o-mini',
-      temperature: 0.7,
-      max_tokens: 3000,
-      response_format: { type: 'json_object' as const },
-      messages: [
-        {
-          role: 'system' as const,
-          content: `You are a curriculum designer. Generate a detailed course syllabus as JSON. Return:\n{\n  "courseTitle": "A specific, compelling course title",\n  "courseDescription": "2-3 sentence description",\n  "modules": [\n    {\n      "title": "Module title specific to the topic",\n      "objective": "What the learner will achieve",\n      "lessons": [\n        { "title": "Specific lesson title", "description": "What this lesson covers" }\n      ]\n    }\n  ]\n}\nRules:\n- Generate 4-6 modules, each with 3-5 lessons\n- Titles must be SPECIFIC to the topic (not generic like "Foundations of X")\n- Lessons should progress from fundamentals to advanced\n- Include practical/hands-on lessons\n- Each lesson title should be unique and descriptive\n${hasRealSources ? `- You have REAL scraped web sources below. Use them to inform what topics are trending, important, and practically relevant. Base your module/lesson titles on what the sources actually cover — not generic templates.` : ''}`,
-        },
-        {
-          role: 'user' as const,
-          content: `Create a comprehensive intermediate-level course syllabus for: "${topic}"${hasRealSources ? `\n\nHere are real sources scraped from the web to inform your plan:\n\n${sourceContext}` : ''}`,
-        },
-      ],
-    };
-
-    if (!openai) throw new Error('openai_unavailable');
-    const syllabusResp = await openai.chat.completions.create(syllabusReq as any);
-    await logOpenAIRequestResponse({
-      p,
-      courseId: `course-${p.courseId || p.id}`,
-      kind: 'course_syllabus',
-      request: syllabusReq,
-      response: syllabusResp,
+    updatePipeline(p, {
+      organizedSources: uniqueSources.length,
+      deduplicatedCount: crawledSources.length - uniqueSources.length,
+      credibilityScores: credScores,
+      themes,
+      progress: 45,
     });
 
-    // Reuse the existing parser by passing the sources + openai client
-    modules = await generateModulesForTopic(topic, crawledSources, openai);
-  } catch (err: any) {
-    // OpenAI invalid_api_key / 401/403 should be clearly visible in pipeline logs.
-    const statusCode = extractStatusCode(err);
-    const msg = safeErrorMessage(err);
-    const code = String(err?.code || '').toLowerCase();
-    const type = String(err?.type || '').toLowerCase();
-    const looksAuth =
-      statusCode === 401 ||
-      statusCode === 403 ||
-      code.includes('invalid_api_key') ||
-      type.includes('invalid_api_key');
-    if (looksAuth) {
-      logAuthIssue(p.id, 'OpenAI', statusCode, msg, 'OPENAI_API_KEY');
-    } else {
-      appendLog(
-        p,
-        'warn',
-        `OpenAI error while generating modules (continuing with generic) | message="${msg}"`,
-      );
+    if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
+      await new Promise((r) => setTimeout(r, 1000));
     }
-    modules = getGenericModules(topic);
-  }
-  const totalLessons = modules.reduce((s, m) => s + m.lessons.length, 0);
 
-  const llmTitle = (generateModulesForTopic as any)._lastTitle;
-  const llmDesc = (generateModulesForTopic as any)._lastDescription;
+    // ── STAGE 3: Synthesizing (per-lesson scraping + generation) ─────────
+    updatePipeline(p, { stage: 'synthesizing', progress: 50 });
 
-  p.moduleCount = modules.length;
-  p.lessonCount = totalLessons;
-  p.courseTitle = llmTitle || `Mastering ${topic}`;
-  p.courseDescription =
-    llmDesc ||
-    `Build practical skill in ${topic} through guided lessons and worked examples (intermediate level).`;
+    const syntheses: LessonSynthesis[] = [];
+    const allLessons: Array<{
+      id: string;
+      title: string;
+      description: string;
+      content: string;
+      estimatedTime: number;
+      wordCount: number;
+    }> = [];
 
-  updatePipeline(p, { progress: 30 });
-
-  // ── STAGE 2: Organizing ────────────────────────────────────────────────
-  updatePipeline(p, { stage: 'organizing', progress: 35 });
-
-  // Deduplicate and score
-  const uniqueSources = crawledSources.filter(
-    (s, i, arr) => arr.findIndex((x) => x.url === s.url) === i,
-  );
-  const credScores = uniqueSources.map((s) => s.credibilityScore);
-  const themes = [...new Set(modules.map((m) => m.title))];
-
-  updatePipeline(p, {
-    organizedSources: uniqueSources.length,
-    deduplicatedCount: crawledSources.length - uniqueSources.length,
-    credibilityScores: credScores,
-    themes,
-    progress: 45,
-  });
-
-  if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-
-  // ── STAGE 3: Synthesizing (per-lesson scraping + generation) ─────────
-  updatePipeline(p, { stage: 'synthesizing', progress: 50 });
-
-  const syntheses: LessonSynthesis[] = [];
-  const allLessons: Array<{
-    id: string;
-    title: string;
-    description: string;
-    content: string;
-    estimatedTime: number;
-    wordCount: number;
-  }> = [];
-
-  let lessonIdx = 0;
-  for (let mi = 0; mi < modules.length; mi++) {
-    for (let li = 0; li < modules[mi].lessons.length; li++) {
-      const les = modules[mi].lessons[li];
-      const lessonId = `${p.courseId}-m${mi}-l${li}`;
-      const synth: LessonSynthesis = {
-        lessonId,
-        lessonTitle: les.title,
-        status: 'pending',
-        wordCount: 0,
-        sourcesUsed: 0,
-      };
-      syntheses.push(synth);
-    }
-  }
-  updatePipeline(p, { lessonSyntheses: [...syntheses] });
-
-  for (let mi = 0; mi < modules.length; mi++) {
-    for (let li = 0; li < modules[mi].lessons.length; li++) {
-      const les = modules[mi].lessons[li];
-      const lessonId = `${p.courseId}-m${mi}-l${li}`;
-      const synthIdx = syntheses.findIndex((s) => s.lessonId === lessonId);
-
-      syntheses[synthIdx].status = 'generating';
-      updatePipeline(p, {
-        lessonSyntheses: [...syntheses],
-        progress: 50 + Math.round((lessonIdx / totalLessons) * 30),
-      });
-
-      try {
-        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'plan_ready' });
-
-        const withTimeout = async <T>(
-          label: string,
-          ms: number,
-          fn: () => Promise<T>,
-        ): Promise<T> => {
-          // Keep pipeline from being marked stalled while awaiting long network ops.
-          const keepAlive = setInterval(() => {
-            try {
-              updatePipeline(p, {} as any);
-            } catch {
-              // ignore
-            }
-          }, 20_000).unref();
-
-          const t = new Promise<T>((_, reject) => {
-            const id = setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms);
-            (reject as any)._timeoutId = id;
-          });
-
-          try {
-            return await Promise.race([fn(), t]);
-          } finally {
-            clearInterval(keepAlive);
-          }
+    let lessonIdx = 0;
+    for (let mi = 0; mi < modules.length; mi++) {
+      for (let li = 0; li < modules[mi].lessons.length; li++) {
+        const les = modules[mi].lessons[li];
+        const lessonId = `${p.courseId}-m${mi}-l${li}`;
+        const synth: LessonSynthesis = {
+          lessonId,
+          lessonTitle: les.title,
+          status: 'pending',
+          wordCount: 0,
+          sourcesUsed: 0,
         };
+        syntheses.push(synth);
+      }
+    }
+    updatePipeline(p, { lessonSyntheses: [...syntheses] });
 
-        // ── Per-lesson source scraping ──
-        console.log(`[Pipeline] Scraping sources for lesson: "${les.title}"`);
-        let lessonSources: FirecrawlSource[];
+    for (let mi = 0; mi < modules.length; mi++) {
+      for (let li = 0; li < modules[mi].lessons.length; li++) {
+        const les = modules[mi].lessons[li];
+        const lessonId = `${p.courseId}-m${mi}-l${li}`;
+        const synthIdx = syntheses.findIndex((s) => s.lessonId === lessonId);
+
+        syntheses[synthIdx].status = 'generating';
+        updatePipeline(p, {
+          lessonSyntheses: [...syntheses],
+          progress: 50 + Math.round((lessonIdx / totalLessons) * 30),
+        });
+
         try {
-          if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
-            lessonSources = uniqueSources.slice(0, 6);
-          } else {
-            // OpenAI-only: stage2 query templates are removed.
+          appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'plan_ready' });
 
-            const extracted = await withTimeout('lesson_scrape', 90_000, async () =>
-              searchAndExtractTopic({
-                topic: `${topic} ${les.title}`,
-                maxResults: 8,
-                perPageTimeoutMs: 12_000,
-                onOpenAIWebSearch: async ({
-                  request,
-                  response,
-                }: {
-                  request: unknown;
-                  response: unknown;
-                }) => {
-                  await logOpenAIRequestResponse({
-                    p,
-                    courseId: `course-${p.courseId || p.id}`,
-                    kind: 'web_search',
+          const withTimeout = async <T>(
+            label: string,
+            ms: number,
+            fn: () => Promise<T>,
+          ): Promise<T> => {
+            // Keep pipeline from being marked stalled while awaiting long network ops.
+            const keepAlive = setInterval(() => {
+              try {
+                updatePipeline(p, {} as any);
+              } catch {
+                // ignore
+              }
+            }, 20_000).unref();
+
+            const t = new Promise<T>((_, reject) => {
+              const id = setTimeout(() => reject(new Error(`${label}_timeout_${ms}ms`)), ms);
+              (reject as any)._timeoutId = id;
+            });
+
+            try {
+              return await Promise.race([fn(), t]);
+            } finally {
+              clearInterval(keepAlive);
+            }
+          };
+
+          // ── Per-lesson source scraping ──
+          console.log(`[Pipeline] Scraping sources for lesson: "${les.title}"`);
+          let lessonSources: FirecrawlSource[];
+          try {
+            if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
+              lessonSources = uniqueSources.slice(0, 6);
+            } else {
+              // OpenAI-only: stage2 query templates are removed.
+
+              const extracted = await withTimeout('lesson_scrape', 90_000, async () =>
+                searchAndExtractTopic({
+                  topic: `${topic} ${les.title}`,
+                  maxResults: 8,
+                  perPageTimeoutMs: 12_000,
+                  onOpenAIWebSearch: async ({
                     request,
                     response,
-                  });
-                },
-              } as any),
-            );
+                  }: {
+                    request: unknown;
+                    response: unknown;
+                  }) => {
+                    await logOpenAIRequestResponse({
+                      p,
+                      courseId: `course-${p.courseId || p.id}`,
+                      kind: 'web_search',
+                      request,
+                      response,
+                    });
+                  },
+                } as any),
+              );
 
-            lessonSources = extracted.sources.map((s: any) => ({
-              url: s.url,
-              title: s.title,
-              author: s.author,
-              domain: s.publisher || new URL(s.url).hostname,
-              source: 'openai_web_search',
-              content: s.extractedText || s.snippet || '',
-              wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
-              credibilityScore: 0.7,
-              recencyScore: 0.6,
-              relevanceScore: 0.7,
-              provider: 'openai_web_search',
-            })) as any;
+              lessonSources = extracted.sources.map((s: any) => ({
+                url: s.url,
+                title: s.title,
+                author: s.author,
+                domain: s.publisher || new URL(s.url).hostname,
+                source: 'openai_web_search',
+                content: s.extractedText || s.snippet || '',
+                wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
+                credibilityScore: 0.7,
+                recencyScore: 0.6,
+                relevanceScore: 0.7,
+                provider: 'openai_web_search',
+              })) as any;
 
-            appendLog(
-              p,
-              'info',
-              `lesson.research.provider=openai_web_search lesson="${les.title}" sources=${lessonSources.length}`,
-            );
-          }
-        } catch (err: any) {
-          // Log provider errors (esp. auth) without leaking secrets.
-          const statusCode = extractStatusCode(err);
-          const msg = safeErrorMessage(err);
-          const provider = String(err?.provider || 'web_search');
-          const envVar =
-            provider === 'tavily'
-              ? 'TAVILY_API_KEY'
-              : provider === 'openai'
-                ? 'OPENAI_API_KEY'
-                : undefined;
-          logAuthIssue(p.id, provider, statusCode, msg, envVar);
-
-          console.warn(
-            `[Pipeline] Per-lesson scrape failed for "${les.title}", falling back to course sources:`,
-            err,
-          );
-          lessonSources = uniqueSources.slice(0, 6);
-        }
-
-        if (lessonSources.length === 0) {
-          lessonSources = uniqueSources.slice(0, 6);
-        }
-
-        // Persist per-lesson research bundle so later stages don't need to re-scrape.
-        try {
-          const images = await searchWikimediaCommonsImages(`${topic} ${les.title}`, {
-            limit: 4,
-          }).catch(() => []);
-
-          await writeLessonResearch(`course-${p.courseId || p.id}`, lessonId, {
-            topic: `${topic} / ${modules[mi].title} / ${les.title}`,
-            sources: (lessonSources || []).slice(0, 8).map((s) => ({
-              url: s.url,
-              title: s.title,
-              publisher: s.domain,
-              accessedAt: p.startedAt,
-              snippet: (s.content || '').slice(0, 240),
-              extractedText: (s.content || '').slice(0, 20_000),
-              images: images.slice(0, 4).map((img) => ({
-                url: img.url,
-                alt: img.title,
-                credit: img.author,
-                license: img.license,
-                sourceUrl: img.sourcePageUrl,
-              })),
-            })),
-          });
-          appendLog(p, 'info', `artifacts:lesson research bundle written | lessonId=${lessonId}`);
-        } catch (err: any) {
-          appendLog(
-            p,
-            'warn',
-            `artifacts:lesson research bundle write failed | lessonId=${lessonId} | message="${safeErrorMessage(err)}"`,
-          );
-        }
-
-        // Update live source cards for UI and downstream Further Reading blocks.
-        const cards = buildSourceCards(
-          lessonSources,
-          `${topic} / ${modules[mi].title} / ${les.title}`,
-          {
-            accessedAt: p.startedAt,
-            limit: 40,
-          },
-        );
-        updatePipeline(p, { sourceCards: cards });
-        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'sources_ready' });
-        const further = selectFurtherReadingCards(cards, { min: 2, max: 5 });
-
-        let content = '';
-        let wc = 0;
-        const MIN_WORDS = 500;
-
-        // Try up to 3 times to get adequate content
-        for (let attempt = 0; attempt < 3; attempt++) {
-          const minWordHint =
-            attempt > 0
-              ? ` The response MUST be at least 800 words. Be thorough and detailed.`
-              : '';
-          const temp = attempt >= 2 ? 0.9 : 0.7;
-          try {
-            // Use saved artifacts if available (no re-scrape), so generation is reproducible.
-            let sourcesForGen = lessonSources;
-            try {
-              const bundle = await readLessonResearch(`course-${p.courseId || p.id}`, lessonId);
-              if (bundle?.sources?.length) {
-                sourcesForGen = bundle.sources.map((s: any) => ({
-                  url: s.url,
-                  title: s.title,
-                  domain: s.publisher || (s.url ? new URL(s.url).hostname : ''),
-                  content: s.extractedText || '',
-                  author: '',
-                  publishDate: null,
-                  credibilityScore: 0,
-                  relevanceScore: 0,
-                  recencyScore: 0,
-                  wordCount: (s.extractedText || '').split(/\s+/).filter(Boolean).length,
-                  source: s.publisher,
-                }));
-              }
-            } catch {
-              // best-effort: fall back to in-memory scraped sources
-            }
-
-            const lessonReq = {
-              model: 'gpt-4o-mini',
-              temperature: temp,
-              max_tokens: 5000,
-              lessonTitle: les.title,
-              moduleTitle: modules[mi].title,
-              topic,
-              sourcesCount: sourcesForGen.length,
-            };
-            appendLog(
-              p,
-              'info',
-              `[openai.request] kind=lesson_generate meta=${redactSecrets(previewJson(lessonReq, 1200))}`,
-            );
-
-            content = await withTimeout('lesson_synthesize', 120_000, async () =>
-              generateLesson(
-                topic,
-                modules[mi].title,
-                les.title,
-                les.description,
-                sourcesForGen,
-                openai,
-                minWordHint,
-                temp,
-              ),
-            );
-
-            appendLog(
-              p,
-              'info',
-              `[openai.response] kind=lesson_generate length=${content?.length || 0}`,
-            );
-
-            content = `${content}${formatFurtherReadingBlock(further)}`;
-          } catch (err: any) {
-            const statusCode = extractStatusCode(err);
-            const msg = safeErrorMessage(err);
-            const code = String(err?.code || '').toLowerCase();
-            const type = String(err?.type || '').toLowerCase();
-            const looksAuth =
-              statusCode === 401 ||
-              statusCode === 403 ||
-              code.includes('invalid_api_key') ||
-              type.includes('invalid_api_key');
-            if (looksAuth) {
-              logAuthIssue(p.id, 'OpenAI', statusCode, msg, 'OPENAI_API_KEY');
-            } else {
               appendLog(
                 p,
-                'warn',
-                `OpenAI error while generating lesson (attempt ${attempt + 1}) | message="${msg}"`,
+                'info',
+                `lesson.research.provider=openai_web_search lesson="${les.title}" sources=${lessonSources.length}`,
               );
             }
-            throw err;
+          } catch (err: any) {
+            // Log provider errors (esp. auth) without leaking secrets.
+            const statusCode = extractStatusCode(err);
+            const msg = safeErrorMessage(err);
+            const provider = String(err?.provider || 'web_search');
+            const envVar =
+              provider === 'tavily'
+                ? 'TAVILY_API_KEY'
+                : provider === 'openai'
+                  ? 'OPENAI_API_KEY'
+                  : undefined;
+            logAuthIssue(p.id, provider, statusCode, msg, envVar);
+
+            console.warn(
+              `[Pipeline] Per-lesson scrape failed for "${les.title}", falling back to course sources:`,
+              err,
+            );
+            lessonSources = uniqueSources.slice(0, 6);
           }
-          wc = content.split(/\s+/).filter((w) => w).length;
-          if (wc >= MIN_WORDS) break;
-          console.warn(
-            `[Pipeline] Lesson "${les.title}" attempt ${attempt + 1}: ${wc} words (min ${MIN_WORDS})`,
-          );
-        }
 
-        // If still short after retries, use enhanced fallback
-        if (wc < MIN_WORDS) {
-          content = generateEnhancedFallback(topic, modules[mi].title, les.title, les.description);
-          content = `${content}${formatFurtherReadingBlock(further)}`;
-          wc = content.split(/\s+/).filter((w) => w).length;
-        }
+          if (lessonSources.length === 0) {
+            lessonSources = uniqueSources.slice(0, 6);
+          }
 
-        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'draft_ready' });
-        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'quality_passed' });
+          // Persist per-lesson research bundle so later stages don't need to re-scrape.
+          try {
+            const images = await searchWikimediaCommonsImages(`${topic} ${les.title}`, {
+              limit: 4,
+            }).catch(() => []);
 
-        syntheses[synthIdx].status = 'done';
-        syntheses[synthIdx].wordCount = wc;
-        syntheses[synthIdx].sourcesUsed = lessonSources.length;
-
-        // Persist structured sources + takeaways + image manifests so the LessonReader can render real rails.
-        try {
-          dbLessonSources.save(lessonId, p.courseId, (lessonSources || []).slice(0, 8), '');
-        } catch {
-          // best effort
-        }
-
-        try {
-          const takeaways = (content.match(/^\s*\d+\.\s+.+$/gm) || [])
-            .map((l) =>
-              String(l)
-                .replace(/^\s*\d+\.\s+/, '')
-                .trim(),
-            )
-            .filter(Boolean)
-            .slice(0, 8);
-          if (takeaways.length) {
-            dbLessonTakeaways.save(lessonId, p.courseId, takeaways, {
-              provider: openai ? 'openai' : 'unknown',
-              model: 'gpt-4o-mini',
+            await writeLessonResearch(`course-${p.courseId || p.id}`, lessonId, {
+              topic: `${topic} / ${modules[mi].title} / ${les.title}`,
+              sources: (lessonSources || []).slice(0, 8).map((s) => ({
+                url: s.url,
+                title: s.title,
+                publisher: s.domain,
+                accessedAt: p.startedAt,
+                snippet: (s.content || '').slice(0, 240),
+                extractedText: (s.content || '').slice(0, 20_000),
+                images: images.slice(0, 4).map((img) => ({
+                  url: img.url,
+                  alt: img.title,
+                  credit: img.author,
+                  license: img.license,
+                  sourceUrl: img.sourcePageUrl,
+                })),
+              })),
             });
+            appendLog(p, 'info', `artifacts:lesson research bundle written | lessonId=${lessonId}`);
+          } catch (err: any) {
+            appendLog(
+              p,
+              'warn',
+              `artifacts:lesson research bundle write failed | lessonId=${lessonId} | message="${safeErrorMessage(err)}"`,
+            );
           }
-        } catch {
-          // best effort
-        }
 
-        try {
-          const bundle = await readLessonResearch(`course-${p.courseId || p.id}`, lessonId);
-          const imgs: any[] = [];
-          for (const s of (bundle?.sources || []).slice(0, 8)) {
-            for (const img of (s?.images || []).slice(0, 4)) {
-              if (!img?.url || !/^https?:\/\//i.test(String(img.url))) continue;
-              imgs.push({
-                url: img.url,
-                alt: img.alt || s.title || 'Related image',
-                credit: img.credit || '',
-                license: img.license || '',
-                sourceUrl: img.sourceUrl || '',
-                pageUrl: s.url || '',
+          // Update live source cards for UI and downstream Further Reading blocks.
+          const cards = buildSourceCards(
+            lessonSources,
+            `${topic} / ${modules[mi].title} / ${les.title}`,
+            {
+              accessedAt: p.startedAt,
+              limit: 40,
+            },
+          );
+          updatePipeline(p, { sourceCards: cards });
+          appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'sources_ready' });
+          const further = selectFurtherReadingCards(cards, { min: 2, max: 5 });
+
+          let content = '';
+          let wc = 0;
+          const MIN_WORDS = 500;
+
+          // Try up to 3 times to get adequate content
+          for (let attempt = 0; attempt < 3; attempt++) {
+            const minWordHint =
+              attempt > 0
+                ? ` The response MUST be at least 800 words. Be thorough and detailed.`
+                : '';
+            const temp = attempt >= 2 ? 0.9 : 0.7;
+            try {
+              // Use saved artifacts if available (no re-scrape), so generation is reproducible.
+              let sourcesForGen = lessonSources;
+              try {
+                const bundle = await readLessonResearch(`course-${p.courseId || p.id}`, lessonId);
+                if (bundle?.sources?.length) {
+                  sourcesForGen = bundle.sources.map((s: any) => ({
+                    url: s.url,
+                    title: s.title,
+                    domain: s.publisher || (s.url ? new URL(s.url).hostname : ''),
+                    content: s.extractedText || '',
+                    author: '',
+                    publishDate: null,
+                    credibilityScore: 0,
+                    relevanceScore: 0,
+                    recencyScore: 0,
+                    wordCount: (s.extractedText || '').split(/\s+/).filter(Boolean).length,
+                    source: s.publisher,
+                  }));
+                }
+              } catch {
+                // best-effort: fall back to in-memory scraped sources
+              }
+
+              const lessonReq = {
+                model: 'gpt-4o-mini',
+                temperature: temp,
+                max_tokens: 5000,
+                lessonTitle: les.title,
+                moduleTitle: modules[mi].title,
+                topic,
+                sourcesCount: sourcesForGen.length,
+              };
+              appendLog(
+                p,
+                'info',
+                `[openai.request] kind=lesson_generate meta=${redactSecrets(previewJson(lessonReq, 1200))}`,
+              );
+
+              content = await withTimeout('lesson_synthesize', 120_000, async () =>
+                generateLesson(
+                  topic,
+                  modules[mi].title,
+                  les.title,
+                  les.description,
+                  sourcesForGen,
+                  openai,
+                  minWordHint,
+                  temp,
+                ),
+              );
+
+              appendLog(
+                p,
+                'info',
+                `[openai.response] kind=lesson_generate length=${content?.length || 0}`,
+              );
+
+              content = `${content}${formatFurtherReadingBlock(further)}`;
+            } catch (err: any) {
+              const statusCode = extractStatusCode(err);
+              const msg = safeErrorMessage(err);
+              const code = String(err?.code || '').toLowerCase();
+              const type = String(err?.type || '').toLowerCase();
+              const looksAuth =
+                statusCode === 401 ||
+                statusCode === 403 ||
+                code.includes('invalid_api_key') ||
+                type.includes('invalid_api_key');
+              if (looksAuth) {
+                logAuthIssue(p.id, 'OpenAI', statusCode, msg, 'OPENAI_API_KEY');
+              } else {
+                appendLog(
+                  p,
+                  'warn',
+                  `OpenAI error while generating lesson (attempt ${attempt + 1}) | message="${msg}"`,
+                );
+              }
+              throw err;
+            }
+            wc = content.split(/\s+/).filter((w) => w).length;
+            if (wc >= MIN_WORDS) break;
+            console.warn(
+              `[Pipeline] Lesson "${les.title}" attempt ${attempt + 1}: ${wc} words (min ${MIN_WORDS})`,
+            );
+          }
+
+          // If still short after retries, use enhanced fallback
+          if (wc < MIN_WORDS) {
+            content = generateEnhancedFallback(
+              topic,
+              modules[mi].title,
+              les.title,
+              les.description,
+            );
+            content = `${content}${formatFurtherReadingBlock(further)}`;
+            wc = content.split(/\s+/).filter((w) => w).length;
+          }
+
+          appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'draft_ready' });
+          appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'quality_passed' });
+
+          syntheses[synthIdx].status = 'done';
+          syntheses[synthIdx].wordCount = wc;
+          syntheses[synthIdx].sourcesUsed = lessonSources.length;
+
+          // Persist structured sources + takeaways + image manifests so the LessonReader can render real rails.
+          try {
+            dbLessonSources.save(lessonId, p.courseId, (lessonSources || []).slice(0, 8), '');
+          } catch {
+            // best effort
+          }
+
+          try {
+            const takeaways = (content.match(/^\s*\d+\.\s+.+$/gm) || [])
+              .map((l) =>
+                String(l)
+                  .replace(/^\s*\d+\.\s+/, '')
+                  .trim(),
+              )
+              .filter(Boolean)
+              .slice(0, 8);
+            if (takeaways.length) {
+              dbLessonTakeaways.save(lessonId, p.courseId, takeaways, {
+                provider: openai ? 'openai' : 'unknown',
+                model: 'gpt-4o-mini',
               });
             }
+          } catch {
+            // best effort
           }
-          if (imgs.length) dbLessonImages.save(lessonId, p.courseId, imgs.slice(0, 12));
-        } catch {
-          // best effort
+
+          try {
+            const bundle = await readLessonResearch(`course-${p.courseId || p.id}`, lessonId);
+            const imgs: any[] = [];
+            for (const s of (bundle?.sources || []).slice(0, 8)) {
+              for (const img of (s?.images || []).slice(0, 4)) {
+                if (!img?.url || !/^https?:\/\//i.test(String(img.url))) continue;
+                imgs.push({
+                  url: img.url,
+                  alt: img.alt || s.title || 'Related image',
+                  credit: img.credit || '',
+                  license: img.license || '',
+                  sourceUrl: img.sourceUrl || '',
+                  pageUrl: s.url || '',
+                });
+              }
+            }
+            if (imgs.length) dbLessonImages.save(lessonId, p.courseId, imgs.slice(0, 12));
+          } catch {
+            // best effort
+          }
+
+          allLessons.push({
+            id: lessonId,
+            title: les.title,
+            description: les.description,
+            content,
+            estimatedTime: Math.max(5, Math.ceil(wc / 200)),
+            wordCount: wc,
+          });
+        } catch (err: any) {
+          const msg = safeErrorMessage(err);
+          appendLog(p, 'error', `lesson_failed | lesson="${les.title}" | message="${msg}"`);
+          appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'draft_ready' });
+          // NOTE: in failure mode we do not emit quality_passed.
+          syntheses[synthIdx].status = 'failed';
+          syntheses[synthIdx].wordCount = 0;
+          let fallback = generateEnhancedFallback(
+            topic,
+            modules[mi].title,
+            les.title,
+            les.description,
+          );
+          // best-effort: in case further-reading cards weren't computed (unexpected early failure)
+          const bestEffortFurther = selectFurtherReadingCards(p.sourceCards || []);
+          fallback = `${fallback}${formatFurtherReadingBlock(bestEffortFurther)}`;
+          const wc = fallback.split(/\s+/).filter((w) => w).length;
+          allLessons.push({
+            id: lessonId,
+            title: les.title,
+            description: les.description,
+            content: fallback,
+            estimatedTime: Math.max(5, Math.ceil(wc / 200)),
+            wordCount: wc,
+          });
         }
 
-        allLessons.push({
-          id: lessonId,
-          title: les.title,
-          description: les.description,
-          content,
-          estimatedTime: Math.max(5, Math.ceil(wc / 200)),
-          wordCount: wc,
-        });
-      } catch (err: any) {
-        const msg = safeErrorMessage(err);
-        appendLog(p, 'error', `lesson_failed | lesson="${les.title}" | message="${msg}"`);
-        appendLessonMilestone(p, { lessonId, lessonTitle: les.title, type: 'draft_ready' });
-        // NOTE: in failure mode we do not emit quality_passed.
-        syntheses[synthIdx].status = 'failed';
-        syntheses[synthIdx].wordCount = 0;
-        let fallback = generateEnhancedFallback(
-          topic,
-          modules[mi].title,
-          les.title,
-          les.description,
-        );
-        // best-effort: in case further-reading cards weren't computed (unexpected early failure)
-        const bestEffortFurther = selectFurtherReadingCards(p.sourceCards || []);
-        fallback = `${fallback}${formatFurtherReadingBlock(bestEffortFurther)}`;
-        const wc = fallback.split(/\s+/).filter((w) => w).length;
-        allLessons.push({
-          id: lessonId,
-          title: les.title,
-          description: les.description,
-          content: fallback,
-          estimatedTime: Math.max(5, Math.ceil(wc / 200)),
-          wordCount: wc,
-        });
+        updatePipeline(p, { lessonSyntheses: [...syntheses] });
+        lessonIdx++;
       }
-
-      updatePipeline(p, { lessonSyntheses: [...syntheses] });
-      lessonIdx++;
     }
-  }
 
-  const synthesisSummary = `Generated ${allLessons.length} lessons across ${modules.length} modules using ${uniqueSources.length} primary sources. Key themes: ${themes.slice(0, 5).join(', ') || 'N/A'}. (Synthesis is best-effort; timeouts fall back to snippet-based drafts.)`;
-  updatePipeline(p, { progress: 82, synthesisSummary });
+    const synthesisSummary = `Generated ${allLessons.length} lessons across ${modules.length} modules using ${uniqueSources.length} primary sources. Key themes: ${themes.slice(0, 5).join(', ') || 'N/A'}. (Synthesis is best-effort; timeouts fall back to snippet-based drafts.)`;
+    updatePipeline(p, { progress: 82, synthesisSummary });
 
-  // ── STAGE 4: Quality Check ─────────────────────────────────────────────
-  updatePipeline(p, { stage: 'quality_check', progress: 85 });
+    // ── STAGE 4: Quality Check ─────────────────────────────────────────────
+    updatePipeline(p, { stage: 'quality_check', progress: 85 });
 
-  const qualityResults: QualityResult[] = allLessons.map((lesson) => {
-    const objectivesMatch = lesson.content.match(/^- .+$/gm);
-    const takeawaysMatch = lesson.content.match(/^\d+\. .+$/gm);
-    const sourcesMatch = lesson.content.match(/^\[\d+\]/gm);
-    const readability = Math.min(
-      100,
-      Math.max(40, 60 + (lesson.wordCount > 500 ? 20 : 0) + (objectivesMatch ? 10 : 0)),
-    );
+    const qualityResults: QualityResult[] = allLessons.map((lesson) => {
+      const objectivesMatch = lesson.content.match(/^- .+$/gm);
+      const takeawaysMatch = lesson.content.match(/^\d+\. .+$/gm);
+      const sourcesMatch = lesson.content.match(/^\[\d+\]/gm);
+      const readability = Math.min(
+        100,
+        Math.max(40, 60 + (lesson.wordCount > 500 ? 20 : 0) + (objectivesMatch ? 10 : 0)),
+      );
 
-    return {
-      lessonId: lesson.id,
-      lessonTitle: lesson.title,
-      checks: {
-        wordCount: { pass: lesson.wordCount >= 500, value: lesson.wordCount, min: 500 },
-        objectives: {
-          pass: (objectivesMatch?.length || 0) >= 2,
-          count: objectivesMatch?.length || 0,
-          min: 2,
+      return {
+        lessonId: lesson.id,
+        lessonTitle: lesson.title,
+        checks: {
+          wordCount: { pass: lesson.wordCount >= 500, value: lesson.wordCount, min: 500 },
+          objectives: {
+            pass: (objectivesMatch?.length || 0) >= 2,
+            count: objectivesMatch?.length || 0,
+            min: 2,
+          },
+          takeaways: {
+            pass: (takeawaysMatch?.length || 0) >= 3,
+            count: takeawaysMatch?.length || 0,
+            min: 3,
+          },
+          sources: {
+            pass: (sourcesMatch?.length || 0) >= 2,
+            count: sourcesMatch?.length || 0,
+            min: 2,
+          },
+          readability: { pass: readability >= 60, score: readability },
         },
-        takeaways: {
-          pass: (takeawaysMatch?.length || 0) >= 3,
-          count: takeawaysMatch?.length || 0,
-          min: 3,
-        },
-        sources: {
-          pass: (sourcesMatch?.length || 0) >= 2,
-          count: sourcesMatch?.length || 0,
-          min: 2,
-        },
-        readability: { pass: readability >= 60, score: readability },
-      },
-      overallPass: lesson.wordCount >= 500 && readability >= 60,
-    };
-  });
+        overallPass: lesson.wordCount >= 500 && readability >= 60,
+      };
+    });
 
-  updatePipeline(p, { qualityResults, progress: 92 });
-  if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
-    await new Promise((r) => setTimeout(r, 500));
-  }
+    updatePipeline(p, { qualityResults, progress: 92 });
+    if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
+      await new Promise((r) => setTimeout(r, 500));
+    }
 
-  // ── STAGE 5: Ready for Review ──────────────────────────────────────────
-  // Build the course object and store it
-  const { courses } = await import('./courses.js');
+    // ── STAGE 5: Ready for Review ──────────────────────────────────────────
+    // Build the course object and store it
+    const { courses } = await import('./courses.js');
 
-  const builtModules = modules.map((mod, mi) => ({
-    id: `${p.courseId}-m${mi}`,
-    title: mod.title,
-    objective: mod.objective,
-    description: mod.objective,
-    lessons: allLessons.filter((l) => l.id.startsWith(`${p.courseId}-m${mi}-`)),
-  }));
+    const builtModules = modules.map((mod, mi) => ({
+      id: `${p.courseId}-m${mi}`,
+      title: mod.title,
+      objective: mod.objective,
+      description: mod.objective,
+      lessons: allLessons.filter((l) => l.id.startsWith(`${p.courseId}-m${mi}-`)),
+    }));
 
-  const course = {
-    id: p.courseId,
-    title: p.courseTitle!,
-    description: p.courseDescription!,
-    topic,
-    depth: 'intermediate',
-    // Pipeline-created courses must be owned by the authenticated user for limits/deletion/analytics.
-    authorId: (p as any).userId || 'pipeline',
-    modules: builtModules,
-    progress: {},
-    // Iter74 P0.1: persist course plan artifact on pipeline-created courses too.
-    plan: buildCoursePlan({
+    const course = {
+      id: p.courseId,
+      title: p.courseTitle!,
+      description: p.courseDescription!,
       topic,
       depth: 'intermediate',
-      modules,
-      topicSources: uniqueSources,
-    }),
-    createdAt: new Date().toISOString(),
-  };
+      // Pipeline-created courses must be owned by the authenticated user for limits/deletion/analytics.
+      authorId: (p as any).userId || 'pipeline',
+      modules: builtModules,
+      progress: {},
+      // Iter74 P0.1: persist course plan artifact on pipeline-created courses too.
+      plan: buildCoursePlan({
+        topic,
+        depth: 'intermediate',
+        modules,
+        topicSources: uniqueSources,
+      }),
+      createdAt: new Date().toISOString(),
+    };
 
-  courses.set(course.id, course);
-  dbCourses.save(course);
+    courses.set(course.id, course);
+    dbCourses.save(course);
 
-  updatePipeline(p, {
-    stage: 'reviewing',
-    progress: 100,
-    status: 'SUCCEEDED',
-    finishedAt: new Date().toISOString(),
-  });
-  appendLog(p, 'info', 'run succeeded');
-  broadcast(p.id, 'pipeline:complete', { courseId: p.courseId });
+    updatePipeline(p, {
+      stage: 'reviewing',
+      progress: 100,
+      status: 'SUCCEEDED',
+      finishedAt: new Date().toISOString(),
+    });
+    appendLog(p, 'info', 'run succeeded');
+    broadcast(p.id, 'pipeline:complete', { courseId: p.courseId });
+  } finally {
+    stopHeartbeat();
+  }
 }
 
 function generateEnhancedFallback(

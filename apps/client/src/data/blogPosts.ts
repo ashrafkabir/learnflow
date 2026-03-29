@@ -20,7 +20,7 @@ export const BLOG_POSTS: BlogPost[] = [
     id: 'introducing-learnflow',
     title: 'Introducing LearnFlow',
     excerpt:
-      'Meet LearnFlow — an AI-powered learning platform that builds personalized courses from the real web using multi-agent AI systems.',
+      'Meet LearnFlow — an AI-powered learning platform that builds personalized courses from available sources using multi-agent AI systems (best-effort).',
     date: '2025-03-15',
     author: 'LearnFlow Team',
     readTime: '6 min read',
@@ -30,13 +30,13 @@ export const BLOG_POSTS: BlogPost[] = [
 
 We built LearnFlow because learning online is broken. You paste a topic into a search engine and get millions of results — but no structure, no curriculum, no feedback loop.
 
-**LearnFlow changes that.** Tell us what you want to learn, and our AI agents build a complete, structured course from the best content on the web.
+**LearnFlow changes that.** Tell us what you want to learn, and our AI agents build a structured course draft from available sources (best-effort).
 
 ### How It Works
 
 1. **Set your goals** — Tell us what you want to learn and why
-2. **AI agents research the web** — Our Course Builder agent crawls real sources, evaluates quality, and synthesizes content
-3. **Get a structured course** — Modules, lessons, citations, and a knowledge mindmap
+2. **AI agents research sources (when configured)** — The Course Builder agent can discover public sources via a provider and synthesize content
+3. **Get a structured course** — Modules, lessons, and citations when sources are available (best-effort)
 4. **Learn with AI tutors** — Notes agent, exam agent, research agent — all personalized to you
 
 ### The Agent Architecture
@@ -59,14 +59,14 @@ Each agent reads the **Student Context Object** — a living document that track
 
 We're launching with support for any topic. Bring your own API key (OpenAI, Anthropic, etc.) and start learning for free. No subscription required for the core experience.
 
-Try it today at [learnflow.app](https://learnflow.app).
+Try it today at [learnflow.ai](https://learnflow.ai).
 `,
   },
   {
     id: 'how-ai-agents-build-courses',
     title: 'How AI Agents Build Your Courses',
     excerpt:
-      'A deep dive into the multi-agent pipeline that transforms a topic into a full structured course with real citations.',
+      'A deep dive into the multi-agent pipeline that transforms a topic into a structured course draft with citations (best-effort).',
     date: '2025-03-10',
     author: 'LearnFlow Team',
     readTime: '8 min read',
@@ -76,7 +76,7 @@ Try it today at [learnflow.app](https://learnflow.app).
 
 When you type "Teach me about quantum computing," a lot happens behind the scenes. Here's how our multi-agent pipeline works.
 
-### Stage 1: Research & Crawl
+### Stage 1: Source Discovery (Best-Effort)
 
 The Course Builder agent first identifies key subtopics and concepts:
 
@@ -89,20 +89,20 @@ The Course Builder agent first identifies key subtopics and concepts:
 }
 \`\`\`
 
-It then crawls real web sources — academic papers, tutorials, documentation — using our content pipeline. Each source gets a quality score based on:
+It can then discover public sources using a configured web source provider. Sources may be scored using basic heuristic signals (for ranking/filtering), such as:
 
 - **Authority**: Is this from a known expert or institution?
 - **Recency**: How current is the information?
-- **Depth**: Does it go beyond surface-level?
-- **Citation density**: Does it reference other reliable sources?
+- **Relevance**: Is the content on-topic?
+- **Readability**: Is the text parseable and understandable?
 
 ### Stage 2: Content Synthesis
 
-The highest-quality sources are fed to the LLM for lesson generation. Each lesson includes:
+When sources are available, the highest-ranked sources are fed to the LLM for lesson drafting. Lessons may include:
 
 - **Learning objectives** — What you'll know after reading
-- **Core content** — 800-1200 words of rich, technical content
-- **Inline citations** — \`[1]\`, \`[2]\` referencing real sources
+- **Core content** — length/structure can vary by topic and settings
+- **Inline citations** — \`[1]\`, \`[2]\` when sources are available (best-effort)
 - **Code blocks** — Where appropriate (Qiskit examples for quantum, etc.)
 - **Key takeaways** — Summary of the most important points
 
@@ -115,21 +115,15 @@ The agent organizes lessons into modules following pedagogical best practices:
 3. Include hands-on exercises where possible
 4. End each module with review and assessment
 
-### Stage 4: Knowledge Graph
+### Stage 4: Mindmap (Course Map)
 
-Finally, the Mindmap Agent generates a knowledge graph connecting all concepts. Nodes represent topics, edges represent prerequisites and relationships.
+The Mindmap view currently visualizes your course/module/lesson structure and progress. Richer concept graphs (concept-level nodes, custom cross-course connections) are planned.
 
-This graph powers the Mindmap Explorer — a visual way to see what you know and what you still need to learn.
+### Quality (Best-Effort)
 
-### Quality Guarantees
+This is an MVP. Some basic checks/heuristics may be applied, but there are no universal quality guarantees across all topics and provider configurations.
 
-Every generated course goes through automated quality checks:
-- All lessons have proper citations
-- No duplicate content across lessons
-- Reading time estimates are calibrated
-- Difficulty progression is validated
-
-The result: a university-quality course generated in under a minute.
+If you want the current truth of what ships, see **Docs → MVP truth**.
 `,
   },
   {
@@ -211,7 +205,7 @@ At LearnFlow, we use a team of specialized AI agents that work together:
 - **Course Builder Agent** — Researches the web and creates structured courses from any topic
 - **Notes Agent** — Generates Cornell notes, flashcards, and Zettelkasten entries from your lessons
 - **Exam Agent** — Creates quizzes (adaptive targeting is planned; MVP is non-adaptive)
-- **Research Agent** — Provides deep-dive answers backed by real sources with inline citations
+- **Research Agent** — Provides deep-dive answers with citations when sources are available (best-effort)
 
 ### Why Agents > Single Models
 

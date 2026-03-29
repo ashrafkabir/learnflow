@@ -201,7 +201,7 @@ export function ProfileSettings() {
             <div className="flex items-center gap-3 text-sm text-gray-800/80 dark:text-gray-200">
               <span className="inline-flex items-center gap-2">
                 <IconChart className="w-4 h-4" />
-                Usage is shown below (best-effort).
+                Usage is shown below (best-effort; based on server-stored usage records).
               </span>
             </div>
             <div className="flex gap-3 pt-2">
@@ -392,6 +392,9 @@ export function ProfileSettings() {
               <span>Total tokens</span>
               <span className="font-mono">{usage ? usage.totalTokens : 0}</span>
             </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Usage is tracked on a best-effort basis from server-stored usage records.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="text-xs text-gray-500 dark:text-gray-300">Top agents</div>

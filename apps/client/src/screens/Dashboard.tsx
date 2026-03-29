@@ -1030,8 +1030,7 @@ export function Dashboard() {
                 ))}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Explore your interactive knowledge graph — see progress levels and connections
-                across all topics.
+                Explore your course map — see course/module/lesson nodes and your progress.
               </p>
             </div>
 

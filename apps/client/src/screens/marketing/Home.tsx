@@ -47,13 +47,13 @@ const FEATURES = [
   },
   {
     icon: <IconMindmap className="w-6 h-6" />,
-    title: 'Knowledge Mindmap',
-    desc: 'Visualize what you know. Tap nodes to explore, expand, or jump to lessons.',
+    title: 'Mindmap',
+    desc: 'Visualize your course map and progress. Tap nodes to explore or jump to lessons.',
   },
   {
     icon: <IconSearch className="w-6 h-6" />,
     title: 'Research Agent',
-    desc: 'Ask questions and get answers backed by real sources with inline citations.',
+    desc: 'Ask questions and get answers with citations when sources are available (best-effort).',
   },
   {
     icon: <IconMarketplace className="w-6 h-6" />,
@@ -66,7 +66,7 @@ const STATS = [
   { value: 'Web-first MVP', label: 'Built for rapid learning loops' },
   { value: 'BYOK', label: 'Use your own API keys' },
   { value: 'Citations', label: 'Best-effort sources in lessons' },
-  { value: 'Real-time', label: 'Streaming + live mindmap sync' },
+  { value: 'Real-time', label: 'Streaming + mindmap updates' },
 ];
 
 const DEMO_STEPS = [
@@ -97,7 +97,7 @@ export function HomePage() {
     <MarketingLayout>
       <SEO
         title="Learn anything. Master everything."
-        description="AI-powered personalized learning platform. Set your goals, and intelligent agents build your learning path from the best web content."
+        description="AI-powered personalized learning platform. Set your goals, and intelligent agents build a learning path from available sources (best-effort)."
         path="/"
         jsonLd={{
           '@type': 'Organization',
@@ -124,7 +124,7 @@ export function HomePage() {
           >
             <span className="inline-flex items-center gap-2">
               <IconSparkles className="w-4 h-4" />
-              Now with multi-agent AI pipeline
+              Multi-agent AI pipeline (MVP)
             </span>
           </motion.div>
           <motion.h1
@@ -141,8 +141,8 @@ export function HomePage() {
             variants={fadeUp}
             className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 max-w-2xl mx-auto mb-6 leading-relaxed"
           >
-            Set your goals, and intelligent agents build your personalized learning path from the
-            best content on the web. Free with your own API key.
+            Set your goals, and intelligent agents build your personalized learning path from
+            available sources (best-effort). Free with your own API key.
           </motion.p>
 
           <motion.div variants={fadeUp} className="max-w-2xl mx-auto mb-10">

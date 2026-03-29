@@ -59,8 +59,8 @@ const FEATURES = [
   },
   {
     icon: <IconMindmap className="w-6 h-6" />,
-    title: 'Knowledge Mindmap',
-    desc: 'Visualize your knowledge graph. Color-coded by progress level — tap nodes to expand, jump to lessons, or add connections.',
+    title: 'Mindmap',
+    desc: 'Visualize your course map (courses/modules/lessons). Color-coded by progress level — tap nodes to explore and jump to lessons.',
     benefits: ['Interactive vis-network graph', 'Progress-based coloring', 'Click-to-navigate'],
   },
   {
@@ -90,7 +90,7 @@ export function FeaturesPage() {
     <MarketingLayout>
       <SEO
         title="Features"
-        description="Explore LearnFlow's AI-powered features: course generation, smart notes, adaptive quizzes, knowledge mindmaps, and more."
+        description="Explore LearnFlow's AI-powered features: course generation, smart notes, adaptive quizzes, mindmaps, and more."
         path="/features"
       />
       <section className="max-w-6xl mx-auto px-6 py-20">
@@ -177,13 +177,13 @@ export function FeaturesPage() {
                 step: '2',
                 icon: <IconSettings className="w-8 h-8" />,
                 title: 'Build Your Course',
-                desc: 'Our pipeline organizes sources, deduplicates content, checks quality, and synthesizes structured lessons with citations (best-effort).',
+                desc: 'Our pipeline organizes sources, reduces near-duplicates, checks basic quality signals, and synthesizes structured lessons with citations (best-effort).',
               },
               {
                 step: '3',
                 icon: <IconRocket className="w-8 h-8" />,
                 title: 'Learn & Practice',
-                desc: 'Study at your pace with interactive lessons, quizzes, smart notes, and a knowledge mindmap that reflects your progress.',
+                desc: 'Study at your pace with interactive lessons, quizzes, smart notes, and a mindmap that reflects your progress.',
               },
             ].map((s) => (
               <div
@@ -241,7 +241,7 @@ export function FeaturesPage() {
                     duo: false,
                   },
                   {
-                    feature: 'Real Source Citations',
+                    feature: 'Citations (when sources available)',
                     lf: true,
                     gpt: false,
                     coursera: true,
@@ -249,7 +249,7 @@ export function FeaturesPage() {
                   },
                   { feature: 'Adaptive Quizzes', lf: true, gpt: false, coursera: false, duo: true },
                   {
-                    feature: 'Knowledge Mindmap',
+                    feature: 'Mindmap',
                     lf: true,
                     gpt: false,
                     coursera: false,

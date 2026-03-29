@@ -175,6 +175,9 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
               <span>© {new Date().getFullYear()} LearnFlow. All rights reserved.</span>
             </div>
             <div className="flex gap-4 text-sm text-gray-600 dark:text-gray-300">
+              <a href="/docs/mvp-truth" className="hover:text-gray-900 dark:hover:text-gray-300">
+                MVP truth
+              </a>
               <Button
                 variant="ghost"
                 size="sm"
@@ -188,13 +191,6 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
                 className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300"
               >
                 Terms
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-0 h-auto hover:text-gray-900 dark:hover:text-gray-300"
-              >
-                Cookies
               </Button>
             </div>
           </div>
