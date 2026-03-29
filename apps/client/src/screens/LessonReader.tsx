@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useApp, apiPost } from '../context/AppContext.js';
+import { useApp, apiPost, apiGet } from '../context/AppContext.js';
 import { CitationTooltip, Source } from '../components/CitationTooltip.js';
 import { LessonMindmap } from '../components/LessonMindmap.js';
 import { parseSources } from '../lib/sources.js';
@@ -12,6 +12,7 @@ import { useSwipe } from '../hooks/useSwipe.js';
 import { analytics } from '../lib/analytics.js';
 import { useBookmarks } from '../hooks/useBookmarks.js';
 import { useToast } from '../components/Toast.js';
+import { toUserError } from '../lib/toUserError.js';
 import {
   IconBookmark,
   IconBook,
@@ -147,6 +148,13 @@ export function LessonReader() {
   const { toast } = useToast();
   const { state, fetchLesson, completeLesson, generateQuiz } = useApp();
   const [loading, setLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState<null | { message: string; requestId?: string }>(
+    null,
+  );
+  const [courseStatus, setCourseStatus] = useState<string | null>(null);
+  const [courseStatusMeta, setCourseStatusMeta] = useState<any>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
   const [activePanel, setActivePanel] = useState<'none' | 'notes' | 'quiz'>('none');
   const [attributionOpen, setAttributionOpen] = useState(false);
   const [_notesFormat, _setNotesFormat] = useState<'cornell' | 'flashcard'>('cornell');
@@ -252,7 +260,7 @@ export function LessonReader() {
         })
         .catch(() => {});
     }
-  }, [courseId]);
+  }, [courseId, refreshTick]);
 
   const currentIdx = allLessons.findIndex((l) => l.id === lessonId);
   const prevLesson = currentIdx > 0 ? allLessons[currentIdx - 1] : null;
@@ -287,8 +295,26 @@ export function LessonReader() {
 
   useEffect(() => {
     if (courseId && lessonId) {
+      setStatusError(null);
       setLoading(true);
-      fetchLesson(courseId, lessonId).finally(() => setLoading(false));
+      fetchLesson(courseId, lessonId)
+        .catch((e) => {
+          // If lesson isn't ready yet, the course may still be generating.
+          setStatusError(toUserError(e, 'Failed to load lesson. Please retry.'));
+        })
+        .finally(() => setLoading(false));
+
+      // Also hydrate course status so we can distinguish generating vs failed.
+      setStatusLoading(true);
+      apiGet(`/courses/${courseId}`)
+        .then((c: any) => {
+          setCourseStatus(c?.status || null);
+          setCourseStatusMeta(c || null);
+        })
+        .catch((e) => {
+          setStatusError(toUserError(e, 'Failed to load course status.'));
+        })
+        .finally(() => setStatusLoading(false));
       fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/illustrations`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
@@ -327,7 +353,7 @@ export function LessonReader() {
           toast('Could not load notes for this lesson.', 'error');
         });
     }
-  }, [courseId, lessonId]);
+  }, [courseId, lessonId, refreshTick]);
 
   const generateAiNotes = async (format: string) => {
     if (!courseId || !lessonId) return;
@@ -666,7 +692,140 @@ export function LessonReader() {
     if (courseId) await generateQuiz(courseId, 'current');
   };
 
-  if (loading || !lesson) {
+  const showGenerating =
+    !lesson && (loading || statusLoading) && (courseStatus === 'CREATING' || courseStatus === null);
+
+  const showFailed =
+    !lesson && !loading && !statusLoading && (courseStatus === 'FAILED' || Boolean(statusError));
+
+  if ((loading || statusLoading) && !lesson && !showFailed) {
+    // Loading or generating
+    return (
+      <section
+        data-screen="lesson-reader"
+        aria-label="Lesson Reader"
+        className="min-h-screen bg-bg dark:bg-bg-dark"
+      >
+        <header className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => nav(`/courses/${courseId}`)}>
+                ← Back to Course
+              </Button>
+              {showGenerating && (
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  Course is generating…
+                </span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setRefreshTick((t) => t + 1)}
+              title="Refresh"
+            >
+              <IconRefresh className="w-4 h-4" />
+              <span className="ml-2">Refresh</span>
+            </Button>
+          </div>
+        </header>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          {showGenerating && (
+            <div className="mb-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                  Creating
+                </span>
+                {typeof courseStatusMeta?.generationAttempt === 'number' && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Attempt {courseStatusMeta.generationAttempt}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                This lesson is still being generated. You can refresh, or go back to the course to
+                monitor progress.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button variant="secondary" onClick={() => setRefreshTick((t) => t + 1)}>
+                  Retry
+                </Button>
+                <Button variant="ghost" onClick={() => nav(`/courses/${courseId}`)}>
+                  Back to course
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <SkeletonLessonContent />
+        </div>
+      </section>
+    );
+  }
+
+  if (showFailed) {
+    const err = statusError;
+    return (
+      <section
+        data-screen="lesson-reader"
+        aria-label="Lesson Reader"
+        className="min-h-screen bg-bg dark:bg-bg-dark"
+      >
+        <header className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={() => nav(`/courses/${courseId}`)}>
+              ← Back to Course
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setRefreshTick((t) => t + 1)}>
+              <IconRefresh className="w-4 h-4" />
+              <span className="ml-2">Refresh</span>
+            </Button>
+          </div>
+        </header>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200">
+                Failed
+              </span>
+              {courseStatusMeta?.failureReason === 'stalled' && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">Stalled</span>
+              )}
+            </div>
+            <h2 className="mt-3 text-lg font-semibold text-gray-900 dark:text-white">
+              Lesson unavailable
+            </h2>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+              {courseStatusMeta?.failureMessage || err?.message || 'Failed to load lesson.'}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="primary" onClick={() => setRefreshTick((t) => t + 1)}>
+                Retry
+              </Button>
+              <Button variant="secondary" onClick={() => nav(`/courses/${courseId}`)}>
+                Back to course
+              </Button>
+            </div>
+            {err?.requestId && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-xs text-gray-600 dark:text-gray-300">
+                  Details
+                </summary>
+                <pre className="mt-2 text-xs bg-gray-50 dark:bg-gray-800 rounded-xl p-3 overflow-auto">
+                  Request ID: {err.requestId}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!lesson) {
+    // Fallback: no lesson, but not explicitly loading — keep the old skeleton.
     return (
       <section
         data-screen="lesson-reader"

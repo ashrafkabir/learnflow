@@ -59,3 +59,33 @@
 
 ### Notes / follow-ups
 - Next in queue: **P1.7 LessonReader generation-aware loading state + recovery**.
+
+---
+
+## 2026-03-29 — P1.7 LessonReader generation-aware loading + recovery; P1.8 Conversation copy truth
+
+### What changed
+- **LessonReader** now distinguishes **loading vs generating vs failed**.
+  - Hydrates course status via `GET /api/v1/courses/:courseId`.
+  - Shows a **Creating** banner when `course.status === 'CREATING'`.
+  - Shows a **Failed** recovery card when `course.status === 'FAILED'` or lesson fetch errors.
+  - Adds clear actions: **Retry / Refresh / Back to course**.
+  - Normalizes display errors with `toUserError()`.
+- **Conversation** copy now matches MVP reality:
+  - Replaced misleading “Online (preview)” with **“Offline mode (deterministic)”**.
+  - Updated supporting copy to avoid implying open-web browsing.
+
+### Files touched
+- `apps/client/src/screens/LessonReader.tsx`
+- `apps/client/src/screens/Conversation.tsx`
+
+### Tests
+- `npm -w apps/client test` — PASS
+- `npm test` (turbo) — PASS
+
+### Screenshots
+- Captured full suite (desktop + mobile) to:
+  - `learnflow/screenshots/iter136/run-lesson-convo/desktop/lesson-reader.png`
+  - `learnflow/screenshots/iter136/run-lesson-convo/desktop/app-conversation.png`
+  - `learnflow/screenshots/iter136/run-lesson-convo/mobile/*conversation*.png`
+

@@ -141,7 +141,7 @@ Evidence pack for this planner run:
 
 ---
 
-### 7) P1 — LessonReader: add “generation-aware” loading state + recovery
+### 7) P1 — LessonReader: add “generation-aware” loading state + recovery ✅
 
 **Problem**: Lesson reader screenshot shows only skeleton state; unclear if it’s loading, generating, or broken.
 
@@ -155,9 +155,22 @@ Evidence pack for this planner run:
   - Failed (with actionable error)
 - Provide a “Retry” + “Back to course” action when failed.
 
+**Shipped (Iter136)**
+
+- LessonReader now hydrates course status via `GET /courses/:id` and shows:
+  - “Creating” state (generation-aware) when `status=CREATING`
+  - “Failed” recovery state when `status=FAILED` or lesson fetch errors
+  - Action buttons: Retry / Refresh / Back to course
+- Errors are normalized with `toUserError()` to avoid raw objects.
+
+**Evidence (after)**
+
+- Screenshot: `learnflow/screenshots/iter136/run-lesson-convo/desktop/lesson-reader.png`
+- Code: `apps/client/src/screens/LessonReader.tsx`
+
 ---
 
-### 8) P1 — Conversation screen: reconcile “Online (preview)” vs deterministic/no-browse mode copy
+### 8) P1 — Conversation screen: reconcile “Online (preview)” vs deterministic/no-browse mode copy ✅
 
 **Problem**: Conversation UI suggests “Online” but also states no open-web browsing unless enabled; this is confusing.
 
@@ -169,6 +182,16 @@ Evidence pack for this planner run:
   - “Offline mode (deterministic)” OR “Online mode (web search enabled)”
 - If web search is disabled, remove/avoid any wording implying browsing.
 - Add a link/icon to explain what the mode means (“What can I do in this mode?”).
+
+**Shipped (Iter136)**
+
+- Replaced misleading “Online (preview)” pill with explicit: **“Offline mode (deterministic)”**.
+- Updated the header copy to: “No open-web browsing in this screen.”
+
+**Evidence (after)**
+
+- Screenshot: `learnflow/screenshots/iter136/run-lesson-convo/desktop/app-conversation.png`
+- Code: `apps/client/src/screens/Conversation.tsx`
 
 ---
 
