@@ -1,306 +1,213 @@
-# LearnFlow — Improvement Queue (Iter134)
+# LearnFlow — Improvement Queue (Iter136)
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-29
 
-Status: **DONE**
+Status: **IN PROGRESS (BUILDER)**
 
-### Iter134 (Builder focus)
+This queue is the **next 10–15 highest-leverage tasks** after Iter134/135. It is intentionally **trust-first**: fix misleading/broken UX before adding new capability.
 
-- [x] Persist course-level research bundle to course-artifacts (web search + extracted markdown + image manifest) so later stages don’t re-scrape.
-- [x] Persist per-lesson research bundles to course-artifacts (sources + extracted text + image manifest) during lesson scraping.
-- [x] Track pipeline `lastError` and `retryCount` (API state) so UI can show failures + retries without digging through logs.
-- [x] Wire lesson generation to use saved research bundles (no re-scrape), and include citations sourced from those bundles.
-- [x] Update PipelineDetail UI: show stage progress + `lastError` + retry affordance, and render links to saved artifacts.
-- [x] Generate consolidated markdown artifacts: `course-research.md` (with source index + bounded extracts + image attributions) and `lessonplan.md` (LLM-generated lesson plan referencing research URLs).
+Evidence pack for this planner run:
 
-#### Iter134 follow-ups from user feedback (P0)
-
-- [x] **Lesson reader UX**: remove duplicate “Mark complete” buttons; keep a single primary CTA per lesson.
-- [x] **Lesson navigation**: add “Next lesson” (and “Previous” if easy) based on course/module/lesson ordering.
-- [x] **Illustrations/hero**: fix “Illustrate” so lessons actually show a hero section and rendered images/illustrations.
-  - Fix:
-    - Ensure course generation embeds a license-safe illustration into lesson markdown even in `fastTestMode` (with deterministic placeholder fallback).
-    - Add API integration test to assert at least one illustration exists for new fast courses.
-  - Evidence:
-    - `apps/api/src/routes/courses.ts` embeds `![...](https://upload.wikimedia.org/...)` and persists illustration rows.
-    - `apps/api/src/__tests__/iter134-illustrations-fastmode.test.ts`.
-    - Manual: `GET /api/v1/courses/:id/lessons/:lessonId` now includes a markdown image early in content; `/illustrations` returns length >= 1.
-  - Status: DONE
+- Desktop screenshots: `learnflow/screenshots/iter136/planner-run/*.png`
+- Mobile screenshots: `learnflow/screenshots/iter136/planner-run/mobile/*`
+- Notes: `learnflow/screenshots/iter136/planner-run/NOTES.md`
 
 ---
 
-## Evidence captured (Iter134 planner run)
+## P0 (must ship) — Trust breakers + correctness
 
-Screenshots + notes captured into:
+### 1) P0 — Fix CourseView error message rendering (`[object Object]`) ✅
 
-- Desktop: `learnflow/screenshots/iter134/planner-run/desktop/`
-- Mobile: `learnflow/screenshots/iter134/planner-run/mobile/`
-- Notes: `learnflow/screenshots/iter134/planner-run/NOTES.md`
+**Problem**: CourseView error page currently shows raw `[object Object]` in the UI, which is a credibility/trust breaker.
 
-Representative screenshots to reference in PRs:
+- Evidence (UI): `screenshots/iter136/planner-run/course-view.png`
+- Evidence (code): `apps/client/src/screens/CourseView.tsx` uses `setError(e?.message || ...)` and later renders `{error}`.
 
-- `learnflow/screenshots/iter134/planner-run/desktop/landing-home.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/onboarding-4-api-keys.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/onboarding-5-subscription.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-dashboard.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-conversation.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-mindmap.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/course-create-after-click.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/course-view.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/lesson-reader.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/marketplace-courses.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/marketplace-agents.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-collaboration.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-settings.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/settings-about-mvp-truth.png`
+**Acceptance criteria**
 
-Dev runtime ports (repo convention; verified during run):
+- CourseView error text is **always human-readable**.
+- If the thrown error is not an `Error`, message falls back to:
+  - server-supplied `error.message` when present
+  - otherwise a generic: `"Failed to load course. Please retry."`
+- Include requestId (if present from API ErrorEnvelope) in a copy-to-clipboard “Details” expander for debugging.
 
-- API: http://localhost:3000 (`GET /health`)
-- Client (app): http://localhost:3001
-- Web/marketing (Next): http://localhost:3003
+**Implementation hints**
+
+- Standardize client error parsing in one helper (e.g., `toUserError(err)`), used by CourseView and LessonReader.
 
 ---
 
-## Brutally honest spec ↔ implementation parity (Iter134)
+### 2) P0 — Ensure course list + course view are consistent for a fresh user
 
-### Spec sections that are materially implemented
+**Problem**: Default screenshot run shows dashboard empty state and CourseView failure. The app should reliably support: create course → course shows → lesson opens.
 
-- **§5.2.1 Onboarding**: 6-step flow exists (welcome → goals → topics → API keys → subscription → first course).
-  - Evidence (UI): `learnflow/screenshots/iter134/planner-run/desktop/onboarding-*.png`
-  - Evidence (routing): `apps/client/src/App.tsx` (onboarding routes)
+- Evidence (screenshots): `app-dashboard.png`, `course-view.png`, `lesson-reader.png` (skeleton only)
 
-- **§5.2.3 Conversation surface (partial)**: chat UI with markdown rendering, syntax highlighting, KaTeX math, quick-action chips, source drawer, agent activity indicator driven by WS events.
-  - Evidence (code): `apps/client/src/screens/Conversation.tsx` (markdown + chips + SourceDrawer + `agent.spawned/complete` handling)
-  - Evidence (UI): `.../desktop/app-conversation.png`
+**Acceptance criteria**
 
-- **§11 WebSocket contract (exists)**: server emits `response.start/chunk/end`, `agent.spawned/complete`, `mindmap.update`, `progress.update`.
-  - Evidence (code): `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`, `apps/api/src/routes/courses.ts` (`emitToUser(... 'progress.update' ...)`)
-  - Evidence (docs): `apps/docs/pages/websocket-events.md`
+- Happy path works in dev with a brand-new account:
+  1. Create course from dashboard
+  2. Course loads without error
+  3. Clicking first lesson opens LessonReader with real content within a reasonable time (or clearly shows generation status + auto-refresh)
+- If course is still generating, CourseView shows a **truthful status** (CREATING/READY/FAILED) and a “Refresh” / “Continue generating” affordance.
 
-- **BYOAI key vault (MVP)**: key entry + validation + server-side encryption-at-rest.
-  - Evidence (UI copy): `apps/client/src/screens/onboarding/ApiKeys.tsx`
-  - Evidence (server): `apps/api/src/keys.ts` uses `encrypt()`; crypto is in `apps/api/src/crypto.js`.
+**Evidence pointers**
 
-- **Usage tracking (more real than the spec implies, but still “best-effort”)**: API tracks usage_records and exposes `/api/v1/usage/dashboard`.
-  - Evidence (API): `apps/api/src/routes/usage.ts`
-  - Evidence (UI): `apps/client/src/screens/ProfileSettings.tsx` loads and renders usage dashboard
-
-- **Collaboration (MVP truth-first)**: groups + messages persisted; partner matches synthetic; shared mindmaps via live sync links.
-  - Evidence (UI disclosure): `apps/client/src/screens/Collaboration.tsx`
-  - Evidence (API): `apps/api/src/routes/collaboration.ts`
-
-### Major parity / trust gaps (spec implies more than shipped)
-
-1. **Marketing web app is misconfigured in dev**: Next app uses `output: 'export'` (static export) but also has middleware → Next warns “Middleware cannot be used with output: export”. This undermines credibility and can mask real routing/SEO problems.
-   - Evidence (code): `apps/web/next.config.js` (`output: 'export'`), `apps/web/src/middleware.ts`.
-   - Evidence (runtime): dev logs during `npm run dev` show the middleware/export warning.
-
-2. **Spec §6 “Content Pipeline” (search APIs, Firecrawl, MinHash/SimHash, authority/recency/readability scoring) is not truly implemented end-to-end.** You have a course builder + pipeline UI, and some attribution gates/quality checks exist (esp marketplace QC), but there’s no credible multi-source ingestion/scoring/dedup system as described.
-   - Evidence (code reality): course generation is primarily orchestrated through API routes and built-in agents; there is no MinHash/SimHash module present.
-   - Evidence (UI): `.../desktop/app-pipelines.png` (pipeline visibility exists, but not the spec’s pipeline depth).
-
-3. **Mindmap Explorer (§5.2.5) is not a true “all domains knowledge graph.”** Current “knowledge map” is course/module/lesson nodes rendered via `vis-network` on the Conversation screen (side panel), plus a separate Mindmap screen. It’s useful, but it is not the spec’s D3 full-screen graph with concept relationships.
-   - Evidence (code): `apps/client/src/screens/Conversation.tsx` MindmapPanel is course/lesson graph.
-
-4. **Marketplace spec (§7) is intentionally watered down** (good), but needs stricter “no real metrics” enforcement. Some fields (rating/usageCount) are derived from manifests and default to 0; the UI says it avoids misleading metrics but still displays numeric defaults in some layouts.
-   - Evidence (code): `apps/client/src/screens/marketplace/AgentMarketplace.tsx` sets `rating/usageCount` from manifest.
+- API returns `status` on `GET /api/v1/courses/{id}` (already does).
+- UI currently has pipeline screens; CourseView should not feel broken even if generation is async.
 
 ---
 
-## Iter134 — Evidence-first tasks (10–15)
+### 3) P0 — Remove or quarantine legacy JSON persistence fixtures that no longer match runtime
 
-Each task includes: priority, acceptance criteria, and evidence pointers. Preference order: **(1) remove misleading claims/UX, (2) fix broken fundamentals, (3) add capabilities.**
+**Problem**: `.data/courses.json` contains demo course data but runtime uses SQLite (`dbCourses`). This creates confusion and can lead to incorrect expectations in QA and planning.
 
-### P0 — Fix correctness + credibility (dev/runtime + user trust)
+- Evidence (file): `.data/courses.json`
+- Evidence (code): `apps/api/src/persistence.ts` JSON persistence exists but appears unused; runtime is SQLite.
 
-- **[DONE] Iter134 — Fix course research discovery (OpenAI web_search parsing + multi-query expansion) + persist sources/topics/queries + request/response logs**
-  - Evidence:
-    - `packages/agents/src/content-pipeline/openai-websearch-provider.ts` now uses `extractResultsFromResponse()` and query expansion.
-    - `apps/api/src/routes/pipeline.ts` passes `topics/queries/rawCount/parsedResultsCount` into `writeCourseResearch()`.
-    - `packages/agents/src/content-pipeline/artifact-writer.ts` writes these fields into `research/course/sources.json` and includes them in `course-research.md`.
-    - Raw OpenAI web_search req/resp now persisted under `course-artifacts/<courseId>/logs/openai/*web_search*_request.json` + `*_response.json` (hooked via API route).
+**Acceptance criteria**
 
-- **[DONE] Iter134 — Fix "Start Reading" failure in dev auth bypass mode**
-  - Evidence:
-    - `apps/client/src/context/AppContext.tsx` now fully respects `VITE_DEV_AUTH_BYPASS=1` (no refresh, no forced /login redirects on 401, no Authorization header injection).
-
-1. **P0 — Fix `apps/web` static export + middleware incompatibility (choose one).**
-   - Status: DONE (builder)
-   - Evidence:
-     - `apps/web/src/middleware.ts` remains (HEAD / stabilization).
-     - `apps/web/next.config.js` no longer sets `output: 'export'` (middleware-compatible).
-     - Dev runtime: `npm run dev` shows no middleware/export incompatibility warning.
-   - Proof:
-     - Screenshots: `learnflow/screenshots/iter135/web-smoke/*.png`
-     - Log: `BUILD_LOG_ITER135.md`
-
-2. **P0 — Make screenshot harness “marketing canonical” explicit and stable.**
-   - Evidence:
-     - `screenshot-all.mjs` uses `BASE_WEB` for marketing, but it still calls `safeGoto()` on client `BASE` first (wasted + potentially flaky).
-   - Acceptance:
-     - Marketing screenshots should only ever hit `BASE_WEB`.
-     - Harness should fail fast if `BASE_WEB` is unreachable (clear error).
-   - Status: DONE (builder)
-
-3. **P0 — Conversation “See Sources” must never be a dead action.**
-   - Evidence:
-     - Chips send `__open_sources__` in `apps/client/src/screens/Conversation.tsx`.
-     - SourceDrawer only populates when `response.end` includes sources.
-   - Acceptance:
-     - If no sources exist, “See Sources” chip is hidden/disabled and replaced with a truthful message (“No sources available for this response”).
-     - If sources exist, chip opens drawer reliably.
-   - Status: DONE (builder)
-
-4. **P0 — Marketplace Agent activation disclosure: enforce in UI _and_ server response.**
-   - Status: DONE (builder)
-   - Evidence:
-     - UI has disclosure modal: `apps/client/src/screens/marketplace/AgentMarketplace.tsx`.
-     - Spec says MVP is manifest-based routing only.
-   - Acceptance:
-     - Server returns `activationMode: 'routing_only'` (or similar) on `GET /marketplace/agents` and activation endpoints; UI uses that field to render disclosure.
-     - If server ever changes to `runtime_code`, disclosure copy must change automatically.
-
-### P1 — Spec parity where it matters (learning loop + transparency)
-
-5. **P1 — Build a minimal “Today’s Lessons” queue that is consistent with real progress state.**
-   - Status: DONE (builder)
-   - Evidence:
-     - API now uses SQLite as source-of-truth (falls back to runtime map) and does **not** recommend completed lessons.
-       - `apps/api/src/routes/daily.ts`
-     - Deterministic API test added:
-       - `apps/api/src/__tests__/daily-lessons.test.ts`
-     - Dashboard already fetches `/api/v1/daily` and renders “Today’s Lessons”.
-       - `apps/client/src/screens/Dashboard.tsx`
-   - Acceptance:
-     - ✅ “Today’s Lessons” never recommends a completed lesson.
-     - ⚠️ Live update after completion is still refresh-based (no WS wiring yet).
-
-6. **P1 — Mindmap: tighten claims to what’s real, or implement concept-level graph.**
-   - Status: DONE (builder) — chose (A)
-   - Evidence:
-     - Copy changed from “knowledge graph” → “course map / mindmap” across marketing + docs + dashboard:
-       - `apps/client/src/screens/Dashboard.tsx`
-       - `apps/client/src/screens/marketing/{Home,Features,Docs}.tsx`
-       - `apps/docs/pages/blog/launch-post.md`
-       - `apps/client/src/data/blogPosts.ts`
-
-7. **P1 — Usage transparency: reconcile spec “token usage” vs current “best-effort usage_records”.**
-   - Status: DONE (builder)
-   - Evidence:
-     - UI labeling clarified:
-       - `apps/client/src/screens/ProfileSettings.tsx`
-     - Deterministic API test:
-       - `apps/api/src/__tests__/usage-dashboard.test.ts`
-
-8. **P1 — Content pipeline truth pass: remove any copy implying multi-source scraping/scoring is live if it isn’t.**
-   - Status: DONE (builder)
-   - Evidence:
-     - Removed/qualified claims about Firecrawl/Semantic Scholar/quality guarantees/knowledge graph.
-     - Added **Docs → MVP truth** page and linked from pipeline UI + footer:
-       - `apps/docs/pages/mvp-truth.md`
-       - `apps/client/src/screens/PipelineDetail.tsx`
-       - `apps/client/src/screens/AboutMvpTruth.tsx`
-       - `apps/client/src/screens/marketing/MarketingLayout.tsx`
-     - Screenshots:
-       - `learnflow/screenshots/iterunknown/run-001/desktop/pipeline-detail.png`
-       - `learnflow/screenshots/iterunknown/run-001/desktop/settings-about-mvp-truth.png`
-
-### P2 — Reliability + cleanup to prevent regressions
-
-9. **P2 — Remove/avoid duplicate dev processes (`dev-status` shows leftover turbo pids).**
-   - Status: DONE (builder)
-   - Evidence:
-     - Added `npm run dev:clean` and improved `scripts/dev-clean.mjs` to:
-       - free ports 3000/3001/3003 safely (only kills node/vite/next listeners on those ports)
-       - terminate orphaned `turbo run dev` processes started from this repo
-     - README updated with `dev:clean` usage.
-     - Files:
-       - `scripts/dev-clean.mjs`
-       - `package.json` (scripts)
-       - `README.md`
-
-10. **P2 — Playwright robustness: avoid EPIPE crashes on `--list` piping.**
-
-- Status: DONE (builder)
-- Evidence:
-  - Added wrapper `scripts/playwright-list.mjs` + `npm run pw:list`.
-  - Verified: `npm run pw:list | head` exits 0 (no EPIPE crash).
-  - Files:
-    - `scripts/playwright-list.mjs`
-    - `package.json` (scripts)
-
-11. **P2 — Align client vs web marketing routing decisions (reduce split-brain).**
-
-- Status: DONE (builder)
-- Decision:
-  - Chose **(A)**: `apps/web` is canonical for marketing/pricing. Removed the legacy client marketing screen bundle.
-- Evidence:
-  - Deleted `apps/client/src/screens/marketing/*`.
-  - Updated client tests to assert against `apps/web` pricing disclosures:
-    - `apps/client/src/__tests__/mockBillingCopyRegression.test.tsx`
-    - `apps/client/src/__tests__/subscription-upgrade.test.tsx`
-  - Full suite: `npm test`
-
-12. **P2 — Add a single “Spec claims vs MVP reality” checklist in docs and keep it current.**
-
-- Status: DONE (builder)
-- Evidence:
-  - Added `apps/docs/pages/mvp-truth-checklist.md`.
-  - Linked from `apps/docs/pages/mvp-truth.md`.
-  - `npm -w @learnflow/docs test`
+- Either:
+  - (A) Delete/stop shipping `.data/*.json` fixtures and remove dead JSON persistence code, OR
+  - (B) Clearly document that `.data/*.json` is legacy and not used, and move legacy files under `archive/` (or rename to `*.legacy.json`).
+- Ensure new devs do not mistake legacy fixtures for live seeded data.
 
 ---
 
-## Recent shipped commits (git log -10)
+### 4) P0 — Dashboard mindmap widget must not show nodes when user has 0 courses ✅
 
-2b5ce7e Iter133: mark improvement queue DONE
-ca94a8b Iter133 P0: mock billing CTA sweep + collaboration synthetic disclosure
-d7afffb Prevent pipeline hangs: add timeouts for scraping/synthesis
-c36c8b4 Surface create-course pipeline errors instead of dead list
-292f2ae Fix Create Course button: pipeline hook uses apiPost/apiGet
-8521846 Filter courses list to user-owned courses
-d41006c Iter129: mark improvement queue done
-0280d5a Iter129: standardize API calls + marketplace parity + dashboard today
-3378903 Iter128: mark improvement queue done + refresh shipped commits
-d78ba55 Iter128: update build log for tasks 08-12
+**Problem**: Dashboard shows 0 courses and “Start a course…” yet the mindmap widget renders three nodes (M/D/W).
+
+- Evidence (UI): `screenshots/iter136/planner-run/app-dashboard.png`
+
+**Acceptance criteria**
+
+- When `courses.length === 0`, mindmap widget area shows only an empty-state (no nodes).
+- When at least one course exists, mindmap widget renders nodes derived from that course (and clicking them navigates somewhere predictable).
 
 ---
 
-## OneDrive sync (required)
+## P1 (high value) — UX clarity + spec-aligned learning loop
 
-After updating this queue + adding Iter134 screenshots/notes, run a non-destructive mirror sync:
+### 5) P1 — Dashboard: de-duplicate CTAs and tighten IA
 
-```bash
-rsync -av --progress \
-  --exclude node_modules --exclude .git --exclude dist --exclude .turbo --exclude .next \
-  /home/aifactory/.openclaw/workspace/learnflow/ \
-  /home/aifactory/onedrive-learnflow/learnflow/learnflow/
-```
+**Problem**: Dashboard currently has multiple overlapping “create course” CTAs (hero + input + cards). This feels noisy and unintentional.
 
-## Iter135 — Lesson Reader (Takeaways rail + real Suggested reads + source images)
+- Evidence: `app-dashboard.png`
 
-### What changed
+**Acceptance criteria**
 
-- **LessonReader layout**: added a responsive **right-side rail** (desktop) and collapsible sections for mobile.
-- **Key takeaways**: now read from persisted lesson field `takeaways` (no placeholders).
-- **Suggested reads**: renamed from “References” to **Suggested reads**; only shows real `http(s)` URLs.
-- **Related images**: added a “Related images” section that renders from persisted `relatedImages` manifest (best-effort, hides broken images).
+- One primary CTA (“Create course”) + one secondary CTA (“Browse marketplace”) above the fold.
+- Topic chips remain as accelerators, but do not repeat the same action in 3 places.
+- If “Today” is unavailable, remove the tile or replace with a truthful “Coming soon” section lower on the page.
 
-### Data persistence
+---
 
-- Added DB tables:
-  - `lesson_takeaways` (lessonId, courseId, takeaways JSON)
-  - `lesson_images` (lessonId, courseId, images JSON)
+### 6) P1 — Course Marketplace: show at least a seeded, truth-labeled set of courses (or a better empty state)
 
-### Guards
+**Problem**: Marketplace shows “No courses found” which makes the feature look dead.
 
-- Lesson generation prompt hardening: if no sources exist, the LLM is instructed to output exactly “No sources available.” and **not** add URLs.
-- Added API unit test to ensure `parseLessonSources` only emits valid http(s) URLs.
+- Evidence: `marketplace-courses.png`
 
-### Tests
+**Acceptance criteria**
 
-- New Playwright spec: `e2e/iter135-lesson-reader-sources-rail.spec.ts`
-- Updated existing LessonReader test to be tolerant of the additional rail rendering.
+- Either:
+  - (A) Add seeded marketplace courses in dev/demo mode labeled clearly as “Sample courses (demo)”, OR
+  - (B) Improve empty state with:
+    - explanation (“Marketplace is empty in local dev until creators publish…”)
+    - 2–3 suggested actions (“Create your first course”, “Import a sample course”, “Learn how publishing works”).
+
+---
+
+### 7) P1 — LessonReader: add “generation-aware” loading state + recovery
+
+**Problem**: Lesson reader screenshot shows only skeleton state; unclear if it’s loading, generating, or broken.
+
+- Evidence: `lesson-reader.png`
+
+**Acceptance criteria**
+
+- Distinguish:
+  - Loading (fetching)
+  - Generating (course pipeline running)
+  - Failed (with actionable error)
+- Provide a “Retry” + “Back to course” action when failed.
+
+---
+
+### 8) P1 — Conversation screen: reconcile “Online (preview)” vs deterministic/no-browse mode copy
+
+**Problem**: Conversation UI suggests “Online” but also states no open-web browsing unless enabled; this is confusing.
+
+- Evidence: `app-conversation.png`
+
+**Acceptance criteria**
+
+- UI has one consistent, truthful status line, e.g.:
+  - “Offline mode (deterministic)” OR “Online mode (web search enabled)”
+- If web search is disabled, remove/avoid any wording implying browsing.
+- Add a link/icon to explain what the mode means (“What can I do in this mode?”).
+
+---
+
+## P2 (nice-to-have / quality) — Polish + observability
+
+### 9) P2 — Add lightweight client-side breadcrumbs on CourseView and LessonReader
+
+**Acceptance criteria**
+
+- Breadcrumb: Dashboard → Course title → Lesson title.
+- “Back” goes to the correct prior screen (not always `/dashboard`).
+
+---
+
+### 10) P2 — Make screenshots harness validate key flows (smoke assertions)
+
+**Problem**: screenshots can succeed even when core flows are broken (e.g., CourseView error).
+
+**Acceptance criteria**
+
+- `screenshot-all.mjs` (or a new `smoke-e2e.mjs`) asserts:
+  - dashboard renders
+  - course creation works
+  - course loads
+  - lesson loads (or shows generating state)
+- Fails fast with a clear reason if a core screen is broken.
+
+---
+
+### 11) P2 — Add an “App State Debug” panel gated to dev mode
+
+**Acceptance criteria**
+
+- In dev only, a small panel shows:
+  - active user id/tier
+  - number of courses
+  - activeCourse id
+  - feature flags (web search enabled, dev auth bypass)
+- Helps resolve planner-run ambiguity quickly.
+
+---
+
+### 12) P2 — Documentation: update spec-accuracy disclaimers to match MVP reality
+
+**Acceptance criteria**
+
+- Ensure docs + marketing pages do not imply:
+  - real paid billing
+  - real marketplace scale/metrics
+  - full knowledge-graph semantics
+  - adaptive quizzes
+- Where planned, label as “Planned” and link to roadmap section.
+
+---
+
+## Quick “spec ↔ reality” truth summary (Iter136)
+
+- **Onboarding** exists and matches spec structure (MVP).
+- **Conversation** exists, but the capture run did not evidence rich outputs.
+- **Course creation** exists, but UI must better handle async generation states.
+- **Marketplace** UI exists but appears empty by default.
+- **Mindmap** exists but the dashboard widget currently shows inconsistent nodes in empty state.

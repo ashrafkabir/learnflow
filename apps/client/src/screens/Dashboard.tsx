@@ -1000,34 +1000,35 @@ export function Dashboard() {
                 <span className="text-xs text-accent font-medium">View Full Map →</span>
               </div>
               <div className="flex items-center justify-center gap-6 py-4">
-                {/* Mini mindmap teaser nodes */}
-                {[
-                  {
-                    label: state.courses[0]?.title || 'Machine Learning',
-                    color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-                  },
-                  {
-                    label: state.courses[1]?.title || 'Data Structures',
-                    color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-                  },
-                  {
-                    label: state.courses[2]?.title || 'Web Development',
-                    color:
-                      'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
-                  },
-                ].map((node, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1">
-                    <div
-                      className={`w-14 h-14 rounded-full ${node.color} flex items-center justify-center text-lg font-bold`}
-                    >
-                      {node.label.charAt(0)}
-                    </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[80px] truncate text-center">
-                      {node.label}
-                    </span>
-                    {i < 2 && <div className="hidden sm:block absolute" />}
+                {state.courses.length === 0 ? (
+                  <div className="h-24 w-full bg-gray-50 dark:bg-gray-800/50 rounded-xl flex items-center justify-center">
+                    <p className="text-sm text-gray-400">Start a course to build your mindmap</p>
                   </div>
-                ))}
+                ) : (
+                  <>
+                    {/* Mini mindmap teaser nodes */}
+                    {state.courses.slice(0, 3).map((c: any, i: number) => {
+                      const colors = [
+                        'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                        'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+                        'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+                      ];
+                      const label = String(c?.title || '');
+                      return (
+                        <div key={c.id || i} className="flex flex-col items-center gap-1">
+                          <div
+                            className={`w-14 h-14 rounded-full ${colors[i] || colors[0]} flex items-center justify-center text-lg font-bold`}
+                          >
+                            {(label || '?').charAt(0)}
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[80px] truncate text-center">
+                            {label || 'Untitled'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                 Explore your course map — see course/module/lesson nodes and your progress.

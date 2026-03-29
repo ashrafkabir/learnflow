@@ -5,6 +5,7 @@ import { Button } from '../components/Button.js';
 import { SkeletonCourseView } from '../components/Skeleton.js';
 import { CitationTooltip, type Source } from '../components/CitationTooltip.js';
 import { mergeUniqueSources, parseSources } from '../lib/sources.js';
+import { toUserError } from '../lib/toUserError.js';
 import {
   IconBook,
   IconCelebrate,
@@ -30,7 +31,7 @@ export function CourseView() {
   const { state, fetchCourse, completeLesson } = useApp();
   const [expandedModule, setExpandedModule] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<{ message: string; requestId?: string } | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<{
     id: string;
     title: string;
@@ -42,9 +43,9 @@ export function CourseView() {
   useEffect(() => {
     if (courseId && (!course || course.id !== courseId)) {
       setLoading(true);
-      setError('');
+      setError(null);
       fetchCourse(courseId)
-        .catch((e) => setError(e?.message || 'Failed to load course'))
+        .catch((e) => setError(toUserError(e, 'Failed to load course. Please retry.')))
         .finally(() => setLoading(false));
     }
   }, [courseId]);
@@ -67,15 +68,46 @@ export function CourseView() {
             <IconX className="w-10 h-10" />
           </span>
           <p className="text-gray-700 dark:text-gray-300 font-medium">Failed to load course</p>
-          <p className="text-sm text-gray-500">{error}</p>
+          <p className="text-sm text-gray-500">{error.message}</p>
+
+          {error.requestId && (
+            <details className="text-left mx-auto max-w-sm">
+              <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                Details
+              </summary>
+              <div className="mt-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Request ID</p>
+                    <p className="text-xs font-mono text-gray-800 dark:text-gray-200 truncate">
+                      {error.requestId}
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(error.requestId!);
+                      } catch {
+                        // ignore
+                      }
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            </details>
+          )}
           <div className="flex gap-3 justify-center">
             <Button
               variant="primary"
               onClick={() => {
-                setError('');
+                setError(null);
                 setLoading(true);
                 fetchCourse(courseId!)
-                  .catch((e) => setError(e?.message))
+                  .catch((e) => setError(toUserError(e, 'Failed to load course. Please retry.')))
                   .finally(() => setLoading(false));
               }}
             >
