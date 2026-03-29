@@ -2,9 +2,6 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { v4 as uuid } from 'uuid';
 import {
-  crawlSourcesForTopic,
-  searchForLesson,
-  searchTopicTrending,
   searchAndExtractTopic,
   writeCourseResearch,
   writeLessonResearch,
@@ -12,12 +9,6 @@ import {
   searchWikimediaCommonsImages,
   type FirecrawlSource,
 } from '@learnflow/agents';
-import {
-  buildCourseResearchFrame,
-  deriveFindingsFromSearch,
-} from '@learnflow/agents/dist/content-pipeline/research-frame.js';
-import { getAdminSearchConfig } from '../lib/search-config.js';
-import { makeStage1Log, makeStage2Log, makeLayerLog } from '../lib/search-run-log.js';
 import { getOpenAIForRequest } from '../llm/openai.js';
 import { sendError } from '../errors.js';
 import { validateBody } from '../validation.js';
@@ -605,15 +596,26 @@ async function runAddTopicPipeline(pipelineId: string) {
       ] as any;
       appendLog(p, 'info', `(test) using deterministic sources: ${crawledSources.length}`);
     } else {
-      // Prefer web-search provider over paid scraping where possible.
-      // NOTE: @learnflow/agents currently exports the Firecrawl provider by default,
-      // which may 402 in some environments. Fall back to the internal free provider.
-      try {
-        crawledSources = await searchTopicTrending(topic);
-      } catch {
-        const mod = await import('@learnflow/agents/dist/content-pipeline/web-search-provider.js');
-        crawledSources = await mod.searchTopicTrending(topic);
-      }
+      // OpenAI-only search: use OpenAI web_search + page extraction.
+      const extracted = await searchAndExtractTopic({
+        topic,
+        maxResults: 12,
+        perPageTimeoutMs: 12_000,
+      } as any);
+      crawledSources = extracted.sources.map((s: any) => ({
+        url: s.url,
+        title: s.title,
+        author: s.author,
+        domain: s.publisher || new URL(s.url).hostname,
+        source: 'openai_web_search',
+        content: s.extractedText || s.snippet || '',
+        wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
+        credibilityScore: 0.7,
+        recencyScore: 0.6,
+        relevanceScore: 0.7,
+        provider: 'openai_web_search',
+      })) as any;
+      appendLog(p, 'info', `research.provider=openai_web_search sources=${crawledSources.length}`);
     }
 
     updatePipeline(p, {
@@ -640,30 +642,9 @@ async function runAddTopicPipeline(pipelineId: string) {
       threads[i].wordCount = chunk.reduce((s, c) => s + c.wordCount, 0);
     }
   } catch (err) {
-    console.warn(
-      '[Pipeline] Add-topic discovery failed, falling back to crawlSourcesForTopic:',
-      err,
-    );
-    try {
-      crawledSources = await crawlSourcesForTopic(topic);
-    } catch {
-      crawledSources = [];
-    }
-
-    updatePipeline(p, {
-      sources: crawledSources.map((s) => ({
-        url: s.url,
-        title: s.title,
-        domain: s.domain,
-        author: s.author,
-        publishDate: s.publishDate || undefined,
-        credibilityScore: s.credibilityScore,
-        provider: (s as any).provider || s.source || s.domain,
-        summary: (s.content || '').slice(0, 240),
-      })),
-    });
-
-    for (const t of threads) t.status = crawledSources.length > 0 ? 'done' : 'failed';
+    console.warn('[Pipeline] OpenAI web_search discovery failed:', err);
+    // OpenAI-only: do not fall back to other search providers.
+    throw err;
   }
 
   updatePipeline(p, { crawlThreads: [...threads], progress: 25, sourceMode: 'real' });
@@ -783,17 +764,17 @@ async function runPipeline(pipelineId: string) {
   updatePipeline(p, { stage: 'scraping', progress: 5 });
   appendLog(p, 'info', `stage=scraping topic="${topic}"`);
 
-  // Threads are used only for UI progress visualization. Actual query generation
-  // is done inside searchTopicTrending() (LLM-generated + multi-source).
+  // Threads are used only for UI progress visualization. Query generation is handled
+  // by OpenAI web_search + extraction.
   const threads: CrawlThread[] = Array.from({ length: 5 }).map((_, i) => ({
     id: `thread-${i}`,
-    // Placeholder shown in UI; real queries are logged from searchTopicTrending().
+    // Placeholder shown in UI; real queries are logged from OpenAI web_search.
     url: `Research thread ${i + 1}`,
     status: 'pending' as const,
   }));
   updatePipeline(p, { crawlThreads: threads });
 
-  // Use searchTopicTrending for bulk research
+  // Use OpenAI web_search for bulk research
   let crawledSources: FirecrawlSource[] = [];
 
   // Update threads visually as we go
@@ -805,145 +786,29 @@ async function runPipeline(pipelineId: string) {
     });
   }
 
-  // Load admin-configured search behavior (global)
-  const searchCfg = getAdminSearchConfig();
+  // OpenAI-only Phase 1: single research pass via OpenAI web_search.
+  appendLog(p, 'info', `openai_web_search:course topic="${topic}"`);
+  const extractedCourse = await searchAndExtractTopic({
+    topic,
+    maxResults: 12,
+    perPageTimeoutMs: 12_000,
+  } as any);
 
-  // Iter69 Phase 1: layered research (Market/Analyst, Academic, Practitioner)
-  const frame = buildCourseResearchFrame(topic);
-  const layerTemplates = searchCfg.layerTemplates;
+  crawledSources = extractedCourse.sources.map((s: any) => ({
+    url: s.url,
+    title: s.title,
+    author: s.author,
+    domain: s.publisher || new URL(s.url).hostname,
+    source: 'openai_web_search',
+    content: s.extractedText || s.snippet || '',
+    wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
+    credibilityScore: 0.7,
+    recencyScore: 0.6,
+    relevanceScore: 0.7,
+    provider: 'openai_web_search',
+  })) as any;
 
-  const searchRuns: any[] = Array.isArray((p as any).searchRuns) ? (p as any).searchRuns : [];
-  const byLayer: Record<string, any[]> = {};
-
-  try {
-    // Run each layer as a bounded batch and record findings.
-    for (const layer of frame.layers.filter((l) => l.id !== 'L4_filter')) {
-      const templatesUsed =
-        (layerTemplates && (layerTemplates as any)[layer.id]) ||
-        // fall back to the frame defaults (hard requirement list)
-        layer.queries.map((q) => `"${q.replaceAll(topic, '{courseTopic}')}"`);
-
-      const queries = (Array.isArray(templatesUsed) ? templatesUsed : [])
-        .map((t: string) =>
-          String(t || '')
-            .replaceAll('{courseTopic}', topic)
-            .trim(),
-        )
-        .filter(Boolean);
-
-      // Log the intended search runs
-      searchRuns.push(
-        makeLayerLog({
-          layerId: layer.id,
-          layerLabel: layer.label,
-          templatesUsed: Array.isArray(templatesUsed) ? templatesUsed : [],
-          queries,
-          perQueryLimit: searchCfg.perQueryLimit,
-          enabledSources: searchCfg.enabledSources,
-        }),
-      );
-
-      // Execute searches for this layer using the existing provider.
-      const perQueryLimit = Math.max(1, Math.min(10, searchCfg.perQueryLimit));
-      const maxLayerQueries = Math.max(1, Math.min(20, queries.length));
-      const capped = queries.slice(0, maxLayerQueries);
-
-      const layerSources: FirecrawlSource[] = [];
-      for (const q of capped) {
-        appendLog(p, 'info', `search:query "${q}"`);
-        let batch: FirecrawlSource[] = [];
-        try {
-          batch = await searchTopicTrending(q, {
-            stage1Templates: [q],
-            enabledSources: searchCfg.enabledSources,
-            perQueryLimit,
-            maxStage1Queries: 1,
-          } as any);
-        } catch (err: any) {
-          // Explicitly log provider auth issues when bubbled up from search providers (e.g., Tavily).
-          const statusCode = extractStatusCode(err);
-          const msg = safeErrorMessage(err);
-          const provider = String(err?.provider || 'web_search');
-          const envVar =
-            provider === 'tavily'
-              ? 'TAVILY_API_KEY'
-              : provider === 'openai'
-                ? 'OPENAI_API_KEY'
-                : undefined;
-          logAuthIssue(p.id, provider, statusCode, msg, envVar);
-          batch = [];
-        }
-        appendLog(p, 'info', `search:results ${batch.length} for "${q}"`);
-        layerSources.push(...batch);
-      }
-      byLayer[layer.id] = layerSources.map((s) => ({
-        title: s.title,
-        description: (s.content || '').slice(0, 240),
-        url: s.url,
-        source: s.source,
-      }));
-
-      // Update last log with resultsCount (best effort)
-      const last = searchRuns[searchRuns.length - 1];
-      if (last && last.layerId === layer.id) last.resultsCount = layerSources.length;
-
-      // merge into global sources set
-      crawledSources.push(...layerSources);
-    }
-
-    // Persist search runs
-    updatePipeline(p, { searchRuns });
-
-    // Deduplicate
-    crawledSources = crawledSources.filter(
-      (s, i, arr) => arr.findIndex((x) => x.url === s.url) === i,
-    );
-
-    // Phase 1 outputs
-    const findings = deriveFindingsFromSearch({ topic, byLayer });
-    (p as any).researchFindings = findings;
-  } catch (err) {
-    console.warn('[Pipeline] Layered Phase 1 research failed, falling back to legacy stage1:', err);
-
-    // Legacy stage1 behavior (kept as fallback)
-    const stage1TemplatesUsed = searchCfg.stage1Templates;
-    const stage1Queries = stage1TemplatesUsed
-      .map((t) => t.replaceAll('{courseTopic}', topic))
-      .slice(0, searchCfg.maxStage1Queries);
-
-    searchRuns.push(
-      makeStage1Log({
-        templatesUsed: stage1TemplatesUsed,
-        queries: stage1Queries,
-        perQueryLimit: searchCfg.perQueryLimit,
-        enabledSources: searchCfg.enabledSources,
-      }),
-    );
-    updatePipeline(p, { searchRuns });
-
-    appendLog(p, 'info', `search:legacy stage1 queries=${stage1Queries.length}`);
-    try {
-      crawledSources = await searchTopicTrending(topic, {
-        stage1Templates: searchCfg.stage1Templates,
-        enabledSources: searchCfg.enabledSources,
-        perQueryLimit: searchCfg.perQueryLimit,
-        maxStage1Queries: searchCfg.maxStage1Queries,
-      } as any);
-    } catch (err: any) {
-      const statusCode = extractStatusCode(err);
-      const msg = safeErrorMessage(err);
-      const provider = String(err?.provider || 'web_search');
-      const envVar =
-        provider === 'tavily'
-          ? 'TAVILY_API_KEY'
-          : provider === 'openai'
-            ? 'OPENAI_API_KEY'
-            : undefined;
-      logAuthIssue(p.id, provider, statusCode, msg, envVar);
-      crawledSources = [];
-    }
-    appendLog(p, 'info', `search:legacy stage1 sources=${crawledSources.length}`);
-  }
+  appendLog(p, 'info', `openai_web_search:course results=${crawledSources.length}`);
 
   // Persist the actual sources discovered so the UI can attribute what was used.
   updatePipeline(p, {
@@ -970,14 +835,7 @@ async function runPipeline(pipelineId: string) {
     threads[i].wordCount = chunk.reduce((s, c) => s + c.wordCount, 0);
   }
 
-  // Extra resilience: if Phase 1 produced no sources, fall back to simple crawl.
-  if (crawledSources.length === 0) {
-    try {
-      crawledSources = await crawlSourcesForTopic(topic);
-    } catch {
-      /* will use empty sources */
-    }
-  }
+  // OpenAI-only: if Phase 1 returned no sources, proceed with an empty bundle (MVP truth).
   updatePipeline(p, { crawlThreads: [...threads], progress: 25 });
 
   // Persist the Phase 1 research bundle (sources + extracted markdown + images manifest)
@@ -991,9 +849,10 @@ async function runPipeline(pipelineId: string) {
     const web = await searchAndExtractTopic({
       topic,
       openai: openaiForResearch || undefined,
-      maxResults: Math.max(4, Math.min(12, searchCfg.perQueryLimit * 2)),
+      maxResults: 12,
       maxPagesToExtract: 6,
-    });
+      perPageTimeoutMs: 12_000,
+    } as any);
 
     // Attach a few Wikimedia Commons license-safe images per topic (best-effort)
     const images = await searchWikimediaCommonsImages(topic, { limit: 4 }).catch(() => []);
@@ -1210,41 +1069,34 @@ async function runPipeline(pipelineId: string) {
           if (process.env.NODE_ENV === 'test') {
             lessonSources = uniqueSources.slice(0, 6);
           } else {
-            // Document Stage 2 searches (templates + resolved queries)
-            const stage2TemplatesUsed = searchCfg.stage2Templates;
-            const stage2Queries = stage2TemplatesUsed
-              .map((t) =>
-                t
-                  .replaceAll('{courseTopic}', topic)
-                  .replaceAll('{moduleTitle}', modules[mi].title)
-                  .replaceAll('{lessonTitle}', les.title)
-                  .replaceAll('{lessonDescription}', les.description),
-              )
-              .slice(0, searchCfg.maxStage2Queries);
+            // OpenAI-only: stage2 query templates are removed.
 
-            const sr2: any[] = Array.isArray((p as any).searchRuns)
-              ? (p as any).searchRuns
-              : searchRuns;
-            sr2.push(
-              makeStage2Log({
-                templatesUsed: stage2TemplatesUsed,
-                queries: stage2Queries,
-                perQueryLimit: searchCfg.perQueryLimit,
-                enabledSources: searchCfg.enabledSources,
-                moduleTitle: modules[mi].title,
-                lessonTitle: les.title,
-              }),
-            );
-            updatePipeline(p, { searchRuns: sr2 });
-
-            lessonSources = await withTimeout('lesson_scrape', 90_000, async () =>
-              searchForLesson(topic, modules[mi].title, les.title, les.description, {
-                stage2Templates: searchCfg.stage2Templates,
-                enabledSources: searchCfg.enabledSources,
-                perQueryLimit: searchCfg.perQueryLimit,
-                maxStage2Queries: searchCfg.maxStage2Queries,
-                maxSourcesPerLesson: searchCfg.maxSourcesPerLesson,
+            const extracted = await withTimeout('lesson_scrape', 90_000, async () =>
+              searchAndExtractTopic({
+                topic: `${topic} ${les.title}`,
+                maxResults: 8,
+                perPageTimeoutMs: 12_000,
               } as any),
+            );
+
+            lessonSources = extracted.sources.map((s: any) => ({
+              url: s.url,
+              title: s.title,
+              author: s.author,
+              domain: s.publisher || new URL(s.url).hostname,
+              source: 'openai_web_search',
+              content: s.extractedText || s.snippet || '',
+              wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
+              credibilityScore: 0.7,
+              recencyScore: 0.6,
+              relevanceScore: 0.7,
+              provider: 'openai_web_search',
+            })) as any;
+
+            appendLog(
+              p,
+              'info',
+              `lesson.research.provider=openai_web_search lesson="${les.title}" sources=${lessonSources.length}`,
             );
           }
         } catch (err: any) {
