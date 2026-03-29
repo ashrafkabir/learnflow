@@ -517,10 +517,21 @@ export function apiBase(): string {
     (import.meta as any)?.env?.VITE_API_BASE_URL;
   if (envBase) return String(envBase).replace(/\/$/, '');
 
-  // In real browser usage (no test runners), use same-origin.
   // In Vitest/jsdom, prefer relative to satisfy fetch stubs in tests.
   if (typeof window !== 'undefined' && isVitest) return '';
-  if (typeof window !== 'undefined' && !isVitest) return '';
+
+  // In local dev, the client runs on :3001 and the API on :3000.
+  // Using same-origin would hit the Vite dev server and 404.
+  if (typeof window !== 'undefined') {
+    try {
+      if (window.location.hostname === 'localhost' && window.location.port === '3001') {
+        return 'http://localhost:3000';
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  }
 
   return 'http://localhost:3000';
 }
