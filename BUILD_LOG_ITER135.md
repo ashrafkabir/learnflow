@@ -32,12 +32,45 @@ npm test -- --run src/__tests__/daily-lessons.test.ts
 ```
 Result: PASS
 
-### 2) P1 Task 8 (partial) — Content pipeline truth pass
+### 2) P1 Task 8 — Content pipeline truth pass (finish)
 
-- Tightened Dashboard copy to avoid implying full personalization guarantees.
+**Goal**: remove/qualify any over-strong claims (Firecrawl, Google/Bing, Semantic Scholar, SimHash/MinHash, “no hallucinations”, “quality guarantees”, etc.). Add links to **About MVP Truth** from pipeline UI.
 
-File:
-- `apps/client/src/screens/Dashboard.tsx`
+**What changed**
+- Marketing & docs copy updated to “best-effort” language for sourcing/citations.
+- Mindmap copy tightened: it’s a **course map** (course/module/lesson + progress), not a full concept knowledge graph.
+- Added **Docs → MVP truth** page and linked from:
+  - Pipeline Detail screen (MVP note box)
+  - Settings → About MVP Truth screen
+  - Marketing footer
+- Updated embedded blog content (`apps/client/src/data/blogPosts.ts`) to remove “knowledge graph / quality guarantees / real web” assertions.
+
+**Files (high-signal)**
+- `apps/client/src/data/blogPosts.ts`
+- `apps/client/src/screens/PipelineDetail.tsx`
+- `apps/client/src/screens/AboutMvpTruth.tsx`
+- `apps/client/src/screens/marketing/{Home,Features,Docs,About,MarketingLayout}.tsx`
+- `apps/docs/pages/{getting-started,user-guide,course-creator-guide,architecture,blog/launch-post,mvp-truth}.md`
+- `apps/web/src/app/blog/page.tsx`
+
+**Screenshots**
+Generated via harness:
+```bash
+npm run screenshots
+```
+Output:
+- `learnflow/screenshots/iterunknown/run-001/desktop/pipeline-detail.png` (shows MVP truth link)
+- `learnflow/screenshots/iterunknown/run-001/desktop/app-settings.png`
+- `learnflow/screenshots/iterunknown/run-001/desktop/marketing-home.png`
+
+### 3) P1 Task 7 — Usage transparency
+
+- Added clearer “best-effort” labeling to usage section on Profile Settings.
+- Added deterministic API test for `/api/v1/usage/dashboard`.
+
+Files:
+- `apps/client/src/screens/ProfileSettings.tsx`
+- `apps/api/src/__tests__/usage-dashboard.test.ts`
 
 ---
 
@@ -47,16 +80,30 @@ Repo checks:
 ```bash
 npm run lint
 npm test
+npm run build
+npm run screenshots
 ```
-Result: PASS (typecheck script does not exist in this repo; tests cover TS builds via package build steps).
-
----
-
-## Evidence (screenshots)
-- `artifacts/iter135/dashboard-core.png` (Playwright harness output, dashboard core screen)
-- `artifacts/iter135/marketing-pages.png` (Playwright harness output, marketing pages)
+Result: PASS (repo has no `typecheck` script; TypeScript is verified in per-package builds and tests).
 
 ---
 
 ## Notes / Follow-ups
-- Live refresh of Today’s Lessons after completion is still best-effort polling/fetch-based; WS-driven refresh remains a follow-up.
+- Pipeline API still contains internal fields like `credibilityScore`; UI language now treats these as heuristic.
+
+## Iter135 — Heartbeat + Stall Timeout (Mar 29, 2026)
+
+Change request: implement pipeline heartbeat so long-running scraping/generation doesn't trip stall watchdog; set stall timeout to 3 hours.
+
+### Changes
+- apps/api/.env
+  - Set `PIPELINE_STALL_TIMEOUT_MS=10800000` (3 hours)
+- apps/api/src/routes/pipeline.ts
+  - Added `startPipelineHeartbeat()` which refreshes `updatedAt` every 15s during a pipeline run
+  - Heartbeat disabled in tests (`NODE_ENV=test` or `VITEST`)
+  - Wrapped noisy console logs behind `NODE_ENV!==test` guards
+- vitest.setup.ts
+  - Silenced `console.log` to prevent Vitest `EnvironmentTeardownError` from pending user-console RPC.
+
+### Tests
+- `npm test` (turbo) — PASS
+

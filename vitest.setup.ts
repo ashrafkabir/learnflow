@@ -31,6 +31,8 @@ if (
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 // ── No-silent-crashes gate ────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const originalLog = console.log.bind(console);
 const originalError = console.error.bind(console);
 const originalWarn = console.warn.bind(console);
 
@@ -78,6 +80,12 @@ function shouldAllow(args: unknown[]): boolean {
   const msg = msgFromArgs(args);
   return ALLOWLIST_SUBSTRINGS.some((s) => msg.includes(s));
 }
+
+// Silence stdout spam; Vitest can throw EnvironmentTeardownError if rpc is closing
+// while handling pending user console logs.
+console.log = (..._args: unknown[]) => {
+  return;
+};
 
 console.error = (...args: unknown[]) => {
   if (shouldAllow(args)) return;
