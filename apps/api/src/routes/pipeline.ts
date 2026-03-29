@@ -895,6 +895,9 @@ async function runPipeline(pipelineId: string) {
     tier: (p as any).tier || 'pro',
   });
 
+  // Generate INFORMED course plan using scraped sources
+  let modules: TopicModule[] = [];
+
   try {
     // In test mode, ensure a Tavily auth error is emitted (this is a regression guard).
     if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
@@ -1020,11 +1023,40 @@ async function runPipeline(pipelineId: string) {
       const outPath = await writeLessonPlanMarkdown(`course-${p.courseId || p.id}`, lessonPlanMd);
       appendLog(p, 'info', `artifacts:lessonplan.md written path=${outPath}`);
     } catch (err: any) {
-      appendLog(
-        p,
-        'warn',
-        `artifacts:lessonplan.md generation failed | message="${safeErrorMessage(err)}"`,
-      );
+      const msg = safeErrorMessage(err);
+      appendLog(p, 'warn', `artifacts:lessonplan.md generation failed | message="${msg}"`);
+
+      // Best-effort fallback so the artifact always exists (useful in dev/test without keys).
+      try {
+        const fallbackMd = `# Lesson Plan\n\n`;
+        const outPath = await writeLessonPlanMarkdown(
+          `course-${p.courseId || p.id}`,
+          fallbackMd +
+            `*(Fallback plan generated because lesson plan LLM call failed: ${msg})*\n\n` +
+            `## Modules\n\n` +
+            modules
+              .map(
+                (m, i) =>
+                  `### Module ${i + 1}: ${m.title}\n\n- Objective: ${m.objective}\n\n` +
+                  (m.lessons?.length
+                    ? m.lessons
+                        .map(
+                          (l: any, j: number) =>
+                            `#### Lesson ${i + 1}.${j + 1}: ${l.title}\n\n- Objectives:\n- (add objectives)\n\n- Recommended sources:\n- (no sources available)\n`,
+                        )
+                        .join('\n')
+                    : ''),
+              )
+              .join('\n\n'),
+        );
+        appendLog(p, 'info', `artifacts:lessonplan.md fallback written path=${outPath}`);
+      } catch (err2: any) {
+        appendLog(
+          p,
+          'warn',
+          `artifacts:lessonplan.md fallback write failed | message="${safeErrorMessage(err2)}"`,
+        );
+      }
     }
   } catch (err: any) {
     appendLog(
@@ -1037,8 +1069,6 @@ async function runPipeline(pipelineId: string) {
   const sourceMode = 'real' as const; // web-search-provider always uses real web sources
   updatePipeline(p, { progress: 28, sourceMode });
 
-  // Generate INFORMED course plan using scraped sources
-  let modules: TopicModule[] = [];
   try {
     // Log the OpenAI request/response for the syllabus generation into pipeline logs + disk artifacts.
     // We reconstruct the request payload here to avoid threading pipeline state into helpers.
