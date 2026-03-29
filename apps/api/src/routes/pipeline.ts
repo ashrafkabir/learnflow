@@ -153,7 +153,13 @@ export interface PipelineState {
   };
 }
 
-import { dbPipelines, dbCourses } from '../db.js';
+import {
+  dbPipelines,
+  dbCourses,
+  dbLessonTakeaways,
+  dbLessonImages,
+  dbLessonSources,
+} from '../db.js';
 import { buildCoursePlan } from '../utils/coursePlan.js';
 
 // Pipeline store — runtime cache backed by SQLite
@@ -1475,6 +1481,53 @@ async function runPipeline(pipelineId: string) {
         syntheses[synthIdx].status = 'done';
         syntheses[synthIdx].wordCount = wc;
         syntheses[synthIdx].sourcesUsed = lessonSources.length;
+
+        // Persist structured sources + takeaways + image manifests so the LessonReader can render real rails.
+        try {
+          dbLessonSources.save(lessonId, p.courseId, (lessonSources || []).slice(0, 8), '');
+        } catch {
+          // best effort
+        }
+
+        try {
+          const takeaways = (content.match(/^\s*\d+\.\s+.+$/gm) || [])
+            .map((l) =>
+              String(l)
+                .replace(/^\s*\d+\.\s+/, '')
+                .trim(),
+            )
+            .filter(Boolean)
+            .slice(0, 8);
+          if (takeaways.length) {
+            dbLessonTakeaways.save(lessonId, p.courseId, takeaways, {
+              provider: openai ? 'openai' : 'unknown',
+              model: 'gpt-4o-mini',
+            });
+          }
+        } catch {
+          // best effort
+        }
+
+        try {
+          const bundle = await readLessonResearch(`course-${p.courseId || p.id}`, lessonId);
+          const imgs: any[] = [];
+          for (const s of (bundle?.sources || []).slice(0, 8)) {
+            for (const img of (s?.images || []).slice(0, 4)) {
+              if (!img?.url || !/^https?:\/\//i.test(String(img.url))) continue;
+              imgs.push({
+                url: img.url,
+                alt: img.alt || s.title || 'Related image',
+                credit: img.credit || '',
+                license: img.license || '',
+                sourceUrl: img.sourceUrl || '',
+                pageUrl: s.url || '',
+              });
+            }
+          }
+          if (imgs.length) dbLessonImages.save(lessonId, p.courseId, imgs.slice(0, 12));
+        } catch {
+          // best effort
+        }
 
         allLessons.push({
           id: lessonId,

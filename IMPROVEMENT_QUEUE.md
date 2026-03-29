@@ -251,3 +251,28 @@ rsync -av --progress \
   /home/aifactory/.openclaw/workspace/learnflow/ \
   /home/aifactory/onedrive-learnflow/learnflow/learnflow/
 ```
+
+## Iter135 — Lesson Reader (Takeaways rail + real Suggested reads + source images)
+
+### What changed
+
+- **LessonReader layout**: added a responsive **right-side rail** (desktop) and collapsible sections for mobile.
+- **Key takeaways**: now read from persisted lesson field `takeaways` (no placeholders).
+- **Suggested reads**: renamed from “References” to **Suggested reads**; only shows real `http(s)` URLs.
+- **Related images**: added a “Related images” section that renders from persisted `relatedImages` manifest (best-effort, hides broken images).
+
+### Data persistence
+
+- Added DB tables:
+  - `lesson_takeaways` (lessonId, courseId, takeaways JSON)
+  - `lesson_images` (lessonId, courseId, images JSON)
+
+### Guards
+
+- Lesson generation prompt hardening: if no sources exist, the LLM is instructed to output exactly “No sources available.” and **not** add URLs.
+- Added API unit test to ensure `parseLessonSources` only emits valid http(s) URLs.
+
+### Tests
+
+- New Playwright spec: `e2e/iter135-lesson-reader-sources-rail.spec.ts`
+- Updated existing LessonReader test to be tolerant of the additional rail rendering.

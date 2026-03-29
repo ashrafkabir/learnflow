@@ -61,6 +61,17 @@ export interface Lesson {
   // Iter121 Task 2: UX transparency for demo/mock mode
   sourcesMissingReason?: string;
   sourceMode?: 'real' | 'mock';
+
+  // Iter135: persisted rails
+  takeaways?: string[];
+  relatedImages?: Array<{
+    url: string;
+    alt?: string;
+    credit?: string;
+    license?: string;
+    sourceUrl?: string;
+    pageUrl?: string;
+  }>;
 }
 
 export interface ChatMessage {

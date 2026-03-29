@@ -188,6 +188,24 @@ if (!isTest) {
 
     // Iter70: lesson_sources gained missingReason
 
+    // Iter135: add new tables for takeaways + images manifests (legacy DBs)
+    try {
+      sqlite.exec(
+        `CREATE TABLE IF NOT EXISTS lesson_takeaways (lessonId TEXT PRIMARY KEY, courseId TEXT NOT NULL, takeaways TEXT NOT NULL DEFAULT '[]', provider TEXT NOT NULL DEFAULT 'unknown', model TEXT NOT NULL DEFAULT 'unknown', createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL);`,
+      );
+      sqlite.exec(
+        `CREATE INDEX IF NOT EXISTS idx_lesson_takeaways_course ON lesson_takeaways(courseId);`,
+      );
+      sqlite.exec(
+        `CREATE TABLE IF NOT EXISTS lesson_images (lessonId TEXT PRIMARY KEY, courseId TEXT NOT NULL, images TEXT NOT NULL DEFAULT '[]', createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL);`,
+      );
+      sqlite.exec(
+        `CREATE INDEX IF NOT EXISTS idx_lesson_images_course ON lesson_images(courseId);`,
+      );
+    } catch {
+      // ignore
+    }
+
     // Iter85: api_keys gained validationStatus + validatedAt
     // Iter97: api_keys gained tag + encVersion (AEAD)
     try {
@@ -356,6 +374,28 @@ sqlite.exec(`
     updatedAt TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_lesson_sources_course ON lesson_sources(courseId);
+
+  -- Iter135: per-lesson key takeaways (persisted so UI can render a right-rail)
+  CREATE TABLE IF NOT EXISTS lesson_takeaways (
+    lessonId TEXT PRIMARY KEY,
+    courseId TEXT NOT NULL,
+    takeaways TEXT NOT NULL DEFAULT '[]',
+    provider TEXT NOT NULL DEFAULT 'unknown',
+    model TEXT NOT NULL DEFAULT 'unknown',
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_lesson_takeaways_course ON lesson_takeaways(courseId);
+
+  -- Iter135: per-lesson image manifest (from extracted sources; license/credit best-effort)
+  CREATE TABLE IF NOT EXISTS lesson_images (
+    lessonId TEXT PRIMARY KEY,
+    courseId TEXT NOT NULL,
+    images TEXT NOT NULL DEFAULT '[]',
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_lesson_images_course ON lesson_images(courseId);
 
   -- Iter73 P1: quality telemetry (best-effort)
   CREATE TABLE IF NOT EXISTS lesson_quality (
@@ -977,6 +1017,17 @@ const stmts = {
   getLessonSources: sqlite.prepare(
     `SELECT sources, missingReason FROM lesson_sources WHERE lessonId = ?`,
   ),
+
+  // Iter135: Lesson takeaways + images manifests
+  upsertLessonTakeaways: sqlite.prepare(
+    `INSERT OR REPLACE INTO lesson_takeaways (lessonId, courseId, takeaways, provider, model, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ),
+  getLessonTakeaways: sqlite.prepare(`SELECT takeaways FROM lesson_takeaways WHERE lessonId = ?`),
+
+  upsertLessonImages: sqlite.prepare(
+    `INSERT OR REPLACE INTO lesson_images (lessonId, courseId, images, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)`,
+  ),
+  getLessonImages: sqlite.prepare(`SELECT images FROM lesson_images WHERE lessonId = ?`),
 
   // Lesson quality telemetry
   upsertLessonQuality: sqlite.prepare(
@@ -2140,6 +2191,55 @@ export const dbLessonSources = {
       };
     } catch {
       return { sources: [] };
+    }
+  },
+};
+
+// Iter135: persist key takeaways so the client can show a right-rail/accordion.
+export const dbLessonTakeaways = {
+  save(
+    lessonId: string,
+    courseId: string,
+    takeaways: string[],
+    meta?: { provider?: string; model?: string },
+  ): void {
+    const now = new Date().toISOString();
+    stmts.upsertLessonTakeaways.run(
+      lessonId,
+      courseId,
+      JSON.stringify(takeaways || []),
+      meta?.provider || 'unknown',
+      meta?.model || 'unknown',
+      now,
+      now,
+    );
+  },
+
+  get(lessonId: string): { takeaways: string[] } {
+    const row = stmts.getLessonTakeaways.get(lessonId) as any;
+    if (!row) return { takeaways: [] };
+    try {
+      return { takeaways: JSON.parse(row.takeaways || '[]') };
+    } catch {
+      return { takeaways: [] };
+    }
+  },
+};
+
+// Iter135: persist extracted images manifest per lesson for UI rendering.
+export const dbLessonImages = {
+  save(lessonId: string, courseId: string, images: any[]): void {
+    const now = new Date().toISOString();
+    stmts.upsertLessonImages.run(lessonId, courseId, JSON.stringify(images || []), now, now);
+  },
+
+  get(lessonId: string): { images: any[] } {
+    const row = stmts.getLessonImages.get(lessonId) as any;
+    if (!row) return { images: [] };
+    try {
+      return { images: JSON.parse(row.images || '[]') };
+    } catch {
+      return { images: [] };
     }
   },
 };
