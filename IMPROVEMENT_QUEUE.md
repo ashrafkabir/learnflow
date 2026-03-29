@@ -128,13 +128,14 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
     - `apps/client/src/context/AppContext.tsx` now fully respects `VITE_DEV_AUTH_BYPASS=1` (no refresh, no forced /login redirects on 401, no Authorization header injection).
 
 1. **P0 — Fix `apps/web` static export + middleware incompatibility (choose one).**
+   - Status: DONE (builder)
    - Evidence:
-     - `apps/web/next.config.js` sets `output: 'export'`.
-     - `apps/web/src/middleware.ts` exists and matches all paths.
-     - Dev runtime warning: “Middleware cannot be used with output: export”.
-   - Acceptance:
-     - Either remove middleware entirely (and replace HEAD / behavior in a different way), OR remove `output: 'export'` and run as a normal Next server.
-     - `npm run dev` shows **no** middleware/export warning.
+     - `apps/web/src/middleware.ts` remains (HEAD / stabilization).
+     - `apps/web/next.config.js` no longer sets `output: 'export'` (middleware-compatible).
+     - Dev runtime: `npm run dev` shows no middleware/export incompatibility warning.
+   - Proof:
+     - Screenshots: `learnflow/screenshots/iter135/web-smoke/*.png`
+     - Log: `BUILD_LOG_ITER135.md`
 
 2. **P0 — Make screenshot harness “marketing canonical” explicit and stable.**
    - Evidence:
