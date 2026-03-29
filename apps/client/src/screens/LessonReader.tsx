@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useApp, apiPost, apiGet, apiBase } from '../context/AppContext.js';
+import { useApp, apiPost } from '../context/AppContext.js';
 import { CitationTooltip, Source } from '../components/CitationTooltip.js';
 import { LessonMindmap } from '../components/LessonMindmap.js';
 import { parseSources } from '../lib/sources.js';
@@ -151,7 +151,7 @@ export function LessonReader() {
   const fromCourseHref = String((location.state as any)?.from || '');
   const breadcrumbCourseTitle = String((location.state as any)?.courseTitle || '');
   const breadcrumbLessonTitle = String((location.state as any)?.lessonTitle || '');
-  const { state, fetchLesson, completeLesson, generateQuiz } = useApp();
+  const { state, fetchLesson, completeLesson, generateQuiz, apiGet } = useApp();
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<null | { message: string; requestId?: string }>(
@@ -259,8 +259,8 @@ export function LessonReader() {
 
   useEffect(() => {
     if (courseId) {
-      fetch(`${apiBase()}/api/v1/courses/${courseId}`)
-        .then((r) => (r.ok ? r.json() : null))
+      // Use apiGet so Vitest fetch stubs (relative urls) work consistently.
+      apiGet(`/courses/${courseId}`)
         .then((course) => {
           if (!course?.modules) return;
           const flat: { id: string; title: string }[] = [];
@@ -318,12 +318,8 @@ export function LessonReader() {
         .finally(() => setLoading(false));
 
       // Best-effort: hydrate mastery state for in-lesson review banner.
-      fetch(`${apiBase()}/api/v1/courses/${courseId}/lessons/${lessonId}/mastery`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('learnflow-token') || ''}`,
-        },
-      })
-        .then((r) => (r.ok ? r.json() : null))
+      // Use apiGet so Vitest fetch stubs (relative urls) work consistently.
+      apiGet(`/courses/${courseId}/lessons/${lessonId}/mastery`)
         .then((data) => {
           const row = data?.mastery;
           if (row) {
@@ -2545,7 +2541,8 @@ function QuizPanel({ courseId, lessonId }: { courseId: string; lessonId: string 
         meta: {
           score: quiz.score,
           totalQuestions: quiz.questions.length,
-          gaps: quiz.gaps || [],
+          // Prefer normalized tags when available; fall back to question text gaps.
+          gaps: (quiz as any).gapTags || quiz.gaps || [],
           answers,
           correctAnswers,
           questionTypes,

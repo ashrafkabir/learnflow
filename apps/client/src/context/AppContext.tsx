@@ -730,6 +730,7 @@ interface AppContextType {
     opts?: { parentLessonId?: string },
   ) => Promise<{ course: Course; pipelineId?: string }>;
   deleteCourse: (courseId: string) => Promise<void>;
+  apiGet: (path: string) => Promise<any>;
   webSearch: (
     query: string,
     limit?: number,
@@ -1084,6 +1085,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteCourse,
     searchResearch,
     addTopicToCourse,
+    apiGet,
     webSearch,
   };
 

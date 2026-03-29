@@ -23,7 +23,10 @@ export interface QuizResult {
   score: number;
   total: number;
   percentage: number;
+  // Back-compat: older callers may treat gaps as freeform strings.
   knowledgeGaps: string[];
+  // Preferred: normalized concept tags that can drive recommendations.
+  gapTags?: string[];
   correctAnswers: string[];
   incorrectAnswers: string[];
 }
@@ -68,24 +71,120 @@ export class ExamAgent implements AgentInterface {
   async cleanup(): Promise<void> {}
 
   generateMultipleChoiceQuestions(content: string): MultipleChoiceQuestion[] {
-    const sentences = content.split(/[.!?]+/).filter((s) => s.trim().length > 20);
+    const sentences = content
+      .split(/[.!?]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 20);
+
     const questions: MultipleChoiceQuestion[] = [];
 
-    for (let i = 0; i < Math.min(sentences.length, 5); i++) {
-      const sentence = sentences[i].trim();
-      const words = sentence.split(' ').filter((w) => w.length > 3);
-      const keyWord = words[Math.floor(words.length / 2)] || 'concept';
+    const stop = new Set([
+      'the',
+      'and',
+      'that',
+      'this',
+      'with',
+      'from',
+      'into',
+      'about',
+      'they',
+      'them',
+      'their',
+      'there',
+      'then',
+      'than',
+      'when',
+      'where',
+      'which',
+      'while',
+      'would',
+      'could',
+      'should',
+      'also',
+      'most',
+      'some',
+      'many',
+      'such',
+      'used',
+      'using',
+      'use',
+      'often',
+      'important',
+    ]);
+
+    const cleanToken = (t: string) => t.toLowerCase().replace(/[^a-z0-9_-]/gi, '');
+
+    const pickKeyword = (s: string): string => {
+      const tokens = s
+        .split(/\s+/)
+        .map((t) => cleanToken(t))
+        .filter((t) => t.length >= 4 && !stop.has(t));
+      return tokens[Math.floor(tokens.length / 3)] || tokens[0] || 'concept';
+    };
+
+    const uniq = (arr: string[]) => Array.from(new Set(arr.map((a) => a.trim()).filter(Boolean)));
+
+    const hash32 = (str: string): number => {
+      // Simple deterministic 32-bit hash (djb2-ish)
+      let h = 5381;
+      for (let i = 0; i < str.length; i++) {
+        h = (h * 33) ^ str.charCodeAt(i);
+      }
+      return h >>> 0;
+    };
+
+    const stableShuffle = (arr: string[], salt: string): string[] => {
+      // Deterministic “shuffle” via hashing + sort.
+      return [...arr].sort((a, b) => hash32(a + salt) - hash32(b + salt));
+    };
+
+    const distractorsFor = (keyword: string, sentence: string): string[] => {
+      // Deterministic-ish heuristic distractors. We avoid “garbage placeholders” and prefer
+      // plausible confusions: overgeneralization, inversion, wrong scope, and near-miss.
+      const altToken = pickKeyword(sentence.split(/\s+/).slice(-12).join(' '));
+
+      const ds = uniq([
+        `It is unrelated to ${keyword} and focuses on something else entirely.`,
+        `It means the opposite of ${keyword} in this context.`,
+        `It is a narrow special case of ${keyword} rather than the general idea.`,
+        `It is primarily about ${altToken} (not ${keyword}).`,
+        `It is a tool or implementation detail, not the underlying concept of ${keyword}.`,
+      ]);
+
+      return ds.slice(0, 4);
+    };
+
+    const maxQ = Math.min(sentences.length, 5);
+    for (let i = 0; i < maxQ; i++) {
+      const sentence = sentences[i];
+      const keyword = pickKeyword(sentence);
+
+      const correct = sentence.length > 60 ? `${sentence.slice(0, 60).trim()}…` : sentence;
+      const distractors = distractorsFor(keyword, sentence).filter((d) => d !== correct);
+
+      // Build options (4), de-duped. If we still have <4, pad with safe, non-placeholder variants.
+      let options = uniq([correct, ...distractors]).slice(0, 4);
+      if (options.length < 4) {
+        const pads = uniq([
+          `It refers to a different concept than ${keyword}.`,
+          `It applies only in rare edge cases and is not generally true about ${keyword}.`,
+          `It describes a common misconception about ${keyword}.`,
+        ]);
+        options = uniq([...options, ...pads]).slice(0, 4);
+      }
+
+      // Ensure we always return 4 options; last resort: clone with slight variation.
+      while (options.length < 4) options.push(`${options[options.length - 1]} (variant)`);
+
+      // Shuffle and record correctIndex.
+      const shuffled = stableShuffle(options, `${keyword}:${i}`);
+      const correctIndex = shuffled.findIndex((o) => o === correct);
 
       questions.push({
         id: `mcq-${i}`,
-        question: `What is true about ${keyWord}?`,
-        options: [
-          sentence.slice(0, 50) + '...',
-          'This is incorrect option A',
-          'This is incorrect option B',
-          'This is incorrect option C',
-        ],
-        correctIndex: 0,
+        question: `What is true about ${keyword}?`,
+        options: shuffled,
+        correctIndex: correctIndex >= 0 ? correctIndex : 0,
         explanation: sentence,
       });
     }
@@ -117,6 +216,37 @@ export class ExamAgent implements AgentInterface {
     const correctAnswers: string[] = [];
     const incorrectAnswers: string[] = [];
     const knowledgeGaps: string[] = [];
+    const gapTags: string[] = [];
+
+    const stop = new Set([
+      'what',
+      'true',
+      'about',
+      'is',
+      'are',
+      'the',
+      'a',
+      'an',
+      'of',
+      'to',
+      'in',
+      'on',
+      'for',
+      'and',
+      'or',
+      'with',
+      'this',
+      'that',
+    ]);
+    const toTag = (qText: string) => {
+      const tokens = String(qText)
+        .toLowerCase()
+        .replace(/[^a-z0-9\s_-]/g, ' ')
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length >= 4 && !stop.has(t));
+      return tokens[0] || 'concept';
+    };
 
     for (const q of questions) {
       const userAnswer = parseInt(answers[q.id] || '-1', 10);
@@ -126,6 +256,7 @@ export class ExamAgent implements AgentInterface {
       } else {
         incorrectAnswers.push(q.id);
         knowledgeGaps.push(q.question);
+        gapTags.push(toTag(q.question));
       }
     }
 
@@ -134,6 +265,7 @@ export class ExamAgent implements AgentInterface {
       total: questions.length,
       percentage: questions.length > 0 ? (correct / questions.length) * 100 : 0,
       knowledgeGaps,
+      gapTags: Array.from(new Set(gapTags)),
       correctAnswers,
       incorrectAnswers,
     };

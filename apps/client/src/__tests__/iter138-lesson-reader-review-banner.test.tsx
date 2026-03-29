@@ -10,7 +10,10 @@ import { ToastProvider } from '../components/Toast.js';
 import { App } from '../App.js';
 
 beforeEach(() => {
-  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+  (globalThis as any).__LEARNFLOW_ENV__ = {
+    VITE_DEV_AUTH_BYPASS: '1',
+    PLAYWRIGHT_E2E_FIXTURES: '1',
+  };
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem(
     'learnflow-token',
@@ -75,6 +78,25 @@ beforeEach(() => {
       url.includes('/events')
     ) {
       return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (url.includes('/api/v1/profile/context')) {
+      return new Response(
+        JSON.stringify({ goals: [], topics: [], experience: 'beginner', subscriptionTier: 'free' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/api/v1/subscription')) {
+      return new Response(JSON.stringify({ tier: 'free', capabilities: {} }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/api/v1/notifications')) {
+      return new Response(JSON.stringify({ notifications: [] }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });

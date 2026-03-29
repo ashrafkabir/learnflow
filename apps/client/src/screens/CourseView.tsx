@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useApp, apiBase } from '../context/AppContext.js';
+import { useApp } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
 import { SkeletonCourseView } from '../components/Skeleton.js';
 import { CitationTooltip, type Source } from '../components/CitationTooltip.js';
@@ -57,7 +57,7 @@ function estimateReadTime(lesson: { estimatedTime?: number; description?: string
 export function CourseView() {
   const { courseId } = useParams();
   const nav = useNavigate();
-  const { state, fetchCourse, completeLesson } = useApp();
+  const { state, fetchCourse, completeLesson, apiGet } = useApp();
   const [expandedModule, setExpandedModule] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<{ message: string; requestId?: string } | null>(null);
@@ -88,13 +88,8 @@ export function CourseView() {
 
     (async () => {
       try {
-        const res = await fetch(`${apiBase()}/api/v1/courses/${courseId}/mastery`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('learnflow-token') || ''}`,
-          },
-        });
-        if (!res.ok) return;
-        const data = (await res.json()) as { mastery?: MasteryRow[] };
+        // Use apiGet so Vitest fetch stubs (relative urls) work consistently.
+        const data = (await apiGet(`/courses/${courseId}/mastery`)) as { mastery?: MasteryRow[] };
         if (cancelled) return;
         const map: Record<string, MasteryRow> = {};
         for (const row of data?.mastery || []) {
