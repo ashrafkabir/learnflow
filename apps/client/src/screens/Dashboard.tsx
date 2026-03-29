@@ -567,8 +567,15 @@ export function Dashboard() {
                         </p>
                         {tl.reason && (
                           <p className="text-[11px] text-gray-700/80 dark:text-gray-300 mt-0.5">
-                            <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 px-2 py-0.5 mr-2">
-                              {tl.reasonTag || 'other'}
+                            <span
+                              className={
+                                'inline-flex items-center rounded-full border px-2 py-0.5 mr-2 ' +
+                                (tl.reasonTag === 'quiz_gap'
+                                  ? 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-900/60 dark:bg-fuchsia-900/20 dark:text-fuchsia-200'
+                                  : 'border-gray-200 dark:border-gray-700')
+                              }
+                            >
+                              {tl.reasonTag === 'quiz_gap' ? 'Quiz gap' : tl.reasonTag || 'other'}
                             </span>
                             <span>{tl.reason}</span>
                           </p>

@@ -4,7 +4,16 @@ import { dbMastery } from '../db.js';
 function parseGaps(gapsJson: string | null | undefined): string[] {
   try {
     const arr = JSON.parse(String(gapsJson || '[]'));
-    return Array.isArray(arr) ? arr.map((x) => String(x)) : [];
+    if (!Array.isArray(arr)) return [];
+    // Iter140: gaps may be stored as either string[] or {tag,...}[]
+    return arr
+      .map((x) => {
+        if (typeof x === 'string') return String(x);
+        if (x && typeof x === 'object' && (x as any).tag) return String((x as any).tag);
+        return '';
+      })
+      .map((s) => s.trim())
+      .filter(Boolean);
   } catch {
     return [];
   }

@@ -2579,7 +2579,9 @@ export const dbMastery = {
     nextReviewAt?: string | null;
     lastQuizScore?: number | null;
     lastQuizAt?: string | null;
-    gaps?: string[];
+    // Stored as JSON in mastery.gapsJson.
+    // Iter140: can be either string tags or structured entries.
+    gaps?: any[];
   }): void {
     const now = new Date().toISOString();
     stmts.upsertMastery.run(
@@ -2646,7 +2648,7 @@ export const dbMastery = {
     courseId: string,
     lessonId: string,
     score: number | null,
-    gaps: string[],
+    gapTags: string[],
   ): void {
     const existing = this.getByLesson(userId, courseId, lessonId);
     const now = new Date().toISOString();
@@ -2661,6 +2663,61 @@ export const dbMastery = {
       else masteryLevel = clamp01(prev - 0.1);
     }
 
+    // Iter140: store gaps with recency + frequency.
+    // Backward compatible with old `string[]` gapsJson.
+    const existingRawGaps = (() => {
+      try {
+        return existing?.gapsJson ? JSON.parse(existing.gapsJson) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    type GapEntry = { tag: string; lastSeenAt: string; count: number; lastScore: number | null };
+
+    const asEntries = (arr: any[]): GapEntry[] => {
+      if (!Array.isArray(arr)) return [];
+      const out: GapEntry[] = [];
+      for (const x of arr) {
+        if (typeof x === 'string') {
+          const tag = String(x).trim();
+          if (!tag) continue;
+          out.push({ tag, lastSeenAt: now, count: 1, lastScore: null });
+          continue;
+        }
+        if (x && typeof x === 'object') {
+          const tag = String((x as any).tag || '').trim();
+          if (!tag) continue;
+          const lastSeenAt = String((x as any).lastSeenAt || (x as any).lastSeen || now);
+          const countRaw = Number((x as any).count || 0);
+          const count = Number.isFinite(countRaw) && countRaw > 0 ? Math.round(countRaw) : 1;
+          const ls = (x as any).lastScore;
+          const lastScore = ls === null || ls === undefined ? null : Number(ls);
+          out.push({
+            tag,
+            lastSeenAt,
+            count,
+            lastScore: Number.isFinite(lastScore) ? lastScore : null,
+          });
+        }
+      }
+      return out;
+    };
+
+    const merged = new Map<string, GapEntry>();
+    for (const e of asEntries(existingRawGaps)) merged.set(e.tag, e);
+    for (const t of (Array.isArray(gapTags) ? gapTags : [])
+      .map((x) => String(x).trim())
+      .filter(Boolean)) {
+      const prevE = merged.get(t);
+      merged.set(t, {
+        tag: t,
+        lastSeenAt: now,
+        count: (prevE?.count || 0) + 1,
+        lastScore: s,
+      });
+    }
+
     const nextReviewAt = scheduleNextReview(masteryLevel, s);
     this.upsert({
       userId,
@@ -2671,7 +2728,12 @@ export const dbMastery = {
       nextReviewAt,
       lastQuizScore: s,
       lastQuizAt: now,
-      gaps: gaps || [],
+      gaps: Array.from(merged.values()).sort((a, b) => {
+        const ad = Date.parse(a.lastSeenAt || '');
+        const bd = Date.parse(b.lastSeenAt || '');
+        if (Number.isFinite(ad) && Number.isFinite(bd) && bd !== ad) return bd - ad;
+        return (b.count || 0) - (a.count || 0);
+      }),
     });
   },
 };

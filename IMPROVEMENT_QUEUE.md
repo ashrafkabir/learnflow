@@ -1,251 +1,146 @@
-# LearnFlow — Improvement Queue (Iter138)
+# Iter140 Improvement Queue (Planner)
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-29
 
-Status: **DONE**
+Status: **IN PROGRESS**
 
-This queue is the **next 10–15 highest-leverage tasks** for Iter138, based on:
+This queue is the next 10–15 highest-leverage tasks for Iter140.
 
-- Full spec review: `LearnFlow_Product_Spec.md` (esp. §§4–6, 10–12)
-- Code inspection (client/api/agents)
-- Runtime checks executed today:
-  - `npm test` (PASS)
-  - Playwright: `e2e/iter137-key-screens.spec.ts` (PASS)
-  - Playwright: `e2e/iter136-smoke-assertions.spec.ts` (PASS)
-- Screenshots captured (desktop + mobile) and synced to OneDrive:
-  - `/home/aifactory/onedrive-learnflow/iter138/evidence/screenshots-desktop-run-2026-03-29/`
-  - `/home/aifactory/onedrive-learnflow/iter138/evidence/screenshots-mobile-2026-03-29/`
+Scope focus (per directive):
+
+- **Server-side quiz_gap persistence + /daily integration + UI reasons**
+- **Exam Agent question quality + rationale**
+
+Evidence run (planner, today)
+
+- ✅ `npm test` (PASS)
+- ✅ Playwright: `e2e/iter136-smoke-assertions.spec.ts` (PASS)
+- ✅ Playwright: `e2e/iter137-key-screens.spec.ts` (PASS)
+- ✅ Playwright: `e2e/iter138-adaptive-loop.spec.ts` (PASS)
+- 📸 Screenshots available in repo under `screenshots/iter136/planner-run/` and synced to OneDrive under `onedrive-learnflow/iter140/evidence/`.
 
 ---
 
 ## Topline assessment (brutally honest)
 
-Iter137 improved marketplace enrollment import, BYOAI provider selection test, and sources drawer provenance UI.
+Iter139 improved MCQ distractors and introduced `gapTags` emission (normalized concept tags) during scoring. But the adaptive loop is still incomplete in the exact place users feel it:
 
-However, the **core adaptive learning loop** is still mostly a _promise_, not a _system_:
+- We **capture gaps**, but we do not yet **use them to drive daily recommendations** (`reasonTag='quiz_gap'` exists as a type but is never emitted).
+- We persist quiz gaps only as a **string array** in `mastery.gapsJson` with no recency/priority model and no linkage to actual lesson concepts.
+- ExamAgent still generates MCQs from naive sentence slicing; distractors are better, but **question stems and rationales** are often low-signal.
 
-- Quiz results are only persisted as an **event log** (best-effort telemetry). There is no first-class quiz model, no stable per-lesson “last score”, and no UI badges in CourseView.
-- “Mastery” is still effectively **lesson completion coloring**; no mastery model, no spaced repetition, no review scheduling.
-- Notes CRUD exists server-side, but the product loop (generate → edit → revisit → export with correct formats) is not convincingly surfaced as a first-class user journey.
-- The pipeline is OpenAI-web-search-only in practice, but the repo still ships substantial Firecrawl/Tavily provider code + tests, which creates ongoing spec-drift risk.
-
-Iter138 should therefore prioritize **mastery + personalization primitives** and then wire them into **Today’s Lessons**, CourseView, Mindmap semantics, and Export.
+Iter140 should turn quiz gaps into a first-class scheduling signal and make quiz feedback feel “smart” (actionable, concept-linked, and confidence-building).
 
 ---
 
-## P0 (must ship) — Adaptive learning loop (mastery + quiz persistence)
+## P0 (must ship)
 
-### 1) P0 — Create a first-class Mastery model (per concept/lesson) and derive it from events
+### P0.1 — Quiz gap → Daily recommendations (end-to-end)
 
-**Problem**: Spec positions LearnFlow as mastery-based + adaptive. Today we have lesson completion + quiz telemetry events, but no durable mastery representation.
+**Goal:** A weak quiz result should change what the learner sees next, with a clear reason.
 
-**Acceptance criteria (DONE in this builder run)**
+**Work**
 
-- ✅ Added durable server-side mastery store (SQLite table `mastery`) keyed by `(userId, courseId, lessonId)` with:
-  - `masteryLevel` (0–1)
-  - `lastStudiedAt`, `nextReviewAt`
-  - `lastQuizScore`, `lastQuizAt`
-  - `gapsJson` (best-effort)
-- ✅ Server derives mastery updates from existing events:
-  - `lesson.completed` increments mastery and schedules review
-  - `quiz.submitted` updates score/gaps and schedules review
-- ✅ Added API endpoints:
-  - `GET /api/v1/courses/:id/mastery`
-  - `GET /api/v1/courses/:id/lessons/:lessonId/mastery`
-- ✅ Added test coverage: `apps/api/src/__tests__/mastery-events.test.ts`
+1. **Persist normalized gap tags server-side** on `quiz.submitted`.
+   - Today: client sends `meta.gaps` as `(quiz as any).gapTags || quiz.gaps || []`.
+   - Server: `events.ts` reads `meta.gaps` and stores into mastery `gapsJson`.
+   - Gap: we don’t treat these as normalized tags vs freeform strings; and no recency.
 
----
+2. Extend mastery storage to support gap recency/priority.
+   - Minimal: store `{ tag, lastSeenAt, count, lastScore }[]` (JSON) instead of `string[]`.
+   - Or introduce a new table `quiz_gaps(userId, courseId, lessonId, tag, createdAt, score)`.
 
-### 2) P0 — Make quiz results visible + stable in the learner UI (CourseView + LessonReader)
+3. Update `/api/v1/daily` selection algorithm to emit `reasonTag='quiz_gap'`.
+   - When there are recent gaps (e.g., last 7 days), recommend:
+     - a lesson in the same course whose title/metadata matches the gap tag, or
+     - a review-due lesson that also addresses the gap.
+   - If no match exists, still emit a quiz-gap item with a safe fallback and explicit reason (“No exact match; recommending foundational review”).
 
-**Builder note (DONE in this builder run)**: Implemented mastery/quiz UI surfaces in CourseView and LessonReader.
-Badges are labeled as a **learning estimate** (best-effort), not a guarantee.
-
-**Problem**: Quizzes exist, but the product doesn’t _feel_ like it tracks learning.
-
-**Acceptance criteria (DONE in this builder run)**
-
-- ✅ CourseView lesson rows show:
-  - `Mastery` badge (New/Learning/Solid/Mastered — learning estimate)
-  - `Review due` chip (shown when nextReviewAt is within 24h — best-effort)
-  - `Last quiz: 80%` (or `No quiz yet`)
-  - `Next review: <date>` when present
-- ✅ LessonReader shows a top-bar `Review due` banner (>=sm) when review is within 24h.
-- ✅ Added client unit tests:
-  - `apps/client/src/__tests__/iter138-mastery-badges.test.tsx`
-  - `apps/client/src/__tests__/iter138-lesson-reader-review-banner.test.tsx`
-- ✅ Added Playwright spec + screenshots:
-  - `e2e/iter138-mastery-badges.spec.ts`
-  - `e2e/screenshots/iter138-courseview-mastery-badges.png`
-  - `e2e/screenshots/iter138-lessonreader-review-due-banner.png`
-
-(“Saved vs not saved” for quiz persistence is still best-effort and currently only surfaced via existing quiz UI state; full explicit save-state UI is deferred.)
-
----
-
-### 3) P0 — Spaced repetition scheduling (MVP) integrated into Today’s Lessons (DONE in this builder run)
-
-**Problem**: Spec §5.2.2 “Today’s Lessons” implies a prioritized daily queue. Current logic is mostly “continue next uncompleted”.
-
-**Acceptance criteria (DONE in this builder run)**
-
-- ✅ Implemented MVP scheduler rule:
-  - includes up to N review lessons whose `nextReviewAt <= now` (from `mastery` table)
-  - includes “continue” lessons per course (next uncompleted)
-  - never recommends completed lessons
-  - (Quiz-gap prioritization is deferred; we only emit `review`/`continue` for now.)
-- ✅ API `/api/v1/daily` returns stable items with `reasonTag` and `reason` reflecting `review` vs `continue`.
-
----
-
-## P0 (must ship) — Research workflow depth + spec alignment
-
-### 4) P0 — Lock down OpenAI web*search-only across pipeline \_and* agents package (remove ambiguous provider paths)
-
-**Problem**: Spec §6.1.1: MVP constraint is OpenAI web_search only. Repo still contains Firecrawl/Tavily providers + tests. Even if not used at runtime, it’s drift risk.
+4. Update Dashboard UI copy to render quiz gap reasons distinctly.
+   - E.g., “Focus: ${tag} (from last quiz)” rather than generic “Continue”.
 
 **Acceptance criteria**
 
-- Runtime: pipeline must not attempt Tavily/Firecrawl in non-test environments.
-- Tests:
-  - Remove or quarantine Firecrawl/Tavily provider tests into an explicit “future/legacy” suite, OR hard-gate them behind env (e.g., `ALLOW_NON_OPENAI_RESEARCH=1`).
-  - Update `pipeline-auth-logging.test.ts`: stop implying “Force Tavily to be attempted first.” If kept, it must be explicitly labeled as **legacy logging regression** and must not drive runtime behavior.
-- Add a single test asserting non-test pipeline logs always include `research.provider=openai_web_search` and never include `Tavily`/`Firecrawl`.
+- Daily endpoint can return at least 1 lesson with `reasonTag='quiz_gap'` in a deterministic test.
+- UI surfaces that reason text.
+- Add/adjust tests:
+  - API: new test verifying quiz gap affects `/daily` ordering.
+  - Client: snapshot/unit test verifying the reason chip/text renders.
 
 ---
 
-## P1 (high value) — Notes + exports become a real product loop
+### P0.2 — ExamAgent: higher-quality questions + rationales
 
-### 5) P1 — Notes become first-class: in-lesson editor + list/revisit surface
+**Goal:** Questions should be concept-checks, not “did you read this exact sentence?”
 
-**Problem**: Notes API exists (`/courses/:id/lessons/:lessonId/notes`) but the user journey is easy to miss.
+**Work**
+
+1. Improve keyword/concept extraction.
+   - Use title-case phrases / noun-phrase-ish heuristics.
+   - Avoid generic stems (“What is true about …?”) when possible.
+
+2. Add rationale quality guardrails.
+   - Explanation should tell the learner _why_ the correct choice is correct and why others are wrong (briefly).
+   - Add a unit test ensuring rationale length > N chars and contains at least one causal cue (“because”, “therefore”, “this means”, etc.) OR references the key concept.
+
+3. Add “difficulty” parameter support.
+   - Use `task.params.difficulty` to tune distractor subtlety and question style.
 
 **Acceptance criteria**
 
-- LessonReader has a clear “Notes” surface that supports:
-  - generate (cornell/zettelkasten/flashcards/summary)
-  - edit
-  - auto-save + explicit save status
-- CourseView lesson rows show a “Notes” indicator if notes exist.
-- Add “Notes Library” (per course) OR a Settings section that lists notes by course/lesson.
+- Unit tests prevent reintroduction of placeholder/garbage distractors.
+- At least one new test asserts rationale quality.
 
 ---
 
-### 6) P1 — Export completeness: ensure notes formats + flashcards JSON are exported predictably
+## P1 (should ship)
 
-**Problem**: Export includes `notesByLessonId`, but the notes formats are not guaranteed structured, and flashcards aren’t reliably parseable.
+### P1.1 — Gap tags in CourseView / LessonReader (actionable loop)
 
-**Acceptance criteria**
+- Show a small “Needs review: {tags}” badge on LessonReader when mastery has gaps.
+- In CourseView, show per-lesson badges (e.g., “Review due”, “Quiz gap”) alongside mastery level.
 
-- Define and enforce a minimal notes export schema:
-  - Cornell: `{ cueQuestions: string[], notesMarkdown: string, summary: string }`
-  - Flashcards: `{ cards: { front: string, back: string }[] }`
-  - Keep `text` for human readability, but also include structured fields.
-- Update export ZIP to include separate files:
-  - `notes/lesson-<id>.md`
-  - `notes/lesson-<id>.json`
-  - `flashcards/course-<id>.json`
+### P1.2 — Better gap matching (tag → lesson)
 
----
+- Implement a lightweight mapping from `gapTag` to lesson candidates:
+  - normalized string match against lesson title
+  - optionally also search within lesson headings/summary (if available)
+- Keep deterministic + local-only.
 
-## P1 (high value) — Collaboration + marketplace trust and depth
+### P1.3 — Limit thrash: debounced daily refresh
 
-### 7) P1 — Collaboration: make the current truth unmissable and add one real utility
+- Dashboard currently refetches `/daily` on `state.courses.length` and `completedLessons.size` changes.
+- Add a short debounce to avoid flicker during pipeline completion bursts.
 
-**Problem**: Collaboration is CRUD + synthetic matching; needs clearer value without pretending it’s real-time matchmaking.
+### P1.4 — Persist quiz question set (auditability)
 
-**Acceptance criteria**
-
-- Ensure synthetic disclosure is shown in:
-  - collaboration screen
-  - any dashboard “collab” card/CTA
-- Add one non-trivial utility:
-  - “Share a course to group” (posts a course link)
-  - or “Schedule a study session” (simple event object stored server-side)
+- Store last quiz questions/answers (redacted) per lesson for debugging and future “review your mistakes” UI.
+- Minimal: store in events meta (already) but add structured retrieval endpoint.
 
 ---
 
-### 8) P1 — Marketplace import: import real content (not placeholders) when available
+## P2 (nice to have)
 
-**Problem**: Current enroll/import creates a minimal shell derived from `lessonCount`. That’s fine for Iter137, but it doesn’t deliver “course content”.
+### P2.1 — Reason taxonomy cleanup
 
-**Acceptance criteria**
+- Today `reasonTag` includes `new` and `other` but API never emits them.
+- Either implement or remove to avoid dead UI states.
 
-- When enrolling in a marketplace course, import the full module/lesson structure + lesson content (or a truthful stub that requires regeneration with BYOAI).
-- The imported course clearly shows provenance:
-  - `Imported from marketplace course <id>`
-  - what is copied vs what must be regenerated
+### P2.2 — /daily multi-item composition
 
----
+- Allow mixing: 1 quiz_gap + 1 review + 1 continue (instead of pure priority order), to feel more human.
 
-## P2 (quality/reliability) — Harden the loop and reduce user confusion
+### P2.3 — Mindmap gap visualization
 
-### 9) P2 — Mindmap semantics: show mastery (not just completion) and add “review due” affordance (DONE in this builder run)
-
-**Acceptance criteria (DONE in this builder run)**
-
-- ✅ Mindmap lesson node coloring uses mastery store rather than only completion.
-  - New: gray (#9CA3AF)
-  - Learning: amber (#F59E0B)
-  - Solid: blue (#2563EB)
-  - Mastered: green (#16A34A)
-- ✅ Lesson nodes with `nextReviewAt <= now` render as a ★ (vis-network `shape: 'star'`) and slightly larger size.
-- ✅ Updated in-UI legends (header + overlay) to mastery buckets and include “★ = review due”.
-- ✅ Added unit test update: `apps/client/src/__tests__/mindmap.test.tsx` asserts mastery legend labels.
-- ✅ Added Playwright spec + screenshot evidence:
-  - `e2e/iter138-mindmap-mastery-legend.spec.ts`
-  - `e2e/screenshots/iter138-mindmap-mastery-legend.png`
-
-(Real-time updates when mastery changes are not wired; state updates on refresh/reload, which satisfies MVP.)
+- If gaps exist for a lesson, tint the corresponding node/edge or add an icon.
 
 ---
 
-### 10) P2 — Add a single “Learning State” diagnostics panel (dev-only) (DONE in this builder run)
+## Known gaps vs spec (FYI)
 
-**Acceptance criteria (DONE in this builder run)**
+From `LearnFlow_Product_Spec.md`:
 
-- ✅ API: `GET /api/v1/diagnostics/learning` (dev-only; returns 404 when not in dev mode).
-- ✅ Client: `LearningStateDebugPanel` surfaced on Profile → Settings in dev builds.
-- ✅ Shows:
-  - Today’s Lessons reason breakdown counts
-  - mastery summary counts
-  - soonest 3 nextReviewAt items
-- ✅ Never shows keys/secrets (IDs + timestamps only).
-
----
-
-### 11) P2 — E2E: Add an Iter138 “adaptive loop” Playwright spec (DONE in this builder run)
-
-**Acceptance criteria (DONE in this builder run)**
-
-- ✅ Added `e2e/iter138-adaptive-loop.spec.ts`
-- ✅ Flow:
-  1. register + create a fast course
-  2. submit `quiz.submitted` + `lesson.completed` events
-  3. verify CourseView renders mastery badge + last quiz badge
-  4. sanity-check `/api/v1/daily` returns items (best-effort heuristic)
-- ✅ Verified locally: `npx playwright test e2e/iter136-smoke-assertions.spec.ts e2e/iter137-key-screens.spec.ts e2e/iter138-adaptive-loop.spec.ts` (PASS)
-
----
-
-### 12) P2 — Billing/IAP polish: keep mock flows truthful and consistent (PARTIAL)
-
-**Acceptance criteria**
-
-- ✅ Upgrade CTA on Dashboard uses an anchor to `/pricing` to ensure correct routing from all contexts.
-- ⏳ Any paid action is clearly marked **Mock checkout**. (not re-audited in this salvage pass)
-- ⏳ Subscription tier changes are reflected immediately in UI and diagnostics. (not re-audited)
-
----
-
-## Builder sequencing recommendation
-
-1. P0.1 mastery store + derivation from events
-2. P0.2 quiz badges + stable UI
-3. P0.3 spaced repetition scheduler + Today’s Lessons
-4. P0.4 provider lockdown across code + tests
-5. P1 notes surfaces + export hardening
-6. P1 marketplace real import
-7. P2 mindmap mastery semantics + adaptive-loop e2e
+- Full agent mesh / K8s / vector DB are future-state; MVP is correctly single-node.
+- API spec lists `/api/v1/analytics` but MVP may not implement it fully; keep focus on mastery loop rather than broadening surface area.
