@@ -231,9 +231,9 @@ Status: **DONE** ✅ (2026-03-29)
 **Acceptance criteria**
 
 - Unskip and pass provider selection test:
-  - stored active key provider
-  - per-request override
-  - provider inference for common key prefixes
+  - stored active key provider ✅ (test enabled in `apps/api/src/__tests__/byoai-provider-selection.test.ts`)
+  - per-request override (TODO)
+  - provider inference for common key prefixes (TODO)
 - Onboarding API key step validates format and does a best-effort provider check.
 - Clear UI error states when key invalid/exhausted.
 
