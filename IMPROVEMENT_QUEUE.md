@@ -219,18 +219,19 @@ Evidence pack for this planner run:
 
 ---
 
-### 10) P2 — Make screenshots harness validate key flows (smoke assertions)
+### 10) P2 — Make screenshots harness validate key flows (smoke assertions) ✅
 
 **Problem**: screenshots can succeed even when core flows are broken (e.g., CourseView error).
 
-**Acceptance criteria**
+**Acceptance criteria (met)**
 
-- `screenshot-all.mjs` (or a new `smoke-e2e.mjs`) asserts:
+- Added Playwright smoke test: `e2e/iter136-smoke-assertions.spec.ts` asserts:
   - dashboard renders
   - course creation works
   - course loads
   - lesson loads (or shows generating state)
 - Fails fast with a clear reason if a core screen is broken.
+- Fix included: persist a minimal `CREATING` course shell at pipeline start so `/courses/:id` won’t 404 during generation.
 
 ---
 

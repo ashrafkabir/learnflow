@@ -1,122 +1,26 @@
-# BUILD_LOG — Iteration 136
+# BUILD LOG — Iter136
 
-## 2026-03-29 — P1.5 Dashboard IA de-duplicate CTAs
+## Summary
+- P2.10: Added Playwright smoke assertions + fixed pipeline course 404 by creating a minimal course shell at pipeline start.
 
-### What changed
-- **Dashboard above-the-fold CTA cleanup**:
-  - Consolidated to a single primary “Create course” action (with an inline topic input).
-  - Added a single secondary “Browse marketplace” action.
-  - Retained topic chips as accelerators.
-- **Reduced duplicate/competing empty-state prompts**:
-  - Replaced the prior dashed “Create your first course” block (which repeated actions already present) with a simple, truthful “No courses yet” info card.
-  - Kept the lower “Create another course” box but re-labeled it as secondary placement and aligned copy with MVP truth.
-- **Copy consistency**:
-  - Normalized “Create course” capitalization.
-  - Used ellipsis “Starting…” consistently.
+## Changes
+- `e2e/iter136-smoke-assertions.spec.ts`
+  - Smoke assertions:
+    - Dashboard renders (`[aria-label="Dashboard"]`).
+    - Course creation works via API.
+    - Course loads (`[data-screen="course-view"]`).
+    - Lesson loads **or** course shows truthful generating state.
+  - Fails fast with clear error body snippet when CourseView shows "Failed to load course".
+  - Forces `window.__LEARNFLOW_ENV__.VITE_DEV_AUTH_BYPASS='0'` so the client will send JWT Authorization headers in environments where bypass is enabled.
 
-### Files touched
-- `apps/client/src/screens/Dashboard.tsx`
-- `apps/client/src/__tests__/client.test.tsx` (made the “create course input” test resilient to copy tweaks)
-- `apps/client/src/screens/Collaboration.tsx` (minor whitespace tweak to avoid JSX text-node warnings)
+- `apps/api/src/routes/pipeline.ts`
+  - `POST /api/v1/pipeline` is now `async`.
+  - Creates a minimal course shell immediately (status `CREATING`) and persists it so `/api/v1/courses/:id` won’t 404 while the pipeline runs.
 
-### Tests
-- `npm test` (turbo) — client/docs/shared/web/core/agents passed; api had a one-off Vitest `EnvironmentTeardownError` during the turbo run.
-- Re-ran `npm -w @learnflow/api test` — **PASS** (error did not reproduce).
+## Verification
+- `npm test` ✅
+- `npx playwright test e2e/iter136-smoke-assertions.spec.ts` ✅
+- `npm run screenshots` ✅ (desktop + mobile)
 
-### Screenshots
-- Ran `npm run dev` then `npm run screenshots`.
-- New captures saved to:
-  - `learnflow/screenshots/iterunknown/run-001/desktop/app-dashboard.png`
-  - `learnflow/screenshots/iterunknown/run-001/desktop/course-create-after-click.png`
-  - (full run also generated desktop+mobile suite under `learnflow/screenshots/iterunknown/run-001/`)
-
-### Notes / follow-ups
-- Screenshot harness currently writes to `iterunknown` when no iteration is specified; consider wiring Iter136 into `scripts/screenshots.mjs` for consistent evidence folders.
-
----
-
-## 2026-03-29 — P1.6 Marketplace empty state improvement (truthful)
-
-### What changed
-- **Marketplace empty state now explains the situation in dev/local** instead of the generic “check back later.”
-- Added clear actions when empty:
-  - **Create a course** (back to Dashboard)
-  - **Creator dashboard** (where publishing happens)
-  - **Refresh**
-- Added a distinct “Marketplace unavailable” header when the course list request fails (best-effort from client-side error message).
-
-### Files touched
-- `apps/client/src/screens/marketplace/CourseMarketplace.tsx`
-
-### Tests
-- `npm test` (turbo) — ran; API had a one-off Vitest `EnvironmentTeardownError` during turbo run.
-- Re-ran `npm -w @learnflow/api test` — **PASS**.
-
-### Screenshots
-- Ran `npm run dev`, then captured full suite to ensure Marketplace and LessonReader screens are recorded:
-  - `learnflow/screenshots/iter136/p1-6-empty-marketplace/marketplace-courses.png`
-  - `learnflow/screenshots/iter136/p1-6-empty-marketplace/lesson-reader.png`
-
-### Notes / follow-ups
-- Next in queue: **P1.7 LessonReader generation-aware loading state + recovery**.
-
----
-
-## 2026-03-29 — P1.7 LessonReader generation-aware loading + recovery; P1.8 Conversation copy truth
-
-### What changed
-- **LessonReader** now distinguishes **loading vs generating vs failed**.
-  - Hydrates course status via `GET /api/v1/courses/:courseId`.
-  - Shows a **Creating** banner when `course.status === 'CREATING'`.
-  - Shows a **Failed** recovery card when `course.status === 'FAILED'` or lesson fetch errors.
-  - Adds clear actions: **Retry / Refresh / Back to course**.
-  - Normalizes display errors with `toUserError()`.
-- **Conversation** copy now matches MVP reality:
-  - Replaced misleading “Online (preview)” with **“Offline mode (deterministic)”**.
-  - Updated supporting copy to avoid implying open-web browsing.
-
-### Files touched
-- `apps/client/src/screens/LessonReader.tsx`
-- `apps/client/src/screens/Conversation.tsx`
-
-### Tests
-- `npm -w apps/client test` — PASS
-- `npm test` (turbo) — PASS
-
-### Screenshots
-- Captured full suite (desktop + mobile) to:
-  - `learnflow/screenshots/iter136/run-lesson-convo/desktop/lesson-reader.png`
-  - `learnflow/screenshots/iter136/run-lesson-convo/desktop/app-conversation.png`
-  - `learnflow/screenshots/iter136/run-lesson-convo/mobile/*conversation*.png`
-
-
-### Backup / export
-- OneDrive mount not detected on this host; created tarball:
-  - `artifacts/iter136-p1-7-p1-8-screenshots.tgz` (contains `learnflow/screenshots/iter136/run-lesson-convo/*`)
-
-
----
-
-## 2026-03-29 — P2.9 Breadcrumbs (CourseView + LessonReader)
-
-### What changed
-- Added lightweight client-side **breadcrumbs** to improve navigation clarity:
-  - **CourseView**: Dashboard → Course title
-  - **LessonReader**: Dashboard → Course title → Lesson title
-- Improved “Back” behavior:
-  - LessonReader back uses location.state.from when present; otherwise falls back to browser history (nav(-1)).
-  - CourseView back uses browser history (nav(-1)) rather than always forcing /dashboard.
-
-### Files touched
-- `apps/client/src/screens/CourseView.tsx`
-- `apps/client/src/screens/LessonReader.tsx`
-
-### Tests
-- `npm test` (turbo) — PASS
-
-### Screenshots
-- `learnflow/screenshots/iter136/run-001/desktop/course-view.png`
-- `learnflow/screenshots/iter136/run-001/desktop/lesson-reader.png`
-
-### Notes
-- Screenshot harness updated to skip marketing pages by default (web app not always running), while still capturing client flows.
+## Notes
+- Found and mitigated an API hang in the prior dev API process by restarting the API server.

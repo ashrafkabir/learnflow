@@ -2027,7 +2027,7 @@ const createPipelineSchema = z.object({
   topic: z.string().min(1),
 });
 
-router.post('/', validateBody(createPipelineSchema), (req: Request, res: Response) => {
+router.post('/', validateBody(createPipelineSchema), async (req: Request, res: Response) => {
   const { topic } = req.body;
 
   const pipelineId = uuid();
@@ -2080,6 +2080,50 @@ router.post('/', validateBody(createPipelineSchema), (req: Request, res: Respons
 
   pipelines.set(pipelineId, state);
   dbPipelines.save(state);
+
+  // Create a minimal course shell immediately so /courses/:id can render while the
+  // pipeline runs (truthful CREATING state). Prevents 404s during generation.
+  try {
+    const { courses } = await import('./courses.js');
+    const nowIso = new Date().toISOString();
+    const courseShell = {
+      id: courseId,
+      title: `Mastering ${topic}`,
+      description: `Build practical skill in ${topic} through guided lessons and worked examples (intermediate level).`,
+      topic,
+      depth: 'intermediate',
+      authorId: req.user?.sub || 'anonymous',
+      modules: [],
+      progress: {},
+      plan: {},
+      status: 'CREATING',
+      error: '',
+      origin: String((req as any).origin || '').trim() || 'user',
+      generationAttempt: 0,
+      generationStartedAt: null,
+      lastProgressAt: nowIso,
+      failedAt: null,
+      failureReason: '',
+      failureMessage: '',
+      createdAt: nowIso,
+    } as any;
+    courses.set(courseId, courseShell);
+    dbCourses.save(courseShell);
+    try {
+      dbCourses.setBuildTelemetry(courseId, {
+        generationAttempt: 0,
+        generationStartedAt: null,
+        lastProgressAt: nowIso,
+        failedAt: null,
+        failureReason: '',
+        failureMessage: '',
+      });
+    } catch {
+      // ignore
+    }
+  } catch {
+    // ignore
+  }
 
   // Start pipeline async
   runPipeline(pipelineId).catch((err) => {
