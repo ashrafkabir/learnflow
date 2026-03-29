@@ -70,13 +70,12 @@ function looksKillable(cmd) {
 const listeners = findListeners();
 if (listeners.length === 0) {
   console.log('[LearnFlow] dev:clean — ports 3000/3001/3003 are already free.');
-  process.exit(0);
-}
-
-console.log('[LearnFlow] dev:clean — found listeners:');
-for (const l of listeners) {
-  const cmd = pidCmd(l.pid);
-  console.log(`- :${l.port} pid=${l.pid} cmd=${cmd || '(unknown)'}`);
+} else {
+  console.log('[LearnFlow] dev:clean — found listeners:');
+  for (const l of listeners) {
+    const cmd = pidCmd(l.pid);
+    console.log(`- :${l.port} pid=${l.pid} cmd=${cmd || '(unknown)'}`);
+  }
 }
 
 const killed = [];
@@ -96,7 +95,49 @@ for (const l of listeners) {
   }
 }
 
-if (killed.length > 0) {
+// Also clean up orphaned turbo dev parent processes (common after interrupted terminals).
+function findTurboDevPids() {
+  let out = '';
+  try {
+    out = sh('ps -eo pid=,cmd=');
+  } catch {
+    return [];
+  }
+  return out
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const m = line.match(/^(\d+)\s+(.*)$/);
+      if (!m) return null;
+      return { pid: Number(m[1]), cmd: m[2] };
+    })
+    .filter(Boolean)
+    .filter((p) => {
+      const c = p.cmd;
+      // Conservative: only kill turbo dev started from this repo.
+      return (
+        c.includes('turbo run dev') &&
+        (c.includes('/home/aifactory/.openclaw/workspace/learnflow') || c.includes('learnflow'))
+      );
+    });
+}
+
+const turbo = findTurboDevPids();
+if (turbo.length > 0) {
+  console.log('[LearnFlow] dev:clean — found leftover turbo dev processes:');
+  for (const t of turbo) console.log(`- pid=${t.pid} cmd=${t.cmd}`);
+
+  for (const t of turbo) {
+    try {
+      process.kill(t.pid, 'SIGTERM');
+    } catch (e) {
+      console.warn(`[LearnFlow] dev:clean — failed to SIGTERM pid=${t.pid}: ${String(e)}`);
+    }
+  }
+}
+
+if (killed.length > 0 || turbo.length > 0) {
   // Give processes a moment to exit.
   await new Promise((r) => setTimeout(r, 800));
 }
