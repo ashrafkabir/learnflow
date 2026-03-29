@@ -12,7 +12,8 @@ Status: **IN PROGRESS**
 - [x] Persist per-lesson research bundles to course-artifacts (sources + extracted text + image manifest) during lesson scraping.
 - [x] Track pipeline `lastError` and `retryCount` (API state) so UI can show failures + retries without digging through logs.
 - [x] Wire lesson generation to use saved research bundles (no re-scrape), and include citations sourced from those bundles.
-- [ ] Update PipelineDetail UI: show stage progress + `lastError` + retry affordance, and render links to saved artifacts.
+- [x] Update PipelineDetail UI: show stage progress + `lastError` + retry affordance, and render links to saved artifacts.
+- [x] Generate consolidated markdown artifacts: `course-research.md` (with source index + bounded extracts + image attributions) and `lessonplan.md` (LLM-generated lesson plan referencing research URLs).
 
 ---
 
