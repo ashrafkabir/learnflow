@@ -45,6 +45,23 @@ router.get('/', (req: Request, res: Response) => {
     }
   }
 
+  // Quiz average (best-effort) from quiz.submitted events
+  const quizScores: number[] = [];
+  for (const e of events) {
+    if (e.type !== 'quiz.submitted') continue;
+    try {
+      const meta = JSON.parse((e.meta as any) || '{}') as any;
+      const score = Number(meta?.score);
+      if (Number.isFinite(score)) quizScores.push(Math.max(0, Math.min(100, score)));
+    } catch {
+      // ignore
+    }
+  }
+  const quizAverage =
+    quizScores.length > 0
+      ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
+      : 0;
+
   res.status(200).json({
     userId,
     totalCoursesEnrolled: stats.totalCoursesEnrolled || 0,
@@ -63,7 +80,7 @@ router.get('/', (req: Request, res: Response) => {
       createdAt: e.createdAt,
     })),
     topTopics: [],
-    quizAverage: 0,
+    quizAverage,
   });
 });
 

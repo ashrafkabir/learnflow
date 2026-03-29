@@ -373,6 +373,14 @@ export function LessonReader() {
       if (data.note?.content?.text) {
         setAiNoteContent(data.note.content.text);
         setSavedNote(data.note);
+
+        // Best-effort learner loop: note auto-format generated
+        apiPost('/events', {
+          type: 'notes.generated',
+          courseId,
+          lessonId,
+          meta: { format },
+        }).catch(() => {});
       }
     } catch (err) {
       console.error('Failed to generate notes:', err);
@@ -393,6 +401,19 @@ export function LessonReader() {
           illustrations,
         }),
       });
+
+      // Best-effort learner loop: record that notes were saved (durable event)
+      apiPost('/events', {
+        type: 'notes.saved',
+        courseId,
+        lessonId,
+        meta: {
+          format: 'custom',
+          hasAiText: Boolean(aiNoteContent && aiNoteContent.trim().length > 0),
+          customChars: (customNoteText || '').length,
+          illustrationCount: illustrations?.length || 0,
+        },
+      }).catch(() => {});
     } catch (err) {
       console.error('Failed to save note:', err);
       toast('Failed to save your note. Please try again.', 'error');
@@ -2251,7 +2272,9 @@ export function LessonReader() {
             </div>
           )}
 
-          {activePanel === 'quiz' && <QuizPanel />}
+          {activePanel === 'quiz' && (
+            <QuizPanel courseId={courseId || ''} lessonId={lessonId || ''} />
+          )}
         </div>
       </main>
 
@@ -2425,9 +2448,11 @@ function InlineQuickCheck({ content }: { content: string }) {
   );
 }
 
-function QuizPanel() {
+function QuizPanel({ courseId, lessonId }: { courseId: string; lessonId: string }) {
   const { state, dispatch } = useApp();
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [persisting, setPersisting] = useState(false);
+  const [persistError, setPersistError] = useState<string | null>(null);
 
   const quiz = state.quiz;
   if (state.loading.quiz)
@@ -2441,8 +2466,39 @@ function QuizPanel() {
     );
   if (!quiz || !quiz.questions.length) return null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setPersistError(null);
     dispatch({ type: 'SUBMIT_QUIZ', answers });
+
+    // Best-effort persistence + learner loop (no blocking UI)
+    try {
+      setPersisting(true);
+      const correctAnswers: Record<string, string> = {};
+      const questionTypes: Record<string, string> = {};
+      quiz.questions.forEach((q) => {
+        correctAnswers[q.id] = q.correctAnswer;
+        questionTypes[q.id] = q.type;
+      });
+
+      await apiPost('/events', {
+        type: 'quiz.submitted',
+        courseId: courseId || undefined,
+        lessonId: lessonId || undefined,
+        meta: {
+          score: quiz.score,
+          totalQuestions: quiz.questions.length,
+          gaps: quiz.gaps || [],
+          answers,
+          correctAnswers,
+          questionTypes,
+        },
+      });
+    } catch (e: any) {
+      // Don't fail the quiz UX if persistence fails.
+      setPersistError(toUserError(e, 'Could not save quiz results.'));
+    } finally {
+      setPersisting(false);
+    }
   };
 
   return (
@@ -2506,9 +2562,15 @@ function QuizPanel() {
           </div>
         ))}
       </div>
+      {persistError && (
+        <div className="mt-3 text-xs text-warning bg-warning/10 border border-warning/20 rounded-xl p-3">
+          {persistError}
+        </div>
+      )}
+
       {!quiz.submitted && (
-        <Button variant="primary" onClick={handleSubmit} className="mt-4">
-          Submit Answers
+        <Button variant="primary" onClick={handleSubmit} className="mt-4" disabled={persisting}>
+          {persisting ? 'Saving…' : 'Submit Answers'}
         </Button>
       )}
     </div>

@@ -64,10 +64,14 @@ import {
   clearScrapeCache,
   getScrapeCacheSize,
 } from './source-fetchers.js';
-import { tavilySearch, TavilyProviderError } from './tavily-provider.js';
+// Iter137: enforce OpenAI web_search-only pipeline.
+// We keep the free provider multi-search stack (Wikipedia/arXiv/GitHub/etc),
+// but explicitly disable paid providers like Tavily (and Firecrawl is not used here).
+//
+// NOTE: We intentionally do not import Tavily provider in this build.
 
 function hasTavilyKey(): boolean {
-  return !!process.env.TAVILY_API_KEY;
+  return false;
 }
 
 // Alias cache controls for existing tests/exports.
@@ -137,8 +141,7 @@ export type WebSearchSourceId =
   | 'mdn'
   | 'smashingmag'
   | 'coursera'
-  | 'baiduscholar'
-  | 'tavily';
+  | 'baiduscholar';
 
 export type WebSearchConfig = {
   /** which providers are enabled */
@@ -190,16 +193,9 @@ async function multiSourceSearch(
   if (isEnabled('coursera', enabledSources)) tasks.push(courseraSearch(query, 2));
   if (isEnabled('baiduscholar', enabledSources)) tasks.push(baiduScholarSearch(query, 2));
 
-  // Prefer Tavily first if API key is present.
-  // This improves freshness + coverage while keeping a fallback to free providers.
-  if (hasTavilyKey() && isEnabled('tavily', enabledSources)) {
-    const tavilyTask = tavilySearch(query, { maxResults: perSourceLimit }).catch((err) => {
-      // Preserve structured auth errors for caller logging, but keep resilient fallback behavior.
-      if (err instanceof TavilyProviderError) throw err;
-      throw err;
-    });
-    tasks.unshift(tavilyTask);
-  }
+  // Iter137: Tavily disabled (OpenAI web_search-only). No paid provider tasks here.
+  // (We keep this function structure to avoid changing call-sites.)
+  void hasTavilyKey;
 
   const results = await Promise.all(tasks);
   return uniqueByUrl(results.flat());

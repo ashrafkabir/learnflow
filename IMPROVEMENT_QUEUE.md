@@ -1,296 +1,289 @@
-# LearnFlow — Improvement Queue (Iter136)
+# LearnFlow — Improvement Queue (Iter137)
 
 Owner: Builder  
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-29
 
-Status: **DONE**
+Status: **IN PROGRESS (BUILDER)**
 
-This queue is the **next 10–15 highest-leverage tasks** after Iter134/135. It is intentionally **trust-first**: fix misleading/broken UX before adding new capability.
+This queue is the **next 10–15 highest-leverage tasks** for Iter137, based on:
 
-Evidence pack for this planner run:
+- Full spec review: `LearnFlow_Product_Spec.md`
+- Code inspection (client/api/agents)
+- Playwright smoke + screenshots
 
-- Desktop screenshots: `learnflow/screenshots/iter136/planner-run/*.png`
-- Mobile screenshots: `learnflow/screenshots/iter136/planner-run/mobile/*`
-- Notes: `learnflow/screenshots/iter136/planner-run/NOTES.md`
+## Evidence pack (Iter137)
 
----
+Primary (synced to OneDrive):
 
-## P0 (must ship) — Trust breakers + correctness
+- Desktop key screens: `/home/aifactory/onedrive-learnflow/iter137/evidence/screenshots-iterunknown/run-2026-03-29/*.png`
+- Mobile key screens (320/375/414): `/home/aifactory/onedrive-learnflow/iter137/evidence/screenshots-iterunknown/mobile-2026-03-29/*.png`
+- Playwright artifacts: `/home/aifactory/onedrive-learnflow/iter137/evidence/playwright/*`
 
-### 1) P0 — Fix CourseView error message rendering (`[object Object]`) ✅
+Runtime checks performed:
 
-**Problem**: CourseView error page currently shows raw `[object Object]` in the UI, which is a credibility/trust breaker.
-
-- Evidence (UI): `screenshots/iter136/planner-run/course-view.png`
-- Evidence (code): `apps/client/src/screens/CourseView.tsx` uses `setError(e?.message || ...)` and later renders `{error}`.
-
-**Acceptance criteria**
-
-- CourseView error text is **always human-readable**.
-- If the thrown error is not an `Error`, message falls back to:
-  - server-supplied `error.message` when present
-  - otherwise a generic: `"Failed to load course. Please retry."`
-- Include requestId (if present from API ErrorEnvelope) in a copy-to-clipboard “Details” expander for debugging.
-
-**Implementation hints**
-
-- Standardize client error parsing in one helper (e.g., `toUserError(err)`), used by CourseView and LessonReader.
+- Playwright smoke: `e2e/iter136-smoke-assertions.spec.ts` (PASS)
+- Screenshot runs: `node screenshot-all.mjs`, `node screenshot-mobile.mjs` (PASS)
 
 ---
 
-### 2) P0 — Ensure course list + course view are consistent for a fresh user ✅
+## Topline assessment (brutally honest)
 
-**Problem**: Default screenshot run shows dashboard empty state and CourseView failure. The app should reliably support: create course → course shows → lesson opens.
+The product has **many of the screen shells** described in §5.2 (dashboard, conversation, mindmap, marketplaces, settings, onboarding) and has a **solid testing harness**.
 
-- Evidence (screenshots): `app-dashboard.png`, `course-view.png`, `lesson-reader.png` (skeleton only)
+However, multiple **spec-critical loops** are still “thin” or non-evidenced end-to-end:
+
+- Quizzes/exams: generation exists, but **persistence + mastery feedback loop** is under-specified/under-evidenced in UI.
+- Notes generation: exists, but **save/revisit/export** loop is weak.
+- Research: spec says **OpenAI web_search only** for MVP research pipeline; repo contains both OpenAI web_search provider and Firecrawl/Tavily legacy. Needs strict enforcement + disclosure.
+- Marketplace creator flow: API tests show create→quality→publish, but UI evidence doesn’t clearly show a reliable creator publish loop.
+- Mindmap: renders, but **semantics/mastery states** look mostly cosmetic; needs clear mapping from course concepts and progress.
+
+Iter137 should focus on turning these into **credible, spec-aligned end-to-end flows** (not more screens).
+
+---
+
+## P0 (must ship) — Spec-critical learning loop correctness
+
+### 1) P0 — Make quiz results persistent + visible in the learner loop
+
+**Problem**: Spec (§4.2 Exam Agent, §5.2 Home Dashboard, §5.2 Course View) expects quiz scores feeding mastery/adaptation. Current client tracks quiz state in app context, but the end-to-end loop (generate → answer → score → persist → reflect in UI) is not clearly complete.
 
 **Acceptance criteria**
 
-- Happy path works in dev with a brand-new account:
-  1. Create course from dashboard
-  2. User is navigated to the new course view immediately
-  3. Course loads without error
-  4. Clicking first lesson opens LessonReader with real content within a reasonable time (or clearly shows generation status + auto-refresh)
-- If course is still generating, CourseView shows a **truthful status** (CREATING/READY/FAILED) and a “Refresh” / “Continue generating” affordance.
-
-**Shipped (MVP)**
-
-- Dashboard now navigates to `/courses/:courseId` after `startPipeline()` returns.
-- CourseView restart/resume actions no longer write an invalid `error` state shape (prevents silent runtime issues).
-- Screenshots: `learnflow/screenshots/iter136/p0-2-happy-path/{app-dashboard,course-view,lesson-reader,course-create-after-click}.png`
+- After completing a quiz, score + identified gaps are persisted server-side against (userId, courseId, lessonId/moduleId).
+- CourseView and/or LessonReader shows a **“Last quiz score”** badge per lesson/module.
+- Dashboard streak/progress includes **quiz activity** (even if mastery scoring remains “planned”, show “Quiz completed” events).
+- API contract: `GET /api/v1/courses/:id` (or dedicated endpoint) returns quiz summary fields.
 
 **Evidence pointers**
 
-- API returns `status` on `GET /api/v1/courses/{id}` (already does).
-- UI currently has pipeline screens; CourseView should not feel broken even if generation is async.
+- UI screenshots show LessonReader includes a Quiz panel: `.../lesson-reader.png` (desktop/mobile).
+- Code pointers: `apps/client/src/context/AppContext.tsx` (quiz state + scoring), `packages/agents/src/exam-agent/*`.
 
 ---
 
-### 3) P0 — Remove or quarantine legacy JSON persistence fixtures that no longer match runtime ✅
+### 2) P0 — Notes must be saved, revisitable, and exportable (Cornell + flashcards)
 
-**Problem**: `.data/courses.json` contained demo course data but runtime uses SQLite (`dbCourses`). This created confusion and could lead to incorrect expectations in QA and planning.
-
-**What changed (Iter136)**
-
-- Removed legacy, unused JSON persistence layer: `apps/api/src/persistence.ts` (no runtime imports).
-- Stopped shipping legacy `.data/*` fixtures by removing them from git tracking:
-  - `.data/courses.json`
-  - `.data/progress.json`
-  - `.data/users.json`
-  - `.data/keys.json`
-  - `.data/learnflow.db`
-- Documented truth-first persistence behavior in `README.md` (SQLite is runtime; `.data/` is local-only).
-
-**Evidence**
-
-- `git ls-files | grep "^\.data/"` → (no tracked `.data/` fixtures)
-- `npm test` → green (no tests rely on legacy fixtures)
+**Problem**: Spec (§4.2 Notes Agent, §5.2 Profile & Settings export) implies notes are first-class artifacts. Today notes generation exists, but the “save → list → reopen → export” loop is not credibly demonstrated.
 
 **Acceptance criteria**
 
-- (A) Delete/stop shipping `.data/*.json` fixtures and remove dead JSON persistence code ✅
-- Ensure new devs do not mistake legacy fixtures for live seeded data ✅
+- From LessonReader (or Conversation), user can generate notes and **Save** them.
+- User can revisit saved notes from:
+  - CourseView (lesson row)
+  - Settings → Export (or a Notes library)
+- Export includes notes in both:
+  - Markdown (Cornell)
+  - JSON (flashcards array)
+- Notes are tied to stable ids and include provenance (courseId, lessonId, createdAt).
+
+**Evidence pointers**
+
+- API already has export tests; extend with notes inclusion.
+- Spec references Export Agent packaging courses/notes/progress.
 
 ---
 
-### 4) P0 — Dashboard mindmap widget must not show nodes when user has 0 courses ✅
+### 3) P0 — Enforce “OpenAI Web Search only” for the pipeline (remove/disable Firecrawl/Tavily paths in non-test)
 
-**Problem**: Dashboard shows 0 courses and “Start a course…” yet the mindmap widget renders three nodes (M/D/W).
-
-- Evidence (UI): `screenshots/iter136/planner-run/app-dashboard.png`
+**Problem**: Spec §6.1.1 explicitly says MVP research uses **OpenAI web_search only** and must **not** use Firecrawl/Tavily. Repo still contains Firecrawl/Tavily provider code paths and tests referencing them. Even if currently unused in runtime, this is a compliance/trust risk.
 
 **Acceptance criteria**
 
-- When `courses.length === 0`, mindmap widget area shows only an empty-state (no nodes).
-- When at least one course exists, mindmap widget renders nodes derived from that course (and clicking them navigates somewhere predictable).
+- In non-test builds, pipeline discovery uses only `searchAndExtractTopic` (OpenAI web_search provider).
+- Firecrawl/Tavily providers are:
+  - either removed, or
+  - hard-gated behind explicit env flags + UI disclosure, and **not used by default**.
+- Pipeline logs explicitly record provider as `openai_web_search`.
+- Add a test asserting pipeline provider selection cannot fall back to Firecrawl/Tavily in non-test.
+
+**Evidence pointers**
+
+- Spec constraint: `LearnFlow_Product_Spec.md` §6.1.1.
+- Runtime uses OpenAI web_search in `apps/api/src/routes/pipeline.ts` (confirm + lock it down).
 
 ---
 
-## P1 (high value) — UX clarity + spec-aligned learning loop
+### 4) P0 — Creator publish flow must be operable end-to-end from the UI
 
-### 5) P1 — Dashboard: de-duplicate CTAs and tighten IA ✅
-
-**Problem**: Dashboard currently has multiple overlapping “create course” CTAs (hero + input + cards). This feels noisy and unintentional.
-
-- Evidence: `app-dashboard.png`
+**Problem**: Spec §7 expects: create course → quality review → publish to marketplace with creator profile. API tests show this exists, but UI evidence set doesn’t show a reliable full path.
 
 **Acceptance criteria**
 
-- One primary CTA (“Create course”) + one secondary CTA (“Browse marketplace”) above the fold.
-- Topic chips remain as accelerators, but do not repeat the same action in 3 places.
-- If “Today” is unavailable, remove the tile or replace with a truthful “Coming soon” section lower on the page.
+- In client UI, a creator can:
+  1. create a course (or select an existing course)
+  2. run a quality check
+  3. publish (free or paid; paid clearly marked “mock billing”)
+  4. see the published course appear in marketplace browse + detail
+- The publish screen shows clear, truthful disclaimers:
+  - mock billing
+  - no real payouts
+  - what’s visible publicly in this sandbox
+
+**Evidence pointers**
+
+- Screens: marketplace + creator dashboard: `.../marketplace-courses.png`, `.../app-settings.png` (desktop/mobile).
+- API tests: `apps/api/src/__tests__/marketplace.test.ts`.
 
 ---
 
-### 6) P1 — Course Marketplace: show at least a seeded, truth-labeled set of courses (or a better empty state) ✅
+### 5) P0 — Mindmap must be derived from real course concepts + show progress semantics
 
-**Problem**: Marketplace showed “No courses found” which made the feature look dead.
-
-- Evidence (before): `screenshots/iter136/planner-run/marketplace-courses.png`
-
-**Shipped (Iter136)**
-
-- Implemented option **(B)**: improved empty state with a truthful explanation and clear actions.
-- Added load-failure copy (“Marketplace unavailable”) when the API request fails.
-
-**Evidence (after)**
-
-- Screenshot: `learnflow/screenshots/iter136/p1-6-empty-marketplace/marketplace-courses.png`
-- Code: `apps/client/src/screens/marketplace/CourseMarketplace.tsx`
-
----
-
-### 7) P1 — LessonReader: add “generation-aware” loading state + recovery ✅
-
-**Problem**: Lesson reader screenshot shows only skeleton state; unclear if it’s loading, generating, or broken.
-
-- Evidence: `lesson-reader.png`
+**Problem**: Spec §5.2.5 expects nodes=concepts and color-coded progress. Current mindmap renders, but semantic linkage to courses and progress/milestones is unclear.
 
 **Acceptance criteria**
 
-- Distinguish:
-  - Loading (fetching)
-  - Generating (course pipeline running)
-  - Failed (with actionable error)
-- Provide a “Retry” + “Back to course” action when failed.
+- On first course creation, mindmap is populated from the course outline (modules/lessons + extracted concepts).
+- Node state derives from:
+  - lesson completion (MVP), and
+  - optionally quiz completion (bonus)
+- Clicking a node navigates predictably to the related lesson(s).
+- Empty state when no courses (no “mystery nodes”).
 
-**Shipped (Iter136)**
+**Evidence pointers**
 
-- LessonReader now hydrates course status via `GET /courses/:id` and shows:
-  - “Creating” state (generation-aware) when `status=CREATING`
-  - “Failed” recovery state when `status=FAILED` or lesson fetch errors
-  - Action buttons: Retry / Refresh / Back to course
-- Errors are normalized with `toUserError()` to avoid raw objects.
-
-**Evidence (after)**
-
-- Screenshot: `learnflow/screenshots/iter136/run-lesson-convo/desktop/lesson-reader.png`
-- Code: `apps/client/src/screens/LessonReader.tsx`
+- Screens: `.../app-mindmap.png`, `.../app-dashboard.png`.
+- Agents: `packages/agents/src/mindmap-agent/*`.
 
 ---
 
-### 8) P1 — Conversation screen: reconcile “Online (preview)” vs deterministic/no-browse mode copy ✅
+## P1 (high value) — Personalization + “daily lesson” loop
 
-**Problem**: Conversation UI suggests “Online” but also states no open-web browsing unless enabled; this is confusing.
+### 6) P1 — “Today’s lessons” must be non-placeholder and driven by an algorithmic rule
 
-- Evidence: `app-conversation.png`
+**Problem**: Spec §5.2.2 expects Today’s Lessons prioritized queue. Current UI shows a section, but the logic and persistence of a daily queue is not clearly evidenced.
 
 **Acceptance criteria**
 
-- UI has one consistent, truthful status line, e.g.:
-  - “Offline mode (deterministic)” OR “Online mode (web search enabled)”
-- If web search is disabled, remove/avoid any wording implying browsing.
-- Add a link/icon to explain what the mode means (“What can I do in this mode?”).
+- API endpoint returns a stable daily list (per user) with:
+  - lesson ids
+  - reason tags (e.g., “continue”, “review”, “new concept”, “based on quiz gap”)
+- UI shows the reason (small label) and supports one-tap start.
+- Completion updates the queue.
 
-**Shipped (Iter136)**
+**Evidence pointers**
 
-- Replaced misleading “Online (preview)” pill with explicit: **“Offline mode (deterministic)”**.
-- Updated the header copy to: “No open-web browsing in this screen.”
-
-**Evidence (after)**
-
-- Screenshot: `learnflow/screenshots/iter136/run-lesson-convo/desktop/app-conversation.png`
-- Code: `apps/client/src/screens/Conversation.tsx`
+- API has `daily-lessons` test; extend UI to surface reasons.
 
 ---
 
-## P2 (nice-to-have / quality) — Polish + observability
+### 7) P1 — Research Agent: citations + provenance UI (sources drawer) must work consistently
 
-### 9) P2 — Add lightweight client-side breadcrumbs on CourseView and LessonReader ✅
+**Problem**: Spec emphasizes attribution. LessonReader has a Sources/Attribution drawer; ensure it’s consistently populated from stored research artifacts rather than ad-hoc strings.
 
 **Acceptance criteria**
 
-- Breadcrumb: Dashboard → Course title → Lesson title.
-- “Back” goes to the correct prior screen (not always `/dashboard`).
+- Sources drawer always shows structured fields when available:
+  - title, url, publisher/domain, author, accessedAt/capturedAt, credibility
+- Lesson body citations map to source ids.
+- Export JSON includes stable source ids + timestamps (already tested; ensure UI aligns).
 
-**Shipped (Iter136)**
+**Evidence pointers**
 
-- Added breadcrumbs:
-  - CourseView: Dashboard → Course title
-  - LessonReader: Dashboard → Course title → Lesson title
-- CourseView now passes `location.state` when navigating to LessonReader so LessonReader can render accurate breadcrumb titles.
-- LessonReader top-bar back button prefers `location.state.from` and otherwise uses browser history (falls back to `nav(-1)`).
-
-**Evidence**
-
-- Code: `apps/client/src/screens/CourseView.tsx`, `apps/client/src/screens/LessonReader.tsx`
-- Screenshots: `learnflow/screenshots/iter136/run-001/desktop/{course-view,lesson-reader}.png`
+- Client has tests around credibility; reinforce runtime parity.
 
 ---
 
-### 10) P2 — Make screenshots harness validate key flows (smoke assertions) ✅
+### 8) P1 — BYOAI provider selection & validation: unskip the missing test and finish the UX
 
-**Problem**: screenshots can succeed even when core flows are broken (e.g., CourseView error).
-
-**Acceptance criteria (met)**
-
-- Added Playwright smoke test: `e2e/iter136-smoke-assertions.spec.ts` asserts:
-  - dashboard renders
-  - course creation works
-  - course loads
-  - lesson loads (or shows generating state)
-- Fails fast with a clear reason if a core screen is broken.
-- Fix included: persist a minimal `CREATING` course shell at pipeline start so `/courses/:id` won’t 404 during generation.
-
----
-
-### 11) P2 — Add an “App State Debug” panel gated to dev mode ✅
+**Problem**: Spec §4.4 expects provider selection, key vault, validation, and clear failure messaging. There is a skipped API test (`byoai-provider-selection.test.ts`). That’s a red flag.
 
 **Acceptance criteria**
 
-- In dev only, a small panel shows:
-  - active user id/tier
-  - number of courses
-  - activeCourse id
-  - feature flags (web search enabled, dev auth bypass)
-- Helps resolve planner-run ambiguity quickly.
+- Unskip and pass provider selection test:
+  - stored active key provider
+  - per-request override
+  - provider inference for common key prefixes
+- Onboarding API key step validates format and does a best-effort provider check.
+- Clear UI error states when key invalid/exhausted.
 
-**Shipped (Iter136)**
+**Evidence pointers**
 
-- Added dev-only `AppStateDebugPanel` rendered on Profile Settings.
-- Hard gated with `import.meta.env.DEV` so it does not render in production builds.
-- Shows: user id (from localStorage), tier, course count, activeCourseId, and capability/env flags.
-
-**Evidence**
-
-- Code: `apps/client/src/components/AppStateDebugPanel.tsx`, `apps/client/src/screens/ProfileSettings.tsx`
-- Test: `apps/client/src/__tests__/appStateDebugPanel.test.tsx` asserts panel is not rendered when `import.meta.env.DEV=false`.
+- API route: `apps/api/src/routes/chat.ts` includes format-only validation; complete the loop with real validation endpoints.
 
 ---
 
-### 12) P2 — Documentation: update spec-accuracy disclaimers to match MVP reality ✅
+### 9) P1 — Marketplace “enroll” should import into workspace with correct ownership + progress initialization
+
+**Problem**: Spec says enroll imports the course into learner workspace. Ensure enrollment creates a real course instance tied to user, not just a marketplace id.
 
 **Acceptance criteria**
 
-- Ensure docs + marketing pages do not imply:
-  - real paid billing
-  - real marketplace scale/metrics
-  - full knowledge-graph semantics
-  - adaptive quizzes
-- Where planned, label as “Planned” and link to roadmap section.
-
-**Shipped (Iter136)**
-
-- Added docs roadmap page and linked it from MVP truth/docs.
-- Updated docs copy to label planned items (adaptive quizzes, richer knowledge graph, marketplace monetization) as **Planned**.
-- Updated marketing homepage feature blurbs to avoid implying adaptive quizzes, academic paper search, or full knowledge graph semantics.
-- Updated pricing table to mark quizzes as Planned.
-- Updated blog copy to avoid “knowledge graph” claims for MVP.
-
-**Evidence**
-
-- New: `apps/docs/pages/roadmap.md`
-- Updated: `apps/docs/pages/user-guide.md`, `apps/docs/pages/mvp-truth.md`
-- Updated marketing: `apps/web/src/app/page.tsx`, `apps/web/src/app/pricing/page.tsx`
-- Updated blog: `apps/client/src/data/blogPosts.ts`
+- Clicking Enroll creates a user-owned course record with:
+  - initial progress entries
+  - mindmap seeding
+- Course appears in dashboard carousel immediately.
 
 ---
 
-## Quick “spec ↔ reality” truth summary (Iter136)
+## P2 (quality / reliability) — Make the system easier to debug and harder to mislead
 
-- **Onboarding** exists and matches spec structure (MVP).
-- **Conversation** exists, but the capture run did not evidence rich outputs.
-- **Course creation** exists, but UI must better handle async generation states.
-- **Marketplace** UI exists but appears empty by default.
-- **Mindmap** exists but the dashboard widget currently shows inconsistent nodes in empty state.
+### 10) P2 — Add a single “Mode & Providers” diagnostic panel (dev-only)
+
+**Acceptance criteria**
+
+- Dev-only panel shows:
+  - web search provider actually used (`openai_web_search`)
+  - mock mode flags (billingMode, sourceMode)
+  - active BYOAI provider/key presence (never reveal the key)
+
+---
+
+### 11) P2 — Expand Playwright to capture ALL key screens (desktop + mobile) as a single Iter137 suite
+
+**Problem**: We currently have scripts + individual specs; Iter137 should have a single named suite for “key screens” tied to this iteration.
+
+**Acceptance criteria**
+
+- Add `e2e/iter137-key-screens.spec.ts` that:
+  - takes deterministic screenshots (dashboard/conversation/mindmap/marketplaces/settings/onboarding)
+  - asserts key headings are present
+  - runs on Desktop + 1 mobile viewport
+
+---
+
+### 12) P2 — Consolidate “marketing web” vs “app client” navigation truth
+
+**Problem**: Repo runs a Next marketing app and a Vite app; screenshots show both. Ensure cross-links and copy are truthful and never strand users.
+
+**Acceptance criteria**
+
+- Marketing CTA always lands in client app (`:3001`) correctly.
+- App has a clear “Back to marketing” link.
+- No dead links to localhost or incorrect ports.
+
+---
+
+### 13) P2 — Collaboration: ensure the “synthetic match” disclosure is unavoidable and consistent
+
+**Acceptance criteria**
+
+- Collaboration screen clearly labels suggested partners as synthetic (until real multi-user is shipped).
+- Same disclosure appears wherever collaboration is mentioned (dashboard notifications, etc.).
+
+---
+
+### 14) P2 — Export: add “Provenance manifest” for course + notes + sources
+
+**Acceptance criteria**
+
+- Export ZIP contains a `manifest.json` with:
+  - exportedAt timestamp
+  - course ids/titles
+  - sources count and ids
+  - notes count
+  - pipeline provider (openai_web_search)
+
+---
+
+## Builder notes (sequencing)
+
+Recommended sequence:
+
+1. P0.3 provider enforcement (prevents spec drift)
+2. P0.4 marketplace publish loop (creator value)
+3. P0.1 quiz persistence + UI badges
+4. P0.2 notes save/revisit/export
+5. P0.5 mindmap semantics
+6. P1 personalization + BYOAI polish
