@@ -906,40 +906,11 @@ export function Conversation() {
                         {chip.label}
                       </Button>
                     ))}
-                {msg.content.includes('[1]') && (
+                {drawerSources.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      const sourceRegex = /\[(\d+)\]\s*(.*?)(?:\.|$)/gm;
-                      const parsed: Source[] = [];
-                      let m;
-                      while ((m = sourceRegex.exec(msg.content)) !== null) {
-                        parsed.push({
-                          id: parseInt(m[1]),
-                          title: m[2].trim(),
-                          author: 'Author',
-                          publication: 'Source',
-                          year: 2024,
-                          url: '#',
-                        });
-                      }
-                      setDrawerSources(
-                        parsed.length
-                          ? parsed
-                          : [
-                              {
-                                id: 1,
-                                title: 'Source referenced in response',
-                                author: 'Various',
-                                publication: 'Web',
-                                year: 2024,
-                                url: '#',
-                              },
-                            ],
-                      );
-                      setDrawerOpen(true);
-                    }}
+                    onClick={() => setDrawerOpen(true)}
                     className="rounded-full border border-accent/30 text-accent hover:bg-accent/10"
                   >
                     View Sources

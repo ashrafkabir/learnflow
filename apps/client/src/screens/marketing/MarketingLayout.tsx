@@ -34,20 +34,17 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-8">
             {NAV_LINKS.map((l) => (
-              <Button
+              <a
                 key={l.href}
-                variant="ghost"
-                size="sm"
-                onClick={() => nav(l.href)}
-                aria-current={location.pathname === l.href ? 'page' : undefined}
-                className={`text-sm font-medium ${
-                  location.pathname === l.href
+                href={l.href}
+                className={`text-sm font-medium transition-colors ${
+                  location.pathname === new URL(l.href, 'http://local').pathname
                     ? 'text-accent font-bold underline underline-offset-4'
                     : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 {l.label}
-              </Button>
+              </a>
             ))}
           </nav>
 
@@ -80,18 +77,14 @@ export function MarketingLayout({ children }: { children: ReactNode }) {
         {mobileOpen && (
           <div className="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950 px-6 py-4 space-y-3">
             {NAV_LINKS.map((l) => (
-              <Button
+              <a
                 key={l.href}
-                variant="ghost"
-                fullWidth
-                onClick={() => {
-                  nav(l.href);
-                  setMobileOpen(false);
-                }}
-                className="justify-start text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                href={l.href}
+                onClick={() => setMobileOpen(false)}
+                className="block text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
               >
                 {l.label}
-              </Button>
+              </a>
             ))}
             <div className="flex gap-3 pt-2">
               <Button variant="ghost" size="sm" onClick={() => nav('/login')}>

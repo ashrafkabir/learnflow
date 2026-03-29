@@ -47,13 +47,13 @@ LearnFlow uses a multi-agent system where each agent specializes in a task:
 const agents = {
   courseBuilder: "Researches and structures courses",
   notes: "Generates Cornell notes, flashcards, Zettelkasten",
-  exam: "Creates adaptive quizzes targeting weak spots",
+  exam: "Creates quizzes (MVP: not yet fully adaptive)",
   research: "Deep-dive answers with inline citations",
   summarizer: "Condenses lessons into key takeaways",
 };
 \`\`\`
 
-Each agent reads the **Student Context Object** — a living document that tracks your goals, progress, and knowledge gaps.
+Each agent reads the **Student Context Object** — a living document that tracks your goals and progress. (Knowledge-gap tracking is planned and not fully implemented in this MVP.)
 
 ### What's Next
 
@@ -210,7 +210,7 @@ At LearnFlow, we use a team of specialized AI agents that work together:
 
 - **Course Builder Agent** — Researches the web and creates structured courses from any topic
 - **Notes Agent** — Generates Cornell notes, flashcards, and Zettelkasten entries from your lessons
-- **Exam Agent** — Creates adaptive quizzes that target your weak spots
+- **Exam Agent** — Creates quizzes (adaptive targeting is planned; MVP is non-adaptive)
 - **Research Agent** — Provides deep-dive answers backed by real sources with inline citations
 
 ### Why Agents > Single Models

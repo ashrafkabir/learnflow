@@ -1,6 +1,6 @@
-# LearnFlow — IMPLEMENTED_VS_SPEC (Iteration 106)
+# LearnFlow — IMPLEMENTED_VS_SPEC (Iteration 130)
 
-This document is a **brutally honest** mapping between the product spec (sections 1–17) and what is actually implemented in this repo as of Iteration 106.
+This document is a **brutally honest** mapping between the product spec (sections 1–17) and what is actually implemented in this repo as of Iteration 130.
 
 Legend:
 
@@ -70,6 +70,8 @@ Legend:
 - **Partial / MVP**
   - Marketplace browsing exists.
   - Agent activation exists.
+    - **Iter130 trust hardening:** first-time activation requires an explicit disclosure acknowledgement (routing preference + UI labels only; no third-party agent code executes at runtime).
+  - **Iter130 trust hardening:** course marketplace browse UI does **not** display ratings/enrollment counts unless backed by real analytics.
   - Course reviews/ratings write path exists (DB-backed) and aggregates are surfaced.
   - Payments/payouts are represented but not production-ready.
 
@@ -89,7 +91,8 @@ Legend:
     - `mindmap.update`
     - `progress.update`
     - `error`
-  - **Client** Conversation screen now reacts to `response.start/chunk/end` and agent events.
+  - **Iter130:** `response.end` includes `message_id` and `agent_name` for client metadata.
+  - **Client** Conversation screen reacts to `response.start/chunk/end` and agent events.
   - Missing: robust ordering/ids across reconnects, backpressure, binary frames, etc.
 
 ## 12) Knowledge graph / Mindmap

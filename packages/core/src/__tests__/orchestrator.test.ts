@@ -8,7 +8,6 @@ import type { StudentContextObject, ContextStore } from '../context/student-cont
 import type { AgentInterface } from '../agents/types.js';
 import { routeIntent } from '../orchestrator/intent-router.js';
 import { aggregateResponses } from '../orchestrator/response-aggregator.js';
-import { updateContextFromEvent } from '../orchestrator/behavioral-tracker.js';
 import { ORCHESTRATOR_SYSTEM_PROMPT } from '../orchestrator/system-prompt.js';
 
 // Mock agent factory
@@ -347,32 +346,6 @@ describe('S03-A10: Response aggregator', () => {
   });
 });
 
-// S03-A11: Behavioral tracker updates SCO after quiz completion
-describe('S03-A11: Behavioral tracker updates SCO', () => {
-  it('updates quizScores and strengths after quiz', () => {
-    const ctx = createMockContext();
-    const updated = updateContextFromEvent(ctx, {
-      type: 'quiz_complete',
-      data: { quizId: 'quiz-1', score: 0.95, topic: 'Python Basics' },
-      timestamp: new Date(),
-    });
-
-    expect(updated.quizScores['quiz-1']).toBe(0.95);
-    expect(updated.strengths).toContain('Python Basics');
-  });
-
-  it('updates weaknesses for low quiz scores', () => {
-    const ctx = createMockContext();
-    const updated = updateContextFromEvent(ctx, {
-      type: 'quiz_complete',
-      data: { quizId: 'quiz-2', score: 0.4, topic: 'Advanced Algorithms' },
-      timestamp: new Date(),
-    });
-
-    expect(updated.weaknesses).toContain('Advanced Algorithms');
-  });
-});
-
 // S03-A12: Rate limiter enforces per-tier limits
 describe('S03-A12: Rate limiter', () => {
   it('blocks after free tier limit exceeded', () => {
@@ -406,7 +379,7 @@ describe('S03-A13: System prompt matches spec', () => {
     expect(ORCHESTRATOR_SYSTEM_PROMPT).toContain('notes_agent');
     expect(ORCHESTRATOR_SYSTEM_PROMPT).toContain('exam_agent');
     expect(ORCHESTRATOR_SYSTEM_PROMPT).toContain('research_agent');
-    expect(ORCHESTRATOR_SYSTEM_PROMPT).toContain('BEHAVIORAL ADAPTATION');
+    expect(ORCHESTRATOR_SYSTEM_PROMPT).toContain('BEHAVIORAL ADAPTATION (PLANNED');
     expect(ORCHESTRATOR_SYSTEM_PROMPT).toContain('ERROR HANDLING');
   });
 

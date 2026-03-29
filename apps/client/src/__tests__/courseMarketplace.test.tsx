@@ -82,7 +82,7 @@ describe('CourseMarketplace screen', () => {
     );
   });
 
-  it('shows enroll buttons when courses exist', async () => {
+  it('shows enroll buttons when courses exist (and does not show fake metrics)', async () => {
     globalThis.fetch = (async (input: any) => {
       const url = String(input);
       if (url.includes('/api/v1/marketplace/courses')) {
@@ -96,6 +96,7 @@ describe('CourseMarketplace screen', () => {
                 topic: 'programming',
                 difficulty: 'beginner',
                 price: 0,
+                // The API may include these fields, but MVP browse UI should not render them.
                 rating: 4.8,
                 enrollmentCount: 10,
                 lessonCount: 3,
@@ -116,6 +117,7 @@ describe('CourseMarketplace screen', () => {
       () => {
         const text = document.body.textContent || '';
         expect(text.match(/enroll/i)).toBeTruthy();
+        expect(text.match(/enrolled/i)).toBeFalsy();
       },
       { timeout: 5000 },
     );

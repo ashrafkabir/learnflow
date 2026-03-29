@@ -99,7 +99,26 @@ export function AgentMarketplace() {
       });
   }, []);
 
-  const handleToggleActivate = async (agent: Agent) => {
+  const [activationDisclosureOpen, setActivationDisclosureOpen] = useState(false);
+  const [pendingToggleAgent, setPendingToggleAgent] = useState<Agent | null>(null);
+
+  const hasAckedActivationDisclosure = () => {
+    try {
+      return localStorage.getItem('learnflow-mvp-agent-activation-disclosure-ack') === 'true';
+    } catch {
+      return false;
+    }
+  };
+
+  const ackActivationDisclosure = () => {
+    try {
+      localStorage.setItem('learnflow-mvp-agent-activation-disclosure-ack', 'true');
+    } catch {
+      // ignore
+    }
+  };
+
+  const doToggleActivate = async (agent: Agent) => {
     const isActive = activatedIds.has(agent.id);
 
     setActivating(agent.id);
@@ -126,6 +145,17 @@ export function AgentMarketplace() {
     } finally {
       setActivating(null);
     }
+  };
+
+  const handleToggleActivate = async (agent: Agent) => {
+    // Enforce MVP truth disclosure at the moment of activation (first time per browser).
+    if (!hasAckedActivationDisclosure()) {
+      setPendingToggleAgent(agent);
+      setActivationDisclosureOpen(true);
+      return;
+    }
+
+    await doToggleActivate(agent);
   };
 
   const filteredAgents = useMemo(() => {
@@ -165,6 +195,59 @@ export function AgentMarketplace() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* Activation disclosure modal (must accept before first activation) */}
+        {activationDisclosureOpen && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Agent activation disclosure"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div
+              className="absolute inset-0 bg-black/40"
+              onClick={() => {
+                // force explicit action; do not allow dismiss by clicking backdrop
+              }}
+            />
+            <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-elevated p-5">
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white">
+                Before you activate an agent (MVP disclosure)
+              </h2>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                In this MVP, activating a marketplace agent only changes{' '}
+                <span className="font-medium">routing preference and UI labels</span>. LearnFlow
+                does <span className="font-medium">not</span> run third-party agent code at runtime.
+              </p>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                You can deactivate at any time.
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setActivationDisclosureOpen(false);
+                    setPendingToggleAgent(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={async () => {
+                    ackActivationDisclosure();
+                    setActivationDisclosureOpen(false);
+                    const agent = pendingToggleAgent;
+                    setPendingToggleAgent(null);
+                    if (agent) await doToggleActivate(agent);
+                  }}
+                >
+                  I understand — Activate
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Disclosure */}
         <div className="mb-5 text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
           <p className="font-semibold text-gray-900 dark:text-white mb-1">MVP disclosure</p>

@@ -194,8 +194,9 @@ export function Collaboration() {
           <span className="inline-flex items-center">
             <IconRocket className="w-4 h-4" />
           </span>
-          Collaboration (MVP): groups + messages are persisted. Study partner matches are synthetic
-          suggestions (not verified / not real-time). Shared mindmaps use live sync links for group
+          Collaboration (MVP): groups + messages are persisted. Study partner matches are
+          <span className="font-semibold">synthetic suggestions</span> (not verified, not real-time,
+          and not based on real user availability). Shared mindmaps use live sync links for group
           members.
         </div>
 
@@ -222,8 +223,9 @@ export function Collaboration() {
                 Select Your Interests
               </h2>
               <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                Preview: study partner suggestions are generated from your selected topics. They are
-                not verified accounts or real-time availability.
+                Preview: study partner suggestions are generated from your selected topics.
+                <span className="font-semibold">They are synthetic suggestions</span> and do not
+                reflect verified accounts or real-time availability.
               </p>
               <div className="flex flex-wrap gap-2 mb-4">
                 {INTEREST_TAGS.map((tag) => (
@@ -260,8 +262,8 @@ export function Collaboration() {
                 Suggested Partners (Preview)
               </h2>
               <p className="text-xs text-gray-600 dark:text-gray-300 mb-4">
-                These are suggestions based on your topics. Availability/identity is not verified in
-                this MVP.
+                These are topic-based, synthetic suggestions. Availability/identity is not verified
+                in this MVP.
               </p>
               <div className="space-y-3">
                 {matches.length === 0 ? (

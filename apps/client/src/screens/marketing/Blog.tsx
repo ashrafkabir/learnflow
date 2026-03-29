@@ -150,7 +150,7 @@ export function BlogPage() {
               className="flex-1 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm outline-none focus:border-accent"
             />
             <button className="bg-accent text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-accent-dark transition-colors">
-              Subscribe
+              Subscribe (Mock)
             </button>
           </div>
         </div>

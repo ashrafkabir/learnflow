@@ -315,6 +315,7 @@ export async function handleWsMessage(
 
     send(ws, 'response.end', {
       message_id: messageId,
+      agent_name: routedAgentName,
       actions: mapActions(suggestedActions),
       actionTargets,
       sources: enrichedSources,
@@ -330,6 +331,7 @@ export async function handleWsMessage(
     });
     send(ws, 'response.end', {
       message_id: messageId,
+      agent_name: routedAgentName,
       actions: mapActions(['Try Again']),
       sources: [],
     });

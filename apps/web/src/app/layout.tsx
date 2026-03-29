@@ -2,6 +2,7 @@ import React from 'react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://learnflow.ai'),
   title: 'LearnFlow — AI-Powered Personalized Learning',
   description:
     'LearnFlow uses AI agents to create personalized courses, notes, quizzes, and research from any topic. Your AI study companion.',

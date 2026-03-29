@@ -600,7 +600,7 @@ export function Dashboard() {
                       <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
                     </span>
                     <span className="text-xs font-medium text-green-600 dark:text-green-400">
-                      Live — real-time updates
+                      Live — best-effort updates
                     </span>
                   </div>
                   <PipelineView

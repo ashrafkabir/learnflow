@@ -2,6 +2,8 @@ import React from 'react';
 
 /** S11-A03: Features page — all 6 feature sections */
 export default function FeaturesPage() {
+  const mvpDisclosureId = 'mvp-disclosure';
+
   const features = [
     {
       id: 'course-builder',
@@ -9,57 +11,65 @@ export default function FeaturesPage() {
       description:
         'Enter any topic and our AI generates a structured, multi-module course with real web sources. Each lesson includes learning objectives, examples, code blocks, and full source attribution.',
       highlights: [
-        'Firecrawl-powered web research',
-        'Credibility-scored sources',
+        'Best-effort web research (BYOAI keys)',
+        'Citations + source attribution (best-effort)',
         'Prerequisite-ordered modules',
       ],
     },
     {
       id: 'smart-notes',
-      title: 'Smart Notes & Flashcards',
+      title: 'Study Tools (MVP)',
       description:
-        'Automatically generate study materials from any lesson. Choose from Cornell format, Zettelkasten atomic notes, or spaced-repetition flashcards.',
+        'Generate study materials from lessons (best-effort). This MVP focuses on course creation, lesson reading, and attribution; advanced study tool formats are planned.',
       highlights: [
-        'Cornell note format',
-        'Zettelkasten with inter-links',
-        '10+ flashcards per lesson',
+        'Reading-first lesson UX',
+        'Sources & attribution drawer',
+        'Planned: flashcards + note formats',
       ],
     },
     {
       id: 'adaptive-exams',
-      title: 'Adaptive Exams & Knowledge Gaps',
+      title: 'Adaptive Quizzes (Planned)',
       description:
-        'AI-generated quizzes that test comprehension, not just recall. Get detailed knowledge gap analysis showing exactly what to review.',
+        'Adaptive exams and knowledge-gap analysis are planned. The current MVP includes course/lesson creation and structured reading, and will expand into assessment workflows.',
       highlights: [
-        'Multiple choice & short answer',
-        "Bloom's taxonomy coverage",
-        'Knowledge gap analysis',
+        'Planned: quizzes (multiple choice + short answer)',
+        'Planned: knowledge-gap analysis',
+        "Planned: Bloom's taxonomy coverage",
       ],
     },
     {
       id: 'research-agent',
-      title: 'Research Agent',
+      title: 'Research (Best-effort)',
       description:
-        'Search academic papers, synthesize findings, and get structured research summaries. Powered by Semantic Scholar and web scraping.',
-      highlights: ['Academic paper search', 'Structured synthesis', 'Citation management'],
+        'LearnFlow can attach web sources to lessons (best-effort). Dedicated academic-paper search and full research workflows are planned.',
+      highlights: [
+        'Web sources (best-effort)',
+        'Citations in lessons',
+        'Planned: academic paper search',
+      ],
     },
     {
       id: 'knowledge-mindmap',
       title: 'Knowledge Mindmap',
       description:
-        'Visualize how your learning connects across courses. Interactive graph with mastery indicators and CRDT-powered collaborative editing.',
+        'Visualize how your learning connects across courses. Interactive graph view with navigation and mastery-style affordances (MVP). Real-time collaborative editing is planned.',
       highlights: [
         'Interactive visualization',
         'Cross-course connections',
-        'Collaborative editing',
+        'Planned: real-time collaboration',
       ],
     },
     {
       id: 'marketplace',
-      title: 'Course & Agent Marketplace',
+      title: 'Course & Agent Marketplace (MVP)',
       description:
-        'Share your AI-generated courses with the community. Browse, enroll, and rate courses from other creators. Extend LearnFlow with custom agents.',
-      highlights: ['Publish & monetize courses', 'Community ratings', 'Custom agent SDK'],
+        'Browse and publish courses/agents in a lightweight marketplace. Monetization and real “ratings” signals are not finalized in this MVP.',
+      highlights: [
+        'Browse listings',
+        'Publish (best-effort)',
+        'Planned: payments + stronger trust signals',
+      ],
     },
   ];
 
@@ -68,8 +78,15 @@ export default function FeaturesPage() {
       <h1 style={{ fontSize: 40, fontWeight: 800, textAlign: 'center', marginBottom: 16 }}>
         Features
       </h1>
-      <p style={{ textAlign: 'center', fontSize: 18, color: '#6b7280', marginBottom: 64 }}>
-        Six AI agents working together to transform how you learn.
+      <p style={{ textAlign: 'center', fontSize: 18, color: '#6b7280', marginBottom: 12 }}>
+        A web-first MVP focused on fast course creation and readable lessons.
+      </p>
+      <p
+        id={mvpDisclosureId}
+        style={{ textAlign: 'center', fontSize: 14, color: '#6b7280', marginBottom: 64 }}
+      >
+        Some items below are marked “planned” to avoid implying functionality that isn’t fully
+        shipped.
       </p>
 
       {features.map((f, i) => (

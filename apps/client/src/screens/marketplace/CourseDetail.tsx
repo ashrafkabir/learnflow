@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { apiPost } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
-import { IconChat, IconCourse, IconPeople, IconStar } from '../../components/icons/index.js';
+import { IconChat, IconCourse, IconStar } from '../../components/icons/index.js';
 
 interface CourseDetailData {
   id: string;
@@ -12,8 +12,9 @@ interface CourseDetailData {
   description: string;
   difficulty: string;
   price: number;
-  rating: number;
-  enrollmentCount: number;
+  // MVP honesty: these fields may exist server-side but should not be shown as real analytics yet.
+  rating?: number;
+  enrollmentCount?: number;
   lessonCount?: number;
   creatorName?: string;
   creatorAvatar?: string;
@@ -32,8 +33,6 @@ function getFallbackDetail(id: string): CourseDetailData {
       topic: 'general',
       difficulty: 'beginner',
       price: 0,
-      rating: 0,
-      enrollmentCount: 0,
       syllabus: [],
       reviews: [],
     }
@@ -166,14 +165,7 @@ export function CourseDetail() {
           <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
 
           <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-300 mb-4">
-            <span className="inline-flex items-center gap-1">
-              <IconStar className="w-4 h-4 text-amber-500" />
-              {course.rating}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <IconPeople className="w-4 h-4 text-gray-400" />
-              {course.enrollmentCount.toLocaleString()} enrolled
-            </span>
+            {/* MVP honesty: do not show ratings/enrollment counts until backed by real analytics */}
             {course.lessonCount && <span>{course.lessonCount} lessons</span>}
           </div>
 
@@ -195,9 +187,14 @@ export function CourseDetail() {
           {/* Price + Enroll */}
           <div className="flex items-center gap-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             {course.price > 0 && (
-              <span className="text-[11px] px-2 py-1 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40">
-                Mock checkout (no real payment)
-              </span>
+              <>
+                <span className="text-[11px] px-2 py-1 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40">
+                  Mock checkout (no real payment)
+                </span>
+                <span className="text-[11px] px-2 py-1 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200 border border-amber-200/60 dark:border-amber-800/40">
+                  Mock billing
+                </span>
+              </>
             )}
             <span className="text-2xl font-bold text-gray-900 dark:text-white">
               {course.price === 0 ? 'Free' : `$${course.price}`}

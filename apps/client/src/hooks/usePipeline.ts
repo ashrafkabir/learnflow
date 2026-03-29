@@ -102,7 +102,6 @@ export interface PipelineState {
   sourceMode?: 'real' | 'mock';
 }
 
-const API = '/api/v1';
 // NOTE: Prefer apiGet/apiPost for auth + consistent error handling.
 
 export function usePipeline(pipelineId: string | null) {
@@ -113,75 +112,38 @@ export function usePipeline(pipelineId: string | null) {
   useEffect(() => {
     if (!pipelineId) return;
 
-    // First, fetch current state via GET
-    fetch(`${API}/pipeline/${pipelineId}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: PipelineState | null) => {
-        if (!data) return;
-        setState(data);
-        // If already completed, don't open SSE
+    // NOTE: Our API uses Bearer tokens; native EventSource cannot attach Authorization headers.
+    // To avoid silent failures / blank pipeline views, we use authenticated polling via apiGet.
+    let cancelled = false;
+
+    const fetchOnce = async () => {
+      try {
+        const data = (await apiGet(`/pipeline/${pipelineId}`)) as PipelineState;
+        if (cancelled) return;
+        if (data) setState(data);
+
         if (['reviewing', 'published', 'personal', 'failed'].includes(data.stage)) {
           setComplete(
             data.stage === 'reviewing' || data.stage === 'published' || data.stage === 'personal',
           );
-          return;
+          return true;
         }
-        // Open SSE for active pipelines
-        const es = new EventSource(`${API}/pipeline/${pipelineId}/events`);
-        esRef.current = es;
+      } catch {
+        // apiGet handles 401 redirect; other errors are ignored here to keep UI resilient.
+      }
+      return false;
+    };
 
-        es.addEventListener('pipeline:update', (e) => {
-          try {
-            const d = JSON.parse(e.data) as PipelineState;
-            setState(d);
-          } catch {
-            // ignore malformed SSE payload
-          }
-        });
-
-        es.addEventListener('pipeline:log', (e) => {
-          try {
-            const line = JSON.parse(e.data) as any;
-            setState((prev) => {
-              if (!prev) return prev;
-              const logs = Array.isArray(prev.logs) ? prev.logs : [];
-              return { ...prev, logs: [...logs, line].slice(-800) };
-            });
-          } catch {
-            // ignore
-          }
-        });
-
-        es.addEventListener('pipeline:complete', () => {
-          setComplete(true);
-          es.close();
-        });
-
-        es.onerror = () => {
-          es.close();
-        };
-      })
-      .catch(() => {
-        // Fallback: try SSE anyway
-        const es = new EventSource(`${API}/pipeline/${pipelineId}/events`);
-        esRef.current = es;
-        es.addEventListener('pipeline:update', (e) => {
-          try {
-            setState(JSON.parse(e.data));
-          } catch {
-            // ignore malformed SSE payload
-          }
-        });
-        es.addEventListener('pipeline:complete', () => {
-          setComplete(true);
-          es.close();
-        });
-        es.onerror = () => {
-          es.close();
-        };
-      });
+    // Kick off immediately, then poll until completed.
+    void fetchOnce();
+    const interval = window.setInterval(async () => {
+      const done = await fetchOnce();
+      if (done) window.clearInterval(interval);
+    }, 2000);
 
     return () => {
+      cancelled = true;
+      window.clearInterval(interval);
       esRef.current?.close();
     };
   }, [pipelineId]);

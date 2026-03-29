@@ -350,6 +350,21 @@ export function createApp(options?: { devMode?: boolean }) {
     res.status(200).json({ status: 'ok' });
   });
 
+  // OpenAPI docs (Iter132)
+  // Serve the repo's OpenAPI spec in dev/test for quick inspection.
+  app.get('/api-docs', async (_req, res) => {
+    try {
+      // Prefer the repo-root openapi.yaml (kept in sync with apps/api/openapi.yaml).
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      const p = path.join(process.cwd(), 'openapi.yaml');
+      const yaml = fs.readFileSync(p, 'utf8');
+      res.status(200).type('text/yaml').send(yaml);
+    } catch (err: any) {
+      res.status(500).json({ error: 'openapi_unavailable', message: String(err?.message || err) });
+    }
+  });
+
   // 404 + error handler — standard envelope
   app.use(notFoundHandler);
   app.use(errorHandler);

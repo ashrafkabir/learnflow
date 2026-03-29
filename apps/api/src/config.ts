@@ -23,4 +23,10 @@ export const config = {
     process.env.NODE_ENV !== 'production' &&
     // Default OFF: explicit opt-in to prevent accidental unsafe/real builds during harness runs.
     (process.env.LEARNFLOW_DEV_AUTH === '1' || process.env.LEARNFLOW_DEV_AUTH === 'true'),
+
+  // Mock OAuth callback endpoints are for local testing only.
+  // Default OFF and always OFF in production.
+  enableMockOAuth:
+    process.env.NODE_ENV !== 'production' &&
+    (process.env.ENABLE_MOCK_OAUTH === '1' || process.env.ENABLE_MOCK_OAUTH === 'true'),
 };

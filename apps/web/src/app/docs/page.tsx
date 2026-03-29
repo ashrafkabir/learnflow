@@ -81,7 +81,9 @@ npm run dev
 
 # API:    http://localhost:3000
 # Client: http://localhost:3001
-# Web:    http://localhost:3003`}</code>
+# Web:    http://localhost:3003
+#
+# Note: localhost ports are for local development only.`}</code>
           </pre>
 
           <h2 id="ws">WebSocket protocol</h2>

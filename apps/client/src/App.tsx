@@ -81,30 +81,10 @@ const LoginScreen = React.lazy(() =>
 const RegisterScreen = React.lazy(() =>
   import('./screens/RegisterScreen.js').then((m) => ({ default: m.RegisterScreen })),
 );
-const HomePage = React.lazy(() =>
-  import('./screens/marketing/Home.js').then((m) => ({ default: m.HomePage })),
+const LandingApp = React.lazy(() =>
+  import('./screens/LandingApp.js').then((m) => ({ default: m.LandingApp })),
 );
-const FeaturesPage = React.lazy(() =>
-  import('./screens/marketing/Features.js').then((m) => ({ default: m.FeaturesPage })),
-);
-const PricingPage = React.lazy(() =>
-  import('./screens/marketing/Pricing.js').then((m) => ({ default: m.PricingPage })),
-);
-const DownloadPage = React.lazy(() =>
-  import('./screens/marketing/Download.js').then((m) => ({ default: m.DownloadPage })),
-);
-const BlogPage = React.lazy(() =>
-  import('./screens/marketing/Blog.js').then((m) => ({ default: m.BlogPage })),
-);
-const BlogPostPage = React.lazy(() =>
-  import('./screens/marketing/BlogPost.js').then((m) => ({ default: m.BlogPostPage })),
-);
-const AboutPage = React.lazy(() =>
-  import('./screens/marketing/About.js').then((m) => ({ default: m.AboutPage })),
-);
-const DocsPage = React.lazy(() =>
-  import('./screens/marketing/Docs.js').then((m) => ({ default: m.DocsPage })),
-);
+// Marketing pages are served by apps/web (Next.js). Intentionally not routed in the client app.
 const AboutMvpTruth = React.lazy(() =>
   import('./screens/AboutMvpTruth.js').then((m) => ({ default: m.AboutMvpTruth })),
 );
@@ -143,17 +123,8 @@ function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isOnboarding = location.pathname.startsWith('/onboarding');
   const isPublic =
-    [
-      '/',
-      '/login',
-      '/register',
-      '/features',
-      '/pricing',
-      '/download',
-      '/blog',
-      '/about',
-      '/docs',
-    ].includes(location.pathname) || location.pathname.startsWith('/blog/');
+    ['/', '/login', '/register'].includes(location.pathname) ||
+    location.pathname.startsWith('/blog/');
   const isAuth = ['/login', '/register'].includes(location.pathname);
 
   const token = localStorage.getItem('learnflow-token');
@@ -404,21 +375,17 @@ export function App() {
                     }
                   />
 
-                  {/* Marketing pages */}
-                  <Route path="/features" element={<FeaturesPage />} />
-                  <Route path="/pricing" element={<PricingPage />} />
-                  <Route path="/download" element={<DownloadPage />} />
-                  <Route path="/blog" element={<BlogPage />} />
-                  <Route path="/blog/:slug" element={<BlogPostPage />} />
-                  <Route path="/about" element={<AboutPage />} />
-                  <Route path="/docs" element={<DocsPage />} />
+                  {/* Marketing pages
+                      Canonical marketing lives in apps/web (Next.js) at :3003.
+                      In the client app we avoid duplicating marketing routes to prevent split-brain.
+                  */}
 
                   {/* Auth */}
                   <Route path="/login" element={<LoginScreen />} />
                   <Route path="/register" element={<RegisterScreen />} />
 
-                  {/* Homepage */}
-                  <Route path="/" element={<HomePage />} />
+                  {/* Landing */}
+                  <Route path="/" element={<LandingApp />} />
 
                   {/* 404 */}
                   <Route path="*" element={<NotFound />} />

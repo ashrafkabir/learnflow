@@ -22,6 +22,16 @@ const DRY_RUN =
   process.env.SCREENSHOT_DRY_RUN === '1' ||
   process.env.SCREENSHOT_DRY_RUN === 'true';
 
+const DATE = new Date().toISOString().slice(0, 10);
+const inferredIter = (() => {
+  const raw = [readArg('outDir'), readArg('out'), process.argv[2]].find(Boolean);
+  const m = raw ? String(raw).match(/iter(\d+)/i) : null;
+  return m ? m[1] : undefined;
+})();
+
+const ITER =
+  process.env.ITERATION || process.env.ITER || readArg('iter') || inferredIter || 'unknown';
+
 const DIR =
   process.env.SCREENSHOT_DIR ||
   process.env.SCREENSHOT_OUT_DIR ||
@@ -29,8 +39,8 @@ const DIR =
   readArg('outDir') ||
   readArg('out') ||
   // Preferred: positional first arg (node screenshot-mobile.mjs <outDir>)
-  process.argv[2] ||
-  (AUTHED ? 'evals/screenshots/iter45-mobile-authed' : 'evals/screenshots/iter45-mobile');
+  (process.argv[2] && !String(process.argv[2]).startsWith('--') ? process.argv[2] : undefined) ||
+  `learnflow/screenshots/iter${ITER}/mobile-${DATE}`;
 
 const resolvedDir = path.resolve(DIR);
 fs.mkdirSync(resolvedDir, { recursive: true });

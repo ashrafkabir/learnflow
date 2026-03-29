@@ -13,7 +13,8 @@ interface MarketplaceCourse {
   description: string;
   difficulty: string;
   price: number;
-  // MVP-safe: do not treat rating/enrollment as real metrics unless backed by DB.
+  // MVP-safe: do not treat rating/enrollment as real metrics unless backed by real analytics.
+  // (We intentionally omit these in browse UI.)
   rating?: number;
   enrollmentCount?: number;
   isDemo?: boolean;
@@ -128,8 +129,8 @@ export function CourseMarketplace() {
           <p className="font-semibold">MVP note</p>
           <ul className="mt-1 list-disc pl-5 space-y-1">
             <li>
-              Paid course checkout is currently <span className="font-semibold">mocked</span> (no
-              real payment is processed).
+              Paid course checkout is currently <span className="font-semibold">mocked</span> (
+              <span className="font-semibold">mock billing</span> — no real payment is processed).
             </li>
             <li>
               Ratings / enrollment counts are not shown here because they are not yet backed by
@@ -155,12 +156,9 @@ export function CourseMarketplace() {
                 >
                   <h3 className="font-semibold mb-1">{c.title}</h3>
                   <p className="text-sm text-blue-100 line-clamp-2 mb-3">{c.description}</p>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="inline-flex items-center gap-1">
-                      <IconStar className="w-3.5 h-3.5 text-amber-300" />
-                      {c.rating}
-                    </span>
-                    <span>{c.enrollmentCount.toLocaleString()} enrolled</span>
+                  <div className="flex items-center justify-between text-xs text-blue-100">
+                    <span className="font-medium">{c.creator || 'Community'}</span>
+                    <span className="capitalize">{c.difficulty}</span>
                   </div>
                 </div>
               ))}

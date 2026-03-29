@@ -54,6 +54,6 @@ ensureNotesTemplate();
 // Desktop
 run('node', ['screenshot-all.mjs', desktopDir, '--base', base, '--iter', String(iter)]);
 // Mobile
-run('node', ['screenshot-mobile.mjs', mobileDir, '--base', base]);
+run('node', ['screenshot-mobile.mjs', mobileDir, '--base', base, '--iter', String(iter)]);
 
 console.log(`Done! Saved desktop+mobile to ${path.resolve(outDir)}`);

@@ -10,9 +10,20 @@ function readArg(name) {
 }
 
 const BASE = process.env.BASE_URL || readArg('base') || 'http://localhost:3001';
+const BASE_WEB = process.env.BASE_WEB_URL || readArg('baseWeb') || 'http://localhost:3003';
 
 const ITER_ARG = process.env.ITERATION || process.env.ITER || readArg('iter');
 const DATE = new Date().toISOString().slice(0, 10);
+
+// Determine iteration early so default outDir is always in learnflow/screenshots/iter<iter>/...
+const inferredIterFromArgs = (() => {
+  const raw = [readArg('outDir'), readArg('out'), process.argv[2]].find(Boolean);
+  const m = raw ? String(raw).match(/iter(\d+)/i) : null;
+  return m ? m[1] : undefined;
+})();
+
+const ITER = ITER_ARG || inferredIterFromArgs || 'unknown';
+
 const DIR =
   process.env.SCREENSHOT_DIR ||
   process.env.SCREENSHOT_OUT ||
@@ -20,28 +31,16 @@ const DIR =
   readArg('outDir') ||
   readArg('out') ||
   // Preferred: positional first arg (node screenshot-all.mjs <outDir>)
-  process.argv[2] ||
-  `learnflow/screenshots/iter-unknown-${DATE}`;
-
-const inferredIter = (() => {
-  const m = String(DIR).match(/iter(\d+)/i);
-  return m ? m[1] : undefined;
-})();
-
-const ITER = ITER_ARG || inferredIter || 'unknown';
+  (process.argv[2] && !String(process.argv[2]).startsWith('--') ? process.argv[2] : undefined) ||
+  `learnflow/screenshots/iter${ITER}/run-${DATE}`;
 // Keep ITER in scope for backwards compatibility (downstream tooling may grep logs).
 void ITER;
 
 console.log(`Using output dir: ${path.resolve(DIR)}`);
 
 const PUBLIC_PAGES = [
+  // Client landing/auth/onboarding
   ['/', 'landing-home'],
-  ['/features', 'marketing-features'],
-  ['/pricing', 'marketing-pricing'],
-  ['/download', 'marketing-download'],
-  ['/blog', 'marketing-blog'],
-  ['/about', 'marketing-about'],
-  ['/docs', 'marketing-docs'],
   ['/login', 'auth-login'],
   ['/register', 'auth-register'],
   ['/onboarding/welcome', 'onboarding-1-welcome'],
@@ -50,6 +49,16 @@ const PUBLIC_PAGES = [
   ['/onboarding/api-keys', 'onboarding-4-api-keys'],
   ['/onboarding/subscription', 'onboarding-5-subscription'],
   ['/onboarding/first-course', 'onboarding-6-first-course'],
+];
+
+const MARKETING_PAGES = [
+  ['/', 'marketing-home'],
+  ['/features', 'marketing-features'],
+  ['/pricing', 'marketing-pricing'],
+  ['/download', 'marketing-download'],
+  ['/blog', 'marketing-blog'],
+  ['/about', 'marketing-about'],
+  ['/docs', 'marketing-docs'],
 ];
 
 const AUTHED_PAGES = [
@@ -96,12 +105,55 @@ fs.mkdirSync(path.resolve(DIR), { recursive: true });
 
 const browser = await chromium.launch();
 
-// 1) Public route screenshots (no auth)
+function isNotFound(page) {
+  return page
+    .evaluate(() => {
+      const txt = (globalThis.document?.body?.innerText || '').toLowerCase();
+      // Our client NotFound includes this exact heading.
+      if (txt.includes('page not found')) return true;
+      // Next.js 404 often contains this string.
+      if (txt.includes('this page could not be found')) return true;
+      return false;
+    })
+    .catch(() => false);
+}
+
+// 1) Marketing route screenshots (canonical in apps/web)
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-  for (const [path, name] of PUBLIC_PAGES) {
+  for (const [p, name] of MARKETING_PAGES) {
     const page = await ctx.newPage();
-    await safeGoto(page, path);
+    await safeGoto(page, p);
+    // NOTE: marketing uses BASE_WEB
+    try {
+      await page.goto(`${BASE_WEB}${p}`, { waitUntil: 'networkidle', timeout: 20000 });
+    } catch {
+      // best effort
+    }
+    await page.waitForTimeout(800);
+
+    if (await isNotFound(page)) {
+      await page.screenshot({ path: `${DIR}/${name}__NOT_FOUND.png`, fullPage: true });
+      throw new Error(`NotFound detected while capturing marketing page ${p} (${name})`);
+    }
+
+    await page.screenshot({ path: `${DIR}/${name}.png`, fullPage: true });
+    await page.close();
+    console.log(`✓ ${name}`);
+  }
+  await ctx.close();
+}
+
+// 2) Client public route screenshots (no auth)
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  for (const [p, name] of PUBLIC_PAGES) {
+    const page = await ctx.newPage();
+    await safeGoto(page, p);
+    if (await isNotFound(page)) {
+      await page.screenshot({ path: `${DIR}/${name}__NOT_FOUND.png`, fullPage: true });
+      throw new Error(`NotFound detected while capturing client page ${p} (${name})`);
+    }
     await page.screenshot({ path: `${DIR}/${name}.png`, fullPage: true });
     await page.close();
     console.log(`✓ ${name}`);

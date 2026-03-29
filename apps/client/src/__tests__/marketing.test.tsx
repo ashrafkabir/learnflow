@@ -69,67 +69,8 @@ describe('Marketing pages', () => {
     });
   });
 
-  it('renders features page', async () => {
-    renderAt('/features');
-    // Best-effort: ensure route renders without crashing.
-    await waitFor(() => {
-      expect(document.querySelector('main[role="main"]')).toBeTruthy();
-    });
-  });
-
-  it('renders pricing page', async () => {
-    renderAt('/pricing');
-
-    // Best-effort: route should render. Pricing content can be lazy-loaded.
-    await waitFor(() => {
-      expect(document.querySelector('main[role="main"]')).toBeTruthy();
-    });
-  });
-
-  it('pricing has plan cards', async () => {
-    renderAt('/pricing');
-
-    // Pricing is lazy-loaded; in jsdom it can take a couple ticks to resolve.
-    await waitFor(
-      () => {
-        const text = document.body.textContent || '';
-        expect(text.match(/free|pro/i)).toBeTruthy();
-      },
-      { timeout: 3000 },
-    );
-  });
-
-  it('renders about page', async () => {
-    renderAt('/about');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/about|mission|team/i)).toBeTruthy();
-    });
-  });
-
-  it('renders download page', async () => {
-    renderAt('/download');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/download|install|app/i)).toBeTruthy();
-    });
-  });
-
-  it('renders docs page', async () => {
-    renderAt('/docs');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/doc|guide|getting started|documentation/i)).toBeTruthy();
-    });
-  });
-
-  it('renders blog page', async () => {
-    renderAt('/blog');
-    await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/blog|article|post|LearnFlow/i)).toBeTruthy();
-    });
-  });
+  // NOTE: Canonical marketing is served by apps/web (Next.js). The client app no longer routes
+  // /features, /pricing, /download, /about, /docs, /blog to avoid split-brain.
 
   it('renders login page', async () => {
     renderAt('/login');

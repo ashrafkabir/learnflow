@@ -78,7 +78,7 @@ export function CreatorDashboard() {
     null,
   );
   const [creatorCourses, setCreatorCourses] = useState<CreatorCourse[]>([]);
-  const [creatorAnalytics, setCreatorAnalytics] = useState(EMPTY_ANALYTICS);
+  const [_creatorAnalytics, setCreatorAnalytics] = useState(EMPTY_ANALYTICS);
   const [creatorEarnings, setCreatorEarnings] = useState(EMPTY_EARNINGS);
   const [publishStep, setPublishStep] = useState(0);
   // UI-only copy in MVP; server enforces Pro-only for price > 0.
@@ -460,13 +460,10 @@ export function CreatorDashboard() {
                 <th className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Title</th>
                 <th className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Status</th>
                 <th className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-right">
-                  Enrollments
+                  Analytics
                 </th>
                 <th className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-right">
-                  Rating
-                </th>
-                <th className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300 text-right">
-                  Revenue
+                  Monetization
                 </th>
                 <th className="px-4 py-3 font-medium text-gray-600 dark:text-gray-300">Actions</th>
               </tr>
@@ -477,13 +474,10 @@ export function CreatorDashboard() {
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{c.title}</td>
                   <td className="px-4 py-3">{statusBadge(c.status)}</td>
                   <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-300">
-                    {c.enrollments.toLocaleString()}
+                    <span className="text-xs">Planned</span>
                   </td>
                   <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-300">
-                    {c.rating > 0 ? `⭐ ${c.rating}` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-600 dark:text-gray-300">
-                    {c.revenue > 0 ? `$${c.revenue}` : '—'}
+                    <span className="text-xs">Planned</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
@@ -546,23 +540,23 @@ export function CreatorDashboard() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           {
-            label: 'Total Views',
-            value: creatorAnalytics.totalViews.toLocaleString(),
+            label: 'Creator Analytics',
+            value: 'Planned',
             icon: <IconEye className="w-5 h-5" />,
           },
           {
-            label: 'Enrollments This Month',
-            value: creatorAnalytics.enrollmentsThisMonth.toString(),
+            label: 'Enrollments',
+            value: 'Planned',
             icon: <IconChart className="w-5 h-5" />,
           },
           {
-            label: 'Completion Rate',
-            value: `${creatorAnalytics.completionRate}%`,
+            label: 'Completion',
+            value: 'Planned',
             icon: <IconCheck className="w-5 h-5" />,
           },
           {
-            label: 'Avg Rating',
-            value: `${creatorAnalytics.avgRating}`,
+            label: 'Ratings',
+            value: 'Planned',
             icon: <IconStar className="w-5 h-5" />,
           },
         ].map((stat) => (
@@ -577,56 +571,13 @@ export function CreatorDashboard() {
         ))}
       </div>
 
-      {/* Weekly Views Chart (simple bar) */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
-          Views This Week
-        </h3>
-        <div className="flex items-end gap-2 h-32">
-          {creatorAnalytics.viewsThisWeek.map((v, i) => {
-            const max = Math.max(...creatorAnalytics.viewsThisWeek, 1);
-            const pct = (v / max) * 100;
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            return (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-xs text-gray-500">{v}</span>
-                <div
-                  className="w-full bg-accent/80 rounded-t"
-                  style={{ height: `${pct}%` }}
-                  title={`${days[i]}: ${v} views`}
-                />
-                <span className="text-xs text-gray-500">{days[i]}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Per-course breakdown */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
-          Per-Course Performance
-        </h3>
-        <div className="space-y-3">
-          {creatorCourses
-            .filter((c) => c.status === 'published')
-            .map((c) => (
-              <div key={c.id} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{c.title}</p>
-                  <div className="mt-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-accent rounded-full"
-                      style={{ width: `${(c.enrollments / 400) * 100}%` }}
-                    />
-                  </div>
-                </div>
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {c.enrollments} enrolled
-                </span>
-              </div>
-            ))}
-        </div>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">Analytics</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          Analytics (views, enrollments, completion, ratings) are{' '}
+          <span className="font-medium">planned</span> and intentionally omitted in this MVP until
+          they are backed by real stored data.
+        </p>
       </div>
     </div>
   );
@@ -635,7 +586,8 @@ export function CreatorDashboard() {
     <div className="space-y-4">
       <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Earnings</h2>
       <div className="mb-3 text-[11px] px-3 py-2 rounded-xl bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-100 border border-amber-200/60 dark:border-amber-800/40">
-        Mock billing — payouts/earnings are simulated in MVP (no real money movement).
+        Mock billing — payouts/earnings are simulated in MVP (no real money movement, invoices, or
+        payouts).
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

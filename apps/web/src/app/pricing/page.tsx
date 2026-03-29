@@ -27,7 +27,7 @@ export default function PricingPage() {
       name: 'Pro',
       price: `$${PLAN_DEFINITIONS.pro.priceMonthlyUsd}`,
       period: '/month',
-      cta: 'Upgrade to Pro',
+      cta: 'Upgrade to Pro (Mock billing)',
       highlight: true,
       features: [
         { label: 'Courses', value: 'Unlimited' },

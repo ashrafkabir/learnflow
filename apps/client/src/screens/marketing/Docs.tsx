@@ -16,7 +16,7 @@ const SECTIONS = [
       {
         title: 'Creating Your First Course',
         content:
-          'After onboarding, click "New Course" from the Dashboard or type a topic in the Conversation screen. Our AI agents will research, curate, and build a structured course for you.',
+          'After onboarding, click "New Course" from the Dashboard or type a topic in the Conversation screen. LearnFlow will draft a structured course for you (best-effort, BYOAI).',
       },
       {
         title: 'Configuring API Keys',
@@ -31,12 +31,12 @@ const SECTIONS = [
       {
         title: 'Dashboard Overview',
         content:
-          'The Dashboard shows your active courses, learning streaks, and quick actions. Use the sidebar to navigate to Conversation, Mind Map, Marketplace, and Settings. The "Today\'s Lessons" queue surfaces your most relevant next steps based on spaced repetition and course progress.',
+          'The Dashboard shows your active courses, learning streaks, and quick actions. Use the sidebar to navigate to Conversation, Mind Map, Marketplace, and Settings. The "Today\'s Lessons" queue is an MVP heuristic (not a guaranteed spaced-repetition algorithm).',
       },
       {
         title: 'AI Conversation',
         content:
-          'Chat with specialized AI agents. Ask questions, request research summaries, or create new courses — all through natural conversation with inline citations. Use quick-action chips (Take Notes, Quiz Me, Go Deeper, See Sources) after each assistant response for one-tap workflows.',
+          'Chat to create courses, ask questions, or request summaries. Inline citations are best-effort based on attached sources. Some quick-actions may be experimental in this MVP.',
       },
       {
         title: 'Knowledge Mindmap',
@@ -46,7 +46,7 @@ const SECTIONS = [
       {
         title: 'Lesson Reader',
         content:
-          'Each lesson renders with rich formatting: LaTeX equations, syntax-highlighted code blocks, and markdown. Swipe between lessons on mobile. Use flashcards at the bottom of each lesson to test recall, and earn confetti celebrations on completion.',
+          'Each lesson renders with rich formatting: LaTeX equations, syntax-highlighted code blocks, and markdown. Swipe between lessons on mobile. Confetti celebrations are included; flashcards and other study tools may be limited or planned.',
       },
       {
         title: 'Profile & Settings',
@@ -56,7 +56,7 @@ const SECTIONS = [
       {
         title: 'Collaboration',
         content:
-          'Find study partners by selecting interest tags. Create or join study groups around specific topics. Real-time mindmap collaboration is available in the MVP (live sync via Yjs); real-time chat and richer collaboration features are planned.',
+          'Find study partners by selecting interest tags. Collaboration features are MVP-stage; real-time mindmap collaboration may be limited and richer group features are planned.',
       },
     ],
   },
@@ -66,17 +66,17 @@ const SECTIONS = [
       {
         title: 'Agent Architecture',
         content:
-          'LearnFlow uses a multi-agent pipeline: Curriculum Agent, Research Agent, Content Agent, Exam Agent, and Collaboration Agent. Each handles a specific phase of course creation.',
+          'LearnFlow uses a multi-step pipeline to draft courses and lessons. Naming/roles of internal agents may change as the MVP evolves.',
       },
       {
         title: 'Creating Custom Agents',
         content:
-          'LearnFlow includes an Agent SDK (see docs repo) that defines routing, actions, and schemas. You can prototype custom agents locally and (in future) publish them to the marketplace.',
+          'A public Agent SDK is planned. In this MVP, marketplace “agents” are curated/limited and not a general plugin system yet.',
       },
       {
-        title: 'API + Agent SDK (MDX docs)',
+        title: 'API + Developer Docs',
         content:
-          'The full developer docs live under apps/docs as Markdown pages: API reference, agent SDK guide, and architecture notes. See: /docs/pages/api-reference.md, /docs/pages/agent-sdk.md, /docs/pages/architecture.md.',
+          'Developer docs live under apps/docs as Markdown pages (best-effort and subject to change).',
       },
     ],
   },
@@ -101,7 +101,7 @@ const SECTIONS = [
       {
         title: 'Publishing Courses',
         content:
-          'Create courses and publish them to the marketplace for the community. Set pricing, add descriptions, and track analytics from the Creator Dashboard.',
+          'You can draft courses and submit them for publishing in the marketplace (MVP). Pricing, analytics, and robust review workflows are planned.',
       },
       {
         title: 'Earning Revenue',
@@ -111,7 +111,7 @@ const SECTIONS = [
       {
         title: 'Course Analytics',
         content:
-          'Track enrollments, completion rates, ratings, and revenue from the Creator Dashboard. See which modules have the highest drop-off and optimize your content accordingly.',
+          'Creator analytics (enrollments, completion, ratings, revenue) are planned and intentionally limited/omitted in this MVP until backed by real stored data.',
       },
     ],
   },
@@ -136,7 +136,7 @@ const SECTIONS = [
       {
         title: 'Contact Support',
         content:
-          "Can't find what you need? Email support@learnflow.ai or join our Discord community at discord.gg/learnflow for real-time help from the team and community.",
+          "Can't find what you need? Contact details may vary by deployment. If you're running LearnFlow locally, check the repository README/issues for support channels.",
       },
     ],
   },

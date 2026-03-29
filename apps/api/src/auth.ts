@@ -149,6 +149,11 @@ router.post('/refresh', (req: Request, res: Response) => {
 
 /** GET /api/v1/auth/google/callback — mock OAuth for Google */
 router.get('/google/callback', (req: Request, res: Response) => {
+  if (!config.enableMockOAuth) {
+    // Hide this dev-only route by default to avoid implying shipped OAuth.
+    res.status(404).json({ error: 'not_found' });
+    return;
+  }
   const { code } = req.query;
   if (!code) {
     sendError(res, req, { status: 400, code: 'missing_code', message: 'OAuth code required' });

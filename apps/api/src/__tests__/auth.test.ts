@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import { createApp } from '../app.js';
@@ -96,22 +96,49 @@ describe('S02-A04: JWT refresh', () => {
   });
 });
 
-// S02-A05: OAuth flow works for Google provider
-describe('S02-A05: OAuth Google callback', () => {
-  it('creates user from Google OAuth and returns JWT', async () => {
+// S02-A05: OAuth flow works for Google provider (dev-only mock)
+describe('S02-A05: OAuth Google callback (mock, env-gated)', () => {
+  it('returns 404 by default (mock OAuth disabled)', async () => {
     const res = await request(app).get('/api/v1/auth/google/callback?code=testuser123');
+    expect(res.status).toBe(404);
+  });
+
+  it('creates user + returns JWT when ENABLE_MOCK_OAUTH=true', async () => {
+    const prev = process.env.ENABLE_MOCK_OAUTH;
+    process.env.ENABLE_MOCK_OAUTH = 'true';
+
+    // Re-import modules so config re-reads env.
+    vi.resetModules();
+    const { createApp: createGatedApp } = await import('../app.js');
+    const { config: gatedConfig } = await import('../config.js');
+
+    const gatedApp = createGatedApp({ devMode: gatedConfig.devMode });
+    const res = await request(gatedApp).get('/api/v1/auth/google/callback?code=testuser123');
 
     expect(res.status).toBe(200);
     expect(res.body.accessToken).toBeDefined();
     expect(res.body.user.email).toBe('testuser123@gmail.com');
     expect(res.body.user.displayName).toContain('Google User');
+
+    process.env.ENABLE_MOCK_OAUTH = prev;
   });
 
-  it('returns same user on second OAuth login', async () => {
-    const res1 = await request(app).get('/api/v1/auth/google/callback?code=repeat');
-    const res2 = await request(app).get('/api/v1/auth/google/callback?code=repeat');
+  it('returns same user on second OAuth login when enabled', async () => {
+    const prev = process.env.ENABLE_MOCK_OAUTH;
+    process.env.ENABLE_MOCK_OAUTH = 'true';
+
+    vi.resetModules();
+    const { createApp: createGatedApp } = await import('../app.js');
+    const { config: gatedConfig } = await import('../config.js');
+
+    const gatedApp = createGatedApp({ devMode: gatedConfig.devMode });
+
+    const res1 = await request(gatedApp).get('/api/v1/auth/google/callback?code=repeat');
+    const res2 = await request(gatedApp).get('/api/v1/auth/google/callback?code=repeat');
 
     expect(res1.body.user.id).toBe(res2.body.user.id);
+
+    process.env.ENABLE_MOCK_OAUTH = prev;
   });
 });
 

@@ -1,0 +1,2579 @@
+openapi: 3.0.3
+info:
+  title: LearnFlow API
+  version: 1.0.0
+  description: AI-powered learning platform API
+servers:
+  - url: http://localhost:3000
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /api/v1/auth/register:
+    post:
+      summary: Create account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - displayName
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                displayName:
+                  type: string
+      responses:
+        '201':
+          description: Account created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '409':
+          description: Email already registered
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/auth/login:
+    post:
+      summary: Authenticate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: JWT returned
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '401':
+          description: Invalid credentials
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/auth/refresh:
+    post:
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: New tokens
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - accessToken
+                  - refreshToken
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '400':
+          description: Missing token
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '401':
+          description: Invalid/expired token
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/auth/google/callback:
+    get:
+      summary: Google OAuth callback (mock)
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: JWT returned
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - user
+                  - accessToken
+                  - refreshToken
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+        '400':
+          description: Missing OAuth code
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/keys:
+    post:
+      summary: Add API key
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - apiKey
+              properties:
+                provider:
+                  type: string
+                  example: openai
+                apiKey:
+                  type: string
+                label:
+                  type: string
+      responses:
+        '201':
+          description: Key stored
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      summary: List API keys
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Key list
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/keys/validate:
+    post:
+      summary: Validate API key format
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - apiKey
+              properties:
+                provider:
+                  type: string
+                apiKey:
+                  type: string
+      responses:
+        '200':
+          description: Valid
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Invalid key format
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/keys/{provider}:
+    delete:
+      summary: Delete provider key
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Not found
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/chat:
+    post:
+      summary: Send message to Orchestrator
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text
+              properties:
+                text:
+                  type: string
+                courseId:
+                  type: string
+                lessonId:
+                  type: string
+                apiKey:
+                  type: string
+                  description: Optional per-request API key override
+      responses:
+        '200':
+          description: Orchestrator response
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message_id:
+                    type: string
+                  agentName:
+                    type: string
+                  content:
+                    type: string
+                  response:
+                    type: string
+                  reply:
+                    type: string
+                  actions:
+                    type: array
+                    items:
+                      type: string
+                  sources:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Source'
+                  notes:
+                    type: object
+                    nullable: true
+                    additionalProperties: true
+                  questions:
+                    type: array
+                    nullable: true
+                    items: {}
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Server error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/courses:
+    get:
+      summary: List courses
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Course list
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      summary: Create/generate course
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - topic
+              properties:
+                topic:
+                  type: string
+                title:
+                  type: string
+                description:
+                  type: string
+                depth:
+                  type: string
+                max_lessons:
+                  type: number
+      responses:
+        '201':
+          description: Course created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '402':
+          description: Payment required (free tier limit)
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/courses/{id}:
+    get:
+      summary: Get course detail
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Course detail
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Not found
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      summary: Delete course
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Not found
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/courses/{id}/lessons/{lessonId}:
+    get:
+      summary: Get lesson content
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lesson content
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Not found
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/courses/{id}/add-topic:
+    post:
+      summary: Add topic to an existing course
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - topic
+              properties:
+                topic:
+                  type: string
+                parentLessonId:
+                  type: string
+                  description: Optional (ignored server-side for now)
+      responses:
+        '201':
+          description: Added
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Not found
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/courses/{id}/lessons/{lessonId}/complete:
+    post:
+      summary: Mark lesson complete
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lesson marked complete
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/courses/{id}/lessons/{lessonId}/notes:
+    get:
+      summary: Get notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notes
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      summary: Create notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    put:
+      summary: Update notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/courses/{id}/lessons/{lessonId}/notes/illustrate:
+    post:
+      summary: Generate an illustration for notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Illustration
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/courses/{id}/lessons/{lessonId}/illustrations:
+    get:
+      summary: List illustrations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Illustrations
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      summary: Create illustration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/courses/{id}/lessons/{lessonId}/illustrations/{illId}:
+    delete:
+      summary: Delete illustration
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: illId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/courses/{id}/lessons/{lessonId}/compare:
+    post:
+      summary: Compare lesson concepts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Comparison
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/courses/{id}/lessons/{lessonId}/selection-tools/preview:
+    post:
+      summary: Selection tools preview (discover/illustrate/mark)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tool
+                - selectedText
+              properties:
+                tool:
+                  type: string
+                  enum:
+                    - discover
+                    - illustrate
+                    - mark
+                selectedText:
+                  type: string
+                apiKey:
+                  type: string
+      responses:
+        '200':
+          description: Preview
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/courses/{id}/lessons/{lessonId}/notes/mark-takeaways:
+    post:
+      summary: Append key takeaways to notes
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/courses/{id}/lessons/{lessonId}/annotations:
+    get:
+      summary: List annotations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Annotations
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      summary: Create annotation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/courses/{id}/lessons/{lessonId}/annotations/{annId}:
+    delete:
+      summary: Delete annotation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: annId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/mindmap:
+    get:
+      summary: Get knowledge graph
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Mindmap data
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/mindmap/suggest:
+    post:
+      summary: Compute suggested expansion nodes for a course
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+              properties:
+                courseId:
+                  type: string
+      responses:
+        '200':
+          description: Suggestions saved
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/mindmap/suggestions:
+    get:
+      summary: Get persisted suggestions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Suggestions
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/mindmap/accept:
+    post:
+      summary: Accept a suggestion
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - suggestionId
+              properties:
+                courseId:
+                  type: string
+                suggestionId:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/courses:
+    get:
+      summary: Browse course marketplace
+      parameters:
+        - name: keyword
+          in: query
+          schema:
+            type: string
+        - name: topic
+          in: query
+          schema:
+            type: string
+        - name: difficulty
+          in: query
+          schema:
+            type: string
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Marketplace courses
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/courses/{id}:
+    get:
+      summary: Marketplace course detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Course
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Not found
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/marketplace/publish:
+    post:
+      summary: Publish a course
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - topic
+                - description
+                - difficulty
+                - price
+                - lessonCount
+                - attributionCount
+              properties:
+                title:
+                  type: string
+                topic:
+                  type: string
+                description:
+                  type: string
+                difficulty:
+                  type: string
+                price:
+                  type: number
+                lessonCount:
+                  type: number
+                attributionCount:
+                  type: number
+                readabilityScore:
+                  type: number
+      responses:
+        '201':
+          description: Published
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/courses/{id}/reviews:
+    post:
+      summary: Create a course review
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rating
+              properties:
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                text:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/checkout:
+    post:
+      summary: Start checkout (mock)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+              properties:
+                courseId:
+                  type: string
+      responses:
+        '200':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/checkout/confirm:
+    post:
+      summary: Confirm checkout (mock)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - paymentIntentId
+              properties:
+                paymentIntentId:
+                  type: string
+      responses:
+        '200':
+          description: Confirmed
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/agents:
+    get:
+      summary: Browse agent marketplace
+      responses:
+        '200':
+          description: Agent list
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/agents/submit:
+    post:
+      summary: Submit an agent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                manifest:
+                  type: object
+      responses:
+        '201':
+          description: Submitted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/agents/activated:
+    get:
+      summary: List activated agents for current user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Activated agent IDs
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/agents/{id}/activate:
+    post:
+      summary: Activate marketplace agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent activated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/marketplace/agents/{id}/deactivate:
+    post:
+      summary: Deactivate marketplace agent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Agent deactivated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/marketplace/agents/manifests/resolve:
+    post:
+      summary: Resolve activated marketplace agent manifests (routing preference)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                agentIds:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - agentIds
+      responses:
+        '200':
+          description: Resolved manifests
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/marketplace/creator/dashboard:
+    get:
+      summary: Creator dashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/profile/context:
+    get:
+      summary: Get Student Context summary (MVP)
+      description: |
+        MVP note: this endpoint returns a lightweight context summary (goals/topics/experience/preferences + tier/role).
+        It is not the full Student Context Object described in the product spec.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Student context
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/bookmarks:
+    get:
+      summary: List bookmarks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+      responses:
+        '200':
+          description: Bookmarks
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookmarks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bookmark'
+    post:
+      summary: Create bookmark
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - lessonId
+              properties:
+                courseId:
+                  type: string
+                lessonId:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+
+  /api/v1/bookmarks/{lessonId}:
+    delete:
+      summary: Delete bookmark
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/profile/goals:
+    post:
+      summary: Save learning goals
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Saved
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/profile/onboarding/complete:
+    post:
+      summary: Mark onboarding complete
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/profile/data-summary:
+    get:
+      summary: Get profile data summary
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Summary
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  coursesCount:
+                    type: integer
+                  pipelinesCount:
+                    type: integer
+                  notificationsCount:
+                    type: integer
+                  lastCourseCreatedAt:
+                    type: string
+                    nullable: true
+                  lastPipelineCreatedAt:
+                    type: string
+                    nullable: true
+                  lastNotificationCreatedAt:
+                    type: string
+                    nullable: true
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/delete-my-data:
+    delete:
+      summary: Delete all user data (MVP)
+      description: Server-first deletion of all user-associated data.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/subscription:
+    post:
+      summary: Subscribe/upgrade/downgrade
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - subscribe
+                    - upgrade
+                    - downgrade
+                    - cancel
+                plan:
+                  type: string
+                  enum:
+                    - free
+                    - pro
+      responses:
+        '200':
+          description: Subscription updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    get:
+      summary: Get subscription status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/subscription/status:
+    get:
+      summary: Subscription status alias
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Status
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/subscription/iap:
+    post:
+      summary: Validate IAP receipt (mock)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - platform
+                - receipt
+                - productId
+              properties:
+                platform:
+                  type: string
+                  enum:
+                    - ios
+                    - android
+                receipt:
+                  type: string
+                productId:
+                  type: string
+      responses:
+        '200':
+          description: Valid
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Invalid
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/analytics:
+    get:
+      summary: Get learning analytics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Analytics data
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/usage/summary:
+    get:
+      summary: Usage summary
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 7
+      responses:
+        '200':
+          description: Summary
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/notifications:
+    get:
+      summary: List notifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Notifications
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/notifications/read:
+    post:
+      summary: Mark notification read
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/notifications/read-all:
+    post:
+      summary: Mark all notifications as read
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Empty object
+      responses:
+        '200':
+          description: OK
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  updated:
+                    type: integer
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/notifications/generate:
+    post:
+      summary: Generate notifications (MVP)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - topic
+              properties:
+                topic:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Conflict
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/daily:
+    get:
+      summary: Get daily lesson recommendations
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 3
+      responses:
+        '200':
+          description: Recommendations
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/events:
+    post:
+      summary: Append a learning event
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: OK
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/pipeline:
+    post:
+      summary: Start a new course creation pipeline
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - topic
+              properties:
+                topic:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    get:
+      summary: List pipelines
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pipelines
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/pipeline/add-topic:
+    post:
+      summary: Add suggested topic to an existing course with pipeline UX
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - courseId
+                - topic
+              properties:
+                courseId:
+                  type: string
+                topic:
+                  type: string
+                parentLessonId:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '400':
+          description: Validation error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/pipeline/{id}:
+    get:
+      summary: Get pipeline state
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: State
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '404':
+          description: Not found
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/pipeline/{id}/events:
+    get:
+      summary: Pipeline events (SSE)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SSE stream
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/pipeline/{id}/lessons:
+    get:
+      summary: Get all lessons for a pipeline's course
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lessons
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/pipeline/{id}/lessons/{lessonId}/edit:
+    post:
+      summary: Edit a lesson with a prompt
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: lessonId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - prompt
+              properties:
+                prompt:
+                  type: string
+                apiKey:
+                  type: string
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/pipeline/{id}/publish:
+    post:
+      summary: Publish pipeline course to marketplace
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Published
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/pipeline/{id}/personal:
+    post:
+      summary: Keep pipeline course as personal
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/search:
+    get:
+      summary: Web search
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+      responses:
+        '200':
+          description: Results
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '500':
+          description: Error
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/export:
+    get:
+      summary: Export courses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum:
+              - json
+              - md
+              - markdown
+              - zip
+              - pdf
+              - scorm
+      responses:
+        '200':
+          description: Export payload
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '403':
+          description: Upgrade required
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '501':
+          description: Not implemented
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/yjs/mindmap:
+    get:
+      summary: Get Yjs mindmap snapshot
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: courseId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Snapshot
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/collaboration/matches:
+    get:
+      summary: Collaboration matches
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Matches
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/collaboration/groups:
+    post:
+      summary: Create collaboration group
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                topic:
+                  type: string
+                memberIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    get:
+      summary: List collaboration groups
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Groups
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/collaboration/groups/{id}/messages:
+    post:
+      summary: Create group message
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - content
+              properties:
+                content:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    get:
+      summary: List group messages
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/admin/search-config:
+    get:
+      summary: Get admin search config
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Config
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Forbidden
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    put:
+      summary: Update admin search config
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+  /api/v1/admin/cleanup:
+    post:
+      summary: Admin cleanup
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Cleanup complete
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  deletedNotifications:
+                    type: integer
+                  deletedCourses:
+                    type: integer
+                  deletedPipelines:
+                    type: integer
+  /api/v1/update-agent/tick:
+    post:
+      summary: Run Update Agent tick (Pro)
+      description: Canonical scheduler entrypoint. Runs all enabled topics and sources for the user.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Run completed
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Requires Pro tier
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: Tick already in progress
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/v1/update-agent/runs:
+    get:
+      summary: List Update Agent runs (Pro)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Runs
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Requires Pro tier
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /api/v1/update-agent/topics:
+    get:
+      summary: List Update Agent topics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Topics
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+    post:
+      summary: Create Update Agent topic (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - topic
+              properties:
+                topic:
+                  type: string
+                enabled:
+                  type: boolean
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+        '401':
+          description: Unauthorized
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '403':
+          description: Requires Pro tier
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+    delete:
+      summary: Delete Update Agent topic (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/topics/{id}:
+    delete:
+      summary: Delete Update Agent topic by id (Pro)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/topics/update:
+    post:
+      summary: Update Update Agent topic (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                topic:
+                  type: string
+                enabled:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/sources:
+    get:
+      summary: List Update Agent sources
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: topicId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sources
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+    post:
+      summary: Create Update Agent source (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - topicId
+                - url
+              properties:
+                topicId:
+                  type: string
+                url:
+                  type: string
+                enabled:
+                  type: boolean
+                position:
+                  type: integer
+                sourceType:
+                  type: string
+                  enum: [rss, html]
+      responses:
+        '201':
+          description: Created
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+    delete:
+      summary: Delete Update Agent source (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/sources/{id}:
+    delete:
+      summary: Delete Update Agent source by id (Pro)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+
+  /api/v1/update-agent/sources/update:
+    post:
+      summary: Update Update Agent source (Pro)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+                url:
+                  type: string
+                enabled:
+                  type: boolean
+                position:
+                  type: integer
+                sourceType:
+                  type: string
+                  enum: [rss, html]
+      responses:
+        '200':
+          description: Updated
+          headers:
+            x-request-id:
+              $ref: '#/components/headers/XRequestId'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  headers:
+    XRequestId:
+      description: Request identifier for tracing
+      schema:
+        type: string
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+        tier:
+          type: string
+        onboardingCompletedAt:
+          type: string
+          nullable: true
+          description: ISO timestamp when onboarding completed
+    ErrorEnvelope:
+      type: object
+      required:
+        - error
+        - requestId
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details: {}
+        requestId:
+          type: string
+        status:
+          type: integer
+    Bookmark:
+      type: object
+      properties:
+        courseId:
+          type: string
+        lessonId:
+          type: string
+        createdAt:
+          type: string
+          description: ISO timestamp
+
+    Source:
+      type: object
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+        author:
+          type: string
+x-learnflow:
+  websocket:
+    path: /ws
+    description: WebSocket endpoint for streaming responses, agent activity, and mindmap
+      updates. See apps/docs/pages/websocket-events.md for the current event contract.
+    auth:
+      queryParam: token
+      type: jwt
+    eventsDoc: apps/docs/pages/websocket-events.md

@@ -165,13 +165,17 @@ export function ProfileSettings() {
               </p>
             </div>
             {state.subscription === 'free' ? (
-              <Button
-                variant="secondary"
-                onClick={() => nav('/pricing')}
-                className="bg-white text-purple-600 hover:bg-white/90 border-0 shadow-card"
-              >
-                Upgrade to Pro
-              </Button>
+              <div className="flex flex-col items-end">
+                <a
+                  href="/pricing"
+                  className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 bg-white text-purple-600 hover:bg-white/90 border-0 shadow-card font-medium text-sm"
+                >
+                  Upgrade to Pro
+                </a>
+                <p className="mt-2 text-xs opacity-90">
+                  Billing is in mock mode in this MVP (no real charges).
+                </p>
+              </div>
             ) : (
               <div className="flex flex-col items-end gap-2">
                 <span className="bg-white/20 text-white font-semibold text-sm px-5 py-2.5 rounded-xl">
@@ -207,7 +211,7 @@ export function ProfileSettings() {
                 onClick={async () => {
                   if (
                     confirm(
-                      'Downgrade to Free? You will lose access to Pro features at the end of your billing period.',
+                      'Downgrade to Free? (MVP mock billing) This does not affect any real payments. Pro features will be disabled immediately in this sandbox.',
                     )
                   ) {
                     try {
@@ -228,7 +232,7 @@ export function ProfileSettings() {
                 onClick={async () => {
                   if (
                     confirm(
-                      'Cancel your subscription? You will lose access to Pro features at the end of your billing period.',
+                      'Cancel your subscription? (MVP mock billing) This does not cancel any real payments. Pro features will be disabled immediately in this sandbox.',
                     )
                   ) {
                     try {
@@ -950,7 +954,7 @@ export function ProfileSettings() {
               {[
                 { label: 'Learning progress & streaks', tracked: true },
                 { label: 'Course creation topics', tracked: true },
-                { label: 'Quiz scores & completion rates', tracked: true },
+                { label: 'Quiz scores & completion rates', tracked: false },
                 { label: 'API keys (encrypted at rest, AES-256-GCM)', tracked: true },
                 { label: 'Conversation content (session only)', tracked: false },
                 { label: 'Browsing activity outside LearnFlow', tracked: false },

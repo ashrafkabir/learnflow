@@ -98,6 +98,10 @@ describe('WS contract (Spec §11.2)', () => {
       if (complete.data?.kind) expect(typeof complete.data?.durationMs).toBe('number');
     }
 
+    const end = events.find((e) => e?.event === 'response.end');
+    expect(end?.data?.message_id).toBe('msg-client-1');
+    expect(typeof end?.data?.agent_name).toBe('string');
+
     const startIndex = names.indexOf('response.start');
     const firstChunk = names.indexOf('response.chunk');
     const firstEnd = names.indexOf('response.end');
