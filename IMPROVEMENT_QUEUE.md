@@ -179,28 +179,34 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
      - ⚠️ Live update after completion is still refresh-based (no WS wiring yet).
 
 6. **P1 — Mindmap: tighten claims to what’s real, or implement concept-level graph.**
+   - Status: DONE (builder) — chose (A)
    - Evidence:
-     - Spec §5.2.5 describes concept relationships; current is course/module/lesson graph.
-   - Acceptance (choose one):
-     - (A) Update UX copy (“Course Map”, “Lesson nodes”) and remove “knowledge graph of domains” language; OR
-     - (B) Implement concept nodes + edges in API (persisted) and render full-screen explorer with expandable nodes.
+     - Copy changed from “knowledge graph” → “course map / mindmap” across marketing + docs + dashboard:
+       - `apps/client/src/screens/Dashboard.tsx`
+       - `apps/client/src/screens/marketing/{Home,Features,Docs}.tsx`
+       - `apps/docs/pages/blog/launch-post.md`
+       - `apps/client/src/data/blogPosts.ts`
 
 7. **P1 — Usage transparency: reconcile spec “token usage” vs current “best-effort usage_records”.**
+   - Status: DONE (builder)
    - Evidence:
-     - API exists: `apps/api/src/routes/usage.ts`.
-     - UI exists: `apps/client/src/screens/ProfileSettings.tsx`.
-   - Acceptance:
-     - Settings screen labels usage as “best-effort” and clearly explains what’s measured (tokensTotal from usage_records) and what is not.
-     - Add one deterministic test proving `/usage/dashboard` renders and numbers are non-negative.
+     - UI labeling clarified:
+       - `apps/client/src/screens/ProfileSettings.tsx`
+     - Deterministic API test:
+       - `apps/api/src/__tests__/usage-dashboard.test.ts`
 
 8. **P1 — Content pipeline truth pass: remove any copy implying multi-source scraping/scoring is live if it isn’t.**
-   - Status: PARTIAL (builder)
+   - Status: DONE (builder)
    - Evidence:
-     - Tightened Dashboard new-course hero copy to avoid overpromising (“outline + draft lessons… best-effort”).
-       - `apps/client/src/screens/Dashboard.tsx`
-   - Remaining:
-     - Audit marketing + in-app docs pages (especially `apps/client/src/screens/marketing/*` and `apps/web`) and remove/qualify claims about Google/Bing/Semantic Scholar/Firecrawl/MinHash unless code exists.
-     - Add links to “About MVP Truth” from any “pipeline” UI.
+     - Removed/qualified claims about Firecrawl/Semantic Scholar/quality guarantees/knowledge graph.
+     - Added **Docs → MVP truth** page and linked from pipeline UI + footer:
+       - `apps/docs/pages/mvp-truth.md`
+       - `apps/client/src/screens/PipelineDetail.tsx`
+       - `apps/client/src/screens/AboutMvpTruth.tsx`
+       - `apps/client/src/screens/marketing/MarketingLayout.tsx`
+     - Screenshots:
+       - `learnflow/screenshots/iterunknown/run-001/desktop/pipeline-detail.png`
+       - `learnflow/screenshots/iterunknown/run-001/desktop/settings-about-mvp-truth.png`
 
 ### P2 — Reliability + cleanup to prevent regressions
 
