@@ -36,3 +36,7 @@ Richer knowledge graphs (concept-level nodes, custom connections across courses)
 Names, agent roles, scoring heuristics, and UI language may change quickly as we iterate.
 
 If you see a claim that feels too strong, treat it as a bug and link to this page when filing an issue.
+
+## Checklist
+
+- [MVP truth checklist](./mvp-truth-checklist)

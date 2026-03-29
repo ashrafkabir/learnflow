@@ -151,3 +151,34 @@ Commits:
 - `b652ab8` Iter135 P2: dev-clean also terminates orphaned turbo dev processes
 
 
+
+### P2 Task 11 — reduce client/web marketing split-brain
+
+Decision:
+- **Chose B**: remove `apps/client/src/screens/marketing/*` entirely. Canonical marketing + pricing now live in `apps/web`.
+
+What changed:
+- Deleted the legacy client marketing screens directory.
+- Replaced two removed tests with updated MVP-truth regression tests:
+  - `apps/client/src/__tests__/mockBillingCopyRegression.test.tsx` now asserts web pricing page contains the mock billing disclosures/CTA.
+  - `apps/client/src/__tests__/subscription-upgrade.test.tsx` now asserts the web pricing page upgrade CTA exists and is labeled mock billing.
+
+Evidence:
+```bash
+find apps/client/src/screens -maxdepth 2 -type d
+# no marketing folder
+npm -w @learnflow/client test
+npm test
+```
+
+### P2 Task 12 — docs MVP truth checklist exists and is linked
+
+What changed:
+- Added `apps/docs/pages/mvp-truth-checklist.md`.
+- Linked it from `apps/docs/pages/mvp-truth.md`.
+- Fixed `apps/docs/pages/user-guide.md` to link to `selection-tools.md` and updated mindmap collaboration copy to be MVP-accurate.
+
+Evidence:
+```bash
+npm -w @learnflow/docs test
+```

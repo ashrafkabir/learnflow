@@ -8,7 +8,7 @@ When reading a lesson, you can select text to open quick tools:
 - **Illustrate**: simplified explanation (and an image if BYOAI is configured)
 - **Mark**: save a key takeaway
 
-See: `Selection Tools (Discover / Illustrate / Mark)`.
+See: [Selection Tools (Discover / Illustrate / Mark)](./selection-tools).
 
 ## Overview
 
@@ -90,7 +90,7 @@ Visualize learning connections:
 
 - Interactive graph with clickable nodes
 - Mastery indicators per node
-- Collaborative editing is planned (not part of the current MVP)
+- Collaborative editing exists in this repo for mindmaps (Yjs-backed) but should be treated as best-effort in MVP deployments
 - SVG export
 
 ### Marketplace (MVP/mock)

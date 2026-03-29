@@ -17,15 +17,10 @@ describe('Mock billing copy regression', () => {
     expect(text).not.toMatch(/billing period/i);
   });
 
-  it('pricing pages explicitly disclose mock billing', () => {
-    const clientPricing = path.resolve(process.cwd(), 'src/screens/marketing/Pricing.tsx');
+  it('web pricing page explicitly discloses mock billing', () => {
+    // Canonical marketing is served by apps/web (Next.js)
     const webPricing = path.resolve(process.cwd(), '../../apps/web/src/app/pricing/page.tsx');
-
-    const a = read(clientPricing);
     const b = read(webPricing);
-
-    // Client marketing pricing page disclosure
-    expect(a).toMatch(/Billing is MVP\/mock in this build\./);
 
     // Web marketing pricing page disclosure
     expect(b).toMatch(/Billing is MVP\/mock in this build\./);
