@@ -4,7 +4,7 @@ Owner: Builder
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-29
 
-Status: **IN PROGRESS (BUILDER)**
+Status: **READY FOR BUILDER**
 
 This queue is the **next 10–15 highest-leverage tasks** for Iter137, based on:
 
