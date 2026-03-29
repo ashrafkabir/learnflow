@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePipeline, type PipelineArtifactsIndex } from '../hooks/usePipeline.js';
-import { apiPost } from '../context/AppContext.js';
+import { apiGet } from '../context/AppContext.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { Button } from '../components/Button.js';
 import { useToast } from '../components/Toast.js';
@@ -33,9 +33,7 @@ export function PipelineDetail() {
     const fetchArtifacts = async () => {
       try {
         setArtifactsError(null);
-        const resp = await fetch(`/api/v1/pipeline/${state.id}/artifacts`);
-        if (!resp.ok) throw new Error('failed');
-        const data = (await resp.json()) as PipelineArtifactsIndex;
+        const data = (await apiGet(`/pipeline/${state.id}/artifacts`)) as PipelineArtifactsIndex;
         if (!cancelled) setArtifacts(data);
       } catch {
         if (!cancelled) setArtifactsError('Unable to load artifacts index');
@@ -312,8 +310,9 @@ export function PipelineDetail() {
               size="sm"
               onClick={async () => {
                 try {
-                  const resp = await fetch(`/api/v1/pipeline/${state.id}/artifacts`);
-                  const data = await resp.json();
+                  const data = (await apiGet(
+                    `/pipeline/${state.id}/artifacts`,
+                  )) as PipelineArtifactsIndex;
                   await navigator.clipboard.writeText(String(data?.artifactsRoot || ''));
                   toast('Artifacts path copied', 'success');
                 } catch {
