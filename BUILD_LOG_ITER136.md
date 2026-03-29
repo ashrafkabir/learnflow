@@ -51,6 +51,15 @@ Date: 2026-03-29
 ## Tests
 
 - `npm test` ✅ (all green)
-- `npx playwright test e2e/iter136-smoke-assertions.spec.ts` ✅
+  - `npm run test --workspace apps/client` ✅ (Vitest)
+  - `npm run test --workspace apps/api` ✅ (Vitest)
+  - `npm run test --workspace packages/agents` ✅ (Vitest)
+- `npx playwright test e2e/iter136-smoke-assertions.spec.ts` ✅ (1 passed)
 - `npx playwright test e2e/iter101-screenshots.spec.ts` ✅ (after fixing routing to marketing app :3003)
+
+## Finalization (Builder)
+
+- Verified P2.10 smoke test exists: `e2e/iter136-smoke-assertions.spec.ts`
+- Evidence tarball: `iter136-artifacts-p2_11-p2_12.tar.gz`
+- Synced to OneDrive: `/home/aifactory/onedrive-learnflow/artifacts/iter136-artifacts-p2_11-p2_12.tar.gz` and `/home/aifactory/onedrive-learnflow/artifacts/iter136-p2.10-smoke-assertions.tgz`
 

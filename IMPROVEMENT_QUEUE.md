@@ -4,7 +4,7 @@ Owner: Builder
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-29
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
 
 This queue is the **next 10–15 highest-leverage tasks** after Iter134/135. It is intentionally **trust-first**: fix misleading/broken UX before adding new capability.
 
