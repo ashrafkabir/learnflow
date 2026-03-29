@@ -64,29 +64,32 @@ export function MindmapExplorer() {
       return null;
     }
   })();
-  const activeCourseId =
-    queryCourseId || state.activeCourse?.id || state.courses?.[0]?.id || 'dev-course';
+  // Choose an active course for the mindmap room.
+  // IMPORTANT: do not fall back to a synthetic id when the user has 0 courses.
+  // Otherwise we incorrectly connect to a "dev-course" room and the empty state never shows.
+  const activeCourseId = queryCourseId || state.activeCourse?.id || state.courses?.[0]?.id || null;
 
   // Shared mindmaps: allow overriding courseId/groupId via query params.
-  const [sharedParams, setSharedParams] = useState<{ courseId: string; groupId?: string | null }>(
-    () => {
-      try {
-        const p = new URLSearchParams(window.location.search);
-        const courseId = p.get('courseId') || activeCourseId;
-        const groupId = p.get('groupId');
-        return { courseId, groupId };
-      } catch {
-        return { courseId: activeCourseId, groupId: null };
-      }
-    },
-  );
+  const [sharedParams, setSharedParams] = useState<{
+    courseId: string | null;
+    groupId?: string | null;
+  }>(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const courseId = p.get('courseId') || activeCourseId;
+      const groupId = p.get('groupId');
+      return { courseId: courseId || null, groupId };
+    } catch {
+      return { courseId: activeCourseId, groupId: null };
+    }
+  });
 
   useEffect(() => {
     try {
       const p = new URLSearchParams(window.location.search);
       const courseId = p.get('courseId') || activeCourseId;
       const groupId = p.get('groupId');
-      setSharedParams({ courseId, groupId });
+      setSharedParams({ courseId: courseId || null, groupId });
     } catch {
       // ignore
     }
