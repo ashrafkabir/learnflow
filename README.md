@@ -103,6 +103,15 @@ npm run rg -- "TODO" .
 npm run rg -- "useWebSocket" apps/client/src
 ```
 
+### Persistence / local state
+
+LearnFlow uses **SQLite** for runtime persistence (see `apps/api/src/db.ts`). In local dev you may see a `.data/` folder created at the repo root.
+
+- `.data/` is **local-only runtime state** (SQLite DB backups, local users/keys in dev, etc.)
+- It is intentionally **gitignored** and should not be treated as seeded fixtures.
+
+If you need a clean slate locally, stop dev servers and delete `.data/`.
+
 - Selection Tools (Discover / Illustrate / Mark): `apps/docs/pages/selection-tools.md`
 - API reference: `apps/docs/pages/api-reference.md`
 - Architecture notes: `apps/docs/pages/architecture.md`

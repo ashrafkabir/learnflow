@@ -67,19 +67,30 @@ Evidence pack for this planner run:
 
 ---
 
-### 3) P0 — Remove or quarantine legacy JSON persistence fixtures that no longer match runtime
+### 3) P0 — Remove or quarantine legacy JSON persistence fixtures that no longer match runtime ✅
 
-**Problem**: `.data/courses.json` contains demo course data but runtime uses SQLite (`dbCourses`). This creates confusion and can lead to incorrect expectations in QA and planning.
+**Problem**: `.data/courses.json` contained demo course data but runtime uses SQLite (`dbCourses`). This created confusion and could lead to incorrect expectations in QA and planning.
 
-- Evidence (file): `.data/courses.json`
-- Evidence (code): `apps/api/src/persistence.ts` JSON persistence exists but appears unused; runtime is SQLite.
+**What changed (Iter136)**
+
+- Removed legacy, unused JSON persistence layer: `apps/api/src/persistence.ts` (no runtime imports).
+- Stopped shipping legacy `.data/*` fixtures by removing them from git tracking:
+  - `.data/courses.json`
+  - `.data/progress.json`
+  - `.data/users.json`
+  - `.data/keys.json`
+  - `.data/learnflow.db`
+- Documented truth-first persistence behavior in `README.md` (SQLite is runtime; `.data/` is local-only).
+
+**Evidence**
+
+- `git ls-files | grep "^\.data/"` → (no tracked `.data/` fixtures)
+- `npm test` → green (no tests rely on legacy fixtures)
 
 **Acceptance criteria**
 
-- Either:
-  - (A) Delete/stop shipping `.data/*.json` fixtures and remove dead JSON persistence code, OR
-  - (B) Clearly document that `.data/*.json` is legacy and not used, and move legacy files under `archive/` (or rename to `*.legacy.json`).
-- Ensure new devs do not mistake legacy fixtures for live seeded data.
+- (A) Delete/stop shipping `.data/*.json` fixtures and remove dead JSON persistence code ✅
+- Ensure new devs do not mistake legacy fixtures for live seeded data ✅
 
 ---
 

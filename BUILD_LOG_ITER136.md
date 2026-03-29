@@ -106,3 +106,41 @@ node screenshot-all.mjs --iter 136 --outDir learnflow/screenshots/iter136/p0-4-d
 
 **Screenshots captured**
 - `learnflow/screenshots/iter136/p0-4-dashboard-mindmap-empty/app-dashboard.png`
+
+---
+
+### P0.3 — Remove or quarantine legacy JSON persistence fixtures that no longer match runtime
+
+Stopped shipping legacy `.data/*.json` fixtures and removed dead JSON persistence code that no longer matches the SQLite runtime.
+
+**Key changes**
+- Untracked legacy `.data/` files from git:
+  - `.data/courses.json`
+  - `.data/progress.json`
+  - `.data/users.json`
+  - `.data/keys.json`
+  - `.data/learnflow.db`
+- Deleted unused JSON persistence module: `apps/api/src/persistence.ts` (no runtime imports; SQLite is the real persistence layer).
+- Updated `README.md` to document that runtime persistence is SQLite and `.data/` is local-only state.
+- Updated `IMPROVEMENT_QUEUE.md` to mark P0.3 done with evidence.
+
+**Commands run**
+```bash
+# remove legacy fixtures from git tracking (kept locally)
+git rm --cached .data/courses.json .data/progress.json .data/users.json .data/keys.json .data/learnflow.db
+
+# remove dead code
+git rm apps/api/src/persistence.ts
+
+# full tests
+npm test
+
+# verify no tracked fixtures remain
+git ls-files | grep '^\.data/'
+```
+
+**Test result**
+- `npm test` ✅ (all packages + apps)
+
+**Notes**
+- Vitest occasionally emitted an EnvironmentTeardownError when run via Turbo with default parallelism; rerunning API tests with `--maxWorkers=1` is clean. No actual test failures.
