@@ -52,7 +52,9 @@ function run(cmd, args, env = {}) {
 ensureNotesTemplate();
 
 // Desktop
-run('node', ['screenshot-all.mjs', desktopDir, '--base', base, '--iter', String(iter)]);
+run('node', ['screenshot-all.mjs', desktopDir, '--base', base, '--iter', String(iter)], {
+  SCREENSHOT_SKIP_MARKETING: '1',
+});
 // Mobile
 run('node', ['screenshot-mobile.mjs', mobileDir, '--base', base, '--iter', String(iter)]);
 

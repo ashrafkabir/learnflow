@@ -142,8 +142,14 @@ function isNotFound(page) {
     .catch(() => false);
 }
 
+const SKIP_MARKETING =
+  process.env.SCREENSHOT_SKIP_MARKETING === '1' ||
+  process.env.SKIP_MARKETING === '1' ||
+  readArg('skipMarketing') === '1' ||
+  readArg('skipMarketing') === 'true';
+
 // 1) Marketing route screenshots (canonical in apps/web)
-{
+if (!SKIP_MARKETING) {
   requireBaseWeb();
 
   // Fail fast if BASE_WEB is unreachable.
@@ -175,6 +181,8 @@ function isNotFound(page) {
     console.log(`✓ ${name}`);
   }
   await ctx.close();
+} else {
+  console.log('[screenshot-all] skipping marketing pages (SCREENSHOT_SKIP_MARKETING=1)');
 }
 
 // 2) Client public route screenshots (no auth)

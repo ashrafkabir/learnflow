@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useApp, apiPost, apiGet } from '../context/AppContext.js';
 import { CitationTooltip, Source } from '../components/CitationTooltip.js';
 import { LessonMindmap } from '../components/LessonMindmap.js';
@@ -144,8 +144,13 @@ function parseStructuredContent(content?: string) {
 
 export function LessonReader() {
   const { courseId, lessonId } = useParams();
+  const location = useLocation();
   const nav = useNavigate();
   const { toast } = useToast();
+
+  const fromCourseHref = String((location.state as any)?.from || '');
+  const breadcrumbCourseTitle = String((location.state as any)?.courseTitle || '');
+  const breadcrumbLessonTitle = String((location.state as any)?.lessonTitle || '');
   const { state, fetchLesson, completeLesson, generateQuiz } = useApp();
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
@@ -896,9 +901,43 @@ export function LessonReader() {
       <Confetti trigger={showConfetti} />
       {/* Top bar */}
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+        {/* Breadcrumbs */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-2">
+          <nav
+            aria-label="Breadcrumb"
+            className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1"
+          >
+            <button
+              onClick={() => nav('/dashboard')}
+              className="hover:text-accent transition-colors"
+            >
+              Dashboard
+            </button>
+            <span>/</span>
+            <button
+              onClick={() => nav(fromCourseHref || `/courses/${courseId}`)}
+              className="hover:text-accent transition-colors max-w-[14rem] truncate"
+              title={breadcrumbCourseTitle || 'Course'}
+            >
+              {breadcrumbCourseTitle || 'Course'}
+            </button>
+            <span>/</span>
+            <span
+              className="text-gray-900 dark:text-white font-medium max-w-[16rem] truncate"
+              title={breadcrumbLessonTitle || lesson.title}
+            >
+              {breadcrumbLessonTitle || lesson.title}
+            </span>
+          </nav>
+        </div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => nav(`/courses/${courseId}`)}>
-            ← Back to Course
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => (fromCourseHref ? nav(fromCourseHref) : nav(-1))}
+            title="Back"
+          >
+            ← Back
           </Button>
           <div className="flex items-center gap-2">
             <Button

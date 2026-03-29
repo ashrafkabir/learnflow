@@ -157,13 +157,31 @@ export function CourseView() {
       {/* Header */}
       <header className="bg-gradient-to-r from-primary-900 to-primary-800 text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+          {/* Breadcrumbs */}
+          <nav
+            aria-label="Breadcrumb"
+            className="text-xs text-primary-200 mb-3 flex items-center gap-1"
+          >
+            <button
+              onClick={() => nav('/dashboard')}
+              className="hover:text-white transition-colors"
+            >
+              Dashboard
+            </button>
+            <span className="opacity-70">/</span>
+            <span className="text-white font-medium truncate" title={course.title}>
+              {course.title}
+            </span>
+          </nav>
+
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => nav('/dashboard')}
+            onClick={() => nav(-1)}
             className="text-primary-200 hover:text-white mb-4 border-0"
+            title="Back"
           >
-            ← Back to Dashboard
+            ← Back
           </Button>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-2">{course.title}</h1>
           <p className="text-primary-200 text-sm mb-4">{course.description}</p>
@@ -381,7 +399,13 @@ export function CourseView() {
                             title: lesson.title,
                             courseId: courseId!,
                           });
-                          nav(`/courses/${courseId}/lessons/${lesson.id}`);
+                          nav(`/courses/${courseId}/lessons/${lesson.id}`, {
+                            state: {
+                              from: `/courses/${courseId}`,
+                              courseTitle: course.title,
+                              lessonTitle: lesson.title,
+                            },
+                          });
                         }}
                         className="flex items-center gap-3 px-5 py-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors border-b border-gray-50 dark:border-gray-800/50 last:border-0"
                       >
@@ -416,7 +440,13 @@ export function CourseView() {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            nav(`/courses/${courseId}/lessons/${lesson.id}`);
+                            nav(`/courses/${courseId}/lessons/${lesson.id}`, {
+                              state: {
+                                from: `/courses/${courseId}`,
+                                courseTitle: course.title,
+                                lessonTitle: lesson.title,
+                              },
+                            });
                           }}
                           className={
                             isComplete ? 'bg-success/10 text-success hover:bg-success/20' : ''

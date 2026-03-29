@@ -94,3 +94,29 @@
 - OneDrive mount not detected on this host; created tarball:
   - `artifacts/iter136-p1-7-p1-8-screenshots.tgz` (contains `learnflow/screenshots/iter136/run-lesson-convo/*`)
 
+
+---
+
+## 2026-03-29 — P2.9 Breadcrumbs (CourseView + LessonReader)
+
+### What changed
+- Added lightweight client-side **breadcrumbs** to improve navigation clarity:
+  - **CourseView**: Dashboard → Course title
+  - **LessonReader**: Dashboard → Course title → Lesson title
+- Improved “Back” behavior:
+  - LessonReader back uses location.state.from when present; otherwise falls back to browser history (nav(-1)).
+  - CourseView back uses browser history (nav(-1)) rather than always forcing /dashboard.
+
+### Files touched
+- `apps/client/src/screens/CourseView.tsx`
+- `apps/client/src/screens/LessonReader.tsx`
+
+### Tests
+- `npm test` (turbo) — PASS
+
+### Screenshots
+- `learnflow/screenshots/iter136/run-001/desktop/course-view.png`
+- `learnflow/screenshots/iter136/run-001/desktop/lesson-reader.png`
+
+### Notes
+- Screenshot harness updated to skip marketing pages by default (web app not always running), while still capturing client flows.

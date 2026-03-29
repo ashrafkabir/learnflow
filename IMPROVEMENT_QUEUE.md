@@ -197,12 +197,25 @@ Evidence pack for this planner run:
 
 ## P2 (nice-to-have / quality) — Polish + observability
 
-### 9) P2 — Add lightweight client-side breadcrumbs on CourseView and LessonReader
+### 9) P2 — Add lightweight client-side breadcrumbs on CourseView and LessonReader ✅
 
 **Acceptance criteria**
 
 - Breadcrumb: Dashboard → Course title → Lesson title.
 - “Back” goes to the correct prior screen (not always `/dashboard`).
+
+**Shipped (Iter136)**
+
+- Added breadcrumbs:
+  - CourseView: Dashboard → Course title
+  - LessonReader: Dashboard → Course title → Lesson title
+- CourseView now passes `location.state` when navigating to LessonReader so LessonReader can render accurate breadcrumb titles.
+- LessonReader top-bar back button prefers `location.state.from` and otherwise uses browser history (falls back to `nav(-1)`).
+
+**Evidence**
+
+- Code: `apps/client/src/screens/CourseView.tsx`, `apps/client/src/screens/LessonReader.tsx`
+- Screenshots: `learnflow/screenshots/iter136/run-001/desktop/{course-view,lesson-reader}.png`
 
 ---
 
