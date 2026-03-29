@@ -61,3 +61,6 @@ BUILD_LOG_ITER71.md
 # Test harness artifacts
 /test-artifacts/
 /learnflow/learnflow/
+
+# artifacts
+apps/api/learnflow/course-artifacts/
