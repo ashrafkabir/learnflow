@@ -12,6 +12,7 @@ import { subscriptionRouter } from './routes/subscription.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { collaborationRouter } from './routes/collaboration.js';
 import { dailyRouter } from './routes/daily.js';
+import { masteryCourseRouter, masteryLessonRouter } from './routes/mastery.js';
 import { eventsRouter } from './routes/events.js';
 import { pipelineRouter } from './routes/pipeline.js';
 import { searchRouter } from './routes/search.js';
@@ -283,6 +284,13 @@ export function createApp(options?: { devMode?: boolean }) {
 
   app.use('/api/v1/chat', protectedAuth, rateLimiter, writeRateLimiter, chatRouter);
   app.use('/api/v1/courses', protectedAuth, rateLimiter, writeRateLimiter, coursesRouter);
+  app.use('/api/v1/courses/:id/mastery', protectedAuth, rateLimiter, masteryCourseRouter);
+  app.use(
+    '/api/v1/courses/:id/lessons/:lessonId/mastery',
+    protectedAuth,
+    rateLimiter,
+    masteryLessonRouter,
+  );
   app.use('/api/v1/mindmap', protectedAuth, rateLimiter, writeRateLimiter, mindmapRouter);
   app.use(
     '/api/v1/collaboration',

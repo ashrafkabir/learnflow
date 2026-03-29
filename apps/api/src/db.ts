@@ -431,6 +431,22 @@ sqlite.exec(`
     createdAt TEXT NOT NULL
   );
 
+  -- Iter138: mastery + spaced repetition scheduling
+  CREATE TABLE IF NOT EXISTS mastery (
+    userId TEXT NOT NULL,
+    courseId TEXT NOT NULL,
+    lessonId TEXT NOT NULL,
+    masteryLevel REAL NOT NULL DEFAULT 0,
+    lastStudiedAt TEXT,
+    nextReviewAt TEXT,
+    lastQuizScore INTEGER,
+    lastQuizAt TEXT,
+    gapsJson TEXT NOT NULL DEFAULT '[]',
+    updatedAt TEXT NOT NULL,
+    PRIMARY KEY (userId, courseId, lessonId)
+  );
+  CREATE INDEX IF NOT EXISTS idx_mastery_user_next_review ON mastery(userId, nextReviewAt);
+
   CREATE TABLE IF NOT EXISTS api_keys (
     id TEXT PRIMARY KEY,
     userId TEXT NOT NULL,
@@ -775,6 +791,18 @@ sqlite.exec(`
 // ── Prepared Statements ─────────────────────────────────────────────────────
 
 const stmts = {
+  // Mastery (Iter138)
+  upsertMastery: sqlite.prepare(
+    `INSERT OR REPLACE INTO mastery (userId, courseId, lessonId, masteryLevel, lastStudiedAt, nextReviewAt, lastQuizScore, lastQuizAt, gapsJson, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ),
+  getMasteryByUserCourse: sqlite.prepare(`SELECT * FROM mastery WHERE userId = ? AND courseId = ?`),
+  getMasteryByUserLesson: sqlite.prepare(
+    `SELECT * FROM mastery WHERE userId = ? AND courseId = ? AND lessonId = ? LIMIT 1`,
+  ),
+  getDueReviewsByUser: sqlite.prepare(
+    `SELECT * FROM mastery WHERE userId = ? AND nextReviewAt IS NOT NULL AND nextReviewAt <= ? ORDER BY nextReviewAt ASC LIMIT ?`,
+  ),
+
   // App settings (global)
   getAppSetting: sqlite.prepare(`SELECT value FROM app_settings WHERE key = ?`),
   upsertAppSetting: sqlite.prepare(
@@ -2402,6 +2430,13 @@ export const dbProgress = {
     } catch {
       // best effort
     }
+
+    // Iter138: update mastery (best-effort)
+    try {
+      dbMastery.applyLessonCompleted(userId, courseId, lessonId);
+    } catch {
+      // best effort
+    }
   },
 
   getCompletedLessons(userId: string, courseId: string): string[] {
@@ -2506,6 +2541,133 @@ export const dbEvents = {
 
   list(userId: string, limit = 200): any[] {
     return stmts.getLearningEventsByUser.all(userId, limit) as any[];
+  },
+};
+
+// ── Mastery helpers (Iter138) ─────────────────────────────────────────────
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+function daysFromNow(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+function scheduleNextReview(masterLevel: number, lastQuizScore?: number | null): string {
+  // MVP spaced repetition: map mastery (+ quiz score) to rough intervals.
+  const score = Number.isFinite(Number(lastQuizScore)) ? Number(lastQuizScore) : null;
+  const m = clamp01(masterLevel);
+  if (score !== null && score < 60) return daysFromNow(1);
+  if (m < 0.3) return daysFromNow(1);
+  if (m < 0.6) return daysFromNow(3);
+  if (m < 0.8) return daysFromNow(7);
+  return daysFromNow(14);
+}
+
+export const dbMastery = {
+  upsert(row: {
+    userId: string;
+    courseId: string;
+    lessonId: string;
+    masteryLevel: number;
+    lastStudiedAt?: string | null;
+    nextReviewAt?: string | null;
+    lastQuizScore?: number | null;
+    lastQuizAt?: string | null;
+    gaps?: string[];
+  }): void {
+    const now = new Date().toISOString();
+    stmts.upsertMastery.run(
+      row.userId,
+      row.courseId,
+      row.lessonId,
+      clamp01(row.masteryLevel),
+      row.lastStudiedAt || null,
+      row.nextReviewAt || null,
+      row.lastQuizScore ?? null,
+      row.lastQuizAt || null,
+      JSON.stringify(row.gaps || []),
+      now,
+    );
+  },
+
+  getByCourse(userId: string, courseId: string): any[] {
+    return stmts.getMasteryByUserCourse.all(userId, courseId) as any[];
+  },
+
+  getByLesson(userId: string, courseId: string, lessonId: string): any | null {
+    const row = stmts.getMasteryByUserLesson.get(userId, courseId, lessonId) as any;
+    return row || null;
+  },
+
+  listDue(userId: string, nowIso = new Date().toISOString(), limit = 5): any[] {
+    return stmts.getDueReviewsByUser.all(userId, nowIso, limit) as any[];
+  },
+
+  applyLessonCompleted(userId: string, courseId: string, lessonId: string): void {
+    const existing = this.getByLesson(userId, courseId, lessonId);
+    const now = new Date().toISOString();
+    const prev = existing ? Number(existing.masteryLevel || 0) : 0;
+    const masteryLevel = clamp01(prev + 0.2);
+    const lastQuizScore = existing ? existing.lastQuizScore : null;
+    const nextReviewAt = scheduleNextReview(masteryLevel, lastQuizScore);
+    const gaps = (() => {
+      try {
+        return existing?.gapsJson ? JSON.parse(existing.gapsJson) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    this.upsert({
+      userId,
+      courseId,
+      lessonId,
+      masteryLevel,
+      lastStudiedAt: now,
+      nextReviewAt,
+      lastQuizScore: lastQuizScore ?? null,
+      lastQuizAt: existing?.lastQuizAt || null,
+      gaps,
+    });
+  },
+
+  applyQuizSubmitted(
+    userId: string,
+    courseId: string,
+    lessonId: string,
+    score: number | null,
+    gaps: string[],
+  ): void {
+    const existing = this.getByLesson(userId, courseId, lessonId);
+    const now = new Date().toISOString();
+    const prev = existing ? Number(existing.masteryLevel || 0) : 0;
+    const s = Number.isFinite(Number(score)) ? Math.max(0, Math.min(100, Number(score))) : null;
+
+    let masteryLevel = prev;
+    if (s !== null) {
+      if (s >= 85) masteryLevel = clamp01(prev + 0.3);
+      else if (s >= 70) masteryLevel = clamp01(prev + 0.2);
+      else if (s >= 60) masteryLevel = clamp01(prev + 0.1);
+      else masteryLevel = clamp01(prev - 0.1);
+    }
+
+    const nextReviewAt = scheduleNextReview(masteryLevel, s);
+    this.upsert({
+      userId,
+      courseId,
+      lessonId,
+      masteryLevel,
+      lastStudiedAt: now,
+      nextReviewAt,
+      lastQuizScore: s,
+      lastQuizAt: now,
+      gaps: gaps || [],
+    });
   },
 };
 

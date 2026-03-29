@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { courses } from './courses.js';
-import { dbCourses, dbProgress } from '../db.js';
+import { dbCourses, dbProgress, dbMastery } from '../db.js';
 
 const router = Router();
 
@@ -22,10 +22,10 @@ router.get('/', (req: Request, res: Response) => {
   const allCourses =
     Array.isArray(persisted) && persisted.length > 0 ? persisted : Array.from(courses.values());
 
-  // Strategy:
-  // 1) Next uncompleted lesson per course ("continue")
-  // 2) Fill to limit
-  // NOTE: We intentionally do NOT recommend completed lessons here (no separate review surface yet).
+  // Strategy (Iter138 MVP scheduler):
+  // 1) Include due review lessons from mastery store (nextReviewAt <= now)
+  // 2) Include next uncompleted lesson per course ("continue")
+  // 3) Never recommend a completed lesson.
   const limitRaw = Number(req.query.limit || 3);
   const limit = Math.max(1, Math.min(10, Number.isFinite(limitRaw) ? Math.round(limitRaw) : 3));
 
@@ -46,6 +46,52 @@ router.get('/', (req: Request, res: Response) => {
     completedByCourse.set(c.id, new Set(completed));
   }
 
+  const seen = new Set<string>();
+
+  function findLessonMeta(courseId: string, lessonId: string): { course: any; lesson: any } | null {
+    const course = allCourses.find((c: any) => c.id === courseId);
+    if (!course) return null;
+    for (const m of course.modules || []) {
+      for (const l of m.lessons || []) {
+        if (l.id === lessonId) return { course, lesson: l };
+      }
+    }
+    return null;
+  }
+
+  // 0) Reviews due (spaced repetition)
+  try {
+    const due = dbMastery.listDue(userId, new Date().toISOString(), limit);
+    for (const row of due) {
+      const courseId = String(row.courseId || '');
+      const lessonId = String(row.lessonId || '');
+      if (!courseId || !lessonId) continue;
+
+      const completedSet = completedByCourse.get(courseId) || new Set<string>();
+      if (completedSet.has(lessonId)) continue;
+
+      const meta = findLessonMeta(courseId, lessonId);
+      if (!meta) continue;
+
+      const key = `${courseId}:${lessonId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      out.push({
+        courseId,
+        courseTitle: meta.course.title,
+        lessonId,
+        lessonTitle: meta.lesson.title,
+        estimatedTime: minutesFromEstimatedTime(meta.lesson.estimatedTime),
+        reasonTag: 'review',
+        reason: 'Review: scheduled by spaced repetition',
+      });
+      if (out.length >= limit) break;
+    }
+  } catch {
+    // best effort
+  }
+
   // 1) Continue learning (one per course)
   for (const c of allCourses) {
     const completedSet = completedByCourse.get(c.id) || new Set<string>();
@@ -60,6 +106,10 @@ router.get('/', (req: Request, res: Response) => {
       if (next) break;
     }
     if (next) {
+      const key = `${c.id}:${next.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
       out.push({
         courseId: c.id,
         courseTitle: c.title,

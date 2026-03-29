@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { dbEvents, db } from '../db.js';
+import { dbEvents, dbMastery, db } from '../db.js';
 import { validateBody } from '../validation.js';
 
 const router = Router();
@@ -33,7 +33,27 @@ router.post('/', validateBody(createEventSchema), (req: Request, res: Response) 
     }
 
     const { type, courseId, lessonId, meta } = req.body;
+
+    // Persist raw event (best-effort)
     dbEvents.add(userId, { type, courseId, lessonId, meta: meta || {}, origin });
+
+    // Iter138: derive mastery updates from certain events.
+    // Mastery is a first-class store; event log remains a best-effort audit trail.
+    try {
+      if (type === 'lesson.completed' && courseId && lessonId) {
+        dbMastery.applyLessonCompleted(userId, courseId, lessonId);
+      }
+      if (type === 'quiz.submitted' && courseId && lessonId) {
+        const scoreRaw = (meta as any)?.score;
+        const score = Number.isFinite(Number(scoreRaw)) ? Number(scoreRaw) : null;
+        const gaps = Array.isArray((meta as any)?.gaps)
+          ? ((meta as any).gaps as any[]).map((g) => String(g)).filter(Boolean)
+          : [];
+        dbMastery.applyQuizSubmitted(userId, courseId, lessonId, score, gaps);
+      }
+    } catch {
+      // best-effort
+    }
   } catch {
     // best-effort
   }
