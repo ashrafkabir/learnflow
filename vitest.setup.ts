@@ -4,6 +4,8 @@
    Note: This file must be safe for BOTH jsdom and node test environments.
 */
 
+import { afterEach } from 'vitest';
+
 // Ensure test-mode flags are set for any shared packages that rely on NODE_ENV/VITEST.
 process.env.NODE_ENV = 'test';
 process.env.VITEST = process.env.VITEST || '1';
@@ -81,11 +83,17 @@ function shouldAllow(args: unknown[]): boolean {
   return ALLOWLIST_SUBSTRINGS.some((s) => msg.includes(s));
 }
 
-// Silence stdout spam; Vitest can throw EnvironmentTeardownError if rpc is closing
-// while handling pending user console logs.
+// Silence stdout spam; reduces flakiness/noise in test runs.
 console.log = (..._args: unknown[]) => {
   return;
 };
+
+// Drain console log queue at end-of-test to avoid Vitest EnvironmentTeardownError
+// (Closing rpc while "onUserConsoleLog" was pending).
+// This is a pragmatic harness stabilizer; it doesn't change product behavior.
+afterEach(async () => {
+  await new Promise((r) => setTimeout(r, 0));
+});
 
 console.error = (...args: unknown[]) => {
   if (shouldAllow(args)) return;
