@@ -6,7 +6,8 @@ export default defineConfig({
   expect: { timeout: 10000 },
   // Ensure the app+API are running for E2E; this keeps tests deterministic in CI/local.
   webServer: {
-    command: 'VITE_DEV_AUTH_BYPASS=1 npm run dev',
+    // Client bypasses login UI; API must also allow unauthenticated calls.
+    command: 'VITE_DEV_AUTH_BYPASS=1 LEARNFLOW_DEV_AUTH=1 npm run dev',
     url: 'http://127.0.0.1:3001',
     reuseExistingServer: true,
     timeout: 120_000,

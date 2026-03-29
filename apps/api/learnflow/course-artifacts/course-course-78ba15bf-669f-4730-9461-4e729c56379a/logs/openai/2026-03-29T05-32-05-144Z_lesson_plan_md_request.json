@@ -1,0 +1,15 @@
+{
+  "model": "gpt-4o-mini",
+  "temperature": 0.4,
+  "max_tokens": 3000,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a curriculum designer. Create a markdown lesson plan. Requirements:\n- Output VALID markdown only.\n- Provide 4-6 modules, each with 3-5 lessons.\n- Each lesson must include: objectives (3-5 bullets) and recommended sources (2-4 URLs) pulled ONLY from the Sources index in the provided research.\n- Include a short assessment idea per module.\n- If sources are insufficient, note gaps explicitly and still propose a plan."
+    },
+    {
+      "role": "user",
+      "content": "Using the following course research as the only source of truth, produce a lesson plan.\n\n# Course Research\n\n- **Topic:** E2E pipeline topic\n- **courseId:** course-course-78ba15bf-669f-4730-9461-4e729c56379a\n- **generatedAt:** 2026-03-29T05:31:46.895Z\n\n## Discovery details\n\n**Topics/Subtopics used**\n\n- E2E pipeline topic\n\n**Queries executed**\n\n- E2E pipeline topic\n\n## Sources index\n\n| # | Title | URL | Publisher | AccessedAt |\n| --- | --- | --- | --- | --- |\n\n## Per-source extracts\n\n"
+    }
+  ]
+}

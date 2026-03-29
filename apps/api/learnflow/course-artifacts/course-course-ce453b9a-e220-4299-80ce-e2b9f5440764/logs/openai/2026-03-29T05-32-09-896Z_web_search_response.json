@@ -1,0 +1,181 @@
+{
+  "id": "resp_0c730b1a5ff0066e0069c8b95264548195bdc2f4e0025ab84f",
+  "object": "response",
+  "created_at": 1774762322,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1774762329,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4.1-mini-2025-04-14",
+  "output": [
+    {
+      "id": "ws_0c730b1a5ff0066e0069c8b952e860819595d79f01e71ee59b",
+      "type": "web_search_call",
+      "status": "completed",
+      "action": {
+        "type": "search",
+        "queries": [
+          "E2E pipeline latest authoritative sources 2024"
+        ],
+        "query": "E2E pipeline latest authoritative sources 2024"
+      }
+    },
+    {
+      "id": "msg_0c730b1a5ff0066e0069c8b953b0348195b2666b8698ed7f36",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "end_index": 599,
+              "start_index": 500,
+              "title": "End-to-End Testing Best Practices | IBM",
+              "url": "https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 922,
+              "start_index": 835,
+              "title": "Optimizing Our E2E Pipeline | Engineering at Slack",
+              "url": "https://slack.engineering/speedup-e2e-testing/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1245,
+              "start_index": 1166,
+              "title": "Revitalizing Cypress Pipeline and Enhancing E2E Testing Confidence: This Dot Labs Expert Solutions for a Leading Financial Software Provider - This Dot Labs",
+              "url": "https://www.thisdot.co/case-study/cypress-e2e?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1574,
+              "start_index": 1498,
+              "title": "End-to-End Testing: A Complete Guide for 2026 | Pie",
+              "url": "https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2019,
+              "start_index": 1864,
+              "title": "Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education",
+              "url": "https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2381,
+              "start_index": 2286,
+              "title": "E2E test of a simple Compliance pipeline (#4016) · Issues · GitLab.org / Developer Experience / testcases · GitLab",
+              "url": "https://gitlab.com/gitlab-org/quality/testcases/-/issues/4016?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2661,
+              "start_index": 2594,
+              "title": "Case studies | TestCafe",
+              "url": "https://testcafe.io/case-studies?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3025,
+              "start_index": 2898,
+              "title": "E2E DevOps Pipeline with GitLab - IBM Mediacenter",
+              "url": "https://mediacenter.ibm.com/media/E2E%2BDevOps%2BPipeline%2Bwith%2BGitLab/1_gds3ux8t?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3383,
+              "start_index": 3291,
+              "title": "Case Study and e2e - Supply Chain Brief",
+              "url": "https://www.supplychainbrief.com/case-study/e2e/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3658,
+              "start_index": 3599,
+              "title": "The e2e Difference | e2e",
+              "url": "https://www.e2e.nz/case-study?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3969,
+              "start_index": 3884,
+              "title": "Case Studies - E2E SCE | E2E SCE",
+              "url": "https://e2esupplychain.co.uk/case-studies?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 4297,
+              "start_index": 4224,
+              "title": "Case studies",
+              "url": "https://www.e2ecloudit.com/projects?utm_source=openai"
+            }
+          ],
+          "logprobs": [],
+          "text": "End-to-End (E2E) testing is a critical component in modern software development, ensuring that applications function as intended from start to finish. Here are several authoritative and recent sources that provide valuable insights into E2E testing practices:\n\n1. **IBM's End-to-End Testing Best Practices**: IBM outlines essential strategies for E2E testing, emphasizing the importance of understanding user expectations and integrating continuous testing procedures to enhance application quality. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n2. **Slack's E2E Pipeline Optimization**: Slack's engineering team shares their experience in optimizing E2E testing pipelines, detailing how they reduced build times and improved efficiency by addressing unnecessary frontend builds. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n3. **This Dot Labs' Cypress Testing Case Study**: This Dot Labs demonstrates how they revitalized and modernized a suite of Cypress tests for a financial software provider, achieving faster pipeline runs and increased developer productivity. ([thisdot.co](https://www.thisdot.co/case-study/cypress-e2e?utm_source=openai))\n\n4. **Pie's End-to-End Testing Guide**: Pie provides a comprehensive guide on E2E testing, highlighting best practices such as focusing on critical user paths, maintaining test independence, and using stable selectors to ensure reliable test outcomes. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n5. **BMR Education's Automated Testing Strategies**: BMR Education discusses strategies for integrating unit, integration, and E2E tests into Continuous Integration (CI) pipelines, emphasizing the importance of dedicated environments and quality gates to maintain high testing standards. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n6. **GitLab's E2E Test of a Compliance Pipeline**: GitLab provides a detailed example of implementing an E2E test within a compliance pipeline, illustrating the steps to verify that a compliance pipeline runs correctly in a project assigned a compliance framework. ([gitlab.com](https://gitlab.com/gitlab-org/quality/testcases/-/issues/4016?utm_source=openai))\n\n7. **TestCafe's Case Studies**: TestCafe showcases how their testing framework has been utilized by various teams to enhance E2E testing reliability and confidence, including examples from Neos CMS and Medinas. ([testcafe.io](https://testcafe.io/case-studies?utm_source=openai))\n\n8. **E2E DevOps Pipeline with GitLab by IBM**: IBM demonstrates the implementation of an E2E DevOps pipeline using GitLab, highlighting the integration of various tools to create an automated CI/CD pipeline for mainframe applications. ([mediacenter.ibm.com](https://mediacenter.ibm.com/media/E2E%2BDevOps%2BPipeline%2Bwith%2BGitLab/1_gds3ux8t?utm_source=openai))\n\n9. **Supply Chain Brief's E2E Case Study**: Supply Chain Brief presents a case study on how technology enables continuous innovation, focusing on Unilever's E2E exception-based autonomous planning system that automates decisions from demand forecasts to delivery. ([supplychainbrief.com](https://www.supplychainbrief.com/case-study/e2e/?utm_source=openai))\n\n10. **e2e's Case Studies**: e2e highlights several success stories where their solutions have streamlined operations and enhanced efficiency for businesses, including South Island Electrical and Rainer Irrigation. ([e2e.nz](https://www.e2e.nz/case-study?utm_source=openai))\n\n11. **E2E SCE's Supply Chain Re-Engineering**: E2E SCE discusses a project where they re-engineered a global FMCG's European supply chain, simplifying processes and improving business performance across various departments. ([e2esupplychain.co.uk](https://e2esupplychain.co.uk/case-studies?utm_source=openai))\n\n12. **E2E Solution Providers' DevOps and Agility Project**: E2E Solution Providers shares an innovative solution involving the setup of CI/CD and microservices architecture, demonstrating how strategic support can lead to significant business progress. ([e2ecloudit.com](https://www.e2ecloudit.com/projects?utm_source=openai))\n\nThese resources offer a blend of theoretical insights and practical applications, providing a comprehensive understanding of E2E testing and its role in enhancing software quality and operational efficiency. "
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 1,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "type": "web_search",
+      "search_context_size": "medium",
+      "user_location": {
+        "type": "approximate",
+        "city": null,
+        "country": "US",
+        "region": null,
+        "timezone": null
+      }
+    }
+  ],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 8174,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 1031,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 9205
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "End-to-End (E2E) testing is a critical component in modern software development, ensuring that applications function as intended from start to finish. Here are several authoritative and recent sources that provide valuable insights into E2E testing practices:\n\n1. **IBM's End-to-End Testing Best Practices**: IBM outlines essential strategies for E2E testing, emphasizing the importance of understanding user expectations and integrating continuous testing procedures to enhance application quality. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n2. **Slack's E2E Pipeline Optimization**: Slack's engineering team shares their experience in optimizing E2E testing pipelines, detailing how they reduced build times and improved efficiency by addressing unnecessary frontend builds. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n3. **This Dot Labs' Cypress Testing Case Study**: This Dot Labs demonstrates how they revitalized and modernized a suite of Cypress tests for a financial software provider, achieving faster pipeline runs and increased developer productivity. ([thisdot.co](https://www.thisdot.co/case-study/cypress-e2e?utm_source=openai))\n\n4. **Pie's End-to-End Testing Guide**: Pie provides a comprehensive guide on E2E testing, highlighting best practices such as focusing on critical user paths, maintaining test independence, and using stable selectors to ensure reliable test outcomes. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n5. **BMR Education's Automated Testing Strategies**: BMR Education discusses strategies for integrating unit, integration, and E2E tests into Continuous Integration (CI) pipelines, emphasizing the importance of dedicated environments and quality gates to maintain high testing standards. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n6. **GitLab's E2E Test of a Compliance Pipeline**: GitLab provides a detailed example of implementing an E2E test within a compliance pipeline, illustrating the steps to verify that a compliance pipeline runs correctly in a project assigned a compliance framework. ([gitlab.com](https://gitlab.com/gitlab-org/quality/testcases/-/issues/4016?utm_source=openai))\n\n7. **TestCafe's Case Studies**: TestCafe showcases how their testing framework has been utilized by various teams to enhance E2E testing reliability and confidence, including examples from Neos CMS and Medinas. ([testcafe.io](https://testcafe.io/case-studies?utm_source=openai))\n\n8. **E2E DevOps Pipeline with GitLab by IBM**: IBM demonstrates the implementation of an E2E DevOps pipeline using GitLab, highlighting the integration of various tools to create an automated CI/CD pipeline for mainframe applications. ([mediacenter.ibm.com](https://mediacenter.ibm.com/media/E2E%2BDevOps%2BPipeline%2Bwith%2BGitLab/1_gds3ux8t?utm_source=openai))\n\n9. **Supply Chain Brief's E2E Case Study**: Supply Chain Brief presents a case study on how technology enables continuous innovation, focusing on Unilever's E2E exception-based autonomous planning system that automates decisions from demand forecasts to delivery. ([supplychainbrief.com](https://www.supplychainbrief.com/case-study/e2e/?utm_source=openai))\n\n10. **e2e's Case Studies**: e2e highlights several success stories where their solutions have streamlined operations and enhanced efficiency for businesses, including South Island Electrical and Rainer Irrigation. ([e2e.nz](https://www.e2e.nz/case-study?utm_source=openai))\n\n11. **E2E SCE's Supply Chain Re-Engineering**: E2E SCE discusses a project where they re-engineered a global FMCG's European supply chain, simplifying processes and improving business performance across various departments. ([e2esupplychain.co.uk](https://e2esupplychain.co.uk/case-studies?utm_source=openai))\n\n12. **E2E Solution Providers' DevOps and Agility Project**: E2E Solution Providers shares an innovative solution involving the setup of CI/CD and microservices architecture, demonstrating how strategic support can lead to significant business progress. ([e2ecloudit.com](https://www.e2ecloudit.com/projects?utm_source=openai))\n\nThese resources offer a blend of theoretical insights and practical applications, providing a comprehensive understanding of E2E testing and its role in enhancing software quality and operational efficiency. "
+}

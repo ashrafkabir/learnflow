@@ -1,0 +1,181 @@
+{
+  "id": "resp_08cf2b20161ca6380069c8b7c0b580819688e468636c8a333c",
+  "object": "response",
+  "created_at": 1774761920,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1774761927,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4.1-mini-2025-04-14",
+  "output": [
+    {
+      "id": "ws_08cf2b20161ca6380069c8b7c1314c8196999bde7d492f4bdb",
+      "type": "web_search_call",
+      "status": "completed",
+      "action": {
+        "type": "search",
+        "queries": [
+          "E2E pipeline"
+        ],
+        "query": "E2E pipeline"
+      }
+    },
+    {
+      "id": "msg_08cf2b20161ca6380069c8b7c1d97c8196871a7a8fe4f99bff",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "end_index": 584,
+              "start_index": 485,
+              "title": "End-to-End Testing Best Practices | IBM",
+              "url": "https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 896,
+              "start_index": 820,
+              "title": "End-to-End Testing: A Complete Guide for 2026 | Pie",
+              "url": "https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1202,
+              "start_index": 1115,
+              "title": "Optimizing Our E2E Pipeline | Engineering at Slack",
+              "url": "https://slack.engineering/speedup-e2e-testing/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1522,
+              "start_index": 1404,
+              "title": "End-to-end test pipelines | GitLab",
+              "url": "https://gitlab.cn/docs/en/ee/development/testing_guide/end_to_end/test_pipelines.html?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1896,
+              "start_index": 1765,
+              "title": "End-to-end Pipeline Monitoring | The GitLab Handbook",
+              "url": "https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2317,
+              "start_index": 2162,
+              "title": "Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education",
+              "url": "https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2662,
+              "start_index": 2554,
+              "title": "10 CI/CD Pipeline Best Practices for High-Performing Teams",
+              "url": "https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2937,
+              "start_index": 2856,
+              "title": "ML E2E Pipeline",
+              "url": "https://www.aliz.ai/en/blueprints/ml-e2-e-pipeline?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3262,
+              "start_index": 3166,
+              "title": "How to Develop Efficient E2E Pipelines - HogoNext",
+              "url": "https://hogonext.com/how-to-develop-efficient-e2e-pipelines/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3610,
+              "start_index": 3526,
+              "title": "GitHub - airscholar/e2e-data-engineering: An end-to-end data engineering pipeline that orchestrates data ingestion, processing, and storage using Apache Airflow, Python, Apache Kafka, Apache Zookeeper, Apache Spark, and Cassandra. All components are containerized with Docker for easy deployment and scalability.",
+              "url": "https://github.com/airscholar/e2e-data-engineering?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 4096,
+              "start_index": 3924,
+              "title": "Machine Learning Frameworks Interoperability, Part 3: Zero-Copy in Action using an E2E Pipeline | NVIDIA Technical Blog",
+              "url": "https://developer.nvidia.com/blog/machine-learning-frameworks-interoperability-part-3-zero-copy-in-action-using-an-e2e-pipeline/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 4453,
+              "start_index": 4357,
+              "title": "GitHub - microsoft/dstoolkit-e2e-presidio-evaluation: End-to-end Presidio evaluation toolkit uses Presidio, hugging face transformers, Azure Language Service, AzureML, and GitHub Action pipeline to provide a streamlined, end-to-end solution for assessing different PII detection frameworks/ models.",
+              "url": "https://github.com/microsoft/dstoolkit-e2e-presidio-evaluation?utm_source=openai"
+            }
+          ],
+          "logprobs": [],
+          "text": "End-to-end (E2E) pipelines are crucial in modern software development, ensuring that applications function seamlessly from start to finish. Below are authoritative and recent sources that provide valuable insights into E2E pipelines:\n\n1. **End-to-End Testing Best Practices | IBM**\n   This article outlines best practices for E2E testing, emphasizing the importance of understanding user expectations, designing comprehensive test cases, and integrating continuous testing procedures. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n2. **End-to-End Testing: A Complete Guide for 2026 | Pie**\n   Pie offers a comprehensive guide on E2E testing, focusing on testing critical paths, maintaining test independence, and using stable selectors to enhance test reliability. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n3. **Optimizing Our E2E Pipeline | Engineering at Slack**\n   Slack's engineering team shares their experience in optimizing E2E testing pipelines, highlighting strategies to reduce build times and improve efficiency. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n4. **End-to-End Test Pipelines | GitLab**\n   GitLab provides an in-depth look at E2E test pipelines, discussing their architecture, setup, and monitoring practices to ensure robust testing processes. ([gitlab.cn](https://gitlab.cn/docs/en/ee/development/testing_guide/end_to_end/test_pipelines.html?utm_source=openai))\n\n5. **End-to-End Pipeline Monitoring | The GitLab Handbook**\n   This GitLab handbook section details monitoring tools and practices for E2E pipelines, emphasizing the importance of regular monitoring and reporting for continuous improvement. ([handbook.gitlab.com](https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai))\n\n6. **Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education**\n   BMR Education discusses automated testing strategies within CI pipelines, covering best practices for E2E testing, including dedicated environments and quality gates. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n7. **10 CI/CD Pipeline Best Practices for High-Performing Teams | Faberwork**\n   Faberwork outlines best practices for CI/CD pipelines, emphasizing the role of automated testing at every stage to ensure high-quality software delivery. ([faberwork.com](https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai))\n\n8. **ML E2E Pipeline | Aliz**\n   Aliz presents a blueprint for building end-to-end machine learning pipelines, focusing on streamlining data science workflows and integrating CI/CD processes. ([aliz.ai](https://www.aliz.ai/en/blueprints/ml-e2-e-pipeline?utm_source=openai))\n\n9. **How to Develop Efficient E2E Pipelines | HogoNext**\n   HogoNext discusses principles for developing efficient E2E pipelines, including atomic and idempotent operations, fast feedback loops, and deterministic environments. ([hogonext.com](https://hogonext.com/how-to-develop-efficient-e2e-pipelines/?utm_source=openai))\n\n10. **GitHub - airscholar/e2e-data-engineering**\n    This GitHub repository provides an end-to-end data engineering pipeline that orchestrates data ingestion, processing, and storage using various technologies, serving as a practical example of an E2E pipeline. ([github.com](https://github.com/airscholar/e2e-data-engineering?utm_source=openai))\n\n11. **Machine Learning Frameworks Interoperability, Part 3: Zero-Copy in Action using an E2E Pipeline | NVIDIA Technical Blog**\n    NVIDIA's technical blog demonstrates the interoperability of machine learning frameworks through an E2E pipeline, showcasing practical applications and performance considerations. ([developer.nvidia.com](https://developer.nvidia.com/blog/machine-learning-frameworks-interoperability-part-3-zero-copy-in-action-using-an-e2e-pipeline/?utm_source=openai))\n\n12. **GitHub - microsoft/dstoolkit-e2e-presidio-evaluation**\n    This GitHub repository offers an end-to-end evaluation toolkit for assessing different PII detection frameworks, providing a streamlined solution for evaluating privacy-preserving technologies. ([github.com](https://github.com/microsoft/dstoolkit-e2e-presidio-evaluation?utm_source=openai))\n\nThese resources offer a comprehensive understanding of E2E pipelines, covering best practices, optimization strategies, and practical implementations across various domains. "
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 1,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "type": "web_search",
+      "search_context_size": "medium",
+      "user_location": {
+        "type": "approximate",
+        "city": null,
+        "country": "US",
+        "region": null,
+        "timezone": null
+      }
+    }
+  ],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 8174,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 1042,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 9216
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "End-to-end (E2E) pipelines are crucial in modern software development, ensuring that applications function seamlessly from start to finish. Below are authoritative and recent sources that provide valuable insights into E2E pipelines:\n\n1. **End-to-End Testing Best Practices | IBM**\n   This article outlines best practices for E2E testing, emphasizing the importance of understanding user expectations, designing comprehensive test cases, and integrating continuous testing procedures. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n2. **End-to-End Testing: A Complete Guide for 2026 | Pie**\n   Pie offers a comprehensive guide on E2E testing, focusing on testing critical paths, maintaining test independence, and using stable selectors to enhance test reliability. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n3. **Optimizing Our E2E Pipeline | Engineering at Slack**\n   Slack's engineering team shares their experience in optimizing E2E testing pipelines, highlighting strategies to reduce build times and improve efficiency. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n4. **End-to-End Test Pipelines | GitLab**\n   GitLab provides an in-depth look at E2E test pipelines, discussing their architecture, setup, and monitoring practices to ensure robust testing processes. ([gitlab.cn](https://gitlab.cn/docs/en/ee/development/testing_guide/end_to_end/test_pipelines.html?utm_source=openai))\n\n5. **End-to-End Pipeline Monitoring | The GitLab Handbook**\n   This GitLab handbook section details monitoring tools and practices for E2E pipelines, emphasizing the importance of regular monitoring and reporting for continuous improvement. ([handbook.gitlab.com](https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai))\n\n6. **Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education**\n   BMR Education discusses automated testing strategies within CI pipelines, covering best practices for E2E testing, including dedicated environments and quality gates. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n7. **10 CI/CD Pipeline Best Practices for High-Performing Teams | Faberwork**\n   Faberwork outlines best practices for CI/CD pipelines, emphasizing the role of automated testing at every stage to ensure high-quality software delivery. ([faberwork.com](https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai))\n\n8. **ML E2E Pipeline | Aliz**\n   Aliz presents a blueprint for building end-to-end machine learning pipelines, focusing on streamlining data science workflows and integrating CI/CD processes. ([aliz.ai](https://www.aliz.ai/en/blueprints/ml-e2-e-pipeline?utm_source=openai))\n\n9. **How to Develop Efficient E2E Pipelines | HogoNext**\n   HogoNext discusses principles for developing efficient E2E pipelines, including atomic and idempotent operations, fast feedback loops, and deterministic environments. ([hogonext.com](https://hogonext.com/how-to-develop-efficient-e2e-pipelines/?utm_source=openai))\n\n10. **GitHub - airscholar/e2e-data-engineering**\n    This GitHub repository provides an end-to-end data engineering pipeline that orchestrates data ingestion, processing, and storage using various technologies, serving as a practical example of an E2E pipeline. ([github.com](https://github.com/airscholar/e2e-data-engineering?utm_source=openai))\n\n11. **Machine Learning Frameworks Interoperability, Part 3: Zero-Copy in Action using an E2E Pipeline | NVIDIA Technical Blog**\n    NVIDIA's technical blog demonstrates the interoperability of machine learning frameworks through an E2E pipeline, showcasing practical applications and performance considerations. ([developer.nvidia.com](https://developer.nvidia.com/blog/machine-learning-frameworks-interoperability-part-3-zero-copy-in-action-using-an-e2e-pipeline/?utm_source=openai))\n\n12. **GitHub - microsoft/dstoolkit-e2e-presidio-evaluation**\n    This GitHub repository offers an end-to-end evaluation toolkit for assessing different PII detection frameworks, providing a streamlined solution for evaluating privacy-preserving technologies. ([github.com](https://github.com/microsoft/dstoolkit-e2e-presidio-evaluation?utm_source=openai))\n\nThese resources offer a comprehensive understanding of E2E pipelines, covering best practices, optimization strategies, and practical implementations across various domains. "
+}

@@ -170,22 +170,23 @@ function isNotFound(page) {
   await ctx.close();
 }
 
-// 2) Authed route screenshots (force token + onboarding complete)
+// 2) Authed route screenshots (dev auth bypass + onboarding complete)
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   await ctx.addInitScript((base) => {
-    localStorage.setItem('learnflow-token', 'dev');
+    // Prefer bypass mode over fake tokens.
+    // (Fake tokens can trigger auth middleware failures and redirect loops.)
+    globalThis.__LEARNFLOW_ENV__ = {
+      ...(globalThis.__LEARNFLOW_ENV__ || {}),
+      VITE_DEV_AUTH_BYPASS: '1',
+      PLAYWRIGHT_BASE_URL: base,
+    };
+
     // Iter86: tag harness-origin so API can suppress durable data/usage writes.
     localStorage.setItem('learnflow-origin', 'harness');
     localStorage.setItem('learnflow-onboarding-complete', 'true');
     // Prevent the dashboard tour overlay from blocking clicks
     localStorage.setItem('onboarding-tour-complete', 'true');
-
-    // Allow the client bundle to read the Playwright base URL without `process.env`.
-    globalThis.__LEARNFLOW_ENV__ = {
-      ...(globalThis.__LEARNFLOW_ENV__ || {}),
-      PLAYWRIGHT_BASE_URL: base,
-    };
   }, BASE);
 
   for (const [path, name] of AUTHED_PAGES) {

@@ -1,0 +1,9 @@
+{
+  "model": "gpt-4.1-mini",
+  "tools": [
+    {
+      "type": "web_search"
+    }
+  ],
+  "input": "Find high-quality web sources about: Rust programming Borrowing and References in Practice. Prefer authoritative and recent sources. Return up to 8 results."
+}

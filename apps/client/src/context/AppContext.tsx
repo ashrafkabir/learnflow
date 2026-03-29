@@ -416,6 +416,16 @@ const API = '/api/v1';
 
 // Token refresh — Spec §11.1 WS-02
 async function refreshTokenIfNeeded(): Promise<void> {
+  // In dev auth bypass mode (Playwright, local demos), do not attempt refresh.
+  // It causes confusing 401 redirects when there is no token.
+  const runtimeEnv =
+    (globalThis as any)?.__LEARNFLOW_ENV__ &&
+    typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+      ? (globalThis as any).__LEARNFLOW_ENV__
+      : null;
+  const devAuthBypass = runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1';
+  if (devAuthBypass) return;
+
   const token = localStorage.getItem('learnflow-token');
   if (!token) return;
   try {
@@ -449,8 +459,19 @@ async function refreshTokenIfNeeded(): Promise<void> {
 export function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem('learnflow-token');
   const origin = localStorage.getItem('learnflow-origin');
+
+  const runtimeEnv =
+    (globalThis as any)?.__LEARNFLOW_ENV__ &&
+    typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+      ? (globalThis as any).__LEARNFLOW_ENV__
+      : null;
+  const devAuthBypass = runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1';
+
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  // In dev bypass, avoid injecting Authorization header (it can trigger server auth flows).
+  if (!devAuthBypass && token) headers['Authorization'] = `Bearer ${token}`;
+
   // Iter86: propagate origin tagging to the API so harness/screenshot runs can be excluded.
   if (origin) headers['x-learnflow-origin'] = origin;
   return headers;
@@ -521,11 +542,22 @@ export async function apiPost(path: string, body: unknown) {
       const err = await res.json().catch(() => ({ message: 'Request failed' }));
       if (res.status === 401) {
         console.warn('[LearnFlow] 401 — unauthorized');
+
+        const runtimeEnv =
+          (globalThis as any)?.__LEARNFLOW_ENV__ &&
+          typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+            ? (globalThis as any).__LEARNFLOW_ENV__
+            : null;
+        const devAuthBypass = runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1';
+
         localStorage.removeItem('learnflow-token');
         localStorage.removeItem('learnflow-refresh');
         localStorage.removeItem('learnflow-user');
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-          window.location.href = '/login';
+
+        if (!devAuthBypass) {
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.href = '/login';
+          }
         }
       }
       throw new Error(toActionableHttpErrorMessage(res.status, err, res));
@@ -546,11 +578,22 @@ export async function apiDelete(path: string) {
       const err = await res.json().catch(() => ({ message: 'Request failed' }));
       if (res.status === 401) {
         console.warn('[LearnFlow] 401 — unauthorized');
+
+        const runtimeEnv =
+          (globalThis as any)?.__LEARNFLOW_ENV__ &&
+          typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+            ? (globalThis as any).__LEARNFLOW_ENV__
+            : null;
+        const devAuthBypass = runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1';
+
         localStorage.removeItem('learnflow-token');
         localStorage.removeItem('learnflow-refresh');
         localStorage.removeItem('learnflow-user');
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-          window.location.href = '/login';
+
+        if (!devAuthBypass) {
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.href = '/login';
+          }
         }
       }
       throw new Error(toActionableHttpErrorMessage(res.status, err, res));
@@ -572,11 +615,22 @@ export async function apiGet(path: string) {
       const err = await res.json().catch(() => ({ message: 'Request failed' }));
       if (res.status === 401) {
         console.warn('[LearnFlow] 401 — unauthorized');
+
+        const runtimeEnv =
+          (globalThis as any)?.__LEARNFLOW_ENV__ &&
+          typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+            ? (globalThis as any).__LEARNFLOW_ENV__
+            : null;
+        const devAuthBypass = runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1';
+
         localStorage.removeItem('learnflow-token');
         localStorage.removeItem('learnflow-refresh');
         localStorage.removeItem('learnflow-user');
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-          window.location.href = '/login';
+
+        if (!devAuthBypass) {
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.href = '/login';
+          }
         }
       }
       throw new Error(toActionableHttpErrorMessage(res.status, err, res));
@@ -600,11 +654,22 @@ export async function apiPut(path: string, body: unknown) {
       const err = await res.json().catch(() => ({ message: 'Request failed' }));
       if (res.status === 401) {
         console.warn('[LearnFlow] 401 — unauthorized');
+
+        const runtimeEnv =
+          (globalThis as any)?.__LEARNFLOW_ENV__ &&
+          typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+            ? (globalThis as any).__LEARNFLOW_ENV__
+            : null;
+        const devAuthBypass = runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1';
+
         localStorage.removeItem('learnflow-token');
         localStorage.removeItem('learnflow-refresh');
         localStorage.removeItem('learnflow-user');
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-          window.location.href = '/login';
+
+        if (!devAuthBypass) {
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+            window.location.href = '/login';
+          }
         }
       }
       throw new Error(toActionableHttpErrorMessage(res.status, err, res));

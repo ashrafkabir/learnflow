@@ -1,0 +1,13 @@
+{
+  "topic": "E2E pipeline topic",
+  "sourcesMissingReason": "openai_web_search_returned_0_results",
+  "topics": [
+    "E2E pipeline topic"
+  ],
+  "queries": [
+    "E2E pipeline topic"
+  ],
+  "parsedResultsCount": 0,
+  "rawCount": 0,
+  "sources": []
+}

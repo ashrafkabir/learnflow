@@ -33,20 +33,64 @@ async function snap(page: any, outRepo: string, outOd: string, name: string, ful
 
 function initAuth() {
   return () => {
-    // Bypass auth reliably in E2E: set the runtime env flag only.
-    // Note: setting a fake token can trigger client-side refresh/401 flows that
-    // remove it and redirect to /login.
+    // E2E uses a real JWT (created via /auth/register) so API requests can be authenticated.
+    // Keep onboarding complete to avoid overlays.
     (window as any).__LEARNFLOW_E2E__ = true;
-    (window as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+    (window as any).__LEARNFLOW_ENV__ = { ...(window as any).__LEARNFLOW_ENV__ };
     localStorage.setItem('learnflow-onboarding-complete', 'true');
+    localStorage.setItem('onboarding-tour-complete', 'true');
   };
 }
 
 test.describe('Iter134 builder screenshots', () => {
+  test.beforeEach(async ({ page }) => {
+    page.on('console', (msg) => {
+      console.log(`[browser:${msg.type()}] ${msg.text()}`);
+    });
+    page.on('pageerror', (err) => {
+      console.log(`[pageerror] ${String(err)}`);
+    });
+  });
   test('desktop: pipeline detail + logs', async ({ page }) => {
     await page.addInitScript(initAuth());
 
-    await page.goto('/pipeline/test-id');
+    // Create a real pipeline so the detail screen can render deterministically.
+    // Note: We must navigate before using relative fetch() URLs.
+    await page.goto('/');
+
+    const { token, pipelineId } = await page.evaluate(async () => {
+      const res = await fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: `e2e-${Date.now()}@learnflow.dev`,
+          password: 'password123',
+          displayName: 'E2E',
+        }),
+      });
+      const data = await res.json();
+      const token = data.accessToken as string;
+
+      const p = await fetch('/api/v1/pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ topic: 'E2E pipeline topic' }),
+      });
+      const pdata = await p.json();
+      return { token, pipelineId: pdata.pipelineId as string };
+    });
+
+    // The pipeline detail polls the API; it needs a valid JWT.
+    // Must be set BEFORE navigating to the route.
+    await page.evaluate((t) => {
+      try {
+        localStorage.setItem('learnflow-token', t);
+      } catch {
+        /* ignore */
+      }
+    }, token);
+
+    await page.goto(`/pipeline/${pipelineId}`);
     await expect(page.locator('[data-screen="pipeline-detail"]')).toBeVisible({ timeout: 15000 });
     await snap(page, OUT_REPO_DESKTOP, OUT_OD_DESKTOP, '01-pipeline-detail');
 
@@ -70,7 +114,43 @@ test.describe('Iter134 builder screenshots', () => {
     const page = await context.newPage();
     await page.addInitScript(initAuth());
 
-    await page.goto('/pipeline/test-id');
+    // Create a real pipeline so the detail screen can render deterministically.
+    // Note: We must navigate before using relative fetch() URLs.
+    await page.goto('/');
+
+    const { token, pipelineId } = await page.evaluate(async () => {
+      const res = await fetch('/api/v1/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: `e2e-${Date.now()}@learnflow.dev`,
+          password: 'password123',
+          displayName: 'E2E',
+        }),
+      });
+      const data = await res.json();
+      const token = data.accessToken as string;
+
+      const p = await fetch('/api/v1/pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ topic: 'E2E pipeline topic' }),
+      });
+      const pdata = await p.json();
+      return { token, pipelineId: pdata.pipelineId as string };
+    });
+
+    // The pipeline detail polls the API; it needs a valid JWT.
+    // Must be set BEFORE navigating to the route.
+    await page.evaluate((t) => {
+      try {
+        localStorage.setItem('learnflow-token', t);
+      } catch {
+        /* ignore */
+      }
+    }, token);
+
+    await page.goto(`/pipeline/${pipelineId}`);
     await expect(page.locator('[data-screen="pipeline-detail"]')).toBeVisible({ timeout: 15000 });
     await snap(page, OUT_REPO_MOBILE, OUT_OD_MOBILE, '01-pipeline-detail');
 

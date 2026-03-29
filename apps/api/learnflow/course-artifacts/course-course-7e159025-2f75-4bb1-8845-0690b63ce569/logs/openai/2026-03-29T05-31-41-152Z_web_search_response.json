@@ -1,0 +1,181 @@
+{
+  "id": "resp_0c746970cdbe36b30069c8b93745008193ab0fc3d98685816f",
+  "object": "response",
+  "created_at": 1774762295,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1774762300,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4.1-mini-2025-04-14",
+  "output": [
+    {
+      "id": "ws_0c746970cdbe36b30069c8b937b27481939d0a18af9182fcca",
+      "type": "web_search_call",
+      "status": "completed",
+      "action": {
+        "type": "search",
+        "queries": [
+          "Rust programming high-quality authoritative recent sources"
+        ],
+        "query": "Rust programming high-quality authoritative recent sources"
+      }
+    },
+    {
+      "id": "msg_0c746970cdbe36b30069c8b93893108193a16f9927cd474755",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "end_index": 350,
+              "start_index": 285,
+              "title": "Learn Rust - Rust Programming Language",
+              "url": "https://rust-lang.org/learn/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 595,
+              "start_index": 530,
+              "title": "Learn Rust - Rust Programming Language",
+              "url": "https://rust-lang.org/learn/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 798,
+              "start_index": 733,
+              "title": "Learn Rust - Rust Programming Language",
+              "url": "https://rust-lang.org/learn/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1041,
+              "start_index": 974,
+              "title": "Rust Documentation",
+              "url": "https://doc.rust-lang.org/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1285,
+              "start_index": 1208,
+              "title": "Introduction - The Rust Reference",
+              "url": "https://doc.rust-lang.org/reference/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1500,
+              "start_index": 1447,
+              "title": "Rust Guide",
+              "url": "https://rust.guide/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1726,
+              "start_index": 1658,
+              "title": "Easy Rust | Beginner-Friendly Rust Programming Guide | Online Playground",
+              "url": "https://getvm.io/tutorials/easy-rust?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1965,
+              "start_index": 1882,
+              "title": "Rust Basics - GeeksforGeeks",
+              "url": "https://www.geeksforgeeks.org/rust-basics/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2203,
+              "start_index": 2125,
+              "title": "Learn Rust Programming - Complete Course 🦀 - YouTube",
+              "url": "https://www.youtube.com/watch?v=BpPEoZW5IiY&utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2474,
+              "start_index": 2379,
+              "title": "Contributing to Rust — documentation · The Rust Programming Language",
+              "url": "https://prev.rust-lang.org/en-US/contribute-docs.html?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2705,
+              "start_index": 2645,
+              "title": "Rust Documentation List | Rust Wiki",
+              "url": "https://rustwiki.org/en/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3009,
+              "start_index": 2908,
+              "title": "Rust (programming language)",
+              "url": "https://en.wikipedia.org/wiki/Rust_%28programming_language%29?utm_source=openai"
+            }
+          ],
+          "logprobs": [],
+          "text": "Certainly! Here are some authoritative and recent resources to help you learn and master the Rust programming language:\n\n1. **The Rust Programming Language (The Book)**: This is the official guide to Rust, offering a comprehensive introduction to the language's concepts and features. ([rust-lang.org](https://rust-lang.org/learn/?utm_source=openai))\n\n2. **Rust by Example**: An online collection of runnable examples that illustrate various Rust concepts and standard libraries, allowing you to learn through practical examples. ([rust-lang.org](https://rust-lang.org/learn/?utm_source=openai))\n\n3. **Rustlings**: A set of small exercises designed to help you get used to reading and writing Rust code, ideal for hands-on learning. ([rust-lang.org](https://rust-lang.org/learn/?utm_source=openai))\n\n4. **Rust Documentation**: The official documentation provides detailed information on the Rust standard library, compiler, and other tools, serving as a valuable reference. ([doc.rust-lang.org](https://doc.rust-lang.org/?utm_source=openai))\n\n5. **The Rust Reference**: This book serves as the primary reference for the Rust programming language, offering in-depth details on language features and behavior. ([doc.rust-lang.org](https://doc.rust-lang.org/reference/?utm_source=openai))\n\n6. **Rust Guide**: A comprehensive resource covering all aspects of the software development lifecycle in Rust, from beginner tutorials to advanced techniques. ([rust.guide](https://rust.guide/?utm_source=openai))\n\n7. **Easy Rust**: A beginner-friendly guide that covers a wide range of Rust topics, from basic syntax to advanced concepts like concurrency and lifetimes. ([getvm.io](https://getvm.io/tutorials/easy-rust?utm_source=openai))\n\n8. **Rust Basics - GeeksforGeeks**: An article providing an overview of Rust, its features, and its applications, suitable for those new to the language. ([geeksforgeeks.org](https://www.geeksforgeeks.org/rust-basics/?utm_source=openai))\n\n9. **Learn Rust Programming - Complete Course**: A comprehensive video course available on YouTube, covering core concepts and underlying mechanisms of Rust. ([youtube.com](https://www.youtube.com/watch?v=BpPEoZW5IiY&utm_source=openai))\n\n10. **Contributing to Rust — Documentation**: Guidelines on how to contribute to Rust's documentation, which can be a great way to deepen your understanding of the language. ([prev.rust-lang.org](https://prev.rust-lang.org/en-US/contribute-docs.html?utm_source=openai))\n\n11. **Rust Documentation List | Rust Wiki**: A curated list of Rust documentation resources, including books, guides, and tutorials, to assist in your learning journey. ([rustwiki.org](https://rustwiki.org/en/?utm_source=openai))\n\n12. **Rust (Programming Language) - Wikipedia**: An extensive article providing historical context, features, and applications of Rust, useful for understanding the language's evolution and community. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Rust_%28programming_language%29?utm_source=openai))\n\nThese resources offer a solid foundation for learning Rust, from official documentation to community-driven tutorials and courses. "
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 1,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "type": "web_search",
+      "search_context_size": "medium",
+      "user_location": {
+        "type": "approximate",
+        "city": null,
+        "country": "US",
+        "region": null,
+        "timezone": null
+      }
+    }
+  ],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 8174,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 697,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 8871
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "Certainly! Here are some authoritative and recent resources to help you learn and master the Rust programming language:\n\n1. **The Rust Programming Language (The Book)**: This is the official guide to Rust, offering a comprehensive introduction to the language's concepts and features. ([rust-lang.org](https://rust-lang.org/learn/?utm_source=openai))\n\n2. **Rust by Example**: An online collection of runnable examples that illustrate various Rust concepts and standard libraries, allowing you to learn through practical examples. ([rust-lang.org](https://rust-lang.org/learn/?utm_source=openai))\n\n3. **Rustlings**: A set of small exercises designed to help you get used to reading and writing Rust code, ideal for hands-on learning. ([rust-lang.org](https://rust-lang.org/learn/?utm_source=openai))\n\n4. **Rust Documentation**: The official documentation provides detailed information on the Rust standard library, compiler, and other tools, serving as a valuable reference. ([doc.rust-lang.org](https://doc.rust-lang.org/?utm_source=openai))\n\n5. **The Rust Reference**: This book serves as the primary reference for the Rust programming language, offering in-depth details on language features and behavior. ([doc.rust-lang.org](https://doc.rust-lang.org/reference/?utm_source=openai))\n\n6. **Rust Guide**: A comprehensive resource covering all aspects of the software development lifecycle in Rust, from beginner tutorials to advanced techniques. ([rust.guide](https://rust.guide/?utm_source=openai))\n\n7. **Easy Rust**: A beginner-friendly guide that covers a wide range of Rust topics, from basic syntax to advanced concepts like concurrency and lifetimes. ([getvm.io](https://getvm.io/tutorials/easy-rust?utm_source=openai))\n\n8. **Rust Basics - GeeksforGeeks**: An article providing an overview of Rust, its features, and its applications, suitable for those new to the language. ([geeksforgeeks.org](https://www.geeksforgeeks.org/rust-basics/?utm_source=openai))\n\n9. **Learn Rust Programming - Complete Course**: A comprehensive video course available on YouTube, covering core concepts and underlying mechanisms of Rust. ([youtube.com](https://www.youtube.com/watch?v=BpPEoZW5IiY&utm_source=openai))\n\n10. **Contributing to Rust — Documentation**: Guidelines on how to contribute to Rust's documentation, which can be a great way to deepen your understanding of the language. ([prev.rust-lang.org](https://prev.rust-lang.org/en-US/contribute-docs.html?utm_source=openai))\n\n11. **Rust Documentation List | Rust Wiki**: A curated list of Rust documentation resources, including books, guides, and tutorials, to assist in your learning journey. ([rustwiki.org](https://rustwiki.org/en/?utm_source=openai))\n\n12. **Rust (Programming Language) - Wikipedia**: An extensive article providing historical context, features, and applications of Rust, useful for understanding the language's evolution and community. ([en.wikipedia.org](https://en.wikipedia.org/wiki/Rust_%28programming_language%29?utm_source=openai))\n\nThese resources offer a solid foundation for learning Rust, from official documentation to community-driven tutorials and courses. "
+}

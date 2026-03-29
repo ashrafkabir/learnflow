@@ -938,6 +938,10 @@ async function runPipeline(pipelineId: string) {
     await writeCourseResearch(`course-${p.courseId || p.id}`, {
       topic: web.topic,
       sourcesMissingReason: web.sourcesMissingReason,
+      topics: (web as any).topics,
+      queries: (web as any).queries,
+      parsedResultsCount: (web as any).parsedResultsCount,
+      rawCount: (web as any).rawCount,
       sources: (web.sources || []).map((s) => ({
         ...s,
         images: (s.images || []).concat(

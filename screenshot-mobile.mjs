@@ -92,7 +92,12 @@ for (const vp of viewports) {
   if (AUTHED) {
     await ctx.addInitScript(() => {
       try {
-        globalThis.localStorage.setItem('learnflow-token', 'dev');
+        // Prefer bypass mode over fake tokens.
+        globalThis.__LEARNFLOW_ENV__ = {
+          ...(globalThis.__LEARNFLOW_ENV__ || {}),
+          VITE_DEV_AUTH_BYPASS: '1',
+        };
+
         // Iter86: tag harness-origin so API can suppress durable data/usage writes.
         globalThis.localStorage.setItem('learnflow-origin', 'harness');
         globalThis.localStorage.setItem('learnflow-onboarding-complete', 'true');

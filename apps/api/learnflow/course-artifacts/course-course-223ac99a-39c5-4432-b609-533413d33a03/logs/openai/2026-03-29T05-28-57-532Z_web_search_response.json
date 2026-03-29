@@ -1,0 +1,153 @@
+{
+  "id": "resp_0cab21ebd43de6fd0069c8b893a424819383a96ee1da3e24ac",
+  "object": "response",
+  "created_at": 1774762131,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1774762137,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4.1-mini-2025-04-14",
+  "output": [
+    {
+      "id": "ws_0cab21ebd43de6fd0069c8b893f3088193a98d358a8cfad305",
+      "type": "web_search_call",
+      "status": "completed",
+      "action": {
+        "type": "search",
+        "queries": [
+          "E2E pipeline case studies successful implementations"
+        ],
+        "query": "E2E pipeline case studies successful implementations"
+      }
+    },
+    {
+      "id": "msg_0cab21ebd43de6fd0069c8b894918081939de8bd9f6212d834",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "end_index": 609,
+              "start_index": 544,
+              "title": "E2E Process Automation Leveraging Generative AI and IDP-Based Automation Agent: A Case Study on Corporate Expense Processing",
+              "url": "https://arxiv.org/abs/2505.20733?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1111,
+              "start_index": 979,
+              "title": "News | Deutsche Telekom, Samsung and Ericsson Enhance Gamming Experience | Pipeline Publishing",
+              "url": "https://pipelinepub.com/news/deutsche-telekom-samsung-and-ericsson-enhance-gamming-experience?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1553,
+              "start_index": 1477,
+              "title": "Data Pipeline Orchestration Case Studies",
+              "url": "https://www.byteplus.com/en/topic/403284?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2095,
+              "start_index": 1947,
+              "title": "Automated E2E",
+              "url": "https://cdn2.hubspot.net/hubfs/597901/case-studies/Automate-E2E-Testing-for-a-Leading-Payroll-Enterprise.pdf?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2504,
+              "start_index": 2433,
+              "title": "Blueprintdata | Modern Data Stacks",
+              "url": "https://www.blueprintdata.xyz/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2921,
+              "start_index": 2856,
+              "title": "Strategies for Optimizing End-to-End Artificial Intelligence Pipelines on Intel Xeon Processors",
+              "url": "https://arxiv.org/abs/2211.00286?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3323,
+              "start_index": 3258,
+              "title": "E2Edev: Benchmarking Large Language Models in End-to-End Software Development Task",
+              "url": "https://arxiv.org/abs/2510.14509?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3643,
+              "start_index": 3565,
+              "title": "",
+              "url": "https://ai4cap.com/automated-testing-captcha?utm_source=openai"
+            }
+          ],
+          "logprobs": [],
+          "text": "Implementing end-to-end (E2E) pipelines has proven transformative across various industries. Here are several authoritative and recent case studies highlighting successful E2E pipeline implementations:\n\n1. **Corporate Expense Processing Automation**: A major Korean enterprise integrated generative AI and Intelligent Document Processing (IDP) technologies to automate corporate financial expense processing. This approach led to an over 80% reduction in processing time for paper receipt tasks, decreased error rates, and improved compliance. ([arxiv.org](https://arxiv.org/abs/2505.20733?utm_source=openai))\n\n2. **5G Network Slicing for Gaming**: Deutsche Telekom, Ericsson, and Samsung Electronics demonstrated a world-first implementation of multi-vendor 5G end-to-end (E2E) Network Slicing on a commercial 5G device. This showcased the customer-centric benefits of 5G Network Slicing for a Cloud VR streaming game application, paving the way for slice access on 5G devices. ([pipelinepub.com](https://pipelinepub.com/news/deutsche-telekom-samsung-and-ericsson-enhance-gamming-experience?utm_source=openai))\n\n3. **Data Pipeline Orchestration in Healthcare**: A leading healthcare network implemented a sophisticated data pipeline orchestration strategy using tools like Apache Kafka for real-time data streaming and machine learning-powered data validation processes. This approach resulted in a 60% faster patient data processing time and 99.9% data compliance adherence. ([byteplus.com](https://www.byteplus.com/en/topic/403284?utm_source=openai))\n\n4. **Automated End-to-End Testing in Payroll Services**: A payroll enterprise sought to optimize its test automation suite and build a new framework to address automation regression in CI/CD/CT using Azure DevOps. The solution involved removing test automation flakiness, conducting manual testing, and executing test automation using Java + Selenium, leading to improved testing efficiency. ([cdn2.hubspot.net](https://cdn2.hubspot.net/hubfs/597901/case-studies/Automate-E2E-Testing-for-a-Leading-Payroll-Enterprise.pdf?utm_source=openai))\n\n5. **Data Stack Development for Buenbit**: Buenbit, a cryptocurrency-related business, faced challenges with scattered data across multiple microservices. Blueprintdata designed and implemented a centralized data warehouse, standardized identifiers, and automated the entire data pipeline, resulting in an 80% reduction in manual work. ([blueprintdata.xyz](https://www.blueprintdata.xyz/?utm_source=openai))\n\n6. **Optimizing AI Pipelines on Intel Xeon Processors**: Intel Xeon processors were utilized to optimize various end-to-end AI pipelines, including those in computer vision, natural language processing, and recommendation systems. The optimization strategies led to performance improvements ranging from 1.8x to 81.7x across different E2E pipelines. ([arxiv.org](https://arxiv.org/abs/2211.00286?utm_source=openai))\n\n7. **Benchmarking Large Language Models in Software Development**: E2EDev, a benchmark for large language models in end-to-end software development tasks, was evaluated. The analysis revealed challenges in effectively solving these tasks, underscoring the need for more effective and cost-efficient E2E software development solutions. ([arxiv.org](https://arxiv.org/abs/2510.14509?utm_source=openai))\n\n8. **Automated Testing for CAPTCHA Handling**: AI4CAP developed solutions to automate CAPTCHA handling, enabling QA teams to save 90% of testing time, increase test coverage, and ensure reliable results with 99.9% CAPTCHA solving accuracy. ([ai4cap.com](https://ai4cap.com/automated-testing-captcha?utm_source=openai))\n\nThese case studies illustrate the diverse applications and benefits of E2E pipeline implementations across various sectors. "
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 1,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "type": "web_search",
+      "search_context_size": "medium",
+      "user_location": {
+        "type": "approximate",
+        "city": null,
+        "country": "US",
+        "region": null,
+        "timezone": null
+      }
+    }
+  ],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 8174,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 820,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 8994
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "Implementing end-to-end (E2E) pipelines has proven transformative across various industries. Here are several authoritative and recent case studies highlighting successful E2E pipeline implementations:\n\n1. **Corporate Expense Processing Automation**: A major Korean enterprise integrated generative AI and Intelligent Document Processing (IDP) technologies to automate corporate financial expense processing. This approach led to an over 80% reduction in processing time for paper receipt tasks, decreased error rates, and improved compliance. ([arxiv.org](https://arxiv.org/abs/2505.20733?utm_source=openai))\n\n2. **5G Network Slicing for Gaming**: Deutsche Telekom, Ericsson, and Samsung Electronics demonstrated a world-first implementation of multi-vendor 5G end-to-end (E2E) Network Slicing on a commercial 5G device. This showcased the customer-centric benefits of 5G Network Slicing for a Cloud VR streaming game application, paving the way for slice access on 5G devices. ([pipelinepub.com](https://pipelinepub.com/news/deutsche-telekom-samsung-and-ericsson-enhance-gamming-experience?utm_source=openai))\n\n3. **Data Pipeline Orchestration in Healthcare**: A leading healthcare network implemented a sophisticated data pipeline orchestration strategy using tools like Apache Kafka for real-time data streaming and machine learning-powered data validation processes. This approach resulted in a 60% faster patient data processing time and 99.9% data compliance adherence. ([byteplus.com](https://www.byteplus.com/en/topic/403284?utm_source=openai))\n\n4. **Automated End-to-End Testing in Payroll Services**: A payroll enterprise sought to optimize its test automation suite and build a new framework to address automation regression in CI/CD/CT using Azure DevOps. The solution involved removing test automation flakiness, conducting manual testing, and executing test automation using Java + Selenium, leading to improved testing efficiency. ([cdn2.hubspot.net](https://cdn2.hubspot.net/hubfs/597901/case-studies/Automate-E2E-Testing-for-a-Leading-Payroll-Enterprise.pdf?utm_source=openai))\n\n5. **Data Stack Development for Buenbit**: Buenbit, a cryptocurrency-related business, faced challenges with scattered data across multiple microservices. Blueprintdata designed and implemented a centralized data warehouse, standardized identifiers, and automated the entire data pipeline, resulting in an 80% reduction in manual work. ([blueprintdata.xyz](https://www.blueprintdata.xyz/?utm_source=openai))\n\n6. **Optimizing AI Pipelines on Intel Xeon Processors**: Intel Xeon processors were utilized to optimize various end-to-end AI pipelines, including those in computer vision, natural language processing, and recommendation systems. The optimization strategies led to performance improvements ranging from 1.8x to 81.7x across different E2E pipelines. ([arxiv.org](https://arxiv.org/abs/2211.00286?utm_source=openai))\n\n7. **Benchmarking Large Language Models in Software Development**: E2EDev, a benchmark for large language models in end-to-end software development tasks, was evaluated. The analysis revealed challenges in effectively solving these tasks, underscoring the need for more effective and cost-efficient E2E software development solutions. ([arxiv.org](https://arxiv.org/abs/2510.14509?utm_source=openai))\n\n8. **Automated Testing for CAPTCHA Handling**: AI4CAP developed solutions to automate CAPTCHA handling, enabling QA teams to save 90% of testing time, increase test coverage, and ensure reliable results with 99.9% CAPTCHA solving accuracy. ([ai4cap.com](https://ai4cap.com/automated-testing-captcha?utm_source=openai))\n\nThese case studies illustrate the diverse applications and benefits of E2E pipeline implementations across various sectors. "
+}

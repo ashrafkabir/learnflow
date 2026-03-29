@@ -30,6 +30,11 @@ export type ResearchBundle = {
   topic: string;
   sources: ResearchSourceArtifact[];
   sourcesMissingReason?: string;
+  /** optional trace/debug fields */
+  topics?: string[];
+  queries?: string[];
+  parsedResultsCount?: number;
+  rawCount?: number;
 };
 
 function sanitizeId(id: string): string {
@@ -81,6 +86,11 @@ export async function writeCourseResearch(
   await writeJson(join(root, 'sources.json'), {
     topic: bundle.topic,
     sourcesMissingReason: bundle.sourcesMissingReason || null,
+    topics: bundle.topics || null,
+    queries: bundle.queries || null,
+    parsedResultsCount:
+      typeof bundle.parsedResultsCount === 'number' ? bundle.parsedResultsCount : null,
+    rawCount: typeof bundle.rawCount === 'number' ? bundle.rawCount : null,
     sources: bundle.sources.map((s) => ({
       url: s.url,
       title: s.title,
@@ -190,6 +200,8 @@ export async function writeCourseResearchMarkdown(courseId: string): Promise<str
   const sourcesJson = JSON.parse(sourcesRaw);
   const topic = String(sourcesJson?.topic || '');
   const sources = Array.isArray(sourcesJson?.sources) ? sourcesJson.sources : [];
+  const topics = Array.isArray(sourcesJson?.topics) ? sourcesJson.topics : [];
+  const queries = Array.isArray(sourcesJson?.queries) ? sourcesJson.queries : [];
 
   let images: any[] = [];
   try {
@@ -204,7 +216,7 @@ export async function writeCourseResearchMarkdown(courseId: string): Promise<str
   let extractedIndex: Record<string, string> = {};
   try {
     const extractedDir = join(courseRoot, 'extracted');
-    const files = (await readdir(extractedDir)).filter((n) => n.endsWith('.md')).slice(0, 80);
+    const files = (await readdir(extractedDir)).filter((n) => n.endsWith('.md')).slice(0, 120);
     for (const f of files) {
       try {
         extractedIndex[f] = await readFile(join(extractedDir, f), 'utf8');
@@ -223,6 +235,26 @@ export async function writeCourseResearchMarkdown(courseId: string): Promise<str
   md += `- **Topic:** ${topic || '(unknown)'}\n`;
   md += `- **courseId:** ${courseId}\n`;
   md += `- **generatedAt:** ${generatedAt}\n\n`;
+
+  if (topics.length || queries.length) {
+    md += `## Discovery details\n\n`;
+    if (topics.length) {
+      md += `**Topics/Subtopics used**\n\n`;
+      md +=
+        topics
+          .slice(0, 40)
+          .map((t: any) => `- ${String(t)}`)
+          .join('\n') + '\n\n';
+    }
+    if (queries.length) {
+      md += `**Queries executed**\n\n`;
+      md +=
+        queries
+          .slice(0, 40)
+          .map((q: any) => `- ${String(q)}`)
+          .join('\n') + '\n\n';
+    }
+  }
 
   md += `## Sources index\n\n`;
   md += formatMdTableRow(['#', 'Title', 'URL', 'Publisher', 'AccessedAt']) + '\n';

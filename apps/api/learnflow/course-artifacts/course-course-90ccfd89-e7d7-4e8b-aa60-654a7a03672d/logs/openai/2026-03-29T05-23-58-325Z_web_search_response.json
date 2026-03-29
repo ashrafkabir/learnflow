@@ -1,0 +1,181 @@
+{
+  "id": "resp_0797a1fb39f328120069c8b765cefc8190a93b285a0424e561",
+  "object": "response",
+  "created_at": 1774761829,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1774761838,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4.1-mini-2025-04-14",
+  "output": [
+    {
+      "id": "ws_0797a1fb39f328120069c8b76645508190bff53764cac3932d",
+      "type": "web_search_call",
+      "status": "completed",
+      "action": {
+        "type": "search",
+        "queries": [
+          "E2E pipeline topic recent authoritative sources"
+        ],
+        "query": "E2E pipeline topic recent authoritative sources"
+      }
+    },
+    {
+      "id": "msg_0797a1fb39f328120069c8b76774548190afcb12d8902bb730",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "end_index": 581,
+              "start_index": 482,
+              "title": "End-to-End Testing Best Practices | IBM",
+              "url": "https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 921,
+              "start_index": 845,
+              "title": "End-to-End Testing: A Complete Guide for 2026 | Pie",
+              "url": "https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1372,
+              "start_index": 1217,
+              "title": "Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education",
+              "url": "https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1700,
+              "start_index": 1613,
+              "title": "Optimizing Our E2E Pipeline | Engineering at Slack",
+              "url": "https://slack.engineering/speedup-e2e-testing/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2044,
+              "start_index": 1913,
+              "title": "End-to-end Pipeline Monitoring | The GitLab Handbook",
+              "url": "https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2412,
+              "start_index": 2304,
+              "title": "10 CI/CD Pipeline Best Practices for High-Performing Teams",
+              "url": "https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2766,
+              "start_index": 2677,
+              "title": "End-to-End (E2E) Testing Guide: Best Practices & Strategies for Modern Software Teams",
+              "url": "https://talent500.com/blog/end-to-end-testing-guide/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3290,
+              "start_index": 3076,
+              "title": "(PDF) E2E Process Automation Leveraging Generative AI and IDP-Based Automation Agent: A Case Study on Corporate Expense Processing",
+              "url": "https://www.researchgate.net/publication/396749656_E2E_Process_Automation_Leveraging_Generative_AI_and_IDP-Based_Automation_Agent_A_Case_Study_on_Corporate_Expense_Processing?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3627,
+              "start_index": 3562,
+              "title": "Strategies for Optimizing End-to-End Artificial Intelligence Pipelines on Intel Xeon Processors",
+              "url": "https://arxiv.org/abs/2211.00286?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3943,
+              "start_index": 3878,
+              "title": "E2E-AT: A Unified Framework for Tackling Uncertainty in Task-aware End-to-end Learning",
+              "url": "https://arxiv.org/abs/2312.10587?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 4300,
+              "start_index": 4216,
+              "title": "User personality and its influence on the performance of pipeline and end-to-end task-oriented dialogue systems | Scientific Reports",
+              "url": "https://www.nature.com/articles/s41598-025-07101-7?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 4672,
+              "start_index": 4547,
+              "title": "V2X-VLM: End-to-End V2X cooperative autonomous driving through large vision-Language models - ScienceDirect",
+              "url": "https://www.sciencedirect.com/science/article/pii/S0968090X25004619?dgcid=rss_sd_all&utm_source=openai"
+            }
+          ],
+          "logprobs": [],
+          "text": "End-to-End (E2E) pipelines are crucial in modern software development, ensuring that applications function seamlessly from start to finish. Below are authoritative and recent sources that provide valuable insights into E2E pipelines:\n\n1. **End-to-End Testing Best Practices | IBM**\n   IBM outlines essential practices for E2E testing, emphasizing the importance of understanding user expectations, developing comprehensive test cases, and integrating continuous testing procedures. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n2. **End-to-End Testing: A Complete Guide for 2026 | Pie**\n   Pie offers a comprehensive guide on E2E testing, highlighting best practices such as focusing on critical paths, maintaining test independence, and using stable selectors to enhance test reliability. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n3. **Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education**\n   This resource discusses the Testing Pyramid, advocating for a balanced approach to automated testing at various levels—unit, integration, and E2E—to optimize Continuous Integration (CI) pipelines. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n4. **Optimizing Our E2E Pipeline | Engineering at Slack**\n   Slack's engineering team shares their experience in optimizing E2E testing pipelines, focusing on reducing build times and eliminating redundant processes to improve efficiency. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n5. **End-to-End Pipeline Monitoring | The GitLab Handbook**\n   GitLab provides an overview of their E2E test pipelines, detailing monitoring tools and practices to ensure consistent and reliable test execution. ([handbook.gitlab.com](https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai))\n\n6. **10 CI/CD Pipeline Best Practices for High-Performing Teams | Faberwork**\n   Faberwork outlines best practices for Continuous Integration/Continuous Deployment (CI/CD) pipelines, emphasizing automated testing at every stage to enhance software delivery. ([faberwork.com](https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai))\n\n7. **End-to-End Testing Guide: Best Practices & Strategies for Modern Software Teams | Talent500**\n   Talent500 offers a guide on E2E testing, covering key components, design strategies, and integration with CI/CD pipelines to ensure comprehensive test coverage. ([talent500.com](https://talent500.com/blog/end-to-end-testing-guide/?utm_source=openai))\n\n8. **E2E Process Automation Leveraging Generative AI and IDP-Based Automation Agent: A Case Study on Corporate Expense Processing**\n   This case study demonstrates the application of E2E process automation using Generative AI and Intelligent Document Processing (IDP) agents in corporate expense management. ([researchgate.net](https://www.researchgate.net/publication/396749656_E2E_Process_Automation_Leveraging_Generative_AI_and_IDP-Based_Automation_Agent_A_Case_Study_on_Corporate_Expense_Processing?utm_source=openai))\n\n9. **Strategies for Optimizing End-to-End Artificial Intelligence Pipelines on Intel Xeon Processors**\n   This paper discusses optimization strategies for E2E AI pipelines, focusing on performance improvements using Intel Xeon processors across various AI applications. ([arxiv.org](https://arxiv.org/abs/2211.00286?utm_source=openai))\n\n10. **E2E-AT: A Unified Framework for Tackling Uncertainty in Task-aware End-to-end Learning**\n    This research introduces a framework addressing uncertainties in E2E learning, proposing end-to-end adversarial training to enhance model robustness. ([arxiv.org](https://arxiv.org/abs/2312.10587?utm_source=openai))\n\n11. **User Personality and Its Influence on the Performance of Pipeline and End-to-End Task-Oriented Dialogue Systems**\n    This study examines how user personality traits affect the performance of E2E dialogue systems, providing insights into user interaction dynamics. ([nature.com](https://www.nature.com/articles/s41598-025-07101-7?utm_source=openai))\n\n12. **V2X-VLM: End-to-End V2X Cooperative Autonomous Driving Through Large Vision-Language Models**\n    This article explores an E2E approach to autonomous driving, utilizing large vision-language models for vehicle control and decision-making. ([sciencedirect.com](https://www.sciencedirect.com/science/article/pii/S0968090X25004619?dgcid=rss_sd_all&utm_source=openai))\n\nThese sources offer a diverse range of perspectives on E2E pipelines, from best practices and optimization strategies to real-world applications and research advancements. "
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 1,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "type": "web_search",
+      "search_context_size": "medium",
+      "user_location": {
+        "type": "approximate",
+        "city": null,
+        "country": "US",
+        "region": null,
+        "timezone": null
+      }
+    }
+  ],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 8174,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 1095,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 9269
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "End-to-End (E2E) pipelines are crucial in modern software development, ensuring that applications function seamlessly from start to finish. Below are authoritative and recent sources that provide valuable insights into E2E pipelines:\n\n1. **End-to-End Testing Best Practices | IBM**\n   IBM outlines essential practices for E2E testing, emphasizing the importance of understanding user expectations, developing comprehensive test cases, and integrating continuous testing procedures. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n2. **End-to-End Testing: A Complete Guide for 2026 | Pie**\n   Pie offers a comprehensive guide on E2E testing, highlighting best practices such as focusing on critical paths, maintaining test independence, and using stable selectors to enhance test reliability. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n3. **Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education**\n   This resource discusses the Testing Pyramid, advocating for a balanced approach to automated testing at various levels—unit, integration, and E2E—to optimize Continuous Integration (CI) pipelines. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n4. **Optimizing Our E2E Pipeline | Engineering at Slack**\n   Slack's engineering team shares their experience in optimizing E2E testing pipelines, focusing on reducing build times and eliminating redundant processes to improve efficiency. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n5. **End-to-End Pipeline Monitoring | The GitLab Handbook**\n   GitLab provides an overview of their E2E test pipelines, detailing monitoring tools and practices to ensure consistent and reliable test execution. ([handbook.gitlab.com](https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai))\n\n6. **10 CI/CD Pipeline Best Practices for High-Performing Teams | Faberwork**\n   Faberwork outlines best practices for Continuous Integration/Continuous Deployment (CI/CD) pipelines, emphasizing automated testing at every stage to enhance software delivery. ([faberwork.com](https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai))\n\n7. **End-to-End Testing Guide: Best Practices & Strategies for Modern Software Teams | Talent500**\n   Talent500 offers a guide on E2E testing, covering key components, design strategies, and integration with CI/CD pipelines to ensure comprehensive test coverage. ([talent500.com](https://talent500.com/blog/end-to-end-testing-guide/?utm_source=openai))\n\n8. **E2E Process Automation Leveraging Generative AI and IDP-Based Automation Agent: A Case Study on Corporate Expense Processing**\n   This case study demonstrates the application of E2E process automation using Generative AI and Intelligent Document Processing (IDP) agents in corporate expense management. ([researchgate.net](https://www.researchgate.net/publication/396749656_E2E_Process_Automation_Leveraging_Generative_AI_and_IDP-Based_Automation_Agent_A_Case_Study_on_Corporate_Expense_Processing?utm_source=openai))\n\n9. **Strategies for Optimizing End-to-End Artificial Intelligence Pipelines on Intel Xeon Processors**\n   This paper discusses optimization strategies for E2E AI pipelines, focusing on performance improvements using Intel Xeon processors across various AI applications. ([arxiv.org](https://arxiv.org/abs/2211.00286?utm_source=openai))\n\n10. **E2E-AT: A Unified Framework for Tackling Uncertainty in Task-aware End-to-end Learning**\n    This research introduces a framework addressing uncertainties in E2E learning, proposing end-to-end adversarial training to enhance model robustness. ([arxiv.org](https://arxiv.org/abs/2312.10587?utm_source=openai))\n\n11. **User Personality and Its Influence on the Performance of Pipeline and End-to-End Task-Oriented Dialogue Systems**\n    This study examines how user personality traits affect the performance of E2E dialogue systems, providing insights into user interaction dynamics. ([nature.com](https://www.nature.com/articles/s41598-025-07101-7?utm_source=openai))\n\n12. **V2X-VLM: End-to-End V2X Cooperative Autonomous Driving Through Large Vision-Language Models**\n    This article explores an E2E approach to autonomous driving, utilizing large vision-language models for vehicle control and decision-making. ([sciencedirect.com](https://www.sciencedirect.com/science/article/pii/S0968090X25004619?dgcid=rss_sd_all&utm_source=openai))\n\nThese sources offer a diverse range of perspectives on E2E pipelines, from best practices and optimization strategies to real-world applications and research advancements. "
+}

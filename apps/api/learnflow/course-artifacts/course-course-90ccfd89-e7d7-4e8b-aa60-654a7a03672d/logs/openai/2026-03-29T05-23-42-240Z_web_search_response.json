@@ -1,0 +1,167 @@
+{
+  "id": "resp_0ffd3ee1e3f85e630069c8b756672c8194be07d871c2d2b247",
+  "object": "response",
+  "created_at": 1774761814,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1774761821,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4.1-mini-2025-04-14",
+  "output": [
+    {
+      "id": "ws_0ffd3ee1e3f85e630069c8b7571f9c8194943d1c8d21e1ed60",
+      "type": "web_search_call",
+      "status": "completed",
+      "action": {
+        "type": "search",
+        "queries": [
+          "E2E pipeline recent authoritative sources"
+        ],
+        "query": "E2E pipeline recent authoritative sources"
+      }
+    },
+    {
+      "id": "msg_0ffd3ee1e3f85e630069c8b75824988194a6cb470eab46fb83",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "end_index": 575,
+              "start_index": 476,
+              "title": "End-to-End Testing Best Practices | IBM",
+              "url": "https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 887,
+              "start_index": 811,
+              "title": "End-to-End Testing: A Complete Guide for 2026 | Pie",
+              "url": "https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1389,
+              "start_index": 1234,
+              "title": "Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education",
+              "url": "https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1733,
+              "start_index": 1646,
+              "title": "Optimizing Our E2E Pipeline | Engineering at Slack",
+              "url": "https://slack.engineering/speedup-e2e-testing/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2116,
+              "start_index": 1985,
+              "title": "End-to-end Pipeline Monitoring | The GitLab Handbook",
+              "url": "https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2695,
+              "start_index": 2481,
+              "title": "(PDF) E2E Process Automation Leveraging Generative AI and IDP-Based Automation Agent: A Case Study on Corporate Expense Processing",
+              "url": "https://www.researchgate.net/publication/396749656_E2E_Process_Automation_Leveraging_Generative_AI_and_IDP-Based_Automation_Agent_A_Case_Study_on_Corporate_Expense_Processing?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3073,
+              "start_index": 2965,
+              "title": "10 CI/CD Pipeline Best Practices for High-Performing Teams",
+              "url": "https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3455,
+              "start_index": 3366,
+              "title": "End-to-End (E2E) Testing Guide: Best Practices & Strategies for Modern Software Teams",
+              "url": "https://talent500.com/blog/end-to-end-testing-guide/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3820,
+              "start_index": 3708,
+              "title": "E2E Case Study: Supply Chain and Logistics",
+              "url": "https://uml.org/uml_success_stories/2008-06-10_E2E_Case_Study_on_DKSH_Pegasus.pdf?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 4216,
+              "start_index": 4097,
+              "title": "Snowflake - E2E Data Engineering Project (Food Delivery App)",
+              "url": "https://www.udemy.com/course/snowflake-e2e-data-engineering-project-food-delivery-app/?utm_source=openai"
+            }
+          ],
+          "logprobs": [],
+          "text": "End-to-End (E2E) pipelines are integral to modern software development, ensuring that applications function seamlessly from start to finish. Below are authoritative and recent sources that provide insights into E2E pipelines:\n\n1. **End-to-End Testing Best Practices | IBM**\n   This article outlines best practices for E2E testing, emphasizing the importance of understanding user expectations, building comprehensive test cases, and integrating continuous testing procedures. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n2. **End-to-End Testing: A Complete Guide for 2026 | Pie**\n   Pie offers a comprehensive guide on E2E testing, focusing on testing critical paths, maintaining test independence, and using stable selectors to enhance test reliability. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n3. **Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education**\n   This resource discusses the Testing Pyramid, advocating for a balanced approach to unit, integration, and E2E tests within Continuous Integration (CI) pipelines. It also covers strategies for optimizing CI pipelines and implementing quality gates. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n4. **Optimizing Our E2E Pipeline | Engineering at Slack**\n   Slack's engineering team shares their experience in optimizing E2E testing pipelines, highlighting the reduction of build times and the elimination of redundant processes to improve efficiency. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n5. **End-to-End Pipeline Monitoring | The GitLab Handbook**\n   GitLab provides an overview of their E2E monitoring tools and practices, detailing the monitoring of test pipelines and the integration of results into communication channels like Slack. ([handbook.gitlab.com](https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai))\n\n6. **E2E Process Automation Leveraging Generative AI and IDP-Based Automation Agent: A Case Study on Corporate Expense Processing**\n   This case study demonstrates the application of E2E process automation using Generative AI and Intelligent Document Processing (IDP) agents in corporate expense processing, showcasing practical implementation and effectiveness. ([researchgate.net](https://www.researchgate.net/publication/396749656_E2E_Process_Automation_Leveraging_Generative_AI_and_IDP-Based_Automation_Agent_A_Case_Study_on_Corporate_Expense_Processing?utm_source=openai))\n\n7. **10 CI/CD Pipeline Best Practices for High-Performing Teams | Faberwork**\n   Faberwork outlines best practices for CI/CD pipelines, emphasizing automated testing at every stage, including unit, integration, and E2E tests, to ensure high-quality software delivery. ([faberwork.com](https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai))\n\n8. **End-to-End Testing Guide: Best Practices & Strategies for Modern Software Teams | Talent500**\n   Talent500 provides a guide on E2E testing, covering key components, design strategies, and the integration of E2E tests into CI/CD pipelines to ensure comprehensive application validation. ([talent500.com](https://talent500.com/blog/end-to-end-testing-guide/?utm_source=openai))\n\n9. **E2E Case Study: Supply Chain and Logistics | UML**\n   This case study illustrates the implementation of an E2E integration solution in a global supply chain context, highlighting the benefits of standardized processes and reduced time-to-market. ([uml.org](https://uml.org/uml_success_stories/2008-06-10_E2E_Case_Study_on_DKSH_Pegasus.pdf?utm_source=openai))\n\n10. **Snowflake - E2E Data Engineering Project (Food Delivery App) | Udemy**\n    This course offers practical experience in building an E2E data pipeline using Snowflake, focusing on data modeling, automation, and ingestion within the context of a food delivery application. ([udemy.com](https://www.udemy.com/course/snowflake-e2e-data-engineering-project-food-delivery-app/?utm_source=openai))\n\nThese resources provide a comprehensive understanding of E2E pipelines, covering best practices, optimization strategies, and real-world applications across various industries. "
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 1,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "type": "web_search",
+      "search_context_size": "medium",
+      "user_location": {
+        "type": "approximate",
+        "city": null,
+        "country": "US",
+        "region": null,
+        "timezone": null
+      }
+    }
+  ],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 8174,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 997,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 9171
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "End-to-End (E2E) pipelines are integral to modern software development, ensuring that applications function seamlessly from start to finish. Below are authoritative and recent sources that provide insights into E2E pipelines:\n\n1. **End-to-End Testing Best Practices | IBM**\n   This article outlines best practices for E2E testing, emphasizing the importance of understanding user expectations, building comprehensive test cases, and integrating continuous testing procedures. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n2. **End-to-End Testing: A Complete Guide for 2026 | Pie**\n   Pie offers a comprehensive guide on E2E testing, focusing on testing critical paths, maintaining test independence, and using stable selectors to enhance test reliability. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n3. **Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education**\n   This resource discusses the Testing Pyramid, advocating for a balanced approach to unit, integration, and E2E tests within Continuous Integration (CI) pipelines. It also covers strategies for optimizing CI pipelines and implementing quality gates. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n4. **Optimizing Our E2E Pipeline | Engineering at Slack**\n   Slack's engineering team shares their experience in optimizing E2E testing pipelines, highlighting the reduction of build times and the elimination of redundant processes to improve efficiency. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n5. **End-to-End Pipeline Monitoring | The GitLab Handbook**\n   GitLab provides an overview of their E2E monitoring tools and practices, detailing the monitoring of test pipelines and the integration of results into communication channels like Slack. ([handbook.gitlab.com](https://handbook.gitlab.com/handbook/engineering/testing/end-to-end-pipeline-monitoring/?utm_source=openai))\n\n6. **E2E Process Automation Leveraging Generative AI and IDP-Based Automation Agent: A Case Study on Corporate Expense Processing**\n   This case study demonstrates the application of E2E process automation using Generative AI and Intelligent Document Processing (IDP) agents in corporate expense processing, showcasing practical implementation and effectiveness. ([researchgate.net](https://www.researchgate.net/publication/396749656_E2E_Process_Automation_Leveraging_Generative_AI_and_IDP-Based_Automation_Agent_A_Case_Study_on_Corporate_Expense_Processing?utm_source=openai))\n\n7. **10 CI/CD Pipeline Best Practices for High-Performing Teams | Faberwork**\n   Faberwork outlines best practices for CI/CD pipelines, emphasizing automated testing at every stage, including unit, integration, and E2E tests, to ensure high-quality software delivery. ([faberwork.com](https://www.faberwork.com/latest-thinking/ci-cd-pipeline-best-practices?utm_source=openai))\n\n8. **End-to-End Testing Guide: Best Practices & Strategies for Modern Software Teams | Talent500**\n   Talent500 provides a guide on E2E testing, covering key components, design strategies, and the integration of E2E tests into CI/CD pipelines to ensure comprehensive application validation. ([talent500.com](https://talent500.com/blog/end-to-end-testing-guide/?utm_source=openai))\n\n9. **E2E Case Study: Supply Chain and Logistics | UML**\n   This case study illustrates the implementation of an E2E integration solution in a global supply chain context, highlighting the benefits of standardized processes and reduced time-to-market. ([uml.org](https://uml.org/uml_success_stories/2008-06-10_E2E_Case_Study_on_DKSH_Pegasus.pdf?utm_source=openai))\n\n10. **Snowflake - E2E Data Engineering Project (Food Delivery App) | Udemy**\n    This course offers practical experience in building an E2E data pipeline using Snowflake, focusing on data modeling, automation, and ingestion within the context of a food delivery application. ([udemy.com](https://www.udemy.com/course/snowflake-e2e-data-engineering-project-food-delivery-app/?utm_source=openai))\n\nThese resources provide a comprehensive understanding of E2E pipelines, covering best practices, optimization strategies, and real-world applications across various industries. "
+}

@@ -1,0 +1,9 @@
+{
+  "model": "gpt-4.1-mini",
+  "tools": [
+    {
+      "type": "web_search"
+    }
+  ],
+  "input": "Find high-quality web sources about: E2E pipeline topic Collecting and Ingesting Data from Multiple Sources. Prefer authoritative and recent sources. Return up to 8 results."
+}

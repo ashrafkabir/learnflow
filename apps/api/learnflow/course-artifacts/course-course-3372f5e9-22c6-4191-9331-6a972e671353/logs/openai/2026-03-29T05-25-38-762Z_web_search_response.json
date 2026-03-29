@@ -1,0 +1,153 @@
+{
+  "id": "resp_0c7e359f8222fa7f0069c8b7ccddc4819096a44a04c698a382",
+  "object": "response",
+  "created_at": 1774761932,
+  "status": "completed",
+  "background": false,
+  "billing": {
+    "payer": "developer"
+  },
+  "completed_at": 1774761938,
+  "error": null,
+  "frequency_penalty": 0,
+  "incomplete_details": null,
+  "instructions": null,
+  "max_output_tokens": null,
+  "max_tool_calls": null,
+  "model": "gpt-4.1-mini-2025-04-14",
+  "output": [
+    {
+      "id": "ws_0c7e359f8222fa7f0069c8b7cd3ee48190bdc6b2401d3d1018",
+      "type": "web_search_call",
+      "status": "completed",
+      "action": {
+        "type": "search",
+        "queries": [
+          "E2E pipeline recent authoritative sources"
+        ],
+        "query": "E2E pipeline recent authoritative sources"
+      }
+    },
+    {
+      "id": "msg_0c7e359f8222fa7f0069c8b7ce2b2c819080de95c2ad08a3cc",
+      "type": "message",
+      "status": "completed",
+      "content": [
+        {
+          "type": "output_text",
+          "annotations": [
+            {
+              "type": "url_citation",
+              "end_index": 611,
+              "start_index": 532,
+              "title": "Revitalizing Cypress Pipeline and Enhancing E2E Testing Confidence: This Dot Labs Expert Solutions for a Leading Financial Software Provider - This Dot Labs",
+              "url": "https://www.thisdot.co/case-study/cypress-e2e?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 992,
+              "start_index": 893,
+              "title": "End-to-End Testing Best Practices | IBM",
+              "url": "https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1304,
+              "start_index": 1217,
+              "title": "Optimizing Our E2E Pipeline | Engineering at Slack",
+              "url": "https://slack.engineering/speedup-e2e-testing/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 1640,
+              "start_index": 1564,
+              "title": "End-to-End Testing: A Complete Guide for 2026 | Pie",
+              "url": "https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2100,
+              "start_index": 1945,
+              "title": "Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E) | BMR Education",
+              "url": "https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2471,
+              "start_index": 2344,
+              "title": "E2E DevOps Pipeline with GitLab - IBM Mediacenter",
+              "url": "https://mediacenter.ibm.com/media/E2E%2BDevOps%2BPipeline%2Bwith%2BGitLab/1_gds3ux8t?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 2842,
+              "start_index": 2766,
+              "title": "Focus Week Case Study: Bringing E2E Tests into the CI Pipeline - Tobi(as Mende)",
+              "url": "https://mende.io/blog/focus-week-case-study/?utm_source=openai"
+            },
+            {
+              "type": "url_citation",
+              "end_index": 3185,
+              "start_index": 3120,
+              "title": "E2E-AT: A Unified Framework for Tackling Uncertainty in Task-aware End-to-end Learning",
+              "url": "https://arxiv.org/abs/2312.10587?utm_source=openai"
+            }
+          ],
+          "logprobs": [],
+          "text": "End-to-End (E2E) pipelines are crucial in modern software development, ensuring that applications function seamlessly from start to finish. Here are several authoritative and recent sources that provide valuable insights into E2E pipelines:\n\n1. **Revitalizing Cypress Pipeline and Enhancing E2E Testing Confidence**  \n   This case study by This Dot Labs details their work in modernizing a suite of Cypress tests for a financial software provider, achieving faster pipeline runs and increased stakeholder confidence in E2E testing. ([thisdot.co](https://www.thisdot.co/case-study/cypress-e2e?utm_source=openai))\n\n2. **End-to-End Testing Best Practices**  \n   IBM offers a comprehensive guide on E2E testing best practices, emphasizing the importance of understanding user expectations, integrating test automation into CI/CD pipelines, and continuously testing to enhance application quality. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n3. **Optimizing Our E2E Pipeline**  \n   Slack's engineering team shares their experience in optimizing their E2E testing pipeline, focusing on reducing build times and eliminating redundant processes to improve efficiency. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n4. **End-to-End Testing: A Complete Guide for 2026**  \n   Pie provides a detailed guide on E2E testing, covering best practices such as testing critical paths first, maintaining test independence, and using stable selectors to ensure reliable test outcomes. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n5. **Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E)**  \n   BMR Education discusses strategies for implementing automated testing within CI pipelines, highlighting the importance of dedicated environments, data isolation, and defining quality gates to maintain high code quality. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n6. **E2E DevOps Pipeline with GitLab**  \n   IBM's Mediacenter presents a demonstration of an end-to-end DevOps pipeline using GitLab, showcasing the integration of various tools to automate the CI/CD process and enhance application delivery. ([mediacenter.ibm.com](https://mediacenter.ibm.com/media/E2E%2BDevOps%2BPipeline%2Bwith%2BGitLab/1_gds3ux8t?utm_source=openai))\n\n7. **Focus Week Case Study: Bringing E2E Tests into the CI Pipeline**  \n   Tobi(as Mende) shares a case study on integrating E2E tests into the CI pipeline, emphasizing the benefits of involving developers in the testing process and automating test execution to improve deployment efficiency. ([mende.io](https://mende.io/blog/focus-week-case-study/?utm_source=openai))\n\n8. **E2E-AT: A Unified Framework for Tackling Uncertainty in Task-aware End-to-end Learning**  \n   This academic paper introduces E2E-AT, a framework addressing uncertainties in E2E learning, proposing a robust optimization problem solved via end-to-end adversarial training. ([arxiv.org](https://arxiv.org/abs/2312.10587?utm_source=openai))\n\nThese resources offer a blend of practical case studies, best practices, and theoretical frameworks to enhance your understanding and implementation of E2E pipelines. "
+        }
+      ],
+      "role": "assistant"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "presence_penalty": 0,
+  "previous_response_id": null,
+  "prompt_cache_key": null,
+  "prompt_cache_retention": null,
+  "reasoning": {
+    "effort": null,
+    "summary": null
+  },
+  "safety_identifier": null,
+  "service_tier": "default",
+  "store": true,
+  "temperature": 1,
+  "text": {
+    "format": {
+      "type": "text"
+    },
+    "verbosity": "medium"
+  },
+  "tool_choice": "auto",
+  "tools": [
+    {
+      "type": "web_search",
+      "search_context_size": "medium",
+      "user_location": {
+        "type": "approximate",
+        "city": null,
+        "country": "US",
+        "region": null,
+        "timezone": null
+      }
+    }
+  ],
+  "top_logprobs": 0,
+  "top_p": 1,
+  "truncation": "disabled",
+  "usage": {
+    "input_tokens": 8174,
+    "input_tokens_details": {
+      "cached_tokens": 0
+    },
+    "output_tokens": 784,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
+    "total_tokens": 8958
+  },
+  "user": null,
+  "metadata": {},
+  "output_text": "End-to-End (E2E) pipelines are crucial in modern software development, ensuring that applications function seamlessly from start to finish. Here are several authoritative and recent sources that provide valuable insights into E2E pipelines:\n\n1. **Revitalizing Cypress Pipeline and Enhancing E2E Testing Confidence**  \n   This case study by This Dot Labs details their work in modernizing a suite of Cypress tests for a financial software provider, achieving faster pipeline runs and increased stakeholder confidence in E2E testing. ([thisdot.co](https://www.thisdot.co/case-study/cypress-e2e?utm_source=openai))\n\n2. **End-to-End Testing Best Practices**  \n   IBM offers a comprehensive guide on E2E testing best practices, emphasizing the importance of understanding user expectations, integrating test automation into CI/CD pipelines, and continuously testing to enhance application quality. ([ibm.com](https://www.ibm.com/think/insights/end-to-end-testing-best-practices?utm_source=openai))\n\n3. **Optimizing Our E2E Pipeline**  \n   Slack's engineering team shares their experience in optimizing their E2E testing pipeline, focusing on reducing build times and eliminating redundant processes to improve efficiency. ([slack.engineering](https://slack.engineering/speedup-e2e-testing/?utm_source=openai))\n\n4. **End-to-End Testing: A Complete Guide for 2026**  \n   Pie provides a detailed guide on E2E testing, covering best practices such as testing critical paths first, maintaining test independence, and using stable selectors to ensure reliable test outcomes. ([pie.inc](https://pie.inc/blog/end-to-end-testing-guide?utm_source=openai))\n\n5. **Automated Testing Strategies for CI Pipelines (Unit, Integration, E2E)**  \n   BMR Education discusses strategies for implementing automated testing within CI pipelines, highlighting the importance of dedicated environments, data isolation, and defining quality gates to maintain high code quality. ([bmreducation.com](https://www.bmreducation.com/learn/vh0ghes989n98vrkuitn5xdj8hbo9emqao7wg4omrrxgz2nh6s75hzsifupoambax3f5bkbkeuwob8ah?utm_source=openai))\n\n6. **E2E DevOps Pipeline with GitLab**  \n   IBM's Mediacenter presents a demonstration of an end-to-end DevOps pipeline using GitLab, showcasing the integration of various tools to automate the CI/CD process and enhance application delivery. ([mediacenter.ibm.com](https://mediacenter.ibm.com/media/E2E%2BDevOps%2BPipeline%2Bwith%2BGitLab/1_gds3ux8t?utm_source=openai))\n\n7. **Focus Week Case Study: Bringing E2E Tests into the CI Pipeline**  \n   Tobi(as Mende) shares a case study on integrating E2E tests into the CI pipeline, emphasizing the benefits of involving developers in the testing process and automating test execution to improve deployment efficiency. ([mende.io](https://mende.io/blog/focus-week-case-study/?utm_source=openai))\n\n8. **E2E-AT: A Unified Framework for Tackling Uncertainty in Task-aware End-to-end Learning**  \n   This academic paper introduces E2E-AT, a framework addressing uncertainties in E2E learning, proposing a robust optimization problem solved via end-to-end adversarial training. ([arxiv.org](https://arxiv.org/abs/2312.10587?utm_source=openai))\n\nThese resources offer a blend of practical case studies, best practices, and theoretical frameworks to enhance your understanding and implementation of E2E pipelines. "
+}

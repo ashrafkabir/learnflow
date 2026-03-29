@@ -32,19 +32,30 @@ export type NormalizedSource = {
 
 export type SearchAndExtractTopicParams = {
   topic: string;
+  courseId?: string;
   openai?: OpenAI;
   /** OpenAI model for the Responses call */
   model?: string;
-  /** number of web results to request */
+  /** number of web results to request (per query, pre-aggregation) */
   maxResults?: number;
   /** cap number of pages to fetch+extract */
   maxPagesToExtract?: number;
   /** fetch timeout per page */
   pageTimeoutMs?: number;
+  /** Back-compat alias used by API route */
+  perPageTimeoutMs?: number;
   /** overall request timeout for OpenAI */
   openaiTimeoutMs?: number;
   /** retries on rate limit */
   maxRetries?: number;
+
+  /** Expand topic into multiple queries/subtopics to reach higher source counts */
+  maxSourcesToDiscover?: number;
+  queryExpansionModel?: string;
+  maxQueries?: number;
+
+  /** Optional hook to persist full OpenAI req/resp for troubleshooting */
+  onOpenAIWebSearch?: (args: { request: unknown; response: unknown }) => Promise<void> | void;
 };
 
 export class OpenAIWebSearchProviderError extends Error {
@@ -124,11 +135,78 @@ function uniqueByUrl<T extends { url: string }>(arr: T[]): T[] {
   const out: T[] = [];
   for (const item of arr) {
     if (!item?.url) continue;
-    if (seen.has(item.url)) continue;
-    seen.add(item.url);
+    const key = String(item.url).trim();
+    if (!key) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(item);
   }
   return out;
+}
+
+function bestEffortUrl(x: any): string | null {
+  const url = x?.url || x?.link || x?.href;
+  if (!url || typeof url !== 'string') return null;
+  try {
+    // normalize; allow relative-ish but only return if parseable
+    return new URL(url).toString();
+  } catch {
+    try {
+      // Some tool results return URLs without scheme
+      return new URL(`https://${url}`).toString();
+    } catch {
+      return null;
+    }
+  }
+}
+
+function extractResultsFromResponse(
+  resp: any,
+): Array<{ url: string; title?: string; snippet?: string; source?: string }> {
+  const results: Array<{ url: string; title?: string; snippet?: string; source?: string }> = [];
+
+  // Responses API can emit tool calls/results in a few shapes.
+  // We scan both resp.output[*].content[*] and resp.output[*] directly.
+  const output = Array.isArray(resp?.output) ? resp.output : [];
+
+  const pushResult = (r: any) => {
+    const url = bestEffortUrl(r);
+    if (!url) return;
+    results.push({
+      url,
+      title: r?.title || r?.name,
+      snippet: r?.snippet || r?.description || r?.content || r?.text,
+      source: r?.source || r?.publisher || extractDomain(url),
+    });
+  };
+
+  const scanContainer = (c: any) => {
+    if (!c) return;
+    // Common: { type: 'web_search', results: [...] } or { type: 'tool_result', results: [...] }
+    const maybeArrays = [c?.results, c?.data, c?.items, c?.web_results, c?.webpages];
+    for (const arr of maybeArrays) {
+      if (Array.isArray(arr)) arr.forEach(pushResult);
+    }
+    // Sometimes nested: { result: { results: [...] } }
+    if (c?.result) scanContainer(c.result);
+    // Or: { results: { items: [...] } }
+    if (c?.results && !Array.isArray(c.results)) scanContainer(c.results);
+    // Or: { output: [...] }
+    if (Array.isArray(c?.output)) c.output.forEach(scanContainer);
+  };
+
+  for (const item of output) {
+    scanContainer(item);
+    const content = Array.isArray(item?.content) ? item.content : [];
+    for (const c of content) scanContainer(c);
+  }
+
+  // Fallback: some SDK versions put tool outputs on resp.tool_outputs
+  if (Array.isArray(resp?.tool_outputs)) {
+    for (const t of resp.tool_outputs) scanContainer(t);
+  }
+
+  return uniqueByUrl(results);
 }
 
 function getStatusCode(err: any): number | undefined {
@@ -146,52 +224,46 @@ async function openaiWebSearch(
   maxResults: number,
   timeoutMs: number,
   maxRetries: number,
-): Promise<Array<{ url: string; title?: string; snippet?: string; source?: string }>> {
+  opts?: {
+    onRequestResponse?: (args: { request: unknown; response: unknown }) => Promise<void> | void;
+  },
+): Promise<{
+  results: Array<{ url: string; title?: string; snippet?: string; source?: string }>;
+  rawCount: number;
+  response: unknown;
+  request: unknown;
+}> {
   const input = `Find high-quality web sources about: ${topic}. Prefer authoritative and recent sources. Return up to ${maxResults} results.`;
+
+  const request = {
+    model,
+    tools: [{ type: 'web_search' }],
+    input,
+  };
 
   let attempt = 0;
   while (true) {
     attempt += 1;
     try {
       const resp = await withTimeout(
-        openai.responses.create({
-          model,
-          // The SDK will call /responses; we ask it to run web_search.
-          tools: [{ type: 'web_search' }],
-          input,
-        } as any),
+        openai.responses.create(request as any),
         timeoutMs,
         'openai.web_search',
       );
 
-      const results: Array<{ url: string; title?: string; snippet?: string; source?: string }> = [];
+      const extracted = extractResultsFromResponse(resp as any);
+      const rawCount = extracted.length;
+      const results = extracted.slice(0, Math.max(1, maxResults));
 
-      // Best-effort parse: newer responses include tool outputs in output[].content[].
-      const output = (resp as any)?.output;
-      if (Array.isArray(output)) {
-        for (const item of output) {
-          const content = item?.content;
-          if (!Array.isArray(content)) continue;
-          for (const c of content) {
-            // Some SDK/tool variants use type: 'web_search' or 'tool_result'.
-            const maybeResults = c?.results || c?.data || c?.items;
-            if (Array.isArray(maybeResults)) {
-              for (const r of maybeResults) {
-                const url = r?.url || r?.link;
-                if (!url) continue;
-                results.push({
-                  url,
-                  title: r?.title || r?.name,
-                  snippet: r?.snippet || r?.description || r?.content,
-                  source: r?.source || r?.publisher || extractDomain(url),
-                });
-              }
-            }
-          }
+      if (opts?.onRequestResponse) {
+        try {
+          await opts.onRequestResponse({ request, response: resp });
+        } catch {
+          // ignore logging failures
         }
       }
 
-      return uniqueByUrl(results).slice(0, maxResults);
+      return { results, rawCount, response: resp, request };
     } catch (err: any) {
       const status = getStatusCode(err);
       if (status === 429 && attempt <= maxRetries) {
@@ -246,17 +318,30 @@ export async function searchAndExtractTopic(params: SearchAndExtractTopicParams)
   topic: string;
   sources: NormalizedSource[];
   sourcesMissingReason?: string;
+  /** debugging/traceability */
+  topics?: string[];
+  queries?: string[];
+  parsedResultsCount?: number;
+  rawCount?: number;
 }> {
   const {
     topic,
+    courseId: _courseId,
     openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
     model = process.env.OPENAI_WEBSEARCH_MODEL || 'gpt-4.1-mini',
     maxResults = 8,
     maxPagesToExtract = 6,
-    pageTimeoutMs = 12_000,
+    pageTimeoutMs: pageTimeoutMsRaw,
+    perPageTimeoutMs,
     openaiTimeoutMs = 20_000,
     maxRetries = 2,
+    maxSourcesToDiscover = 100,
+    queryExpansionModel = 'o3',
+    maxQueries = 8,
+    onOpenAIWebSearch,
   } = params;
+
+  const pageTimeoutMs = pageTimeoutMsRaw ?? perPageTimeoutMs ?? 12_000;
 
   const accessedAt = new Date().toISOString();
 
@@ -276,23 +361,107 @@ export async function searchAndExtractTopic(params: SearchAndExtractTopicParams)
           images: [],
         },
       ],
+      topics: [topic],
+      queries: [topic],
+      parsedResultsCount: 1,
+      rawCount: 1,
     };
   }
 
-  let results: Array<{ url: string; title?: string; snippet?: string; source?: string }> = [];
+  // ── Query expansion (multi-pass) ───────────────────────────────────────────
+  // Goal: discover up to maxSourcesToDiscover unique URLs (cap 100 default)
+  // by expanding the topic into subtopics + queries and aggregating results.
+
+  const topics: string[] = [];
+  const queries: string[] = [];
+
+  // Always include the base topic as a query.
+  topics.push(topic);
+  queries.push(topic);
+
+  // Use model to expand into a few additional queries (best-effort).
   try {
-    results = await openaiWebSearch(openai, topic, model, maxResults, openaiTimeoutMs, maxRetries);
-  } catch (err: any) {
-    const status = getStatusCode(err);
-    // Bubble error but with a stable provider marker
-    throw new OpenAIWebSearchProviderError(err?.message || String(err), { status, cause: err });
+    const expandResp = await withTimeout(
+      openai.responses.create({
+        model: queryExpansionModel,
+        input:
+          `Given the learning topic: "${topic}", generate a compact JSON object with two arrays:\n` +
+          `- topics: 5-8 subtopics (short phrases)\n` +
+          `- queries: 6-10 specific web search queries to find authoritative sources (include standards, vendor docs, academic/industry reports).\n` +
+          `Return ONLY valid JSON.`,
+      } as any),
+      openaiTimeoutMs,
+      'openai.query_expansion',
+    );
+
+    // crude JSON extraction from any output text
+    const txt = JSON.stringify((expandResp as any)?.output ?? expandResp);
+    const match = txt.match(/\{[\s\S]*\}/);
+    if (match) {
+      const parsed = JSON.parse(match[0]);
+      if (Array.isArray(parsed?.topics)) {
+        for (const t of parsed.topics) {
+          const s = String(t || '').trim();
+          if (s) topics.push(s);
+        }
+      }
+      if (Array.isArray(parsed?.queries)) {
+        for (const q of parsed.queries) {
+          const s = String(q || '').trim();
+          if (s) queries.push(s);
+        }
+      }
+    }
+  } catch {
+    // ignore expansion errors
   }
+
+  // de-dupe + cap queries
+  const dedupedQueries = Array.from(new Set(queries.map((q) => q.trim()).filter(Boolean))).slice(
+    0,
+    Math.max(1, maxQueries),
+  );
+
+  let aggregated: Array<{ url: string; title?: string; snippet?: string; source?: string }> = [];
+  let parsedResultsCount = 0;
+  let rawCount = 0;
+
+  for (const q of dedupedQueries) {
+    try {
+      const { results, rawCount: thisRaw } = await openaiWebSearch(
+        openai,
+        q,
+        model,
+        maxResults,
+        openaiTimeoutMs,
+        maxRetries,
+        {
+          onRequestResponse: onOpenAIWebSearch
+            ? ({ request, response }) => onOpenAIWebSearch({ request, response })
+            : undefined,
+        },
+      );
+      rawCount += thisRaw;
+      parsedResultsCount += results.length;
+      aggregated = uniqueByUrl([...aggregated, ...results]);
+      if (aggregated.length >= Math.min(100, maxSourcesToDiscover)) break;
+    } catch {
+      // keep going on individual query failures
+      continue;
+    }
+  }
+
+  const results = aggregated.slice(0, Math.min(100, maxSourcesToDiscover));
 
   if (results.length === 0) {
     return {
       topic,
       sources: [],
       sourcesMissingReason: 'openai_web_search_returned_0_results',
+      topics: Array.from(new Set(topics.map((t) => t.trim()).filter(Boolean))).slice(0, 20),
+      queries: dedupedQueries,
+      parsedResultsCount,
+      rawCount,
     };
   }
 
@@ -328,5 +497,12 @@ export async function searchAndExtractTopic(params: SearchAndExtractTopicParams)
     });
   }
 
-  return { topic, sources: uniqueByUrl(sources) };
+  return {
+    topic,
+    sources: uniqueByUrl(sources),
+    topics: Array.from(new Set(topics.map((t) => t.trim()).filter(Boolean))).slice(0, 20),
+    queries: dedupedQueries,
+    parsedResultsCount,
+    rawCount,
+  };
 }

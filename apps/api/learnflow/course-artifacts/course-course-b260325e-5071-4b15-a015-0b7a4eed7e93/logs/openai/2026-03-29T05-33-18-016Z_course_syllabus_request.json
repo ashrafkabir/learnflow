@@ -1,0 +1,18 @@
+{
+  "model": "gpt-4o-mini",
+  "temperature": 0.7,
+  "max_tokens": 3000,
+  "response_format": {
+    "type": "json_object"
+  },
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a curriculum designer. Generate a detailed course syllabus as JSON. Return:\n{\n  \"courseTitle\": \"A specific, compelling course title\",\n  \"courseDescription\": \"2-3 sentence description\",\n  \"modules\": [\n    {\n      \"title\": \"Module title specific to the topic\",\n      \"objective\": \"What the learner will achieve\",\n      \"lessons\": [\n        { \"title\": \"Specific lesson title\", \"description\": \"What this lesson covers\" }\n      ]\n    }\n  ]\n}\nRules:\n- Generate 4-6 modules, each with 3-5 lessons\n- Titles must be SPECIFIC to the topic (not generic like \"Foundations of X\")\n- Lessons should progress from fundamentals to advanced\n- Include practical/hands-on lessons\n- Each lesson title should be unique and descriptive\n"
+    },
+    {
+      "role": "user",
+      "content": "Create a comprehensive intermediate-level course syllabus for: \"E2E pipeline topic\""
+    }
+  ]
+}
