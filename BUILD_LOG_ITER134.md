@@ -34,6 +34,24 @@
 - Screenshots:
   - Reused screenshot harness run (above) as evidence of app still renderable.
 
+### Task: P0 — Marketplace Agent activation disclosure: enforce in UI and server response
+- Changes:
+  - API now returns `activationMode: 'routing_only'` in marketplace agent endpoints:
+    - `GET /api/v1/marketplace/agents` (public)
+    - `GET /api/v1/marketplace/agents` (full)
+    - `GET /api/v1/marketplace/agents/activated`
+    - `POST /api/v1/marketplace/agents/:id/activate`
+    - `POST /api/v1/marketplace/agents/:id/deactivate`
+    - `POST /api/v1/marketplace/agents/manifests/resolve`
+  - Test updated:
+    - `apps/api/src/__tests__/marketplace.test.ts` asserts `activationMode === 'routing_only'` on activation.
+- Commands:
+  - `npm run lint:check`
+  - `npm run test`
+  - `npm run build`
+- Results:
+  - ✅ lint/test/build passed.
+
 ### Notes / Follow-ups
 - Root test flake appears related to Vitest console-hook teardown timing when run under turbo workspace aggregation. Running tests inside `apps/api` directly avoids it.
 
