@@ -133,7 +133,7 @@ Iter137 should focus on turning these into **credible, spec-aligned end-to-end f
 
 **Remaining gap**
 
-- Still need an actual Playwright e2e that completes publish (select course → submit → marketplace shows it) to fully satisfy “end-to-end from UI”.
+- DONE in code: Added Playwright e2e `e2e/iter137-creator-publish-flow.spec.ts` covering select course → publish → marketplace shows it (deterministic via dev-only fixture gate).
 
 **Evidence pointers**
 

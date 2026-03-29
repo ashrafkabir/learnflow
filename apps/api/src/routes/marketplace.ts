@@ -134,11 +134,9 @@ router.get('/courses', validateQuery(searchSchema), async (req: Request, res: Re
 
 // POST /api/v1/marketplace/courses - Publish a course to marketplace
 // Iter129: publishing stays auth-only in marketplace-full router.
-router.post('/courses', (_req: Request, res: Response) => {
-  res.status(405).json({
-    message: 'Publishing is not available on the public marketplace endpoint. Please log in.',
-  });
-});
+// IMPORTANT: do not terminate the request here; allow the auth-protected router mounted
+// later in the stack to handle this route. In production that router will 401/403 as appropriate.
+router.post('/courses', (_req: Request, _res: Response, next) => next());
 
 // GET /api/v1/marketplace/agents - Browse agent marketplace (public)
 // Iter129: proxy to approved agent submissions when possible.

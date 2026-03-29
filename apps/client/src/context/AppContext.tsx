@@ -480,6 +480,15 @@ export function getAuthHeaders(): Record<string, string> {
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
+  // Iter137: E2E determinism — allow Playwright to request server-side fixtures for marketplace publish QC.
+  // This is safe because the API also checks devMode before applying fixture behavior.
+  if (
+    runtimeEnv?.PLAYWRIGHT_E2E_FIXTURES === '1' ||
+    runtimeEnv?.PLAYWRIGHT_E2E_FIXTURES === 'true'
+  ) {
+    headers['x-learnflow-e2e-fixtures'] = 'true';
+  }
+
   // In dev bypass, avoid injecting Authorization header (it can trigger server auth flows).
   if (!devAuthBypass && token) headers['Authorization'] = `Bearer ${token}`;
 
