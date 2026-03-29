@@ -905,11 +905,16 @@ export function Conversation() {
                               setDrawerOpen(true);
                             } else {
                               dispatch({
-                                type: 'ADD_MESSAGE',
-                                payload: {
+                                type: 'ADD_CHAT_MESSAGE',
+                                message: {
+                                  id: `msg-${Date.now()}-no-sources`,
                                   role: 'assistant',
                                   content: 'No sources available for this response.',
-                                  ts: new Date().toISOString(),
+                                  timestamp: new Date().toISOString(),
+                                  meta: {
+                                    generatedBy: 'system',
+                                    sourcesCount: 0,
+                                  },
                                 },
                               });
                             }

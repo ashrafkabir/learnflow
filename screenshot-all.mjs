@@ -12,6 +12,16 @@ function readArg(name) {
 const BASE = process.env.BASE_URL || readArg('base') || 'http://localhost:3001';
 const BASE_WEB = process.env.BASE_WEB_URL || readArg('baseWeb') || 'http://localhost:3003';
 
+function requireBaseWeb() {
+  if (!BASE_WEB) throw new Error('BASE_WEB is required');
+  try {
+    // eslint-disable-next-line no-new
+    new URL(BASE_WEB);
+  } catch {
+    throw new Error(`Invalid BASE_WEB_URL: ${BASE_WEB}`);
+  }
+}
+
 const ITER_ARG = process.env.ITERATION || process.env.ITER || readArg('iter');
 const DATE = new Date().toISOString().slice(0, 10);
 
@@ -135,6 +145,21 @@ function isNotFound(page) {
 
 // 1) Marketing route screenshots (canonical in apps/web)
 {
+  requireBaseWeb();
+
+  // Fail fast if BASE_WEB is unreachable.
+  try {
+    const res = await fetch(BASE_WEB, { method: 'HEAD' });
+    if (!res.ok) {
+      throw new Error(`HEAD ${BASE_WEB} returned ${res.status}`);
+    }
+  } catch (err) {
+    throw new Error(
+      `[screenshot-all] BASE_WEB unreachable (${BASE_WEB}). Start apps/web first or pass --baseWeb / BASE_WEB_URL.\n` +
+        String(err),
+    );
+  }
+
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   for (const [p, name] of MARKETING_PAGES) {
     const page = await ctx.newPage();

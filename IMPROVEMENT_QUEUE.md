@@ -4,7 +4,7 @@ Owner: Builder
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-29
 
-Status: **READY FOR BUILDER**
+Status: **IN PROGRESS**
 
 ### Iter134 (Builder focus)
 
@@ -142,6 +142,7 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
    - Acceptance:
      - Marketing screenshots should only ever hit `BASE_WEB`.
      - Harness should fail fast if `BASE_WEB` is unreachable (clear error).
+   - Status: DONE (builder)
 
 3. **P0 — Conversation “See Sources” must never be a dead action.**
    - Evidence:
@@ -150,6 +151,7 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
    - Acceptance:
      - If no sources exist, “See Sources” chip is hidden/disabled and replaced with a truthful message (“No sources available for this response”).
      - If sources exist, chip opens drawer reliably.
+   - Status: DONE (builder)
 
 4. **P0 — Marketplace Agent activation disclosure: enforce in UI _and_ server response.**
    - Evidence:
