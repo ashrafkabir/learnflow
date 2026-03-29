@@ -123,19 +123,21 @@ Evidence pack for this planner run:
 
 ---
 
-### 6) P1 — Course Marketplace: show at least a seeded, truth-labeled set of courses (or a better empty state)
+### 6) P1 — Course Marketplace: show at least a seeded, truth-labeled set of courses (or a better empty state) ✅
 
-**Problem**: Marketplace shows “No courses found” which makes the feature look dead.
+**Problem**: Marketplace showed “No courses found” which made the feature look dead.
 
-- Evidence: `marketplace-courses.png`
+- Evidence (before): `screenshots/iter136/planner-run/marketplace-courses.png`
 
-**Acceptance criteria**
+**Shipped (Iter136)**
 
-- Either:
-  - (A) Add seeded marketplace courses in dev/demo mode labeled clearly as “Sample courses (demo)”, OR
-  - (B) Improve empty state with:
-    - explanation (“Marketplace is empty in local dev until creators publish…”)
-    - 2–3 suggested actions (“Create your first course”, “Import a sample course”, “Learn how publishing works”).
+- Implemented option **(B)**: improved empty state with a truthful explanation and clear actions.
+- Added load-failure copy (“Marketplace unavailable”) when the API request fails.
+
+**Evidence (after)**
+
+- Screenshot: `learnflow/screenshots/iter136/p1-6-empty-marketplace/marketplace-courses.png`
+- Code: `apps/client/src/screens/marketplace/CourseMarketplace.tsx`
 
 ---
 

@@ -32,4 +32,30 @@
 
 ### Notes / follow-ups
 - Screenshot harness currently writes to `iterunknown` when no iteration is specified; consider wiring Iter136 into `scripts/screenshots.mjs` for consistent evidence folders.
-- Next in queue: **P1.6 Marketplace empty-state improvement**.
+
+---
+
+## 2026-03-29 — P1.6 Marketplace empty state improvement (truthful)
+
+### What changed
+- **Marketplace empty state now explains the situation in dev/local** instead of the generic “check back later.”
+- Added clear actions when empty:
+  - **Create a course** (back to Dashboard)
+  - **Creator dashboard** (where publishing happens)
+  - **Refresh**
+- Added a distinct “Marketplace unavailable” header when the course list request fails (best-effort from client-side error message).
+
+### Files touched
+- `apps/client/src/screens/marketplace/CourseMarketplace.tsx`
+
+### Tests
+- `npm test` (turbo) — ran; API had a one-off Vitest `EnvironmentTeardownError` during turbo run.
+- Re-ran `npm -w @learnflow/api test` — **PASS**.
+
+### Screenshots
+- Ran `npm run dev`, then captured full suite to ensure Marketplace and LessonReader screens are recorded:
+  - `learnflow/screenshots/iter136/p1-6-empty-marketplace/marketplace-courses.png`
+  - `learnflow/screenshots/iter136/p1-6-empty-marketplace/lesson-reader.png`
+
+### Notes / follow-ups
+- Next in queue: **P1.7 LessonReader generation-aware loading state + recovery**.
