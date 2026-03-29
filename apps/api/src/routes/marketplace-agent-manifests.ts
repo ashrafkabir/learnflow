@@ -23,7 +23,7 @@ router.post(
       })
       .filter(Boolean);
 
-    res.status(200).json({ manifests });
+    res.status(200).json({ manifests, activationMode: 'routing_only' });
   },
 );
 

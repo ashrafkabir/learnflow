@@ -284,6 +284,7 @@ describe('S09-A07: Agent activation', () => {
       .post(`/api/v1/marketplace/agents/${agentId}/activate`)
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
+    expect(res.body.activationMode).toBe('routing_only');
     expect(activatedAgents.size).toBe(1);
   });
 });

@@ -155,7 +155,7 @@ router.get('/agents', async (_req: Request, res: Response) => {
       status: String((a as any).status || 'approved'),
       submittedAt: String((a as any).submittedAt || ''),
     }));
-    res.status(200).json({ agents });
+    res.status(200).json({ agents, activationMode: 'routing_only' });
   } catch {
     res.status(200).json({ agents: marketplaceAgents });
   }

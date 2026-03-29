@@ -154,6 +154,7 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
    - Status: DONE (builder)
 
 4. **P0 — Marketplace Agent activation disclosure: enforce in UI _and_ server response.**
+   - Status: DONE (builder)
    - Evidence:
      - UI has disclosure modal: `apps/client/src/screens/marketplace/AgentMarketplace.tsx`.
      - Spec says MVP is manifest-based routing only.

@@ -576,7 +576,7 @@ router.get('/agents', (_req: Request, res: Response) => {
     status: (a as any).status,
     submittedAt: (a as any).submittedAt,
   }));
-  res.status(200).json({ agents });
+  res.status(200).json({ agents, activationMode: 'routing_only' });
 });
 
 // GET /api/v1/marketplace/agents/activated — list activated agent IDs for current user (client expects this)
@@ -586,7 +586,7 @@ router.get('/agents/activated', async (req: Request, res: Response) => {
   // Import via ESM dynamic import.
   const mod = await import('../db.js');
   const ids = mod.dbMarketplace.getActivatedAgents(userId);
-  res.status(200).json({ activatedAgentIds: ids });
+  res.status(200).json({ activatedAgentIds: ids, activationMode: 'routing_only' });
 });
 
 // POST /api/v1/marketplace/agents/:id/activate — activate agent (S09-A07)
@@ -607,7 +607,11 @@ router.post(
     if (!activatedAgents.has(req.user!.sub)) activatedAgents.set(req.user!.sub, new Set());
     activatedAgents.get(req.user!.sub)!.add(agent.id);
 
-    res.status(200).json({ message: `Agent "${agent.name}" activated`, agentId: agent.id });
+    res.status(200).json({
+      message: `Agent "${agent.name}" activated`,
+      agentId: agent.id,
+      activationMode: 'routing_only',
+    });
   },
 );
 
@@ -626,7 +630,11 @@ router.post(
     // Keep legacy in-memory map for existing tests / local behavior.
     activatedAgents.get(req.user!.sub)?.delete(agent.id);
 
-    res.status(200).json({ message: `Agent "${agent.name}" deactivated`, agentId: agent.id });
+    res.status(200).json({
+      message: `Agent "${agent.name}" deactivated`,
+      agentId: agent.id,
+      activationMode: 'routing_only',
+    });
   },
 );
 
