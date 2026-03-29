@@ -109,7 +109,7 @@ Evidence pack for this planner run:
 
 ## P1 (high value) — UX clarity + spec-aligned learning loop
 
-### 5) P1 — Dashboard: de-duplicate CTAs and tighten IA
+### 5) P1 — Dashboard: de-duplicate CTAs and tighten IA ✅
 
 **Problem**: Dashboard currently has multiple overlapping “create course” CTAs (hero + input + cards). This feels noisy and unintentional.
 

@@ -31,7 +31,6 @@ import {
   IconTrash,
   IconFlame,
   IconMap,
-  IconRocket,
   IconSparkles,
 } from '../components/icons/index.js';
 
@@ -268,9 +267,10 @@ export function Dashboard() {
               <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-6 sm:p-8 text-white shadow-card">
                 <h2 className="text-xl sm:text-2xl font-bold mb-2">Start Your Learning Journey</h2>
                 <p className="text-sm opacity-80 mb-4">
-                  Enter any topic and our AI agents will build a course outline and draft lessons
-                  for you in minutes (best-effort; may be incomplete in this MVP).
+                  Create a course from any topic. LearnFlow will generate an outline and draft
+                  lessons (best-effort; may be incomplete in this MVP).
                 </p>
+
                 <div className="flex flex-wrap gap-2 mb-4">
                   {['Agentic AI', 'Rust Programming', 'Quantum Computing'].map((t) => (
                     <Button
@@ -284,18 +284,38 @@ export function Dashboard() {
                     </Button>
                   ))}
                 </div>
-                <Button
-                  onClick={() => {
-                    const el = document.querySelector<HTMLInputElement>(
-                      'input[placeholder*="Enter a topic"]',
-                    );
-                    el?.focus();
-                  }}
-                  variant="secondary"
-                  className="bg-white text-accent hover:bg-white/90 border-0 shadow-card"
-                >
-                  Create Your First Course
-                </Button>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    value={newTopic}
+                    onChange={(e) => setNewTopic(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()}
+                    placeholder="Enter a topic (e.g., Agentic AI, Rust, Quantum Computing)..."
+                    className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-white/30 bg-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/60 focus:border-transparent transition-all"
+                  />
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={handleCreateCourse}
+                      disabled={creating || pipelineLoading || !newTopic.trim()}
+                      variant="secondary"
+                      size="large"
+                      className="bg-white text-accent hover:bg-white/90 border-0 shadow-card whitespace-nowrap"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconSparkles size={16} className="text-accent" decorative />
+                        {creating || pipelineLoading ? 'Starting…' : 'Create course'}
+                      </span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="large"
+                      onClick={() => nav('/marketplace/courses')}
+                      className="text-white bg-white/15 hover:bg-white/25 border border-white/20 whitespace-nowrap"
+                    >
+                      Browse marketplace
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : null}
 
@@ -553,11 +573,15 @@ export function Dashboard() {
               </div>
             )}
 
-            {/* New Course */}
+            {/* New Course (secondary placement) */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                Start Learning Something New
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Create another course
               </h2>
+              <p className="text-sm text-gray-800/80 dark:text-gray-200 mb-3">
+                Enter a topic and we’ll generate an outline and draft lessons (best-effort in this
+                MVP).
+              </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 {upgradeMessage && (
                   <div className="w-full rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100">
@@ -585,7 +609,7 @@ export function Dashboard() {
                 >
                   <span className="inline-flex items-center gap-2">
                     <IconSparkles size={16} className="text-white" decorative />
-                    {creating || pipelineLoading ? 'Starting...' : 'Create Course'}
+                    {creating || pipelineLoading ? 'Starting…' : 'Create course'}
                   </span>
                 </Button>
               </div>
@@ -810,52 +834,16 @@ export function Dashboard() {
                 )}
               </div>
               {state.courses.length === 0 ? (
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-dashed border-accent/30 dark:border-accent/20 shadow-card p-12 text-center">
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-accent/10 flex items-center justify-center">
-                    <IconRocket size={34} className="text-accent" decorative />
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent/10 flex items-center justify-center">
+                    <IconCourse size={28} className="text-accent" decorative />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    Create your first course
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                    No courses yet
                   </h3>
-                  <p className="text-gray-800/80 dark:text-gray-200 text-sm max-w-md mx-auto mb-6">
-                    Enter any topic above and our AI agents will research, organize, and build a
-                    personalized course for you in minutes.
+                  <p className="text-gray-800/80 dark:text-gray-200 text-sm max-w-md mx-auto">
+                    Use the “Create course” box above to generate your first course.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                    <Button
-                      variant="primary"
-                      size="large"
-                      onClick={() => {
-                        const el = document.querySelector<HTMLInputElement>(
-                          'input[placeholder*="Enter a topic"]',
-                        );
-                        el?.focus();
-                      }}
-                    >
-                      Start Learning Now
-                    </Button>
-                    <Button variant="secondary" onClick={() => nav('/marketplace/courses')}>
-                      Browse Marketplace
-                    </Button>
-                  </div>
-                  <div className="mt-6 flex flex-wrap gap-2 justify-center">
-                    {[
-                      'Agentic AI',
-                      'Rust Programming',
-                      'Quantum Computing',
-                      'Machine Learning',
-                    ].map((topic) => (
-                      <Button
-                        key={topic}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setNewTopic(topic)}
-                        className="rounded-full border border-gray-200 dark:border-gray-700"
-                      >
-                        {topic}
-                      </Button>
-                    ))}
-                  </div>
                 </div>
               ) : (
                 <div

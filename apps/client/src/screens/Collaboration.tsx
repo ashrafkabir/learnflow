@@ -194,7 +194,7 @@ export function Collaboration() {
           <span className="inline-flex items-center">
             <IconRocket className="w-4 h-4" />
           </span>
-          Collaboration (MVP): groups + messages are persisted. Study partner matches are
+          Collaboration (MVP): groups + messages are persisted. Study partner matches are{' '}
           <span className="font-semibold">synthetic suggestions</span> (not verified, not real-time,
           and not based on real user availability). Shared mindmaps use live sync links for group
           members.

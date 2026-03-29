@@ -163,7 +163,9 @@ describe('S08-A04: Dashboard', () => {
   it('renders create course input', async () => {
     renderAt('/dashboard');
     await waitFor(() => {
-      expect(document.body.innerHTML).toContain('Start Learning Something New');
+      // Keep this check resilient to copy tweaks.
+      expect(document.body.innerHTML).toContain('Create');
+      expect(document.querySelector('input[placeholder*="Enter a topic"]')).not.toBeNull();
     });
   });
   it('renders settings and chat buttons', async () => {
