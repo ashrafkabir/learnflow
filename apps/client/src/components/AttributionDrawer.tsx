@@ -10,6 +10,12 @@ export type AttributionSource = {
   summary?: string;
   whyThisMatters?: string;
 
+  // Credibility / provenance (best-effort)
+  domain?: string;
+  credibilityScore?: number;
+  credibilityLabel?: 'High' | 'Medium' | 'Low' | 'Unknown' | string;
+  whyCredible?: string;
+
   // Legacy / optional bibliographic fields
   author?: string;
   publication?: string;
@@ -94,7 +100,9 @@ export function AttributionDrawer(props: {
                     {s.title || s.url || 'Untitled'}
                   </p>
                   <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
-                    {[s.sourceType, s.author, s.publication, s.year].filter(Boolean).join(' · ')}
+                    {[s.sourceType, s.author, s.publication, s.domain, s.year]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </p>
 
                   {s.summary ? (
@@ -106,6 +114,24 @@ export function AttributionDrawer(props: {
                       <span className="font-semibold">Why this matters:</span> {s.whyThisMatters}
                     </p>
                   ) : null}
+
+                  {typeof s.credibilityScore === 'number' || s.credibilityLabel || s.whyCredible ? (
+                    <div className="mt-1 text-[11px] text-gray-600 dark:text-gray-300 space-y-0.5">
+                      <p>
+                        <span className="font-semibold">Credibility:</span>{' '}
+                        {s.credibilityLabel || 'Unknown'}
+                        {typeof s.credibilityScore === 'number'
+                          ? ` (${s.credibilityScore.toFixed(2)})`
+                          : ''}
+                      </p>
+                      {s.whyCredible ? (
+                        <p>
+                          <span className="font-semibold">Why we trust it:</span> {s.whyCredible}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   {s.url ? (
                     <a
                       href={s.url}
