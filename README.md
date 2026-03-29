@@ -83,6 +83,9 @@ This project uses [Turborepo](https://turbo.build/) for monorepo management. Key
 - `npm run lint` — Lint all packages
 - `npm run test` — Run all tests
 - `npm run dev` — Start development servers
+- `npm run dev:status` — Show what’s currently listening on dev ports + any leftover Turbo dev processes
+- `npm run dev:clean` — Safely free the canonical dev ports (3000/3001/3003) by terminating only node/vite/next listeners on those ports
+- `npm run pw:list` — List Playwright tests (safe to pipe to `head` without crashing Node with EPIPE)
 
 ### Docs
 

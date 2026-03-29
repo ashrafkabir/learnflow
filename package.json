@@ -19,6 +19,8 @@
     "prepare": "husky",
     "dev:attach": "node scripts/attach-ports.mjs && turbo run dev",
     "dev:status": "node scripts/dev-status.mjs",
+    "dev:clean": "node scripts/dev-clean.mjs",
+    "pw:list": "node scripts/playwright-list.mjs",
     "rg": "node scripts/rg.mjs"
   },
   "devDependencies": {
