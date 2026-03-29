@@ -55,13 +55,15 @@ describe('Mindmap page', () => {
     expect(document.body.innerHTML.length).toBeGreaterThan(0);
   });
 
-  it('renders progress legend content', async () => {
+  it('renders mastery legend content (Iter138)', async () => {
     renderAt('/mindmap');
-    // Check that the page has rendered content
     await new Promise((r) => setTimeout(r, 500));
     const html = document.body.innerHTML;
-    // Legend should reference mastered/learning/not-started or green/amber/gray
-    expect(html.length).toBeGreaterThan(100);
+    // Legend appears in the header (even when graph is empty state)
+    expect(html).toMatch(/New/);
+    expect(html).toMatch(/Learning/);
+    expect(html).toMatch(/Solid/);
+    expect(html).toMatch(/Mastered/);
   });
 
   it('has accessible aria attributes', async () => {

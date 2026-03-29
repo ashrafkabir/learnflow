@@ -182,13 +182,23 @@ Badges are labeled as a **learning estimate** (best-effort), not a guarantee.
 
 ## P2 (quality/reliability) — Harden the loop and reduce user confusion
 
-### 9) P2 — Mindmap semantics: show mastery (not just completion) and add “review due” affordance
+### 9) P2 — Mindmap semantics: show mastery (not just completion) and add “review due” affordance (DONE in this builder run)
 
-**Acceptance criteria**
+**Acceptance criteria (DONE in this builder run)**
 
-- Mindmap node coloring uses mastery store rather than only completion.
-- Add a small legend (dev-only acceptable for MVP) explaining the colors.
-- Optionally: node context menu includes “Review due” indicator + quick jump.
+- ✅ Mindmap lesson node coloring uses mastery store rather than only completion.
+  - New: gray (#9CA3AF)
+  - Learning: amber (#F59E0B)
+  - Solid: blue (#2563EB)
+  - Mastered: green (#16A34A)
+- ✅ Lesson nodes with `nextReviewAt <= now` render as a ★ (vis-network `shape: 'star'`) and slightly larger size.
+- ✅ Updated in-UI legends (header + overlay) to mastery buckets and include “★ = review due”.
+- ✅ Added unit test update: `apps/client/src/__tests__/mindmap.test.tsx` asserts mastery legend labels.
+- ✅ Added Playwright spec + screenshot evidence:
+  - `e2e/iter138-mindmap-mastery-legend.spec.ts`
+  - `e2e/screenshots/iter138-mindmap-mastery-legend.png`
+
+(Real-time updates when mastery changes are not wired; state updates on refresh/reload, which satisfies MVP.)
 
 ---
 
