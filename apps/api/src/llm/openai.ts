@@ -52,6 +52,15 @@ export function getOpenAIForRequest(params: {
     }
   }
 
-  // Intentionally no managed env fallback in MVP.
+  // Temporary: fall back to managed env key so BYOAI behaves the same as env in dev.
+  // This keeps the UX working without requiring per-user key setup.
+  const envKey = process.env.OPENAI_API_KEY;
+  if (envKey && envKey.trim().length > 0) {
+    return {
+      client: new OpenAI({ apiKey: envKey.trim() }),
+      source: { kind: 'managed_env' },
+    };
+  }
+
   return { client: null, source: { kind: 'none' } };
 }
