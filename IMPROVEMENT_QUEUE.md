@@ -17,8 +17,8 @@ Status: **READY FOR BUILDER**
 
 #### Iter134 follow-ups from user feedback (P0)
 
-- [ ] **Lesson reader UX**: remove duplicate “Mark complete” buttons; keep a single primary CTA per lesson.
-- [ ] **Lesson navigation**: add “Next lesson” (and “Previous” if easy) based on course/module/lesson ordering.
+- [x] **Lesson reader UX**: remove duplicate “Mark complete” buttons; keep a single primary CTA per lesson.
+- [x] **Lesson navigation**: add “Next lesson” (and “Previous” if easy) based on course/module/lesson ordering.
 - [ ] **Illustrations/hero**: fix “Illustrate” so lessons actually show a hero section and rendered images/illustrations (verify pipeline generates assets + UI renders them; add Playwright before/after screenshots).
 
 ---

@@ -632,7 +632,7 @@ export function LessonReader() {
 
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const handleMarkComplete = async () => {
+  const _handleMarkComplete = async () => {
     if (courseId && lessonId) {
       await completeLesson(courseId, lessonId);
       analytics.track('lesson_completed', { courseId, lessonId });
@@ -1710,29 +1710,6 @@ export function LessonReader() {
 
         {/* Action buttons */}
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button
-            variant={isComplete ? 'ghost' : 'primary'}
-            onClick={handleMarkComplete}
-            disabled={isComplete}
-            aria-label="Mark Complete"
-            className={
-              isComplete
-                ? 'bg-success/10 text-success cursor-default'
-                : 'bg-success hover:bg-success/90'
-            }
-          >
-            {isComplete ? (
-              <span className="inline-flex items-center gap-2">
-                <IconCheck className="w-4 h-4" />
-                Completed
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2">
-                <IconCheck className="w-4 h-4" />
-                Mark Complete
-              </span>
-            )}
-          </Button>
           <Button
             variant={activePanel === 'notes' ? 'primary' : 'secondary'}
             onClick={handleNotes}
