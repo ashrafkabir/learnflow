@@ -5,6 +5,10 @@ import {
   crawlSourcesForTopic,
   searchForLesson,
   searchTopicTrending,
+  searchAndExtractTopic,
+  writeCourseResearch,
+  writeLessonResearch,
+  searchWikimediaCommonsImages,
   type FirecrawlSource,
 } from '@learnflow/agents';
 import {
@@ -94,6 +98,11 @@ export interface PipelineState {
   id: string;
   courseId: string;
   topic: string;
+
+  /** Last error encountered (for UI). Prefer this over scanning logs. */
+  lastError?: string;
+  /** Best-effort retry counter (incremented on restart). */
+  retryCount?: number;
 
   /** Iter74 P0.5: milestone events per lesson */
   lessonMilestones?: Array<{
@@ -332,6 +341,7 @@ function failPipeline(p: PipelineState, reason: string, error?: unknown): void {
     stage: 'failed',
     failReason: reason,
     error: error ? String(error) : p.error,
+    lastError: safeErrorMessage(error) || reason,
     finishedAt: new Date().toISOString(),
     progress: Math.min(100, Math.max(p.progress ?? 0, 1)),
   });
@@ -969,6 +979,50 @@ async function runPipeline(pipelineId: string) {
   }
   updatePipeline(p, { crawlThreads: [...threads], progress: 25 });
 
+  // Persist the Phase 1 research bundle (sources + extracted markdown + images manifest)
+  // so later stages can run without re-scraping.
+  try {
+    const { client: openaiForResearch } = getOpenAIForRequest({
+      userId: (p as any).userId || 'test-user-1',
+      tier: (p as any).tier || 'pro',
+    });
+
+    const web = await searchAndExtractTopic({
+      topic,
+      openai: openaiForResearch || undefined,
+      maxResults: Math.max(4, Math.min(12, searchCfg.perQueryLimit * 2)),
+      maxPagesToExtract: 6,
+    });
+
+    // Attach a few Wikimedia Commons license-safe images per topic (best-effort)
+    const images = await searchWikimediaCommonsImages(topic, { limit: 4 }).catch(() => []);
+
+    await writeCourseResearch(`course-${p.courseId || p.id}`, {
+      topic: web.topic,
+      sourcesMissingReason: web.sourcesMissingReason,
+      sources: (web.sources || []).map((s) => ({
+        ...s,
+        images: (s.images || []).concat(
+          images.slice(0, 4).map((img) => ({
+            url: img.url,
+            alt: img.title,
+            credit: img.author,
+            license: img.license,
+            sourceUrl: img.sourcePageUrl,
+          })),
+        ),
+      })),
+    });
+
+    appendLog(p, 'info', 'artifacts:course research bundle written');
+  } catch (err: any) {
+    appendLog(
+      p,
+      'warn',
+      `artifacts:course research bundle write failed | message="${safeErrorMessage(err)}"`,
+    );
+  }
+
   const sourceMode = 'real' as const; // web-search-provider always uses real web sources
   updatePipeline(p, { progress: 28, sourceMode });
 
@@ -1214,6 +1268,39 @@ async function runPipeline(pipelineId: string) {
 
         if (lessonSources.length === 0) {
           lessonSources = uniqueSources.slice(0, 6);
+        }
+
+        // Persist per-lesson research bundle so later stages don't need to re-scrape.
+        try {
+          const images = await searchWikimediaCommonsImages(`${topic} ${les.title}`, {
+            limit: 4,
+          }).catch(() => []);
+
+          await writeLessonResearch(`course-${p.courseId || p.id}`, lessonId, {
+            topic: `${topic} / ${modules[mi].title} / ${les.title}`,
+            sources: (lessonSources || []).slice(0, 8).map((s) => ({
+              url: s.url,
+              title: s.title,
+              publisher: s.domain,
+              accessedAt: p.startedAt,
+              snippet: (s.content || '').slice(0, 240),
+              extractedText: (s.content || '').slice(0, 20_000),
+              images: images.slice(0, 4).map((img) => ({
+                url: img.url,
+                alt: img.title,
+                credit: img.author,
+                license: img.license,
+                sourceUrl: img.sourcePageUrl,
+              })),
+            })),
+          });
+          appendLog(p, 'info', `artifacts:lesson research bundle written | lessonId=${lessonId}`);
+        } catch (err: any) {
+          appendLog(
+            p,
+            'warn',
+            `artifacts:lesson research bundle write failed | lessonId=${lessonId} | message="${safeErrorMessage(err)}"`,
+          );
         }
 
         // Update live source cards for UI and downstream Further Reading blocks.
@@ -1965,6 +2052,8 @@ router.post('/:id/restart', validateBody(z.object({})), (req: Request, res: Resp
     status: 'QUEUED',
     stage: 'scraping',
     progress: 0,
+    retryCount: (old as any).retryCount ? Number((old as any).retryCount) + 1 : 1,
+    lastError: undefined,
     startedAt: now,
     updatedAt: now,
     finishedAt: undefined,
