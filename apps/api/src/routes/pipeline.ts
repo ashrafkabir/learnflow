@@ -208,15 +208,91 @@ function extractStatusCode(err: any): number | undefined {
   return undefined;
 }
 
+function redactSecrets(input: string): string {
+  return String(input || '')
+    .replace(/sk-[A-Za-z0-9]{10,}/g, '[REDACTED]')
+    .replace(/tvly-[A-Za-z0-9]{10,}/g, '[REDACTED]')
+    .replace(/Bearer\s+[A-Za-z0-9._-]{10,}/gi, 'Bearer [REDACTED]');
+}
+
+async function writeOpenAILogArtifact(params: {
+  courseId: string;
+  kind: string;
+  request: unknown;
+  response: unknown;
+}): Promise<{ requestPath: string; responsePath: string } | null> {
+  try {
+    const { courseArtifactsRoot } = await import('@learnflow/agents');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+
+    const dir = path.join(courseArtifactsRoot(params.courseId), 'logs', 'openai');
+    await fs.mkdir(dir, { recursive: true });
+
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const requestPath = path.join(dir, `${stamp}_${params.kind}_request.json`);
+    const responsePath = path.join(dir, `${stamp}_${params.kind}_response.json`);
+
+    await fs.writeFile(requestPath, JSON.stringify(params.request, null, 2), 'utf8');
+    await fs.writeFile(responsePath, JSON.stringify(params.response, null, 2), 'utf8');
+
+    return { requestPath, responsePath };
+  } catch {
+    return null;
+  }
+}
+
+function previewJson(x: unknown, maxChars: number): string {
+  try {
+    const s = JSON.stringify(x);
+    if (s.length <= maxChars) return s;
+    return s.slice(0, maxChars) + '…';
+  } catch {
+    const s = String(x || '');
+    if (s.length <= maxChars) return s;
+    return s.slice(0, maxChars) + '…';
+  }
+}
+
+async function logOpenAIRequestResponse(params: {
+  p: PipelineState;
+  courseId: string;
+  kind: string;
+  request: unknown;
+  response: unknown;
+}): Promise<void> {
+  const { p, courseId, kind, request, response } = params;
+
+  // Write full artifacts to disk.
+  const paths = await writeOpenAILogArtifact({ courseId, kind, request, response });
+
+  // Log truncated previews to pipeline logs.
+  appendLog(
+    p,
+    'info',
+    `[openai.request] kind=${kind} ${redactSecrets(previewJson(request, 2000))}`,
+  );
+  appendLog(
+    p,
+    'info',
+    `[openai.response] kind=${kind} ${redactSecrets(previewJson(response, 2000))}`,
+  );
+
+  if (paths) {
+    appendLog(
+      p,
+      'info',
+      `[openai.artifacts] request=${paths.requestPath} response=${paths.responsePath}`,
+    );
+  }
+}
+
 function safeErrorMessage(err: any): string {
   const msg = String(err?.message || err || '')
     .replace(/\s+/g, ' ')
     .trim();
   // Never leak common key patterns if an upstream lib echoed it (defense in depth).
-  return msg
-    .replace(/sk-[A-Za-z0-9]{10,}/g, '[REDACTED]')
-    .replace(/tvly-[A-Za-z0-9]{10,}/g, '[REDACTED]')
-    .slice(0, 260);
+  return redactSecrets(msg).slice(0, 260);
 }
 
 function logAuthIssue(
@@ -372,7 +448,7 @@ async function generateModulesForTopic(
   const hasRealSources = scrapedSources.length > 0;
 
   try {
-    const resp = await openai.chat.completions.create({
+    const reqPayload = {
       model: 'gpt-4o-mini',
       temperature: 0.7,
       max_tokens: 3000,
@@ -407,7 +483,12 @@ ${hasRealSources ? `- You have REAL scraped web sources below. Use them to infor
           content: `Create a comprehensive intermediate-level course syllabus for: "${topic}"${hasRealSources ? `\n\nHere are real sources scraped from the web to inform your plan:\n\n${sourceContext}` : ''}`,
         },
       ],
-    });
+    };
+
+    const resp = await openai.chat.completions.create(reqPayload);
+    // NOTE: This function doesn't have access to the pipeline state (p). We only log
+    // request/response when we have a pipeline context in runPipeline.
+    // (OpenAI request/response will be logged from runPipeline around this call.)
 
     const content = resp.choices[0]?.message?.content;
     if (content) {
@@ -899,6 +980,44 @@ async function runPipeline(pipelineId: string) {
   // Generate INFORMED course plan using scraped sources
   let modules: TopicModule[] = [];
   try {
+    // Log the OpenAI request/response for the syllabus generation into pipeline logs + disk artifacts.
+    // We reconstruct the request payload here to avoid threading pipeline state into helpers.
+    const sourceContext = crawledSources
+      .slice(0, 15)
+      .map(
+        (s, i) =>
+          `[Source ${i + 1}] "${s.title}" (${(s as any).domain || ''})\n${String((s as any).content || '').slice(0, 800)}`,
+      )
+      .join('\n---\n');
+    const hasRealSources = crawledSources.length > 0;
+    const syllabusReq = {
+      model: 'gpt-4o-mini',
+      temperature: 0.7,
+      max_tokens: 3000,
+      response_format: { type: 'json_object' as const },
+      messages: [
+        {
+          role: 'system' as const,
+          content: `You are a curriculum designer. Generate a detailed course syllabus as JSON. Return:\n{\n  "courseTitle": "A specific, compelling course title",\n  "courseDescription": "2-3 sentence description",\n  "modules": [\n    {\n      "title": "Module title specific to the topic",\n      "objective": "What the learner will achieve",\n      "lessons": [\n        { "title": "Specific lesson title", "description": "What this lesson covers" }\n      ]\n    }\n  ]\n}\nRules:\n- Generate 4-6 modules, each with 3-5 lessons\n- Titles must be SPECIFIC to the topic (not generic like "Foundations of X")\n- Lessons should progress from fundamentals to advanced\n- Include practical/hands-on lessons\n- Each lesson title should be unique and descriptive\n${hasRealSources ? `- You have REAL scraped web sources below. Use them to inform what topics are trending, important, and practically relevant. Base your module/lesson titles on what the sources actually cover — not generic templates.` : ''}`,
+        },
+        {
+          role: 'user' as const,
+          content: `Create a comprehensive intermediate-level course syllabus for: "${topic}"${hasRealSources ? `\n\nHere are real sources scraped from the web to inform your plan:\n\n${sourceContext}` : ''}`,
+        },
+      ],
+    };
+
+    if (!openai) throw new Error('openai_unavailable');
+    const syllabusResp = await openai.chat.completions.create(syllabusReq as any);
+    await logOpenAIRequestResponse({
+      p,
+      courseId: `course-${p.courseId || p.id}`,
+      kind: 'course_syllabus',
+      request: syllabusReq,
+      response: syllabusResp,
+    });
+
+    // Reuse the existing parser by passing the sources + openai client
     modules = await generateModulesForTopic(topic, crawledSources, openai);
   } catch (err: any) {
     // OpenAI invalid_api_key / 401/403 should be clearly visible in pipeline logs.
