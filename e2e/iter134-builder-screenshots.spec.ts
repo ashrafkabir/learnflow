@@ -1,5 +1,45 @@
 import { test, expect } from '@playwright/test';
 
+async function waitForApi(apiBase: string, request: any, timeoutMs = 30_000): Promise<void> {
+  const started = Date.now();
+  // Wait for API health endpoint to respond.
+  while (Date.now() - started < timeoutMs) {
+    try {
+      const res = await request.get(`${apiBase}/health`, { timeout: 5_000 });
+      if (res.ok()) return;
+    } catch {
+      // ignore
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`API not ready after ${timeoutMs}ms: ${apiBase}`);
+}
+
+async function createAuthedPipeline(
+  apiBase: string,
+  request: any,
+): Promise<{ token: string; pipelineId: string }> {
+  await waitForApi(apiBase, request);
+
+  const email = `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@learnflow.dev`;
+
+  const reg = await request.post(`${apiBase}/api/v1/auth/register`, {
+    timeout: 20_000,
+    data: { email, password: 'password123', displayName: 'E2E' },
+  });
+  const regData = await reg.json();
+  const token = regData.accessToken as string;
+
+  const p = await request.post(`${apiBase}/api/v1/pipeline`, {
+    timeout: 20_000,
+    headers: { Authorization: `Bearer ${token}` },
+    data: { topic: 'E2E pipeline topic' },
+  });
+  const pdata = await p.json();
+
+  return { token, pipelineId: pdata.pipelineId as string };
+}
+
 /**
  * Iteration 134 — Builder run screenshots (desktop + mobile) for research→plan→lesson pipeline.
  *
@@ -50,35 +90,19 @@ test.describe('Iter134 builder screenshots', () => {
     page.on('pageerror', (err) => {
       console.log(`[pageerror] ${String(err)}`);
     });
+    page.on('response', (res) => {
+      if (res.status() === 401) {
+        console.log(`[http:401] ${res.url()}`);
+      }
+    });
   });
-  test('desktop: pipeline detail + logs', async ({ page }) => {
+  test('desktop: pipeline detail + logs', async ({ page, request }) => {
     await page.addInitScript(initAuth());
 
     // Create a real pipeline so the detail screen can render deterministically.
-    // Note: We must navigate before using relative fetch() URLs.
+    const { token, pipelineId } = await createAuthedPipeline('http://127.0.0.1:3000', request);
+
     await page.goto('/');
-
-    const { token, pipelineId } = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: `e2e-${Date.now()}@learnflow.dev`,
-          password: 'password123',
-          displayName: 'E2E',
-        }),
-      });
-      const data = await res.json();
-      const token = data.accessToken as string;
-
-      const p = await fetch('/api/v1/pipeline', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ topic: 'E2E pipeline topic' }),
-      });
-      const pdata = await p.json();
-      return { token, pipelineId: pdata.pipelineId as string };
-    });
 
     // The pipeline detail polls the API; it needs a valid JWT.
     // Must be set BEFORE navigating to the route.
@@ -103,7 +127,7 @@ test.describe('Iter134 builder screenshots', () => {
     }
   });
 
-  test('mobile: pipeline detail + logs', async ({ browser }) => {
+  test('mobile: pipeline detail + logs', async ({ browser, request }) => {
     const context = await browser.newContext({
       viewport: { width: 390, height: 844 },
       userAgent:
@@ -115,30 +139,9 @@ test.describe('Iter134 builder screenshots', () => {
     await page.addInitScript(initAuth());
 
     // Create a real pipeline so the detail screen can render deterministically.
-    // Note: We must navigate before using relative fetch() URLs.
+    const { token, pipelineId } = await createAuthedPipeline('http://127.0.0.1:3000', request);
+
     await page.goto('/');
-
-    const { token, pipelineId } = await page.evaluate(async () => {
-      const res = await fetch('/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: `e2e-${Date.now()}@learnflow.dev`,
-          password: 'password123',
-          displayName: 'E2E',
-        }),
-      });
-      const data = await res.json();
-      const token = data.accessToken as string;
-
-      const p = await fetch('/api/v1/pipeline', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ topic: 'E2E pipeline topic' }),
-      });
-      const pdata = await p.json();
-      return { token, pipelineId: pdata.pipelineId as string };
-    });
 
     // The pipeline detail polls the API; it needs a valid JWT.
     // Must be set BEFORE navigating to the route.

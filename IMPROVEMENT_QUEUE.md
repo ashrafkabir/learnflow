@@ -4,7 +4,7 @@ Owner: Builder
 Planner: Ash (planner subagent)  
 Last updated: 2026-03-29
 
-Status: **IN PROGRESS**
+Status: **READY FOR BUILDER**
 
 ### Iter134 (Builder focus)
 
@@ -14,6 +14,12 @@ Status: **IN PROGRESS**
 - [x] Wire lesson generation to use saved research bundles (no re-scrape), and include citations sourced from those bundles.
 - [x] Update PipelineDetail UI: show stage progress + `lastError` + retry affordance, and render links to saved artifacts.
 - [x] Generate consolidated markdown artifacts: `course-research.md` (with source index + bounded extracts + image attributions) and `lessonplan.md` (LLM-generated lesson plan referencing research URLs).
+
+#### Iter134 follow-ups from user feedback (P0)
+
+- [ ] **Lesson reader UX**: remove duplicate “Mark complete” buttons; keep a single primary CTA per lesson.
+- [ ] **Lesson navigation**: add “Next lesson” (and “Previous” if easy) based on course/module/lesson ordering.
+- [ ] **Illustrations/hero**: fix “Illustrate” so lessons actually show a hero section and rendered images/illustrations (verify pipeline generates assets + UI renders them; add Playwright before/after screenshots).
 
 ---
 
