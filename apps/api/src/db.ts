@@ -795,6 +795,7 @@ const stmts = {
   upsertMastery: sqlite.prepare(
     `INSERT OR REPLACE INTO mastery (userId, courseId, lessonId, masteryLevel, lastStudiedAt, nextReviewAt, lastQuizScore, lastQuizAt, gapsJson, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
+  getMasteryByUser: sqlite.prepare(`SELECT * FROM mastery WHERE userId = ?`),
   getMasteryByUserCourse: sqlite.prepare(`SELECT * FROM mastery WHERE userId = ? AND courseId = ?`),
   getMasteryByUserLesson: sqlite.prepare(
     `SELECT * FROM mastery WHERE userId = ? AND courseId = ? AND lessonId = ? LIMIT 1`,
@@ -2593,6 +2594,10 @@ export const dbMastery = {
       JSON.stringify(row.gaps || []),
       now,
     );
+  },
+
+  getByUser(userId: string): any[] {
+    return stmts.getMasteryByUser.all(userId) as any[];
   },
 
   getByCourse(userId: string, courseId: string): any[] {

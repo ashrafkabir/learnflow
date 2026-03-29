@@ -60,6 +60,9 @@ Iter138 should therefore prioritize **mastery + personalization primitives** and
 
 ### 2) P0 — Make quiz results visible + stable in the learner UI (CourseView + LessonReader)
 
+**Builder note (partial)**: Server-side analytics now uses mastery store for quizAverage (fallback to events).
+UI badges/last score surfaces still pending.
+
 **Problem**: Quizzes exist, but the product doesn’t _feel_ like it tracks learning.
 
 **Acceptance criteria**

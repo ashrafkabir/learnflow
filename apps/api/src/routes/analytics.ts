@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { dbProgress, dbEvents } from '../db.js';
+import { dbProgress, dbEvents, dbMastery } from '../db.js';
 
 const router = Router();
 
@@ -45,22 +45,44 @@ router.get('/', (req: Request, res: Response) => {
     }
   }
 
-  // Quiz average (best-effort) from quiz.submitted events
-  const quizScores: number[] = [];
-  for (const e of events) {
-    if (e.type !== 'quiz.submitted') continue;
+  // Quiz average (stable) from mastery store (fallback to events)
+  const masteryRows = (() => {
     try {
-      const meta = JSON.parse((e.meta as any) || '{}') as any;
-      const score = Number(meta?.score);
-      if (Number.isFinite(score)) quizScores.push(Math.max(0, Math.min(100, score)));
+      return dbMastery.getByUser(userId);
     } catch {
-      // ignore
+      return [];
     }
+  })();
+
+  const masteryQuizScores = masteryRows
+    .map((r: any) =>
+      r.lastQuizScore === null || r.lastQuizScore === undefined ? null : Number(r.lastQuizScore),
+    )
+    .filter((s: any) => Number.isFinite(s)) as number[];
+
+  let quizAverage = 0;
+  if (masteryQuizScores.length > 0) {
+    quizAverage = Math.round(
+      masteryQuizScores.reduce((a, b) => a + b, 0) / masteryQuizScores.length,
+    );
+  } else {
+    // Fallback: event-based quiz average (best-effort)
+    const quizScores: number[] = [];
+    for (const e of events) {
+      if (e.type !== 'quiz.submitted') continue;
+      try {
+        const meta = JSON.parse((e.meta as any) || '{}') as any;
+        const score = Number(meta?.score);
+        if (Number.isFinite(score)) quizScores.push(Math.max(0, Math.min(100, score)));
+      } catch {
+        // ignore
+      }
+    }
+    quizAverage =
+      quizScores.length > 0
+        ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
+        : 0;
   }
-  const quizAverage =
-    quizScores.length > 0
-      ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length)
-      : 0;
 
   res.status(200).json({
     userId,
