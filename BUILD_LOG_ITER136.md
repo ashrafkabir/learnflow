@@ -89,3 +89,8 @@
   - `learnflow/screenshots/iter136/run-lesson-convo/desktop/app-conversation.png`
   - `learnflow/screenshots/iter136/run-lesson-convo/mobile/*conversation*.png`
 
+
+### Backup / export
+- OneDrive mount not detected on this host; created tarball:
+  - `artifacts/iter136-p1-7-p1-8-screenshots.tgz` (contains `learnflow/screenshots/iter136/run-lesson-convo/*`)
+
