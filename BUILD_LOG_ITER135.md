@@ -1,73 +1,62 @@
-# BUILD_LOG_ITER135 — Builder continuation (after Iter134 timeout)
+# BUILD LOG — Iter135 (continuation)
 
 Date: 2026-03-29
 
-Scope: Resume from prior failed/timed-out run. Focus on remaining **undone** items in `IMPROVEMENT_QUEUE.md`, starting with P0.
+## Summary
+- Fixed **Today’s Lessons** endpoint to be consistent with persisted progress (never recommends completed lessons).
+- Added deterministic API test for daily lessons recommendation.
+- Tightened one piece of Dashboard copy to be more MVP-truthful (course creation).
 
-## Task: P0 — Fix `apps/web` static export + middleware incompatibility
+---
 
-### What I found
-- `apps/web/src/middleware.ts` exists (handles `HEAD /` stability).
-- `apps/web/next.config.js` **does not** set `output: 'export'` (already removed in repo state).
-- Therefore the “Middleware cannot be used with output: export” warning is not reproducible in current code; likely already fixed in a previous attempt but the queue item wasn’t checked off.
+## Changes
 
-### Evidence
-Commands:
+### 1) P1 Task 5 — Today’s Lessons queue respects real progress
+
+**Problem**
+- `GET /api/v1/daily` was driven only from an in-memory `courses` map and also included a “review” path that could recommend lessons the user just completed.
+
+**Fix**
+- `GET /api/v1/daily` now prefers SQLite course list (`dbCourses.getAll()`) and only recommends **next uncompleted lessons** (no completed-lesson “review” recommendations).
+
+**Files**
+- `apps/api/src/routes/daily.ts`
+
+**Test**
+- Added: `apps/api/src/__tests__/daily-lessons.test.ts`
+
+Command:
 ```bash
-cd /home/aifactory/.openclaw/workspace/learnflow
-sed -n '1,200p' apps/web/src/middleware.ts
-cat apps/web/next.config.js
-node -e "console.log(require('./apps/web/next.config.js'))"
+cd apps/api
+npm test -- --run src/__tests__/daily-lessons.test.ts
 ```
-Observed output:
-- next config printed: `{ eslint: { ignoreDuringBuilds: true } }` (no `output: 'export'`).
+Result: PASS
 
-### Dev runtime verification
-I had to clear stale dev processes first (ports were in use):
-```bash
-node scripts/dev-status.mjs
-node scripts/dev-clean.mjs
-```
-Then started dev:
-```bash
-npm run dev
-```
-- Dev servers came up cleanly.
-- Confirmed `HEAD /` on marketing web port returns 200:
-```bash
-curl -I -s http://localhost:3003/ | head
-```
+### 2) P1 Task 8 (partial) — Content pipeline truth pass
 
-### Screenshot proof (marketing pages)
-Ran the web-only screenshot harness:
-```bash
-node screenshot-web.mjs --out learnflow/screenshots/iter135/web-smoke
-```
-Generated:
-- `learnflow/screenshots/iter135/web-smoke/web-home.png`
-- `learnflow/screenshots/iter135/web-smoke/web-about.png`
-- `learnflow/screenshots/iter135/web-smoke/web-marketplace.png`
-- `learnflow/screenshots/iter135/web-smoke/web-docs.png`
-- `learnflow/screenshots/iter135/web-smoke/web-features.png`
-- `learnflow/screenshots/iter135/web-smoke/web-pricing.png`
-- `learnflow/screenshots/iter135/web-smoke/web-download.png`
-- `learnflow/screenshots/iter135/web-smoke/web-blog.png`
+- Tightened Dashboard copy to avoid implying full personalization guarantees.
 
-### Tests
+File:
+- `apps/client/src/screens/Dashboard.tsx`
+
+---
+
+## Validation
+
+Repo checks:
 ```bash
+npm run lint
 npm test
 ```
-Result: PASS (turbo run test across packages).
+Result: PASS (typecheck script does not exist in this repo; tests cover TS builds via package build steps).
 
-### Code changes
-None required (issue already resolved in current working tree).
+---
 
-## OneDrive sync
-After completing the task, mirror-synced per queue instructions:
-```bash
-rsync -av --progress \
-  --exclude node_modules --exclude .git --exclude dist --exclude .turbo --exclude .next \
-  /home/aifactory/.openclaw/workspace/learnflow/ \
-  /home/aifactory/onedrive-learnflow/learnflow/learnflow/
-```
+## Evidence (screenshots)
+- `artifacts/iter135/dashboard-core.png` (Playwright harness output, dashboard core screen)
+- `artifacts/iter135/marketing-pages.png` (Playwright harness output, marketing pages)
 
+---
+
+## Notes / Follow-ups
+- Live refresh of Today’s Lessons after completion is still best-effort polling/fetch-based; WS-driven refresh remains a follow-up.

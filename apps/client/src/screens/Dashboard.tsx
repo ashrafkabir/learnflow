@@ -266,8 +266,8 @@ export function Dashboard() {
               <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-6 sm:p-8 text-white shadow-card">
                 <h2 className="text-xl sm:text-2xl font-bold mb-2">Start Your Learning Journey</h2>
                 <p className="text-sm opacity-80 mb-4">
-                  Enter any topic and our AI agents will build a personalized course for you in
-                  minutes.
+                  Enter any topic and our AI agents will build a course outline and draft lessons
+                  for you in minutes (best-effort; may be incomplete in this MVP).
                 </p>
                 <div className="flex flex-wrap gap-2 mb-4">
                   {['Agentic AI', 'Rust Programming', 'Quantum Computing'].map((t) => (

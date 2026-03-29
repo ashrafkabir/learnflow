@@ -166,12 +166,17 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
 ### P1 — Spec parity where it matters (learning loop + transparency)
 
 5. **P1 — Build a minimal “Today’s Lessons” queue that is consistent with real progress state.**
+   - Status: DONE (builder)
    - Evidence:
-     - Dashboard exists: `.../desktop/app-dashboard.png`.
-     - Progress updates exist: `apps/api/src/routes/courses.ts` emits `progress.update`.
+     - API now uses SQLite as source-of-truth (falls back to runtime map) and does **not** recommend completed lessons.
+       - `apps/api/src/routes/daily.ts`
+     - Deterministic API test added:
+       - `apps/api/src/__tests__/daily-lessons.test.ts`
+     - Dashboard already fetches `/api/v1/daily` and renders “Today’s Lessons”.
+       - `apps/client/src/screens/Dashboard.tsx`
    - Acceptance:
-     - “Today’s Lessons” never recommends a completed lesson.
-     - When a lesson is marked complete, queue updates without refresh (WS-driven) or with a clear refresh action.
+     - ✅ “Today’s Lessons” never recommends a completed lesson.
+     - ⚠️ Live update after completion is still refresh-based (no WS wiring yet).
 
 6. **P1 — Mindmap: tighten claims to what’s real, or implement concept-level graph.**
    - Evidence:
@@ -189,11 +194,13 @@ Each task includes: priority, acceptance criteria, and evidence pointers. Prefer
      - Add one deterministic test proving `/usage/dashboard` renders and numbers are non-negative.
 
 8. **P1 — Content pipeline truth pass: remove any copy implying multi-source scraping/scoring is live if it isn’t.**
+   - Status: PARTIAL (builder)
    - Evidence:
-     - Spec §6 is ambitious; current implementation is partial.
-   - Acceptance:
+     - Tightened Dashboard new-course hero copy to avoid overpromising (“outline + draft lessons… best-effort”).
+       - `apps/client/src/screens/Dashboard.tsx`
+   - Remaining:
      - Audit marketing + in-app docs pages (especially `apps/client/src/screens/marketing/*` and `apps/web`) and remove/qualify claims about Google/Bing/Semantic Scholar/Firecrawl/MinHash unless code exists.
-     - “About MVP Truth” remains the source of truth; add links to it from any “pipeline” UI.
+     - Add links to “About MVP Truth” from any “pipeline” UI.
 
 ### P2 — Reliability + cleanup to prevent regressions
 
