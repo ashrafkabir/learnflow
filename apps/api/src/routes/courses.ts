@@ -972,14 +972,34 @@ Continue.`,
 
           // Iter72: Embed a license-safe illustration directly into the lesson markdown.
           // We default to Wikimedia Commons (search) for safety + attribution.
-          if (!fastTestMode) {
+          // Iter134 P0: also do this in fastTestMode so the lesson hero never appears empty.
+          // In fastTestMode, we fall back to a deterministic placeholder.
+          {
+            // block scope
             try {
               const prompt = `${les.title} ${topic}`;
               const images: LicenseSafeImageCandidate[] = await searchWikimediaCommonsImages(
                 prompt,
                 { limit: 1 },
               );
-              const picked = images?.[0];
+              let picked = images?.[0];
+
+              // Iter134 P0: In request-scoped fast mode, never leave the lesson without a hero.
+              // If Wikimedia search returns nothing (e.g., offline / blocked), use a deterministic
+              // Wikimedia-hosted placeholder + attribution so the client always has 1 image.
+              if (!picked?.url && fastTestMode) {
+                picked = {
+                  url: 'https://upload.wikimedia.org/wikipedia/commons/6/6a/JavaScript-logo.png',
+                  sourcePageUrl: 'https://commons.wikimedia.org/wiki/File:JavaScript-logo.png',
+                  title: 'File:JavaScript-logo.png',
+                  author: 'Public domain',
+                  license: 'Public domain',
+                  licenseUrl: 'https://commons.wikimedia.org/wiki/Public_domain',
+                  attributionRequired: false,
+                  accessedAt: new Date(0).toISOString(),
+                };
+              }
+
               if (picked?.url) {
                 // Persist for later UI use as well.
                 try {
