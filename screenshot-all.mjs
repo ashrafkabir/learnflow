@@ -15,8 +15,7 @@ const BASE_WEB = process.env.BASE_WEB_URL || readArg('baseWeb') || 'http://local
 function requireBaseWeb() {
   if (!BASE_WEB) throw new Error('BASE_WEB is required');
   try {
-    // eslint-disable-next-line no-new
-    new URL(BASE_WEB);
+    URL.parse(BASE_WEB);
   } catch {
     throw new Error(`Invalid BASE_WEB_URL: ${BASE_WEB}`);
   }
