@@ -50,6 +50,36 @@ node screenshot-all.mjs --iter 136 --outDir learnflow/screenshots/iter136/p0-1-c
 
 ---
 
+## P0.2 — Fresh user happy path (create course → course view → lesson reader)
+
+Goal: for a fresh user, the core loop should feel reliable: create course → immediately see course view (even if still generating) → open a lesson.
+
+**Key changes**
+- `apps/client/src/screens/Dashboard.tsx`
+  - After `startPipeline(topic)` succeeds, navigate immediately to the created course: `nav(`/courses/${result.courseId}`)`.
+  - Keeps existing pipeline tracking for status.
+- `apps/client/src/screens/CourseView.tsx`
+  - Resume/Restart actions now use `setError(null)` before actions (instead of `setError('')`, which violated the error state type).
+  - Resume/Restart errors now use `toUserError(...)` for consistent, human-readable messages.
+
+**Commands run**
+```bash
+npm test
+npm run dev
+node screenshot-all.mjs --iter 136 --outDir learnflow/screenshots/iter136/p0-2-happy-path
+```
+
+**Test result**
+- `npm test` ✅
+
+**Screenshots captured**
+- `learnflow/screenshots/iter136/p0-2-happy-path/app-dashboard.png`
+- `learnflow/screenshots/iter136/p0-2-happy-path/course-create-after-click.png`
+- `learnflow/screenshots/iter136/p0-2-happy-path/course-view.png`
+- `learnflow/screenshots/iter136/p0-2-happy-path/lesson-reader.png`
+
+---
+
 ## Notes / follow-ups
 - We now extract `requestId` only if the thrown value includes it. Today `apiGet/apiPost` throw `Error(message)` strings, so `requestId` will appear mainly if a call site throws a parsed envelope object directly.
   - If we want requestId to always be available, we should enhance `apiGet/apiPost` to attach `requestId` from server error bodies to the thrown error (future task).

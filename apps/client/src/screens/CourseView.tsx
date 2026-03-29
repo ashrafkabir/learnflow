@@ -271,7 +271,7 @@ export function CourseView() {
                     variant="secondary"
                     onClick={async () => {
                       setLoading(true);
-                      setError('');
+                      setError(null);
                       try {
                         await fetch(`/api/v1/courses/${course.id}/resume`, {
                           method: 'POST',
@@ -281,7 +281,7 @@ export function CourseView() {
                         });
                         await fetchCourse(course.id);
                       } catch (e: any) {
-                        setError(e?.message || 'Failed to resume');
+                        setError(toUserError(e, 'Failed to resume. Please try again.'));
                       } finally {
                         setLoading(false);
                       }
@@ -293,7 +293,7 @@ export function CourseView() {
                     variant="primary"
                     onClick={async () => {
                       setLoading(true);
-                      setError('');
+                      setError(null);
                       try {
                         await fetch(`/api/v1/courses/${course.id}/restart`, {
                           method: 'POST',
@@ -303,7 +303,7 @@ export function CourseView() {
                         });
                         await fetchCourse(course.id);
                       } catch (e: any) {
-                        setError(e?.message || 'Failed to restart');
+                        setError(toUserError(e, 'Failed to restart. Please try again.'));
                       } finally {
                         setLoading(false);
                       }

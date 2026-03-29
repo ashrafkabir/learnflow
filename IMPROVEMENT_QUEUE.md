@@ -39,7 +39,7 @@ Evidence pack for this planner run:
 
 ---
 
-### 2) P0 — Ensure course list + course view are consistent for a fresh user
+### 2) P0 — Ensure course list + course view are consistent for a fresh user ✅
 
 **Problem**: Default screenshot run shows dashboard empty state and CourseView failure. The app should reliably support: create course → course shows → lesson opens.
 
@@ -49,9 +49,16 @@ Evidence pack for this planner run:
 
 - Happy path works in dev with a brand-new account:
   1. Create course from dashboard
-  2. Course loads without error
-  3. Clicking first lesson opens LessonReader with real content within a reasonable time (or clearly shows generation status + auto-refresh)
+  2. User is navigated to the new course view immediately
+  3. Course loads without error
+  4. Clicking first lesson opens LessonReader with real content within a reasonable time (or clearly shows generation status + auto-refresh)
 - If course is still generating, CourseView shows a **truthful status** (CREATING/READY/FAILED) and a “Refresh” / “Continue generating” affordance.
+
+**Shipped (MVP)**
+
+- Dashboard now navigates to `/courses/:courseId` after `startPipeline()` returns.
+- CourseView restart/resume actions no longer write an invalid `error` state shape (prevents silent runtime issues).
+- Screenshots: `learnflow/screenshots/iter136/p0-2-happy-path/{app-dashboard,course-view,lesson-reader,course-create-after-click}.png`
 
 **Evidence pointers**
 
