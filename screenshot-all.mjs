@@ -82,6 +82,7 @@ const AUTHED_PAGES = [
   ['/mindmap', 'app-mindmap'],
   ['/marketplace/courses', 'marketplace-courses'],
   ['/marketplace/agents', 'marketplace-agents'],
+  ['/marketplace/creator', 'marketplace-creator-dashboard'],
   ['/collaborate', 'app-collaboration'],
   ['/settings', 'app-settings'],
   ['/settings/about', 'settings-about-mvp-truth'],
