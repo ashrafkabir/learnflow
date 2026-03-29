@@ -30,6 +30,10 @@ if (!isTest) {
       if (!hasColumn('courses', 'origin')) {
         sqlite.exec(`ALTER TABLE courses ADD COLUMN origin TEXT NOT NULL DEFAULT 'user';`);
       }
+      // Iter137 P1.9: Link user-owned course instances back to the marketplace course they were enrolled from.
+      if (!hasColumn('courses', 'marketplaceCourseId')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN marketplaceCourseId TEXT;`);
+      }
     } catch {
       // If courses doesn't exist yet, CREATE TABLE below will handle it.
     }
@@ -349,6 +353,7 @@ sqlite.exec(`
     failureReason TEXT NOT NULL DEFAULT '',
     failureMessage TEXT NOT NULL DEFAULT '',
     origin TEXT NOT NULL DEFAULT 'user',
+    marketplaceCourseId TEXT,
     createdAt TEXT NOT NULL
   );
 
@@ -1037,7 +1042,7 @@ const stmts = {
 
   // Courses
   insertCourse: sqlite.prepare(
-    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, generationAttempt, generationStartedAt, lastProgressAt, failedAt, failureReason, failureMessage, origin, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, generationAttempt, generationStartedAt, lastProgressAt, failedAt, failureReason, failureMessage, origin, marketplaceCourseId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   updateCourseStatus: sqlite.prepare(`UPDATE courses SET status = ?, error = ? WHERE id = ?`),
   updateCourseBuildTelemetry: sqlite.prepare(
@@ -1045,6 +1050,9 @@ const stmts = {
   ),
   updateCourseLastProgressAt: sqlite.prepare(`UPDATE courses SET lastProgressAt = ? WHERE id = ?`),
   findCourseById: sqlite.prepare(`SELECT * FROM courses WHERE id = ?`),
+  findCourseByMarketplaceCourseId: sqlite.prepare(
+    `SELECT * FROM courses WHERE authorId = ? AND marketplaceCourseId = ? LIMIT 1`,
+  ),
   getAllCourses: sqlite.prepare(`SELECT * FROM courses`),
   deleteCourse: sqlite.prepare(`DELETE FROM courses WHERE id = ?`),
 
@@ -2286,6 +2294,20 @@ export const dbCourses = {
     };
   },
 
+  getByMarketplaceCourseId(authorId: string, marketplaceCourseId: string): any | undefined {
+    const row = (stmts as any).findCourseByMarketplaceCourseId.get(
+      authorId,
+      marketplaceCourseId,
+    ) as any;
+    if (!row) return undefined;
+    return {
+      ...row,
+      modules: JSON.parse(row.modules || '[]'),
+      progress: JSON.parse(row.progress || '{}'),
+      plan: JSON.parse(row.plan || '{}'),
+    };
+  },
+
   save(course: any): void {
     stmts.insertCourse.run(
       course.id,
@@ -2306,6 +2328,7 @@ export const dbCourses = {
       course.failureReason || '',
       course.failureMessage || '',
       course.origin || 'user',
+      (course as any).marketplaceCourseId || null,
       course.createdAt || new Date().toISOString(),
     );
   },

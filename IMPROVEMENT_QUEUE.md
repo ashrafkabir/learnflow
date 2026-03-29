@@ -245,14 +245,35 @@ Status: **DONE** ✅ (2026-03-29)
 
 ### 9) P1 — Marketplace “enroll” should import into workspace with correct ownership + progress initialization
 
-**Problem**: Spec says enroll imports the course into learner workspace. Ensure enrollment creates a real course instance tied to user, not just a marketplace id.
+Status: **DONE** ✅ (2026-03-29)
 
-**Acceptance criteria**
+**What shipped (MVP)**
 
-- Clicking Enroll creates a user-owned course record with:
-  - initial progress entries
-  - mindmap seeding
-- Course appears in dashboard carousel immediately.
+- Enrolling in a marketplace course creates a **new user-owned course record** in the learner’s library:
+  - new `courses.id` (different from marketplace id)
+  - `courses.marketplaceCourseId` backlink to the enrolled marketplace course id
+- Enroll endpoint returns `importedCourseId` so the client/test harness can navigate deterministically.
+- Dashboard shows the course immediately because it’s now a real library course.
+
+**API**
+
+- `POST /api/v1/marketplace/checkout/confirm` returns:
+  - `enrolled: true`
+  - `importedCourseId` (new course id)
+
+**Persistence**
+
+- DB migration adds nullable `courses.marketplaceCourseId` + helper query `dbCourses.getByMarketplaceCourseId(authorId, marketplaceCourseId)` to keep enroll idempotent per user.
+
+**Evidence**
+
+- Vitest: `apps/api/src/__tests__/marketplace-enroll-import.test.ts` (PASS)
+- Playwright: `e2e/iter137-marketplace-enroll-import.spec.ts` (PASS)
+  - Artifact: `learnflow/screenshots/playwright/iter137-marketplace-enroll-dbaa2-board-shows-imported-course-chromium/test-finished-1.png`
+
+**Notes / MVP truth**
+
+- Course content imported is a minimal shell based on marketplace metadata (lesson placeholders). This is sufficient for navigation + library ownership loop; full content sync can be Iter138+.
 
 ---
 

@@ -15,6 +15,7 @@ import {
   dbMarketplace,
   dbCourses,
 } from '../db.js';
+import { courses } from './courses.js';
 import { CAPABILITY_MATRIX } from '../lib/capabilities.js';
 
 const router = Router();
@@ -552,7 +553,66 @@ router.post(
       updatedAt: new Date().toISOString(),
     });
 
-    res.status(200).json({ paymentIntent: intent, payout, enrolled: true, billingMode: 'mock' });
+    // Iter137 P1.9: Import marketplace course into user's library as a real course instance.
+    // MVP: Copy only the high-level structure; modules/lessons are derived from marketplace metadata.
+    let importedCourseId: string | null = null;
+    try {
+      const already = (dbCourses as any).getByMarketplaceCourseId?.(req.user!.sub, intent.courseId);
+      if (already?.id) {
+        importedCourseId = String(already.id);
+      } else {
+        const nowIso = new Date().toISOString();
+        const lessonCount = Math.max(1, Number((course as any).lessonCount || 0));
+        const lessons = Array.from({ length: lessonCount }, (_, i) => ({
+          id: `mkt-${intent.courseId}-l${i + 1}`,
+          title: `Lesson ${i + 1}`,
+          description: '',
+          content: '',
+          estimatedTime: 5,
+          wordCount: 0,
+          sources: [],
+        }));
+        const modules = [{ title: 'Marketplace Course', lessons }];
+
+        const courseShell: any = {
+          id: `course-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          title: String((course as any).title || 'Marketplace Course'),
+          description: String((course as any).description || ''),
+          topic: String((course as any).topic || 'general'),
+          depth: String((course as any).difficulty || 'intermediate'),
+          authorId: req.user!.sub,
+          modules,
+          progress: {},
+          plan: {},
+          status: 'READY',
+          error: '',
+          origin: 'user',
+          marketplaceCourseId: intent.courseId,
+          generationAttempt: 0,
+          generationStartedAt: null,
+          lastProgressAt: nowIso,
+          failedAt: null,
+          failureReason: '',
+          failureMessage: '',
+          createdAt: nowIso,
+        };
+
+        // Persist and hydrate cache map used by /courses routes.
+        dbCourses.save(courseShell);
+        courses.set(courseShell.id, courseShell);
+        importedCourseId = String(courseShell.id);
+      }
+    } catch {
+      // best-effort; do not block enrollment
+    }
+
+    res.status(200).json({
+      paymentIntent: intent,
+      payout,
+      enrolled: true,
+      billingMode: 'mock',
+      importedCourseId,
+    });
   },
 );
 
