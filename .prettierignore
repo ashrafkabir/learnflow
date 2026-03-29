@@ -2,6 +2,10 @@
 coverage/
 evals/screenshots/
 
+# Course artifacts (generated at runtime)
+apps/api/learnflow/
+learnflow/course-artifacts/
+
 # Build artifacts
 **/dist/
 **/node_modules/

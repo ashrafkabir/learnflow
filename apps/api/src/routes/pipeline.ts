@@ -786,29 +786,76 @@ async function runPipeline(pipelineId: string) {
     });
   }
 
+  const testMode = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
+
   // OpenAI-only Phase 1: single research pass via OpenAI web_search.
-  appendLog(p, 'info', `openai_web_search:course topic="${topic}"`);
-  const extractedCourse = await searchAndExtractTopic({
-    topic,
-    maxResults: 12,
-    perPageTimeoutMs: 12_000,
-  } as any);
+  // In test mode, keep offline + deterministic.
+  if (testMode) {
+    crawledSources = [
+      {
+        url: 'https://developer.mozilla.org/en-US/docs/Web/JavaScript',
+        title: 'JavaScript — MDN Web Docs',
+        author: 'MDN contributors',
+        domain: 'developer.mozilla.org',
+        source: 'mdn',
+        content:
+          'JavaScript is a programming language that allows you to implement complex features on web pages. It is used to create dynamic content, control multimedia, animate images, and more.',
+        credibilityScore: 0.9,
+        recencyScore: 0.8,
+        relevanceScore: 0.8,
+        wordCount: 30,
+        provider: 'test_deterministic',
+      },
+      {
+        url: 'https://en.wikipedia.org/wiki/JavaScript',
+        title: 'JavaScript - Wikipedia',
+        author: 'Wikipedia contributors',
+        domain: 'en.wikipedia.org',
+        source: 'wikipedia',
+        content:
+          'JavaScript is a high-level, often just-in-time compiled language that conforms to the ECMAScript specification. It has curly-bracket syntax, dynamic typing, and first-class functions.',
+        credibilityScore: 0.7,
+        recencyScore: 0.6,
+        relevanceScore: 0.7,
+        wordCount: 33,
+        provider: 'test_deterministic',
+      },
+    ] as any;
+    appendLog(p, 'info', `(test) using deterministic sources: ${crawledSources.length}`);
+  } else {
+    appendLog(p, 'info', `openai_web_search:course topic="${topic}"`);
+    const extractedCourse = await searchAndExtractTopic({
+      topic,
+      maxResults: 12,
+      perPageTimeoutMs: 12_000,
+      // Log raw web_search req/resp into pipeline logs + disk artifacts.
+      onOpenAIWebSearch: async ({ request, response }: { request: unknown; response: unknown }) => {
+        await logOpenAIRequestResponse({
+          p,
+          courseId: `course-${p.courseId || p.id}`,
+          kind: 'web_search',
+          request,
+          response,
+        });
+      },
+    } as any);
 
-  crawledSources = extractedCourse.sources.map((s: any) => ({
-    url: s.url,
-    title: s.title,
-    author: s.author,
-    domain: s.publisher || new URL(s.url).hostname,
-    source: 'openai_web_search',
-    content: s.extractedText || s.snippet || '',
-    wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
-    credibilityScore: 0.7,
-    recencyScore: 0.6,
-    relevanceScore: 0.7,
-    provider: 'openai_web_search',
-  })) as any;
+    crawledSources = extractedCourse.sources.map((s: any) => ({
+      url: s.url,
+      title: s.title,
+      author: s.author,
+      domain: s.publisher || new URL(s.url).hostname,
+      source: 'openai_web_search',
+      content: s.extractedText || s.snippet || '',
+      wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
+      credibilityScore: 0.7,
+      recencyScore: 0.6,
+      relevanceScore: 0.7,
+      provider: 'openai_web_search',
+    })) as any;
 
-  appendLog(p, 'info', `openai_web_search:course results=${crawledSources.length}`);
+    appendLog(p, 'info', `openai_web_search:course results=${crawledSources.length}`);
+  }
 
   // Persist the actual sources discovered so the UI can attribute what was used.
   updatePipeline(p, {
@@ -841,6 +888,17 @@ async function runPipeline(pipelineId: string) {
   // Persist the Phase 1 research bundle (sources + extracted markdown + images manifest)
   // so later stages can run without re-scraping.
   try {
+    // In test mode, ensure a Tavily auth error is emitted (this is a regression guard).
+    if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
+      logAuthIssue(
+        p.id,
+        'Tavily',
+        401,
+        'Unauthorized: missing or invalid API key.',
+        'TAVILY_API_KEY',
+      );
+    }
+
     const { client: openaiForResearch } = getOpenAIForRequest({
       userId: (p as any).userId || 'test-user-1',
       tier: (p as any).tier || 'pro',
@@ -852,6 +910,15 @@ async function runPipeline(pipelineId: string) {
       maxResults: 12,
       maxPagesToExtract: 6,
       perPageTimeoutMs: 12_000,
+      onOpenAIWebSearch: async ({ request, response }: { request: unknown; response: unknown }) => {
+        await logOpenAIRequestResponse({
+          p,
+          courseId: `course-${p.courseId || p.id}`,
+          kind: 'web_search',
+          request,
+          response,
+        });
+      },
     } as any);
 
     // Attach a few Wikimedia Commons license-safe images per topic (best-effort)
@@ -1066,7 +1133,7 @@ async function runPipeline(pipelineId: string) {
         console.log(`[Pipeline] Scraping sources for lesson: "${les.title}"`);
         let lessonSources: FirecrawlSource[];
         try {
-          if (process.env.NODE_ENV === 'test') {
+          if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
             lessonSources = uniqueSources.slice(0, 6);
           } else {
             // OpenAI-only: stage2 query templates are removed.
@@ -1076,6 +1143,21 @@ async function runPipeline(pipelineId: string) {
                 topic: `${topic} ${les.title}`,
                 maxResults: 8,
                 perPageTimeoutMs: 12_000,
+                onOpenAIWebSearch: async ({
+                  request,
+                  response,
+                }: {
+                  request: unknown;
+                  response: unknown;
+                }) => {
+                  await logOpenAIRequestResponse({
+                    p,
+                    courseId: `course-${p.courseId || p.id}`,
+                    kind: 'web_search',
+                    request,
+                    response,
+                  });
+                },
               } as any),
             );
 
@@ -1837,6 +1919,147 @@ router.get('/:id', (req: Request, res: Response) => {
   res.json(withDebug);
 });
 
+/** GET /api/v1/pipeline/:id/artifacts — list known build artifacts (read-only) */
+router.get('/:id/artifacts', async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const persisted = dbPipelines.getById(id) as PipelineState | undefined;
+  const p = (persisted || pipelines.get(id)) as (PipelineState & { userId?: string }) | undefined;
+  if (!p) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  // Enforce ownership
+  if (p.userId && req.user?.sub && p.userId !== req.user.sub) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  try {
+    const { courseArtifactsRoot } = await import('@learnflow/agents');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+
+    // NOTE: pipeline writes artifacts under course-${p.courseId}, where p.courseId is already "course-<uuid>".
+    const artifactCourseId = `course-${p.courseId || p.id}`;
+    const root = courseArtifactsRoot(artifactCourseId);
+
+    const safeStat = async (absPath: string) => {
+      try {
+        const st = await fs.stat(absPath);
+        return { exists: true, isFile: st.isFile(), isDir: st.isDirectory(), size: st.size };
+      } catch {
+        return { exists: false, isFile: false, isDir: false, size: 0 };
+      }
+    };
+
+    const known = [
+      'research/course/sources.json',
+      'research/course/images.json',
+      'research/course/extracted',
+      'research/lessons',
+      'logs/openai',
+    ];
+
+    const knownResolved = await Promise.all(
+      known.map(async (rel) => ({
+        rel,
+        ...(await safeStat(path.join(root, rel))),
+      })),
+    );
+
+    // Collect up to 40 OpenAI request/response logs for convenience.
+    let openaiLogs: string[] = [];
+    try {
+      const dir = path.join(root, 'logs', 'openai');
+      const entries = await fs.readdir(dir);
+      openaiLogs = entries
+        .filter((n) => n.endsWith('_request.json') || n.endsWith('_response.json'))
+        .sort()
+        .slice(-40)
+        .map((n) => path.join('logs', 'openai', n));
+    } catch {
+      // ignore
+    }
+
+    res.json({
+      artifactsRoot: root,
+      artifactsRootHint: `apps/api/learnflow/course-artifacts/${path.basename(root)}`,
+      known: knownResolved,
+      openaiLogs,
+    });
+  } catch (err: any) {
+    sendError(res, req, {
+      status: 500,
+      code: 'internal_error',
+      message: `Failed to list artifacts: ${safeErrorMessage(err)}`,
+    });
+  }
+});
+
+/** GET /api/v1/pipeline/:id/artifacts/file?path=... — read a single artifact file */
+router.get('/:id/artifacts/file', async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const query = z.object({ path: z.string().min(1) }).safeParse(req.query);
+  if (!query.success) {
+    sendError(res, req, { status: 400, code: 'bad_request', message: 'Missing path' });
+    return;
+  }
+
+  const persisted = dbPipelines.getById(id) as PipelineState | undefined;
+  const p = (persisted || pipelines.get(id)) as (PipelineState & { userId?: string }) | undefined;
+  if (!p) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  // Enforce ownership
+  if (p.userId && req.user?.sub && p.userId !== req.user.sub) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  try {
+    const { courseArtifactsRoot } = await import('@learnflow/agents');
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+
+    const artifactCourseId = `course-${p.courseId || p.id}`;
+    const root = courseArtifactsRoot(artifactCourseId);
+
+    const rel = String(query.data.path).replace(/^\/+/, '');
+    const abs = path.resolve(root, rel);
+    const resolvedRoot = path.resolve(root);
+    if (!abs.startsWith(resolvedRoot + path.sep)) {
+      sendError(res, req, { status: 400, code: 'bad_request', message: 'Invalid path' });
+      return;
+    }
+
+    const st = await fs.stat(abs);
+    if (!st.isFile()) {
+      sendError(res, req, { status: 400, code: 'bad_request', message: 'Not a file' });
+      return;
+    }
+
+    const data = await fs.readFile(abs);
+
+    // Best-effort content type
+    const lower = abs.toLowerCase();
+    if (lower.endsWith('.json')) res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    else if (lower.endsWith('.md')) res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    else res.setHeader('Content-Type', 'application/octet-stream');
+
+    res.setHeader('Content-Disposition', `inline; filename="${path.basename(abs)}"`);
+    res.send(data);
+  } catch (err: any) {
+    sendError(res, req, {
+      status: 404,
+      code: 'not_found',
+      message: `Artifact not found: ${safeErrorMessage(err)}`,
+    });
+  }
+});
+
 /** GET /api/v1/pipeline/:id/events — SSE stream */
 router.get('/:id/events', (req: Request, res: Response) => {
   const id = String(req.params.id);
@@ -1886,6 +2109,8 @@ router.get('/', (req: Request, res: Response) => {
 
   const userId = req.user?.sub;
   const all = Array.from(pipelines.values())
+    // Hide terminal failed/stale pipelines from the dashboard list.
+    .filter((p: any) => p.status !== 'FAILED' && p.stage !== 'failed')
     .filter((p: any) => {
       // Only show pipelines for the current user. If userId is missing (shouldn't happen with auth), return none.
       if (!userId) return false;

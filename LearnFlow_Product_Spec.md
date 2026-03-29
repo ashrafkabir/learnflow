@@ -333,23 +333,64 @@ The primary interaction surface is a chat-style interface where the student conv
 
 # 6. Content Pipeline
 
-## 6.1 Content Acquisition
+## 6.1 Content Acquisition (Course Generation Pipeline)
 
-The Course Builder Agent, working with the Content Scraper Agent, performs intelligent web discovery to find the most authoritative and current sources for any learning topic. The pipeline respects robots.txt, rate limits, and content licensing.
+LearnFlow generates courses in a **research → plan → parallel lesson build → validate** pipeline. The core principle: **collect sources once, persist them, then generate everything downstream from the persisted research artifacts** (no hidden re-scraping).
 
-7.  Topic Decomposition: Orchestrator breaks user's learning goal into a concept hierarchy
+### 6.1.1 Research (OpenAI Web Search only)
 
-8.  Source Discovery: Scraper queries multiple search APIs (Google, Bing, Semantic Scholar, arXiv) and curated registries
+- **Topic Decomposition:** Orchestrator decomposes the user’s goal into modules/lesson candidates.
+- **Source Discovery (OpenAI Web Search):** Use the OpenAI provider’s `web_search` tool to discover relevant pages. **MVP constraint:** do **not** use Tavily, Firecrawl, or other external search providers.
+- **Browse + Extract:** Fetch each discovered URL (best-effort, strict timeouts), run readability extraction, and normalize into a structured source record.
+- **Attribution Recording:** Store URL, title, publisher/domain, author (if found), accessedAt timestamp, and license info when available.
+- **Illustrations Harvest (best-effort):** Extract candidate images from source pages; prefer Wikimedia Commons for embed-safe images. Store image URLs + attribution + license.
 
-9.  Content Extraction: Firecrawl/Playwright renders pages; Cheerio extracts article body, metadata, and publication date
+### 6.1.2 Persist research artifacts (course folder)
 
-10. Quality Scoring: content is scored on authority (domain reputation), recency, relevance (semantic similarity to topic), and readability (Flesch-Kincaid)
+All research output is persisted into a course-scoped folder so it can be reused and audited:
 
-11. Attribution Recording: original URL, author, publication, date, license, and access timestamp are stored
+- Folder root:
+  - `course-artifacts/{courseId}/`
+- Required artifacts:
+  - `course-research.md` — **single consolidated markdown** containing:
+    - the list of discovered sources
+    - per-source extracted text (or excerpt)
+    - per-source images (with attribution/license)
+  - `research/course/sources.json` + `research/course/images.json`
+  - `research/course/extracted/*.md` (per-source extracted content)
 
-12. Deduplication: near-duplicate detection via MinHash/SimHash against existing corpus
+### 6.1.3 Lesson plan generation (from research artifacts)
 
-13. Lesson Formatting: approved content is chunked into bite-sized lessons (<10 min read, ~1500 words max)
+- **Prompt input:** `course-research.md` (and structured JSON artifacts)
+- **Output:** `lessonplan.md` (and optionally `lesson-plan.json`) containing:
+  - module/lesson outline
+  - per-lesson learning objectives
+  - **recommended sources per lesson** (URLs selected from the research set)
+  - key themes to drive hero sections and takeaways
+
+### 6.1.4 Parallel lesson build (one worker per lesson)
+
+For each lesson in `lessonplan.md`, spawn a parallel lesson writer (internal worker pool or subagents) that:
+
+- reads the lesson’s recommended source pages from the saved research artifacts
+- produces a lesson in **simple language** (essence-first)
+- includes:
+  - **Hero section** (headline, why-it-matters, key takeaways)
+  - embedded illustrations (with attribution/license)
+  - citations/references
+  - suggested reads
+  - a **Next lesson** link at the end of the lesson
+
+### 6.1.5 Validation → course complete
+
+After all lessons are built:
+
+- Validate course against the plan (every lesson produced, correct titles/order)
+- Validate attribution coverage (no major claims without a cited source)
+- Validate illustrations attribution (license + source page URL)
+- Validate navigation (Next lesson links)
+
+Only after validation passes is the course marked **generated**.
 
 ## 6.2 Lesson Structure
 
@@ -362,6 +403,8 @@ The Course Builder Agent, working with the Content Scraper Agent, performs intel
 | Core Content        | Well-structured prose with headings, code blocks, diagrams    | 1500 words     |
 | Key Takeaways       | 3-5 memorable summary points                                  | 100 chars each |
 | Sources             | Attributed links to original content                          | No limit       |
+| Suggested Reads     | 2-5 additional sources for deeper learning                    | 5 items        |
+| Next Lesson Link    | Link to the next lesson in the course                         | N/A            |
 | Next Steps          | Suggested follow-up lessons or deeper dives                   | 3 suggestions  |
 | Quick Check         | 1-2 comprehension questions (optional, auto-generated)        | N/A            |
 

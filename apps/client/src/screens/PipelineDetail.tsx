@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { usePipeline } from '../hooks/usePipeline.js';
+import { usePipeline, type PipelineArtifactsIndex } from '../hooks/usePipeline.js';
 import { apiPost } from '../context/AppContext.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { Button } from '../components/Button.js';
@@ -20,6 +20,36 @@ export function PipelineDetail() {
   const { state } = usePipeline(pipelineId || null);
   const { toast } = useToast();
   const [showLogs, setShowLogs] = useState(false);
+  const [artifacts, setArtifacts] = useState<PipelineArtifactsIndex | null>(null);
+  const [artifactsError, setArtifactsError] = useState<string | null>(null);
+
+  // Artifacts index (server file system paths / logs) for debugging + provenance.
+  // NOTE: must be before early returns to preserve hook order.
+  useEffect(() => {
+    if (!state?.id) return;
+
+    let cancelled = false;
+
+    const fetchArtifacts = async () => {
+      try {
+        setArtifactsError(null);
+        const resp = await fetch(`/api/v1/pipeline/${state.id}/artifacts`);
+        if (!resp.ok) throw new Error('failed');
+        const data = (await resp.json()) as PipelineArtifactsIndex;
+        if (!cancelled) setArtifacts(data);
+      } catch {
+        if (!cancelled) setArtifactsError('Unable to load artifacts index');
+      }
+    };
+
+    void fetchArtifacts();
+    const interval = window.setInterval(fetchArtifacts, 4000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [state?.id]);
 
   if (!state) {
     return (
@@ -109,7 +139,11 @@ export function PipelineDetail() {
   })();
 
   return (
-    <section className="min-h-screen bg-bg dark:bg-bg-dark" aria-label="Pipeline Detail">
+    <section
+      className="min-h-screen bg-bg dark:bg-bg-dark"
+      aria-label="Pipeline Detail"
+      data-screen="pipeline-detail"
+    >
       {/* Breadcrumb Header */}
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
@@ -174,7 +208,12 @@ export function PipelineDetail() {
                 onClick={async () => {
                   try {
                     const data = await apiPost(`/pipeline/${state.id}/restart`, {});
-                    toast('Pipeline restarted', 'success');
+                    toast(
+                      state.status === 'FAILED' || state.stage === 'failed'
+                        ? 'Retry queued'
+                        : 'Pipeline restarted',
+                      'success',
+                    );
                     if (data?.pipelineId) nav(`/pipeline/${data.pipelineId}`);
                   } catch {
                     toast('Restart failed', 'error');
@@ -183,8 +222,10 @@ export function PipelineDetail() {
               >
                 <span className="inline-flex items-center gap-2">
                   <IconRefresh size={16} className="text-white" decorative />
-                  {state.status === 'FAILED' && state.failReason === 'stalled'
-                    ? 'Resume Build'
+                  {state.status === 'FAILED' || state.stage === 'failed'
+                    ? state.failReason === 'stalled'
+                      ? 'Resume Build'
+                      : 'Retry Build'
                     : 'Restart Pipeline'}
                 </span>
               </Button>
@@ -234,6 +275,202 @@ export function PipelineDetail() {
               className="h-full bg-accent rounded-full transition-all duration-500"
               style={{ width: `${progressPct}%` }}
             />
+          </div>
+
+          {/* Status + last error */}
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              <span className="font-semibold text-gray-700 dark:text-gray-200">Status:</span>{' '}
+              {state.status} · <span className="font-semibold">Stage:</span> {state.stage}
+              {typeof (state as any).retryCount === 'number'
+                ? ` · Retries: ${(state as any).retryCount}`
+                : ''}
+            </div>
+            {((state as any).lastError || state.error) && (
+              <div className="text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
+                <span className="font-semibold">Last error:</span>{' '}
+                {String((state as any).lastError || state.error)}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Artifacts */}
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                Artifacts
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Build artifacts are saved under <span className="font-mono">course-artifacts</span>{' '}
+                on the server.
+              </p>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={async () => {
+                try {
+                  const resp = await fetch(`/api/v1/pipeline/${state.id}/artifacts`);
+                  const data = await resp.json();
+                  await navigator.clipboard.writeText(String(data?.artifactsRoot || ''));
+                  toast('Artifacts path copied', 'success');
+                } catch {
+                  toast('Copy failed', 'error');
+                }
+              }}
+            >
+              Copy path
+            </Button>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <div className="text-xs text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2">
+              <span className="font-semibold">Root:</span>{' '}
+              <span className="font-mono break-all">{artifacts?.artifactsRoot || 'Loading…'}</span>
+              {artifacts?.artifactsRootHint ? (
+                <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                  Repo hint: <span className="font-mono">{artifacts.artifactsRootHint}</span>
+                </div>
+              ) : null}
+              {artifactsError ? (
+                <div className="text-[11px] text-red-700 dark:text-red-300 mt-1">
+                  {artifactsError}
+                </div>
+              ) : null}
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                Quick links
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {(
+                  artifacts?.known || [
+                    {
+                      rel: 'research/course/sources.json',
+                      exists: false,
+                      isFile: true,
+                      isDir: false,
+                      size: 0,
+                    },
+                    {
+                      rel: 'research/course/images.json',
+                      exists: false,
+                      isFile: true,
+                      isDir: false,
+                      size: 0,
+                    },
+                    {
+                      rel: 'research/course/extracted',
+                      exists: false,
+                      isFile: false,
+                      isDir: true,
+                      size: 0,
+                    },
+                    { rel: 'research/lessons', exists: false, isFile: false, isDir: true, size: 0 },
+                    { rel: 'logs/openai', exists: false, isFile: false, isDir: true, size: 0 },
+                  ]
+                ).map((k) => {
+                  const isJson = k.rel.endsWith('.json');
+                  const href = isJson
+                    ? `/api/v1/pipeline/${state.id}/artifacts/file?path=${encodeURIComponent(k.rel)}`
+                    : null;
+
+                  return (
+                    <div
+                      key={k.rel}
+                      className={
+                        'rounded-xl border p-3 text-xs flex items-start justify-between gap-3 ' +
+                        (k.exists
+                          ? 'border-green-200 dark:border-green-900/30 bg-green-50 dark:bg-green-900/10'
+                          : 'border-gray-200 dark:border-gray-800 bg-white/40 dark:bg-gray-900/20')
+                      }
+                    >
+                      <div className="min-w-0">
+                        <p className="font-mono text-gray-800 dark:text-gray-100 break-all">
+                          {k.rel}
+                        </p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                          {k.exists ? 'Present' : 'Not found yet'}
+                          {k.exists && typeof k.size === 'number' && k.isFile
+                            ? ` · ${k.size} bytes`
+                            : ''}
+                        </p>
+                      </div>
+                      {href ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="shrink-0 text-accent font-semibold hover:underline"
+                          title="Open JSON"
+                        >
+                          Open
+                        </a>
+                      ) : (
+                        <button
+                          className="shrink-0 text-gray-500 dark:text-gray-400 font-semibold"
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(`${artifacts?.artifactsRoot || ''}/${k.rel}`)
+                              .then(() => toast('Path copied', 'success'))
+                              .catch(() => toast('Copy failed', 'error'));
+                          }}
+                        >
+                          Copy
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* OpenAI log artifacts */}
+            <div>
+              <p className="text-xs font-semibold text-gray-700 dark:text-gray-200 mb-2">
+                OpenAI logs (request/response)
+              </p>
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/30 p-3">
+                {artifacts?.openaiLogs && artifacts.openaiLogs.length > 0 ? (
+                  <div className="space-y-1">
+                    {artifacts.openaiLogs.slice(-12).map((rel) => (
+                      <div key={rel} className="flex items-center justify-between gap-3">
+                        <a
+                          href={`/api/v1/pipeline/${state.id}/artifacts/file?path=${encodeURIComponent(rel)}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="font-mono text-[11px] text-accent hover:underline break-all"
+                        >
+                          {rel}
+                        </a>
+                        <button
+                          className="text-[11px] text-gray-600 dark:text-gray-300 font-semibold"
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(`${artifacts?.artifactsRoot || ''}/${rel}`)
+                              .then(() => toast('File path copied', 'success'))
+                              .catch(() => toast('Copy failed', 'error'));
+                          }}
+                        >
+                          Copy path
+                        </button>
+                      </div>
+                    ))}
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
+                      Hint: pipeline logs will also include{' '}
+                      <span className="font-mono">[openai.artifacts] request=… response=…</span>.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    No OpenAI log artifacts found yet.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -312,24 +549,67 @@ export function PipelineDetail() {
               Pipeline Logs
             </h2>
             <div className="font-mono text-xs text-green-300 space-y-1 max-h-64 overflow-y-auto">
-              {(state.logs || []).map((l: any, i: number) => (
-                <div key={i} className="flex gap-2">
-                  <span className="text-gray-500">
-                    [{String(l.ts || '').slice(11, 19) || new Date().toISOString().slice(11, 19)}]
-                  </span>
-                  <span
-                    className={
-                      l.level === 'error'
-                        ? 'text-red-400'
-                        : l.level === 'warn'
-                          ? 'text-yellow-300'
-                          : 'text-green-300'
-                    }
-                  >
-                    {l.message}
-                  </span>
-                </div>
-              ))}
+              {(state.logs || []).map((l: any, i: number) => {
+                const msg = String(l.message || '');
+                const artifactMatch = msg.match(
+                  /\[openai\.artifacts\]\s+request=([^\s]+)\s+response=([^\s]+)/,
+                );
+                const reqAbs = artifactMatch?.[1];
+                const respAbs = artifactMatch?.[2];
+
+                // Convert absolute file paths to relative paths within artifacts root, if we can.
+                const makeRel = (abs?: string) => {
+                  if (!abs || !artifacts?.artifactsRoot) return null;
+                  if (!abs.startsWith(artifacts.artifactsRoot)) return null;
+                  const rel = abs.slice(artifacts.artifactsRoot.length).replace(/^\/+/, '');
+                  return rel || null;
+                };
+
+                const reqRel = makeRel(reqAbs);
+                const respRel = makeRel(respAbs);
+
+                return (
+                  <div key={i} className="flex gap-2">
+                    <span className="text-gray-500">
+                      [{String(l.ts || '').slice(11, 19) || new Date().toISOString().slice(11, 19)}]
+                    </span>
+                    <span
+                      className={
+                        l.level === 'error'
+                          ? 'text-red-400'
+                          : l.level === 'warn'
+                            ? 'text-yellow-300'
+                            : 'text-green-300'
+                      }
+                    >
+                      {msg}
+                      {reqRel && respRel ? (
+                        <span className="ml-2 text-[11px] text-gray-300">
+                          (
+                          <a
+                            href={`/api/v1/pipeline/${state.id}/artifacts/file?path=${encodeURIComponent(reqRel)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-accent hover:underline"
+                          >
+                            request
+                          </a>
+                          {' / '}
+                          <a
+                            href={`/api/v1/pipeline/${state.id}/artifacts/file?path=${encodeURIComponent(respRel)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-accent hover:underline"
+                          >
+                            response
+                          </a>
+                          )
+                        </span>
+                      ) : null}
+                    </span>
+                  </div>
+                );
+              })}
               {(state.logs || []).length === 0 && (
                 <div className="text-gray-500">No log entries yet.</div>
               )}
