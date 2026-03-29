@@ -11,7 +11,11 @@ import { App } from '../App.js';
 
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
-  localStorage.setItem('learnflow-token', 'test-token');
+  // Use a JWT-shaped token so apiGet/apiPost won't attempt refresh/redirect during tests.
+  localStorage.setItem(
+    'learnflow-token',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+  );
 
   // Provide route-specific API mocks so marketplace routes render reliably.
   globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {

@@ -185,6 +185,12 @@ Status: **DONE** ✅ (2026-03-29)
 
 ### 6) P1 — “Today’s lessons” must be non-placeholder and driven by an algorithmic rule
 
+**Status (builder update 2026-03-29)**: DONE ✅
+
+- API: `/api/v1/daily` now returns `reasonTag` + `reason` per lesson (MVP tags: `continue` for next uncompleted lesson).
+- UI: Dashboard “Today’s Lessons” renders a small tag pill + reason text under each item.
+- Evidence: Playwright `e2e/iter137-todays-lessons-reasons.spec.ts` (PASS) + artifact in `learnflow/screenshots/playwright/iter137-todays-lessons-rea-97c76-on-text-for-today-s-lessons-chromium/test-finished-1.png`.
+
 **Problem**: Spec §5.2.2 expects Today’s Lessons prioritized queue. Current UI shows a section, but the logic and persistence of a daily queue is not clearly evidenced.
 
 **Acceptance criteria**

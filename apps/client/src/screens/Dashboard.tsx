@@ -164,6 +164,7 @@ export function Dashboard() {
       lessonId: string;
       lessonTitle: string;
       estimatedTime: number;
+      reasonTag?: 'continue' | 'review' | 'new' | 'quiz_gap' | 'other';
       reason?: string;
     }>
   >([]);
@@ -563,8 +564,15 @@ export function Dashboard() {
                         </p>
                         <p className="text-xs text-gray-800/80 dark:text-gray-200 truncate">
                           {tl.courseTitle} · {tl.estimatedTime} min
-                          {tl.reason ? ` · ${tl.reason}` : ''}
                         </p>
+                        {tl.reason && (
+                          <p className="text-[11px] text-gray-700/80 dark:text-gray-300 mt-0.5">
+                            <span className="inline-flex items-center rounded-full border border-gray-200 dark:border-gray-700 px-2 py-0.5 mr-2">
+                              {tl.reasonTag || 'other'}
+                            </span>
+                            <span>{tl.reason}</span>
+                          </p>
+                        )}
                       </div>
                       <span className="text-gray-300 dark:text-gray-600">→</span>
                     </Button>

@@ -11,7 +11,10 @@ import { App } from '../App.js';
 
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
-  localStorage.setItem('learnflow-token', 'test-token');
+  localStorage.setItem(
+    'learnflow-token',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+  );
 
   // Basic stubs to keep /settings from crashing during hydration.
   globalThis.fetch = (async () =>

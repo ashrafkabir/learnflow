@@ -35,6 +35,7 @@ router.get('/', (req: Request, res: Response) => {
     lessonId: string;
     lessonTitle: string;
     estimatedTime: number;
+    reasonTag: 'continue' | 'review' | 'new' | 'quiz_gap' | 'other';
     reason: string;
   }> = [];
 
@@ -65,6 +66,7 @@ router.get('/', (req: Request, res: Response) => {
         lessonId: next.id,
         lessonTitle: next.title,
         estimatedTime: minutesFromEstimatedTime(next.estimatedTime),
+        reasonTag: 'continue',
         reason: 'Continue: next uncompleted lesson',
       });
     }

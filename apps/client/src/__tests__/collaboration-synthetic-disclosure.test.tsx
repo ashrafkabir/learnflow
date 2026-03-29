@@ -68,8 +68,11 @@ describe('Collaboration synthetic disclosure', () => {
       </MemoryRouter>,
     );
 
-    // There are multiple mentions; ensure at least one is present.
-    const els = await screen.findAllByText(/synthetic suggestions/i);
+    // The disclosure may render before/after async data loads; assert on full page text.
+    // This avoids brittle matching when the phrase is split across nested elements.
+    const els = await screen.findAllByText((_, el) =>
+      (el?.textContent || '').toLowerCase().includes('synthetic suggestions'),
+    );
     expect(els.length).toBeGreaterThan(0);
     expect(document.body.textContent || '').toMatch(/not verified/i);
   });

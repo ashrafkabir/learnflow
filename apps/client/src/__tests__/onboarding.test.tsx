@@ -18,7 +18,10 @@ beforeEach(async () => {
   await import('../screens/onboarding/SubscriptionChoice.js');
   await import('../screens/onboarding/FirstCourse.js');
 
-  localStorage.setItem('learnflow-token', 'test-token');
+  localStorage.setItem(
+    'learnflow-token',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+  );
   localStorage.removeItem('learnflow-onboarding-complete');
   globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url =

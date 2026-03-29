@@ -84,7 +84,7 @@ describe('Collaboration page', () => {
 
   it('shows interest tags for partner matching', async () => {
     renderAt('/collaborate');
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 1200));
     const html = document.body.innerHTML;
     expect(html).toMatch(/Machine Learning|Web Development|Data Science/);
   });

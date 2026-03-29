@@ -70,7 +70,8 @@ router.post('/register', validateBody(registerSchema), async (req: Request, res:
         role: user.role,
         tier: user.tier,
         onboardingCompletedAt: (user as any).onboardingCompletedAt
-          ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
+          ? (user as any).onboardingCompletedAt.toISOString?.() ||
+            (user as any).onboardingCompletedAt
           : null,
       },
       ...tokens,
@@ -149,7 +150,8 @@ router.post('/login', validateBody(loginSchema), async (req: Request, res: Respo
         role: (user as any).role,
         tier: (user as any).tier,
         onboardingCompletedAt: (user as any).onboardingCompletedAt
-          ? (user as any).onboardingCompletedAt.toISOString?.() || (user as any).onboardingCompletedAt
+          ? (user as any).onboardingCompletedAt.toISOString?.() ||
+            (user as any).onboardingCompletedAt
           : null,
       },
       ...tokens,

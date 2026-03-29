@@ -11,7 +11,10 @@ import { App } from '../App.js';
 
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
-  localStorage.setItem('learnflow-token', 'test-token');
+  localStorage.setItem(
+    'learnflow-token',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+  );
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
     if (url.includes('/api/v1/profile/context')) {
