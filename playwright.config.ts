@@ -16,7 +16,9 @@ export default defineConfig({
   retries: 0,
   reporter: [['html', { open: 'never' }], ['list']],
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3001',
+    // E2E routes should hit the client app (Vite) by default.
+    // Note: This repo also runs a marketing Next.js app on :3003.
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3001',
     trace: 'on-first-retry',
     screenshot: 'on',
     launchOptions: {

@@ -1,26 +1,56 @@
-# BUILD LOG — Iter136
+# BUILD LOG — Iter136 (Builder)
 
-## Summary
-- P2.10: Added Playwright smoke assertions + fixed pipeline course 404 by creating a minimal course shell at pipeline start.
+Date: 2026-03-29
 
-## Changes
-- `e2e/iter136-smoke-assertions.spec.ts`
-  - Smoke assertions:
-    - Dashboard renders (`[aria-label="Dashboard"]`).
-    - Course creation works via API.
-    - Course loads (`[data-screen="course-view"]`).
-    - Lesson loads **or** course shows truthful generating state.
-  - Fails fast with clear error body snippet when CourseView shows "Failed to load course".
-  - Forces `window.__LEARNFLOW_ENV__.VITE_DEV_AUTH_BYPASS='0'` so the client will send JWT Authorization headers in environments where bypass is enabled.
+## P2.11 — Dev-only App State Debug panel
 
-- `apps/api/src/routes/pipeline.ts`
-  - `POST /api/v1/pipeline` is now `async`.
-  - Creates a minimal course shell immediately (status `CREATING`) and persists it so `/api/v1/courses/:id` won’t 404 while the pipeline runs.
+### What shipped
 
-## Verification
-- `npm test` ✅
+- Added a dev-only app-state inspector panel on **Settings → Profile Settings**.
+- Panel includes:
+  - user id (from `localStorage.learnflow-user` if present)
+  - subscription tier (`state.subscription`)
+  - course count (`state.courses.length`)
+  - active course id (`state.activeCourse?.id`)
+  - feature flags/capabilities snapshot:
+    - `devAuthBypass` from `__LEARNFLOW_ENV__.VITE_DEV_AUTH_BYPASS`
+    - `updateAgent` from `state.capabilities.update_agent`
+    - `advancedAnalytics` from `state.capabilities['analytics.advanced']`
+
+### Gating / safety
+
+- Hard-gated with `import.meta.env.DEV`.
+- Added test asserting the panel does **not** render when `import.meta.env.DEV=false`.
+
+### Files
+
+- `apps/client/src/components/AppStateDebugPanel.tsx` (new)
+- `apps/client/src/screens/ProfileSettings.tsx` (renders panel)
+- `apps/client/src/__tests__/appStateDebugPanel.test.tsx` (new)
+
+## P2.12 — Docs/spec accuracy disclaimers
+
+### What shipped
+
+- Added a **Roadmap** page to clearly label planned vs MVP functionality.
+- Updated docs + marketing copy to avoid implying:
+  - real billing
+  - full semantic knowledge graph
+  - adaptive quizzes (now described as planned)
+  - academic paper search as a current capability
+
+### Files
+
+- `apps/docs/pages/roadmap.md` (new)
+- `apps/docs/pages/mvp-truth.md` (links to roadmap)
+- `apps/docs/pages/user-guide.md` (relabels Exam/Mindmap/Marketplace as MVP + planned)
+- `apps/web/src/app/page.tsx` (homepage feature blurbs softened)
+- `apps/web/src/app/pricing/page.tsx` (quizzes marked Planned)
+- `apps/client/src/data/blogPosts.ts` (removes “knowledge graph” MVP claim; notes adaptive planned)
+
+## Tests
+
+- `npm test` ✅ (all green)
 - `npx playwright test e2e/iter136-smoke-assertions.spec.ts` ✅
-- `npm run screenshots` ✅ (desktop + mobile)
+- `npx playwright test e2e/iter101-screenshots.spec.ts` ✅ (after fixing routing to marketing app :3003)
 
-## Notes
-- Found and mitigated an API hang in the prior dev API process by restarting the API server.

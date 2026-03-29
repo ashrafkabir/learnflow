@@ -190,7 +190,7 @@ We believe the future of AI apps is transparency. You should know what model is 
     id: 'ai-learning-revolution',
     title: 'The AI Learning Revolution: How Agents Are Changing Education',
     excerpt:
-      'Multi-agent AI systems are transforming how we learn. From content generation to adaptive quizzes, discover how LearnFlow uses AI agents to create personalized learning experiences.',
+      'Multi-agent AI systems are transforming how we learn. From content generation to quizzes (adaptive targeting is planned), discover how LearnFlow uses AI agents to create personalized learning experiences.',
     date: '2025-02-28',
     author: 'LearnFlow Team',
     readTime: '8 min read',
@@ -221,7 +221,7 @@ A single large language model can do many things, but it can't do them all well 
 At the heart of LearnFlow is the **Student Context Object** — a living document that tracks:
 
 - Your learning goals and interests
-- Knowledge graph of what you've learned
+- A lightweight course map (not a full semantic knowledge graph in this MVP)
 - Quiz performance and identified gaps
 - Preferred learning style and pace
 

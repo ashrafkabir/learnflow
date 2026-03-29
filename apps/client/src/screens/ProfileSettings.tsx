@@ -16,6 +16,7 @@ import {
   IconRobot,
 } from '../components/icons/index.js';
 import { AdminSearchConfigPanel } from '../components/AdminSearchConfigPanel.js';
+import { AppStateDebugPanel } from '../components/AppStateDebugPanel.js';
 import { UpdateAgentSettingsPanel } from '../components/update-agent/UpdateAgentSettingsPanel.js';
 
 export function ProfileSettings() {
@@ -847,6 +848,9 @@ export function ProfileSettings() {
 
         {/* Admin (server-driven) */}
         {serverRole === 'admin' ? <AdminSearchConfigPanel /> : null}
+
+        {/* Dev-only app state inspector (Iter136) */}
+        <AppStateDebugPanel />
 
         {/* Dev-only cleanup (Iter86) */}
         {serverRole === 'admin' && (window as any)?.location?.hostname !== 'test' ? (

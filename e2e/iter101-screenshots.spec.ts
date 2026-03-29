@@ -50,13 +50,13 @@ test.describe('Iter101 screenshots (privacy + copy truth)', () => {
     await expect(page.locator('text=Data Export')).toBeVisible({ timeout: 15000 });
     await snap(page, '04-export-section');
 
-    // Pricing FAQ copy about managed keys.
-    await page.goto('/pricing');
+    // Pricing copy lives in the marketing site (Next.js) on :3003.
+    await page.goto('http://127.0.0.1:3003/pricing');
     await expect(page.locator('text=Simple, transparent pricing')).toBeVisible({ timeout: 15000 });
     await snap(page, '05-pricing-faq');
 
-    // Docs page key config copy.
-    await page.goto('/docs');
+    // Docs site also lives on :3003.
+    await page.goto('http://127.0.0.1:3003/docs');
     await expect(page.locator('text=Getting Started')).toBeVisible({ timeout: 15000 });
     await snap(page, '06-docs-api-keys');
   });

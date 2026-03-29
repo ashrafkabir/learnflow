@@ -12,7 +12,7 @@ See: [Selection Tools (Discover / Illustrate / Mark)](./selection-tools).
 
 ## Overview
 
-LearnFlow is an AI-powered learning platform with six specialized agents that work together to create personalized educational experiences.
+LearnFlow is an AI-powered learning platform (MVP). Some capabilities described in older copy are **planned**; see [MVP Truth](./mvp-truth) and [Roadmap](./roadmap).
 
 ## Features
 
@@ -59,14 +59,17 @@ Three note formats:
 - **Zettelkasten**: Atomic notes with inter-links
 - **Flashcards**: Question/answer pairs for spaced repetition
 
-### Exam Agent
+### Exam Agent (MVP)
 
-AI-generated assessments:
+AI-generated assessments (best-effort):
 
 - Multiple choice (4 options each)
 - Short answer questions
-- Bloom's taxonomy coverage (recall → application)
-- Knowledge gap analysis after scoring
+
+Planned (see roadmap):
+
+- Adaptive targeting / knowledge-gap analysis
+- Bloom's taxonomy coverage guarantees
 
 ### Research Agent
 
@@ -84,18 +87,25 @@ Condense lessons to key points:
 - No hallucinated content
 - Output ≤500 words from 3000-word input
 
-### Knowledge Mindmap
+### Knowledge Mindmap (MVP)
 
-Visualize learning connections:
+Visualize your course map and progress:
 
 - Interactive graph with clickable nodes
-- Mastery indicators per node
-- Collaborative editing exists in this repo for mindmaps (Yjs-backed) but should be treated as best-effort in MVP deployments
+- Progress-style indicators per node (best-effort)
+- Collaborative editing exists in this repo for mindmaps (Yjs-backed) but should be treated as **planned/best-effort** in MVP deployments
 - SVG export
+
+See: [Roadmap](./roadmap)
 
 ### Marketplace (MVP/mock)
 
-Marketplace UI flows exist for MVP/testing, but publishing, monetization, and third-party agent distribution are not yet implemented.
+Marketplace UI flows exist for MVP/testing.
+
+- Publishing is best-effort and may be limited by deployment configuration.
+- Monetization/payments and durable trust signals (ratings/reviews) are **planned**.
+
+See: [Roadmap](./roadmap)
 
 ### Settings
 

@@ -235,7 +235,7 @@ Evidence pack for this planner run:
 
 ---
 
-### 11) P2 — Add an “App State Debug” panel gated to dev mode
+### 11) P2 — Add an “App State Debug” panel gated to dev mode ✅
 
 **Acceptance criteria**
 
@@ -246,9 +246,20 @@ Evidence pack for this planner run:
   - feature flags (web search enabled, dev auth bypass)
 - Helps resolve planner-run ambiguity quickly.
 
+**Shipped (Iter136)**
+
+- Added dev-only `AppStateDebugPanel` rendered on Profile Settings.
+- Hard gated with `import.meta.env.DEV` so it does not render in production builds.
+- Shows: user id (from localStorage), tier, course count, activeCourseId, and capability/env flags.
+
+**Evidence**
+
+- Code: `apps/client/src/components/AppStateDebugPanel.tsx`, `apps/client/src/screens/ProfileSettings.tsx`
+- Test: `apps/client/src/__tests__/appStateDebugPanel.test.tsx` asserts panel is not rendered when `import.meta.env.DEV=false`.
+
 ---
 
-### 12) P2 — Documentation: update spec-accuracy disclaimers to match MVP reality
+### 12) P2 — Documentation: update spec-accuracy disclaimers to match MVP reality ✅
 
 **Acceptance criteria**
 
@@ -258,6 +269,21 @@ Evidence pack for this planner run:
   - full knowledge-graph semantics
   - adaptive quizzes
 - Where planned, label as “Planned” and link to roadmap section.
+
+**Shipped (Iter136)**
+
+- Added docs roadmap page and linked it from MVP truth/docs.
+- Updated docs copy to label planned items (adaptive quizzes, richer knowledge graph, marketplace monetization) as **Planned**.
+- Updated marketing homepage feature blurbs to avoid implying adaptive quizzes, academic paper search, or full knowledge graph semantics.
+- Updated pricing table to mark quizzes as Planned.
+- Updated blog copy to avoid “knowledge graph” claims for MVP.
+
+**Evidence**
+
+- New: `apps/docs/pages/roadmap.md`
+- Updated: `apps/docs/pages/user-guide.md`, `apps/docs/pages/mvp-truth.md`
+- Updated marketing: `apps/web/src/app/page.tsx`, `apps/web/src/app/pricing/page.tsx`
+- Updated blog: `apps/client/src/data/blogPosts.ts`
 
 ---
 

@@ -24,12 +24,16 @@ The current mindmap primarily visualizes:
 - Lessons
 - Progress state
 
-Richer knowledge graphs (concept-level nodes, custom connections across courses) are planned.
+Richer knowledge graphs (concept-level nodes, custom connections across courses) are **planned**.
+
+See: [Roadmap](./roadmap).
 
 ## 4) Billing/Marketplace/Analytics may be mock or limited
 
 - Billing flows are MVP/mock unless explicitly wired to a real payment provider.
 - Marketplace publishing and creator analytics may be partially implemented or intentionally limited until backed by real stored data.
+
+See: [Roadmap](./roadmap).
 
 ## 5) Expect change
 
