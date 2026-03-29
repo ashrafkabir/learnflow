@@ -160,6 +160,14 @@ export function LessonReader() {
   const [courseStatus, setCourseStatus] = useState<string | null>(null);
   const [courseStatusMeta, setCourseStatusMeta] = useState<any>(null);
   const [refreshTick, setRefreshTick] = useState(0);
+
+  // Iter138: lesson-level mastery banner (learning estimate, not a guarantee)
+  const [mastery, setMastery] = useState<null | {
+    masteryLevel: number;
+    nextReviewAt: string | null;
+    lastStudiedAt: string | null;
+    lastQuizScore: number | null;
+  }>(null);
   const [activePanel, setActivePanel] = useState<'none' | 'notes' | 'quiz'>('none');
   const [attributionOpen, setAttributionOpen] = useState(false);
   const [_notesFormat, _setNotesFormat] = useState<'cornell' | 'flashcard'>('cornell');
@@ -308,6 +316,33 @@ export function LessonReader() {
           setStatusError(toUserError(e, 'Failed to load lesson. Please retry.'));
         })
         .finally(() => setLoading(false));
+
+      // Best-effort: hydrate mastery state for in-lesson review banner.
+      fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/mastery`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('learnflow-token') || ''}`,
+        },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          const row = data?.mastery;
+          if (row) {
+            setMastery({
+              masteryLevel: Number(row.masteryLevel || 0),
+              nextReviewAt: row.nextReviewAt || null,
+              lastStudiedAt: row.lastStudiedAt || null,
+              lastQuizScore:
+                row.lastQuizScore === null || row.lastQuizScore === undefined
+                  ? null
+                  : Number(row.lastQuizScore),
+            });
+          } else {
+            setMastery(null);
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
 
       // Also hydrate course status so we can distinguish generating vs failed.
       setStatusLoading(true);
@@ -912,6 +947,14 @@ export function LessonReader() {
     );
   };
 
+  // "Due" = next review time is now/past OR within the next 24h.
+  // This is a learning estimate, not a guarantee.
+  const reviewDue = mastery?.nextReviewAt
+    ? new Date(mastery.nextReviewAt).getTime() <= Date.now() + 24 * 60 * 60 * 1000
+    : false;
+  const lastQuizPct =
+    typeof mastery?.lastQuizScore === 'number' ? Math.round(mastery.lastQuizScore * 100) : null;
+
   return (
     <section
       aria-label="Lesson Reader"
@@ -952,14 +995,29 @@ export function LessonReader() {
           </nav>
         </div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => (fromCourseHref ? nav(fromCourseHref) : nav(-1))}
-            title="Back"
-          >
-            ← Back
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => (fromCourseHref ? nav(fromCourseHref) : nav(-1))}
+              title="Back"
+            >
+              ← Back
+            </Button>
+
+            {reviewDue && (
+              <div
+                data-testid="review-due-banner"
+                className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200 text-xs font-semibold"
+                title="Learning estimate — review is due (best-effort)."
+              >
+                Review due
+                {lastQuizPct !== null && (
+                  <span className="font-normal">(last quiz {lastQuizPct}%)</span>
+                )}
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"

@@ -18,6 +18,35 @@ import {
   IconTestTube,
 } from '../components/icons/index.js';
 
+type MasteryRow = {
+  courseId: string;
+  lessonId: string;
+  masteryLevel: number;
+  lastStudiedAt: string | null;
+  nextReviewAt: string | null;
+  lastQuizScore: number | null;
+  lastQuizAt: string | null;
+  gaps?: string[];
+  updatedAt?: string;
+};
+
+function masteryLabel(level: number | null | undefined): string {
+  const v =
+    typeof level === 'number' && Number.isFinite(level) ? Math.max(0, Math.min(1, level)) : 0;
+  if (v >= 0.85) return 'Mastered';
+  if (v >= 0.55) return 'Solid';
+  if (v >= 0.25) return 'Learning';
+  return 'New';
+}
+
+function masteryPillClasses(level: number | null | undefined): string {
+  const v = typeof level === 'number' && Number.isFinite(level) ? level : 0;
+  if (v >= 0.85) return 'bg-success/10 text-success';
+  if (v >= 0.55) return 'bg-accent/10 text-accent';
+  if (v >= 0.25) return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200';
+  return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200';
+}
+
 /* Estimate read time from lesson description length and estimatedTime */
 function estimateReadTime(lesson: { estimatedTime?: number; description?: string }): number {
   if (lesson.estimatedTime) return lesson.estimatedTime;
@@ -38,6 +67,8 @@ export function CourseView() {
     courseId: string;
   } | null>(null);
 
+  const [masteryByLessonId, setMasteryByLessonId] = useState<Record<string, MasteryRow>>({});
+
   const course = state.activeCourse;
 
   useEffect(() => {
@@ -48,6 +79,36 @@ export function CourseView() {
         .catch((e) => setError(toUserError(e, 'Failed to load course. Please retry.')))
         .finally(() => setLoading(false));
     }
+  }, [courseId]);
+
+  // Iter138: fetch mastery state for badges (learning estimate, not a guarantee)
+  useEffect(() => {
+    if (!courseId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/v1/courses/${courseId}/mastery`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('learnflow-token') || ''}`,
+          },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { mastery?: MasteryRow[] };
+        if (cancelled) return;
+        const map: Record<string, MasteryRow> = {};
+        for (const row of data?.mastery || []) {
+          map[String((row as any).lessonId)] = row;
+        }
+        setMasteryByLessonId(map);
+      } catch {
+        // ignore (best-effort UI)
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [courseId]);
 
   // Auto-expand first module
@@ -388,6 +449,17 @@ export function CourseView() {
                 <div className="border-t border-gray-100 dark:border-gray-800">
                   {(mod.lessons ?? []).map((lesson, li) => {
                     const isComplete = state.completedLessons.has(lesson.id);
+                    const mastery = masteryByLessonId[String(lesson.id)] || null;
+                    const lastQuizPct =
+                      typeof mastery?.lastQuizScore === 'number'
+                        ? Math.round(mastery.lastQuizScore * 100)
+                        : null;
+                    // "Due" = next review time is now/past OR within the next 24h.
+                    // This is a learning estimate, not a guarantee.
+                    const reviewDue = mastery?.nextReviewAt
+                      ? new Date(mastery.nextReviewAt).getTime() <= Date.now() + 24 * 60 * 60 * 1000
+                      : false;
+
                     return (
                       <div
                         key={lesson.id}
@@ -415,9 +487,27 @@ export function CourseView() {
                           {isComplete ? <IconCheck className="w-3.5 h-3.5" /> : li + 1}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {lesson.title}
-                          </p>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {lesson.title}
+                            </p>
+                            <span
+                              data-testid={`mastery-badge-${lesson.id}`}
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap ${masteryPillClasses(mastery?.masteryLevel)}`}
+                              title="Learning estimate (best-effort). Not a guarantee."
+                            >
+                              {masteryLabel(mastery?.masteryLevel)}
+                            </span>
+                            {reviewDue && (
+                              <span
+                                data-testid={`review-due-${lesson.id}`}
+                                className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200"
+                                title="Review is due based on your learning estimate schedule."
+                              >
+                                Review due
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-500 dark:text-gray-300 truncate">
                             {lesson.description}
                             {/* Inline citation hover previews — Spec §5.2.4 */}
@@ -435,6 +525,24 @@ export function CourseView() {
                         >
                           <IconBook className="w-4 h-4" /> ~{estimateReadTime(lesson)} min
                         </span>
+
+                        {/* Iter138: quiz + review badges */}
+                        <span
+                          data-testid={`last-quiz-${lesson.id}`}
+                          className="text-[11px] text-gray-600 dark:text-gray-300 whitespace-nowrap mr-2"
+                          title="Last quiz score (best-effort persisted)"
+                        >
+                          {lastQuizPct === null ? 'No quiz yet' : `Last quiz: ${lastQuizPct}%`}
+                        </span>
+                        {mastery?.nextReviewAt && (
+                          <span
+                            data-testid={`next-review-${lesson.id}`}
+                            className="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap mr-2"
+                            title={`Next review: ${new Date(mastery.nextReviewAt).toLocaleString()}`}
+                          >
+                            Next review: {new Date(mastery.nextReviewAt).toLocaleDateString()}
+                          </span>
+                        )}
                         <Button
                           variant={isComplete ? 'ghost' : 'primary'}
                           size="sm"

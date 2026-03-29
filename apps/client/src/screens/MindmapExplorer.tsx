@@ -237,7 +237,8 @@ export function MindmapExplorer() {
       );
       const coursePct = totalLessons > 0 ? completedLessons / totalLessons : 0;
 
-      // Color by progress level:
+      // Color by progress level (legacy heuristic).
+      // Iter138 TODO: use mastery store for course-level coloring.
       // - not started → gray (#9CA3AF)
       // - in progress → amber (#F59E0B)
       // - complete → green (#16A34A)

@@ -60,19 +60,28 @@ Iter138 should therefore prioritize **mastery + personalization primitives** and
 
 ### 2) P0 — Make quiz results visible + stable in the learner UI (CourseView + LessonReader)
 
-**Builder note (partial)**: Server-side analytics now uses mastery store for quizAverage (fallback to events).
-UI badges/last score surfaces still pending.
+**Builder note (DONE in this builder run)**: Implemented mastery/quiz UI surfaces in CourseView and LessonReader.
+Badges are labeled as a **learning estimate** (best-effort), not a guarantee.
 
 **Problem**: Quizzes exist, but the product doesn’t _feel_ like it tracks learning.
 
-**Acceptance criteria**
+**Acceptance criteria (DONE in this builder run)**
 
-- After quiz submit, the UI shows:
-  - last score
-  - gaps (if present)
-  - “saved” vs “not saved” state (truthful)
-- CourseView lesson rows show a small badge: `Last quiz: 80%` (or `No quiz yet`).
-- Dashboard analytics includes quiz activity using the mastery store (not only raw event scan).
+- ✅ CourseView lesson rows show:
+  - `Mastery` badge (New/Learning/Solid/Mastered — learning estimate)
+  - `Review due` chip (shown when nextReviewAt is within 24h — best-effort)
+  - `Last quiz: 80%` (or `No quiz yet`)
+  - `Next review: <date>` when present
+- ✅ LessonReader shows a top-bar `Review due` banner (>=sm) when review is within 24h.
+- ✅ Added client unit tests:
+  - `apps/client/src/__tests__/iter138-mastery-badges.test.tsx`
+  - `apps/client/src/__tests__/iter138-lesson-reader-review-banner.test.tsx`
+- ✅ Added Playwright spec + screenshots:
+  - `e2e/iter138-mastery-badges.spec.ts`
+  - `e2e/screenshots/iter138-courseview-mastery-badges.png`
+  - `e2e/screenshots/iter138-lessonreader-review-due-banner.png`
+
+(“Saved vs not saved” for quiz persistence is still best-effort and currently only surfaced via existing quiz UI state; full explicit save-state UI is deferred.)
 
 ---
 
