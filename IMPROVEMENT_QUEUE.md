@@ -121,9 +121,23 @@ Iter137 should focus on turning these into **credible, spec-aligned end-to-end f
   - no real payouts
   - what’s visible publicly in this sandbox
 
+**Status (builder update 2026-03-29)**
+
+- Implemented: CreatorDashboard now loads user's library via `GET /api/v1/courses` and allows selecting a **real course** to publish (sends `courseId` in publish payload). This makes the listing grounded in actual course content instead of purely synthetic fields.
+- Screenshot harness updated to capture `/marketplace/creator` on desktop + mobile.
+
+**Evidence (OneDrive)**
+
+- Desktop: `/home/aifactory/onedrive-learnflow/iter137/iter137/run-2026-03-29/marketplace-creator-dashboard.png`
+- Mobile: `/home/aifactory/onedrive-learnflow/iter137/iter137/mobile-2026-03-29/mobile-320__marketplace-creator-dashboard.png` (also 375/414)
+
+**Remaining gap**
+
+- Still need an actual Playwright e2e that completes publish (select course → submit → marketplace shows it) to fully satisfy “end-to-end from UI”.
+
 **Evidence pointers**
 
-- Screens: marketplace + creator dashboard: `.../marketplace-courses.png`, `.../app-settings.png` (desktop/mobile).
+- Screens: marketplace + creator dashboard.
 - API tests: `apps/api/src/__tests__/marketplace.test.ts`.
 
 ---
