@@ -21,6 +21,13 @@ export { aiPromptingRequiredModules } from './course-builder/domain-profiles/ai-
 // Content Pipeline
 export { discoverSources } from './content-pipeline/source-discovery.js';
 export { extractText } from './content-pipeline/content-extractor.js';
+export { searchAndExtractTopic } from './content-pipeline/openai-websearch-provider.js';
+export {
+  writeCourseResearch,
+  writeLessonResearch,
+  writeLessonPlan,
+  courseArtifactsRoot,
+} from './content-pipeline/artifact-writer.js';
 export { scoreContent } from './content-pipeline/quality-scorer.js';
 export { AttributionTracker } from './content-pipeline/attribution-tracker.js';
 export { isDuplicate, similarity } from './content-pipeline/deduplicator.js';
