@@ -5,7 +5,7 @@
  * onto disk so later pipeline stages can operate without re-scraping.
  */
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 export type ResearchImageArtifact = {
@@ -87,6 +87,9 @@ export async function writeCourseResearch(
       publisher: s.publisher,
       accessedAt: s.accessedAt,
       snippet: s.snippet,
+      // Keep a bounded copy of extracted text in JSON so the lesson generator can
+      // rehydrate without depending on filename mapping for extracted/*.md.
+      extractedText: (s.extractedText || '').slice(0, 50_000),
     })),
   });
 
@@ -131,6 +134,7 @@ export async function writeLessonResearch(
       publisher: s.publisher,
       accessedAt: s.accessedAt,
       snippet: s.snippet,
+      extractedText: (s.extractedText || '').slice(0, 50_000),
     })),
   });
 
@@ -160,4 +164,69 @@ export async function writeLessonPlan(courseId: string, plan: unknown): Promise<
   const outPath = join(root, 'lesson-plan.json');
   await writeJson(outPath, plan);
   return outPath;
+}
+
+export async function readCourseResearch(courseId: string): Promise<ResearchBundle | null> {
+  try {
+    const root = join(courseArtifactsRoot(courseId), 'research', 'course');
+    const raw = await readFile(join(root, 'sources.json'), 'utf8');
+    const parsed = JSON.parse(raw);
+    return {
+      topic: String(parsed?.topic || ''),
+      sourcesMissingReason: parsed?.sourcesMissingReason || undefined,
+      sources: Array.isArray(parsed?.sources)
+        ? parsed.sources
+            .map((s: any) => ({
+              url: String(s?.url || ''),
+              title: s?.title ? String(s.title) : undefined,
+              publisher: s?.publisher ? String(s.publisher) : undefined,
+              accessedAt: String(s?.accessedAt || ''),
+              snippet: s?.snippet ? String(s.snippet) : undefined,
+              extractedText: s?.extractedText ? String(s.extractedText) : undefined,
+            }))
+            .filter((s: any) => !!s.url)
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function readLessonResearch(
+  courseId: string,
+  lessonId: string,
+): Promise<ResearchBundle | null> {
+  try {
+    const root = join(courseArtifactsRoot(courseId), 'research', 'lessons', sanitizeId(lessonId));
+    const raw = await readFile(join(root, 'sources.json'), 'utf8');
+    const parsed = JSON.parse(raw);
+    return {
+      topic: String(parsed?.topic || ''),
+      sourcesMissingReason: parsed?.sourcesMissingReason || undefined,
+      sources: Array.isArray(parsed?.sources)
+        ? parsed.sources
+            .map((s: any) => ({
+              url: String(s?.url || ''),
+              title: s?.title ? String(s.title) : undefined,
+              publisher: s?.publisher ? String(s.publisher) : undefined,
+              accessedAt: String(s?.accessedAt || ''),
+              snippet: s?.snippet ? String(s.snippet) : undefined,
+              extractedText: s?.extractedText ? String(s.extractedText) : undefined,
+            }))
+            .filter((s: any) => !!s.url)
+        : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function listLessonResearchBundles(courseId: string): Promise<string[]> {
+  try {
+    const dir = join(courseArtifactsRoot(courseId), 'research', 'lessons');
+    const entries = await readdir(dir, { withFileTypes: true });
+    return entries.filter((e) => e.isDirectory()).map((e) => e.name);
+  } catch {
+    return [];
+  }
 }

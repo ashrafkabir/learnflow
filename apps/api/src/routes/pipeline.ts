@@ -8,6 +8,7 @@ import {
   searchAndExtractTopic,
   writeCourseResearch,
   writeLessonResearch,
+  readLessonResearch,
   searchWikimediaCommonsImages,
   type FirecrawlSource,
 } from '@learnflow/agents';
@@ -1328,18 +1329,63 @@ async function runPipeline(pipelineId: string) {
               : '';
           const temp = attempt >= 2 ? 0.9 : 0.7;
           try {
+            // Use saved artifacts if available (no re-scrape), so generation is reproducible.
+            let sourcesForGen = lessonSources;
+            try {
+              const bundle = await readLessonResearch(`course-${p.courseId || p.id}`, lessonId);
+              if (bundle?.sources?.length) {
+                sourcesForGen = bundle.sources.map((s: any) => ({
+                  url: s.url,
+                  title: s.title,
+                  domain: s.publisher || (s.url ? new URL(s.url).hostname : ''),
+                  content: s.extractedText || '',
+                  author: '',
+                  publishDate: null,
+                  credibilityScore: 0,
+                  relevanceScore: 0,
+                  recencyScore: 0,
+                  wordCount: (s.extractedText || '').split(/\s+/).filter(Boolean).length,
+                  source: s.publisher,
+                }));
+              }
+            } catch {
+              // best-effort: fall back to in-memory scraped sources
+            }
+
+            const lessonReq = {
+              model: 'gpt-4o-mini',
+              temperature: temp,
+              max_tokens: 5000,
+              lessonTitle: les.title,
+              moduleTitle: modules[mi].title,
+              topic,
+              sourcesCount: sourcesForGen.length,
+            };
+            appendLog(
+              p,
+              'info',
+              `[openai.request] kind=lesson_generate meta=${redactSecrets(previewJson(lessonReq, 1200))}`,
+            );
+
             content = await withTimeout('lesson_synthesize', 120_000, async () =>
               generateLesson(
                 topic,
                 modules[mi].title,
                 les.title,
                 les.description,
-                lessonSources,
+                sourcesForGen,
                 openai,
                 minWordHint,
                 temp,
               ),
             );
+
+            appendLog(
+              p,
+              'info',
+              `[openai.response] kind=lesson_generate length=${content?.length || 0}`,
+            );
+
             content = `${content}${formatFurtherReadingBlock(further)}`;
           } catch (err: any) {
             const statusCode = extractStatusCode(err);

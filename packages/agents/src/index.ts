@@ -26,6 +26,9 @@ export {
   writeCourseResearch,
   writeLessonResearch,
   writeLessonPlan,
+  readCourseResearch,
+  readLessonResearch,
+  listLessonResearchBundles,
   courseArtifactsRoot,
 } from './content-pipeline/artifact-writer.js';
 export { scoreContent } from './content-pipeline/quality-scorer.js';
