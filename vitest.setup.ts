@@ -88,10 +88,11 @@ function shouldAllow(args: unknown[]): boolean {
 }
 
 // Silence stdout spam; reduces flakiness/noise in test runs.
-// IMPORTANT: In node environment (api/agents), Vitest can still track console logs and
-// can throw EnvironmentTeardownError if log events are emitted during shutdown.
-// To keep deterministic shutdown, always return synchronously with no async work.
+// IMPORTANT: Fully suppress all console output in tests.
 console.log = (..._args: unknown[]) => {
+  return;
+};
+console.debug = (..._args: unknown[]) => {
   return;
 };
 

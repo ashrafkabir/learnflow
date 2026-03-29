@@ -17,6 +17,8 @@ beforeEach(() => {
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
   );
 
+  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+
   // Provide route-specific API mocks so marketplace routes render reliably.
   globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url = String(input);
