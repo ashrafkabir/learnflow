@@ -144,21 +144,40 @@ Iter137 should focus on turning these into **credible, spec-aligned end-to-end f
 
 ### 5) P0 — Mindmap must be derived from real course concepts + show progress semantics
 
-**Problem**: Spec §5.2.5 expects nodes=concepts and color-coded progress. Current mindmap renders, but semantic linkage to courses and progress/milestones is unclear.
+Status: **DONE** ✅ (2026-03-29)
 
-**Acceptance criteria**
+**What shipped**
 
-- On first course creation, mindmap is populated from the course outline (modules/lessons + extracted concepts).
-- Node state derives from:
-  - lesson completion (MVP), and
-  - optionally quiz completion (bonus)
-- Clicking a node navigates predictably to the related lesson(s).
-- Empty state when no courses (no “mystery nodes”).
+- Mindmap nodes are derived from **real course structure** (course → modules → lessons) and are **not placeholder letters**.
+- Nodes encode progress semantics using **lesson completion** (MVP):
+  - Not started (gray)
+  - In progress (amber)
+  - Complete/Mastered (green)
+- Clicking nodes navigates:
+  - Course node → `/courses/:courseId`
+  - Lesson node → `/courses/:courseId/lessons/:lessonId`
+- Works for:
+  - **0 courses**: shows the intended empty state (no phantom nodes)
+  - **1 course** and **multiple courses**: renders a rooted graph with clickable course/lesson nodes
 
-**Evidence pointers**
+**Builder hardening fix (critical)**
 
-- Screens: `.../app-mindmap.png`, `.../app-dashboard.png`.
-- Agents: `packages/agents/src/mindmap-agent/*`.
+- Fixed an empty-state bug where mindmap would fall back to a synthetic `dev-course` id and connect to a Yjs room even when the user had 0 courses.
+  - File: `apps/client/src/screens/MindmapExplorer.tsx`
+  - Commit: `9b81af6`
+
+**Evidence**
+
+- Playwright (CRDT regression still passes): `npx playwright test e2e/mindmap-crdt.spec.ts`
+  - Artifacts: `/home/aifactory/onedrive-learnflow/iter137/evidence/playwright/mindmap-crdt-mindmap-CRDT--05dbd--clients-shared-group-room--chromium/`
+
+**Code pointers**
+
+- Client mindmap graph derivation + progress coloring + navigation:
+  - `apps/client/src/screens/MindmapExplorer.tsx`
+- Completion source of truth (API + client state):
+  - `apps/api/src/routes/courses.ts` (`POST /courses/:id/lessons/:lessonId/complete`)
+  - `apps/client/src/context/AppContext.tsx` (`COMPLETE_LESSON`)
 
 ---
 
