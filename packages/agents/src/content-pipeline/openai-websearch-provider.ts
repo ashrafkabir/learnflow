@@ -182,11 +182,23 @@ function extractResultsFromResponse(
 
   const scanContainer = (c: any) => {
     if (!c) return;
+
     // Common: { type: 'web_search', results: [...] } or { type: 'tool_result', results: [...] }
     const maybeArrays = [c?.results, c?.data, c?.items, c?.web_results, c?.webpages];
     for (const arr of maybeArrays) {
       if (Array.isArray(arr)) arr.forEach(pushResult);
     }
+
+    // Newer Responses shapes often include citations as annotations on output_text.
+    // Example: { type:'output_text', text:'...', annotations:[{type:'url_citation', title, url, ...}, ...] }
+    if (Array.isArray(c?.annotations)) {
+      for (const a of c.annotations) {
+        if (a?.type === 'url_citation' && a?.url) {
+          pushResult({ url: a.url, title: a.title, snippet: undefined, source: undefined });
+        }
+      }
+    }
+
     // Sometimes nested: { result: { results: [...] } }
     if (c?.result) scanContainer(c.result);
     // Or: { results: { items: [...] } }
