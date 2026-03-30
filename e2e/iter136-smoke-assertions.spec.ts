@@ -125,7 +125,9 @@ test.describe('Iter136: smoke assertions', () => {
     page,
     request,
   }) => {
-    test.setTimeout(120_000);
+    // Batch runs can contend for CPU/IO and cause occasional slow course generation.
+    // This is a smoke test (not perf), so we allow more headroom to reduce flakes.
+    test.setTimeout(180_000);
     await page.addInitScript(initClientStorage());
 
     const apiBase = 'http://127.0.0.1:3000';

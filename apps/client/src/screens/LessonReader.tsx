@@ -1723,9 +1723,23 @@ export function LessonReader() {
             aria-label="Lesson content"
             className="space-y-6"
           >
-            {/* Mobile primary actions (Iter148): replaces right-rail dependency */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
+            {/* Bottom action bar (spec parity): Mark Complete, Take Notes, Quiz Me, Ask Question (plus conditional Undo) */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
               <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+                <Button
+                  variant={isComplete ? 'secondary' : 'primary'}
+                  size="sm"
+                  onClick={_handleMarkComplete}
+                  aria-label="Mark complete"
+                  disabled={isComplete}
+                  title={isComplete ? 'Lesson completed' : 'Mark lesson complete'}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <IconCheck className="w-4 h-4" />
+                    {isComplete ? 'Complete' : 'Mark complete'}
+                  </span>
+                </Button>
+
                 <Button variant="secondary" size="sm" onClick={handleQuiz} aria-label="Quiz me">
                   <span className="inline-flex items-center gap-2">
                     <IconTestTube className="w-4 h-4" />
@@ -1741,14 +1755,14 @@ export function LessonReader() {
                 >
                   <span className="inline-flex items-center gap-2">
                     <IconPencil className="w-4 h-4" />
-                    Notes
+                    Take notes
                   </span>
                 </Button>
 
-                <Button variant="secondary" size="sm" onClick={openAskMe} aria-label="Ask me">
+                <Button variant="secondary" size="sm" onClick={openAskMe} aria-label="Ask question">
                   <span className="inline-flex items-center gap-2">
                     <IconInfo className="w-4 h-4" />
-                    Ask me
+                    Ask question
                   </span>
                 </Button>
 
@@ -2561,13 +2575,74 @@ export function LessonReader() {
                             variant="secondary"
                             size="sm"
                             onClick={openAskMe}
-                            aria-label="Ask me"
+                            aria-label="Ask question"
                           >
                             <span className="inline-flex items-center gap-2">
                               <IconInfo className="w-4 h-4" />
-                              Ask me
+                              Ask question
                             </span>
                           </Button>
+
+                          {lastEditUndo ? (
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={async () => {
+                                if (!courseId || !lessonId || !lesson) return;
+                                if (!lastEditUndo) return;
+                                setUndoLoading(true);
+                                try {
+                                  await apiPost(
+                                    `/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`,
+                                    {
+                                      heading: lastEditUndo.heading,
+                                      occurrenceIndex: lastEditUndo.occurrenceIndex,
+                                      newHeading: lastEditUndo.previousHeadingLine.replace(
+                                        /^#{2,3}\s+/,
+                                        '',
+                                      ),
+                                      newContentMarkdown: lastEditUndo.previousContentMarkdown,
+                                    },
+                                  );
+
+                                  const patched = patchLessonSubsectionMarkdownWithUndo(
+                                    lesson.content || '',
+                                    {
+                                      heading: lastEditUndo.heading,
+                                      occurrenceIndex: lastEditUndo.occurrenceIndex,
+                                      newHeading: lastEditUndo.previousHeadingLine.replace(
+                                        /^#{2,3}\s+/,
+                                        '',
+                                      ),
+                                      newContentMarkdown: lastEditUndo.previousContentMarkdown,
+                                    },
+                                  );
+                                  dispatch({
+                                    type: 'SET_ACTIVE_LESSON',
+                                    lesson: { ...(lesson as any), content: patched.updated },
+                                  });
+                                  setLastEditUndo(null);
+                                  toast('Reverted last edit.', 'success');
+                                } catch (e: any) {
+                                  const u = toUserError(e, 'Undo failed. Please try again.');
+                                  toast(
+                                    u.requestId ? `${u.message} (${u.requestId})` : u.message,
+                                    'error',
+                                  );
+                                } finally {
+                                  setUndoLoading(false);
+                                }
+                              }}
+                              disabled={undoLoading}
+                              aria-label="Undo last edit"
+                              title="Undo last edit"
+                            >
+                              <span className="inline-flex items-center gap-2">
+                                <IconRefresh className="w-4 h-4" />
+                                {undoLoading ? 'Undo…' : 'Undo'}
+                              </span>
+                            </Button>
+                          ) : null}
                           <Button
                             variant="secondary"
                             size="sm"

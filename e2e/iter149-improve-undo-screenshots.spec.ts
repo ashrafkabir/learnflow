@@ -185,15 +185,28 @@ test.describe('Iter149 Improve + Undo screenshots', () => {
 
     await snap(page, '02-desktop-after-improve');
 
+    // Ensure Undo is in the desktop Actions area (right rail).
+    await expect(page.locator('[data-testid="lesson-actions"]')).toBeVisible({ timeout: 10_000 });
+
     // Best-effort UI proof checks.
     // Note: depending on which preview/apply UI path is exercised, rich content may not immediately
     // render in the main article. We still enforce that the fatal toast isn't present.
     await expect(page.getByText(/heading_not_found/i)).toHaveCount(0);
 
-    // Click Undo via stable aria-label (button label may vary).
-    // Desktop Undo: not currently exposed in the right-rail Actions panel (mobile-only for now).
-    // We still capture after-improve proof; Undo is proven in the mobile test below.
-    await snap(page, '03-desktop-after-improve-proof');
+    // Desktop Undo should now be exposed in the right-rail Actions panel.
+    const undo = page.getByRole('button', { name: /undo last edit/i }).first();
+    await expect(undo).toBeVisible({ timeout: 10_000 });
+    await undo.click();
+
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__ITER149_UNDO_OK__ === true), {
+        timeout: 15_000,
+      })
+      .toBeTruthy();
+
+    await expect(page.getByText('Iter149 Test Subsection')).toBeVisible({ timeout: 10_000 });
+
+    await snap(page, '03-desktop-after-undo');
   });
 
   test('mobile: improve applied then undo', async ({ page, browserName }) => {
