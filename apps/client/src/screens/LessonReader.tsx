@@ -624,20 +624,11 @@ export function LessonReader() {
       if (tool === 'illustrate') {
         body.provider = selectionIllustrateProvider;
       }
-      const res = await fetch(
-        `/api/v1/courses/${courseId}/lessons/${lessonId}/selection-tools/preview`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        },
+      const data = await apiPost(
+        `/courses/${courseId}/lessons/${lessonId}/selection-tools/preview`,
+        body,
       );
-      const data = await res.json();
-      if (res.ok) {
-        setToolPreview(data);
-      } else {
-        setToolPreview({ tool, selectedText, error: data?.message || 'Failed' });
-      }
+      setToolPreview(data);
     } catch (err: any) {
       setToolPreview({ tool, selectedText, error: err?.message || 'Failed' });
     } finally {
