@@ -142,18 +142,28 @@ test.describe('Iter148 screenshots', () => {
       await snap(page, '02-desktop-after-improve-applied');
     }
 
-    // Expand Actions and open Ask me overlay.
-    await page.getByRole('button', { name: /^Actions/i }).click();
-    const ask = page.getByRole('button', { name: /ask me/i });
-    if (await ask.count()) {
-      await ask.click();
+    // Open Ask me overlay (should be available even without right-rail).
+    const askPrimary = page.getByRole('button', { name: /^Ask me$/i });
+    if (await askPrimary.count()) {
+      await askPrimary.click();
       await expect(page.getByTestId('lesson-ask-overlay')).toBeVisible({ timeout: 10_000 });
       await snap(page, '03-desktop-ask-me-overlay');
       await page.getByRole('button', { name: /close ask me/i }).click();
       await expect(page.getByTestId('lesson-ask-overlay')).toBeHidden({ timeout: 10_000 });
     } else {
-      // Fallback: still capture evidence of Actions area if Ask-me is missing.
-      await snap(page, '03-desktop-actions-no-ask-me');
+      // Fallback: open from Actions drawer on desktop.
+      await page.getByRole('button', { name: /^Actions/i }).click();
+      const ask = page.getByRole('button', { name: /ask me/i });
+      if (await ask.count()) {
+        await ask.click();
+        await expect(page.getByTestId('lesson-ask-overlay')).toBeVisible({ timeout: 10_000 });
+        await snap(page, '03-desktop-ask-me-overlay');
+        await page.getByRole('button', { name: /close ask me/i }).click();
+        await expect(page.getByTestId('lesson-ask-overlay')).toBeHidden({ timeout: 10_000 });
+      } else {
+        // Fallback: still capture evidence of Actions area if Ask-me is missing.
+        await snap(page, '03-desktop-actions-no-ask-me');
+      }
     }
   });
 
@@ -196,8 +206,16 @@ test.describe('Iter148 screenshots', () => {
     });
     await expect(page.locator('[data-screen="lesson-reader"]')).toBeVisible({ timeout: 30_000 });
 
-    // On mobile the side drawer is hidden; use Actions via whatever is visible.
-    // Best-effort: try the "Actions" twisty first; if not present, just screenshot lesson.
+    // On mobile the side drawer is hidden; Ask me should still be reachable.
+    const askPrimary = page.getByRole('button', { name: /^Ask me$/i });
+    if (await askPrimary.count()) {
+      await askPrimary.click();
+      await expect(page.getByTestId('lesson-ask-overlay')).toBeVisible({ timeout: 10_000 });
+      await snap(page, '04-mobile-ask-me-overlay');
+      return;
+    }
+
+    // Fallback: try the "Actions" twisty if present.
     const actions = page.getByRole('button', { name: /^Actions/i });
     if (await actions.count()) {
       await actions.click();

@@ -50,18 +50,23 @@ test('Iter146: Ask me opens overlay and does not navigate', async ({ page }) => 
 
   const before = page.url();
 
-  // Expand Actions then click Ask me (button exists only when Actions is expanded)
-  await page.getByRole('button', { name: /^Actions/i }).click();
-
-  const ask = page.getByRole('button', { name: /ask me/i });
-  if (await ask.count()) {
+  // Ask me should be reachable without relying on the desktop side drawer.
+  // Prefer the mobile/primary action bar button; fall back to Actions drawer.
+  const askPrimary = page.getByRole('button', { name: /^Ask me$/i });
+  if (await askPrimary.count()) {
+    await expect(askPrimary).toBeVisible({ timeout: 30_000 });
+    await askPrimary.click();
+  } else {
+    await page.getByRole('button', { name: /^Actions/i }).click();
+    const ask = page.getByRole('button', { name: /ask me/i });
+    if (!(await ask.count())) return;
     await expect(ask).toBeVisible({ timeout: 30_000 });
     await ask.click();
-
-    await expect(page.getByTestId('lesson-ask-overlay')).toBeVisible();
-    expect(page.url()).toBe(before);
-
-    await page.getByRole('button', { name: /close ask me/i }).click();
-    await expect(page.getByTestId('lesson-ask-overlay')).toBeHidden();
   }
+
+  await expect(page.getByTestId('lesson-ask-overlay')).toBeVisible();
+  expect(page.url()).toBe(before);
+
+  await page.getByRole('button', { name: /close ask me/i }).click();
+  await expect(page.getByTestId('lesson-ask-overlay')).toBeHidden();
 });

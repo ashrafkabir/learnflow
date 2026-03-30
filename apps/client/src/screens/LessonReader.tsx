@@ -67,7 +67,19 @@ interface Annotation {
 type SelectedSubsection = {
   heading: string;
   bodyText: string;
+  // Stable discriminator for subsection ordering across the lesson render.
+  // Used for selection + illustration attachment.
   globalIndex: number;
+  // Occurrence index among headings with the same text (0-indexed).
+  // This matches the server-side replace-subsection contract.
+  headingOccurrenceIndex: number;
+};
+
+type UndoLastEdit = {
+  heading: string;
+  occurrenceIndex: number;
+  previousHeadingLine: string;
+  previousContentMarkdown: string;
 };
 
 interface Comparison {
@@ -80,7 +92,7 @@ interface Comparison {
 // Patch lesson markdown by replacing a subsection under a heading.
 // Best-effort: matches `##`/`###` heading lines. If occurrenceIndex is provided,
 // matches that Nth occurrence of the heading.
-function patchLessonSubsectionMarkdown(
+function _patchLessonSubsectionMarkdown(
   content: string,
   args: {
     heading: string;
@@ -89,6 +101,8 @@ function patchLessonSubsectionMarkdown(
     newContentMarkdown: string;
   },
 ) {
+  // NOTE: This helper only handles markdown headings + paragraphs. For undo support,
+  // prefer patchLessonSubsectionMarkdownWithUndo() below.
   const lines = String(content || '').split('\n');
   const h = String(args.heading || '').trim();
   const occ = typeof args.occurrenceIndex === 'number' ? args.occurrenceIndex : null;
@@ -129,6 +143,72 @@ function patchLessonSubsectionMarkdown(
   const newBlockLines = [headingLine, '', String(args.newContentMarkdown).trim(), ''];
   const updatedLines = [...lines.slice(0, startIdx), ...newBlockLines, ...lines.slice(endIdx)];
   return updatedLines.join('\n').replace(/\n{4,}/g, '\n\n\n');
+}
+
+function patchLessonSubsectionMarkdownWithUndo(
+  content: string,
+  args: {
+    heading: string;
+    occurrenceIndex?: number;
+    newHeading?: string;
+    newContentMarkdown: string;
+  },
+): { updated: string; undo?: UndoLastEdit } {
+  const lines = String(content || '').split('\n');
+  const h = String(args.heading || '').trim();
+  const occ = typeof args.occurrenceIndex === 'number' ? args.occurrenceIndex : null;
+
+  const isHeadingLine = (line: string) => {
+    const m = line.match(/^(#{2,3})\s+(.*)$/);
+    if (!m) return false;
+    return String(m[2] || '').trim() === h;
+  };
+
+  const findHeadingIndex = () => {
+    if (occ === null) return lines.findIndex((l) => isHeadingLine(l));
+    let seen = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (isHeadingLine(lines[i])) {
+        if (seen === occ) return i;
+        seen++;
+      }
+    }
+    return -1;
+  };
+
+  const startIdx = findHeadingIndex();
+  if (startIdx < 0) return { updated: content };
+
+  let endIdx = lines.length;
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    if (/^#{2,3}\s+/.test(lines[i])) {
+      endIdx = i;
+      break;
+    }
+  }
+
+  const prevHeadingLine = lines[startIdx] || '';
+  const prevBody = lines
+    .slice(startIdx + 1, endIdx)
+    .join('\n')
+    .trim();
+
+  const headingLine = args.newHeading
+    ? lines[startIdx].replace(/^(#{2,3})\s+.*$/, `$1 ${args.newHeading}`)
+    : lines[startIdx];
+
+  const newBlockLines = [headingLine, '', String(args.newContentMarkdown).trim(), ''];
+  const updatedLines = [...lines.slice(0, startIdx), ...newBlockLines, ...lines.slice(endIdx)];
+  const updated = updatedLines.join('\n').replace(/\n{4,}/g, '\n\n\n');
+
+  const undo: UndoLastEdit = {
+    heading: h,
+    occurrenceIndex: occ === null ? 0 : occ,
+    previousHeadingLine: prevHeadingLine,
+    previousContentMarkdown: prevBody,
+  };
+
+  return { updated, undo };
 }
 
 // Parse lesson content into structured sections
@@ -295,6 +375,10 @@ export function LessonReader() {
   const [selectedSubsection, setSelectedSubsection] = useState<SelectedSubsection | null>(null);
   const [digDeeperLoading, setDigDeeperLoading] = useState(false);
   const e2eSubsectionBodyOverride = useRef<Record<number, string>>({});
+
+  // Iter148: lightweight single-step undo for last Improve/Dig Deeper apply.
+  const [lastEditUndo, setLastEditUndo] = useState<UndoLastEdit | null>(null);
+  const [undoLoading, setUndoLoading] = useState(false);
 
   // Iter146: inline lesson chat overlay (Ask me)
   const [askOpen, setAskOpen] = useState(false);
@@ -594,6 +678,9 @@ export function LessonReader() {
     }
 
     setSelectedSubsection(sub);
+    // Clear the previous undo as soon as a new operation starts.
+    // It will be re-populated on successful apply.
+    setLastEditUndo(null);
     setImproveLoading(true);
     try {
       const prompt =
@@ -707,22 +794,27 @@ export function LessonReader() {
         `/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`,
         {
           heading: sub.heading,
-          occurrenceIndex: sub.globalIndex,
+          occurrenceIndex: sub.headingOccurrenceIndex,
           newHeading: newTitle,
           newContentMarkdown,
         },
       );
       if (!replace?.ok) throw new Error('Failed to replace subsection');
 
-      // Optimistic patch so the user sees immediate change.
+      // Optimistic patch so the user sees immediate change + capture undo snapshot.
       try {
-        const updated = patchLessonSubsectionMarkdown(lesson?.content || '', {
+        const patched = patchLessonSubsectionMarkdownWithUndo(lesson?.content || '', {
           heading: sub.heading,
-          occurrenceIndex: sub.globalIndex,
+          occurrenceIndex: sub.headingOccurrenceIndex,
           newHeading: newTitle,
           newContentMarkdown,
         });
-        dispatch({ type: 'SET_ACTIVE_LESSON', lesson: { ...(lesson as any), content: updated } });
+        dispatch({
+          type: 'SET_ACTIVE_LESSON',
+          lesson: { ...(lesson as any), content: patched.updated },
+        });
+        if (patched.undo) setLastEditUndo(patched.undo);
+
         // Keep selection stable across rename.
         setSelectedSubsection({
           ...sub,
@@ -737,6 +829,10 @@ export function LessonReader() {
       void fetchLesson(courseId, lessonId);
 
       toast('Subsection improved.', 'success');
+
+      // Offer a quick undo.
+      // (UI button is rendered in Actions + mobile bar)
+      // lastEditUndo already captured above when patch succeeded.
     } catch (err: any) {
       console.error('Improve failed:', err);
       const u = toUserError(err, 'Improve failed. Please try again.');
@@ -793,6 +889,9 @@ export function LessonReader() {
     }
 
     setSelectedSubsection(sub);
+    // Clear the previous undo as soon as a new operation starts.
+    // It will be re-populated on successful apply.
+    setLastEditUndo(null);
     setDigDeeperLoading(true);
     try {
       // Use selection tool preview (dig_deeper) for now, but feed the entire subsection body.
@@ -833,20 +932,28 @@ export function LessonReader() {
 
       const replace = await apiPost(
         `/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`,
-        { heading: sub.heading, occurrenceIndex: sub.globalIndex, newContentMarkdown: proposed },
+        {
+          heading: sub.heading,
+          occurrenceIndex: sub.headingOccurrenceIndex,
+          newContentMarkdown: proposed,
+        },
       );
       if (!replace?.ok) {
         throw new Error('Failed to replace subsection');
       }
 
-      // Optimistic patch so the user sees immediate change.
+      // Optimistic patch so the user sees immediate change + capture undo snapshot.
       try {
-        const updated = patchLessonSubsectionMarkdown(lesson?.content || '', {
+        const patched = patchLessonSubsectionMarkdownWithUndo(lesson?.content || '', {
           heading: sub.heading,
-          occurrenceIndex: sub.globalIndex,
+          occurrenceIndex: sub.headingOccurrenceIndex,
           newContentMarkdown: proposed,
         });
-        dispatch({ type: 'SET_ACTIVE_LESSON', lesson: { ...(lesson as any), content: updated } });
+        dispatch({
+          type: 'SET_ACTIVE_LESSON',
+          lesson: { ...(lesson as any), content: patched.updated },
+        });
+        if (patched.undo) setLastEditUndo(patched.undo);
         setSelectedSubsection({ ...sub, bodyText: proposed });
       } catch {
         // best-effort
@@ -856,6 +963,9 @@ export function LessonReader() {
       void fetchLesson(courseId, lessonId);
 
       toast('Subsection updated from Dig Deeper.', 'success');
+
+      // Offer a quick undo (same as Improve).
+      // lastEditUndo already captured above when patch succeeded.
     } catch (err: any) {
       console.error('Heading dig deeper failed:', err);
       const u = toUserError(err, 'Dig Deeper failed. Please try again.');
@@ -1089,7 +1199,7 @@ export function LessonReader() {
 
       await apiPost(`/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`, {
         heading: target.heading,
-        occurrenceIndex: target.globalIndex,
+        occurrenceIndex: target.headingOccurrenceIndex,
         newContentMarkdown: proposed,
       });
 
@@ -1098,13 +1208,17 @@ export function LessonReader() {
       // Patch the global lesson content so the user sees immediate change (no confusing refresh).
       // Then refresh in the background for canonical state.
       try {
-        const updated = patchLessonSubsectionMarkdown(lesson?.content || '', {
+        const patched = patchLessonSubsectionMarkdownWithUndo(lesson?.content || '', {
           heading: target.heading,
-          occurrenceIndex: target.globalIndex,
+          occurrenceIndex: target.headingOccurrenceIndex,
           newHeading: undefined,
           newContentMarkdown: proposed,
         });
-        dispatch({ type: 'SET_ACTIVE_LESSON', lesson: { ...(lesson as any), content: updated } });
+        dispatch({
+          type: 'SET_ACTIVE_LESSON',
+          lesson: { ...(lesson as any), content: patched.updated },
+        });
+        if (patched.undo) setLastEditUndo(patched.undo);
       } catch {
         // best-effort; fetch will still reconcile
       }
@@ -1379,6 +1493,48 @@ export function LessonReader() {
           {line.slice(4)}
         </h3>
       );
+
+    // Markdown image: ![alt](url)
+    const img = line.match(/^!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/);
+    if (img) {
+      const alt = img[1] || 'Image';
+      const src = img[2];
+      return (
+        <figure key={key} className="my-4">
+          <img
+            src={src}
+            alt={alt}
+            className="w-full max-h-96 object-contain rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+            loading="lazy"
+            onError={(e) => {
+              const el = e.currentTarget as HTMLImageElement;
+              el.style.display = 'none';
+            }}
+          />
+          {alt ? (
+            <figcaption className="mt-2 text-xs text-gray-500 dark:text-gray-400">{alt}</figcaption>
+          ) : null}
+        </figure>
+      );
+    }
+
+    // Markdown link-only line: [text](url)
+    const linkOnly = line.match(/^\[(.+?)\]\((https?:\/\/[^\s)]+)\)$/);
+    if (linkOnly) {
+      return (
+        <p key={key} className="text-sm mb-2">
+          <a
+            href={linkOnly[2]}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent underline"
+          >
+            {linkOnly[1]}
+          </a>
+        </p>
+      );
+    }
+
     if (line.startsWith('- '))
       return (
         <li key={key} className="text-gray-700 dark:text-gray-300 ml-4 mb-1 list-disc">
@@ -1398,9 +1554,34 @@ export function LessonReader() {
         </p>
       );
     if (line.trim() === '') return <div key={key} className="h-3" />;
+
+    // Inline markdown links: [text](url)
+    const parts: React.ReactNode[] = [];
+    const linkRe = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = linkRe.exec(line)) !== null) {
+      if (m.index > last) parts.push(renderInlineWithCitations(line.slice(last, m.index), sources));
+      const txt = m[1];
+      const url = m[2];
+      parts.push(
+        <a
+          key={`${key}-link-${m.index}`}
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-accent underline"
+        >
+          {txt}
+        </a>,
+      );
+      last = m.index + m[0].length;
+    }
+    if (last < line.length) parts.push(renderInlineWithCitations(line.slice(last), sources));
+
     return (
       <p key={key} className="text-gray-700 dark:text-gray-300 leading-relaxed mb-2">
-        {renderInlineWithCitations(line, sources)}
+        {parts.length ? <>{parts}</> : renderInlineWithCitations(line, sources)}
       </p>
     );
   };
@@ -1535,13 +1716,94 @@ export function LessonReader() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-24 lg:pb-8">
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8">
           <article
             data-component="lesson-content"
             aria-label="Lesson content"
             className="space-y-6"
           >
+            {/* Mobile primary actions (Iter148): replaces right-rail dependency */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
+              <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+                <Button variant="secondary" size="sm" onClick={handleQuiz} aria-label="Quiz me">
+                  <span className="inline-flex items-center gap-2">
+                    <IconTestTube className="w-4 h-4" />
+                    Quiz
+                  </span>
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setActivePanel('notes')}
+                  aria-label="Take Notes"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <IconPencil className="w-4 h-4" />
+                    Notes
+                  </span>
+                </Button>
+
+                <Button variant="secondary" size="sm" onClick={openAskMe} aria-label="Ask me">
+                  <span className="inline-flex items-center gap-2">
+                    <IconInfo className="w-4 h-4" />
+                    Ask me
+                  </span>
+                </Button>
+
+                {lastEditUndo && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={async () => {
+                      if (!courseId || !lessonId || !lesson) return;
+                      if (!lastEditUndo) return;
+                      setUndoLoading(true);
+                      try {
+                        await apiPost(
+                          `/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`,
+                          {
+                            heading: lastEditUndo.heading,
+                            occurrenceIndex: lastEditUndo.occurrenceIndex,
+                            newHeading: lastEditUndo.previousHeadingLine.replace(/^#{2,3}\s+/, ''),
+                            newContentMarkdown: lastEditUndo.previousContentMarkdown,
+                          },
+                        );
+
+                        const patched = patchLessonSubsectionMarkdownWithUndo(
+                          lesson.content || '',
+                          {
+                            heading: lastEditUndo.heading,
+                            occurrenceIndex: lastEditUndo.occurrenceIndex,
+                            newHeading: lastEditUndo.previousHeadingLine.replace(/^#{2,3}\s+/, ''),
+                            newContentMarkdown: lastEditUndo.previousContentMarkdown,
+                          },
+                        );
+                        dispatch({
+                          type: 'SET_ACTIVE_LESSON',
+                          lesson: { ...(lesson as any), content: patched.updated },
+                        });
+                        setLastEditUndo(null);
+                        toast('Reverted last edit.', 'success');
+                      } catch (e: any) {
+                        const u = toUserError(e, 'Undo failed. Please try again.');
+                        toast(u.requestId ? `${u.message} (${u.requestId})` : u.message, 'error');
+                      } finally {
+                        setUndoLoading(false);
+                      }
+                    }}
+                    disabled={undoLoading}
+                    aria-label="Undo last edit"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <IconRefresh className="w-4 h-4" />
+                      {undoLoading ? 'Undo…' : 'Undo'}
+                    </span>
+                  </Button>
+                )}
+              </div>
+            </div>
             {/* Hero */}
             {sections
               .filter((s) => s.type === 'title')
@@ -1913,13 +2175,18 @@ export function LessonReader() {
                 .filter((s) => s.type === 'content')
                 .map((s, contentIdx) => {
                   const lines = s.content.split('\n');
-                  const subSections: { heading: string; lines: string[]; globalIndex: number }[] =
-                    [];
+                  const subSections: {
+                    heading: string;
+                    lines: string[];
+                    globalIndex: number;
+                    headingOccurrenceIndex: number;
+                  }[] = [];
                   let currentHeading = '';
                   let currentLines: string[] = [];
-                  // globalIndex is used as a stable discriminator for replace-subsection calls.
-                  // Use a single counter across content blocks to keep occurrenceIndex stable.
+                  // globalIndex is used as a stable discriminator for selection + illustration attachment.
                   let sIdx = subsectionCounter;
+                  // Count occurrences of each heading (by text) so we can call replace-subsection reliably.
+                  const headingCounts = new Map<string, number>();
                   for (const line of lines) {
                     if (line.startsWith('### ') || line.startsWith('## ')) {
                       // Only emit a subsection if it has meaningful content.
@@ -1928,10 +2195,14 @@ export function LessonReader() {
                         currentHeading.trim().length > 0 ||
                         currentLines.some((l) => l.trim().length > 0);
                       if (hasMeaningful) {
+                        const key = currentHeading;
+                        const occ = headingCounts.get(key) ?? 0;
+                        headingCounts.set(key, occ + 1);
                         subSections.push({
                           heading: currentHeading,
                           lines: currentLines,
                           globalIndex: sIdx++,
+                          headingOccurrenceIndex: occ,
                         });
                       }
                       currentHeading = line.replace(/^#{2,3}\s*/, '');
@@ -1945,10 +2216,14 @@ export function LessonReader() {
                       currentHeading.trim().length > 0 ||
                       currentLines.some((l) => l.trim().length > 0);
                     if (hasMeaningful) {
+                      const key = currentHeading;
+                      const occ = headingCounts.get(key) ?? 0;
+                      headingCounts.set(key, occ + 1);
                       subSections.push({
                         heading: currentHeading,
                         lines: currentLines,
                         globalIndex: sIdx++,
+                        headingOccurrenceIndex: occ,
                       });
                     }
                   }
@@ -1971,6 +2246,7 @@ export function LessonReader() {
                                     heading: sub.heading,
                                     bodyText: sub.lines.join('\n').trim(),
                                     globalIndex: sub.globalIndex,
+                                    headingOccurrenceIndex: sub.headingOccurrenceIndex,
                                   })
                                 }
                                 title="Select this subsection for Actions"
@@ -1985,6 +2261,7 @@ export function LessonReader() {
                                     heading: sub.heading,
                                     bodyText: sub.lines.join('\n').trim(),
                                     globalIndex: sub.globalIndex,
+                                    headingOccurrenceIndex: sub.headingOccurrenceIndex,
                                   })
                                 }
                                 disabled={
@@ -2008,6 +2285,7 @@ export function LessonReader() {
                                     heading: sub.heading,
                                     bodyText: sub.lines.join('\n').trim(),
                                     globalIndex: sub.globalIndex,
+                                    headingOccurrenceIndex: sub.headingOccurrenceIndex,
                                   })
                                 }
                                 disabled={

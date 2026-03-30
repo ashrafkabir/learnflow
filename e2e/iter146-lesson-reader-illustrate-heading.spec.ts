@@ -105,8 +105,7 @@ test('Iter146: heading Improve triggers replace-subsection', async ({ page }) =>
     expect(payload.newContentMarkdown).toMatch(/Improved subsection content/);
     expect(payload.newHeading).toBe('New Heading Title');
     expect(payload.newContentMarkdown).toMatch(/!\[JavaScript logo\]\(/);
-    // Iter147: payload may include occurrenceIndex for stable targeting; optional.
-    if (payload.occurrenceIndex !== undefined)
-      expect(payload.occurrenceIndex).toBeGreaterThanOrEqual(0);
+    // Iter148: occurrenceIndex should now always be present and stable per-heading.
+    expect(payload.occurrenceIndex).toBeGreaterThanOrEqual(0);
   }
 });
