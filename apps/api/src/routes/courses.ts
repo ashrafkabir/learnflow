@@ -1686,19 +1686,25 @@ function restartOrResumeCourse(req: Request, res: Response, mode: 'restart' | 'r
     course.status === 'CREATING' && Number.isFinite(noProgressMs) && noProgressMs > timeoutMs;
 
   const allowed =
-    course.status === 'FAILED' || (course.status === 'CREATING' && stalledWhileCreating);
+    // Resume is conservative: only failed or stalled creating.
+    (mode === 'resume' &&
+      (course.status === 'FAILED' || (course.status === 'CREATING' && stalledWhileCreating))) ||
+    // Restart is user-forced: allow from READY/FAILED/CREATING.
+    (mode === 'restart' &&
+      (course.status === 'READY' || course.status === 'FAILED' || course.status === 'CREATING'));
+
   if (!allowed) {
     sendError(res, req, {
       status: 409,
       code: 'invalid_state',
-      message: `Course cannot be ${mode}d from status=${course.status || 'unknown'}`,
+      message: `Course cannot be ${mode}ed from status=${course.status || 'unknown'}`,
       details: { status: course.status || 'unknown' },
     });
     return;
   }
 
-  // Idempotency: if already creating and not stalled, treat as no-op.
-  if (course.status === 'CREATING' && !stalledWhileCreating) {
+  // Idempotency: resume on an active non-stalled build is a no-op.
+  if (mode === 'resume' && course.status === 'CREATING' && !stalledWhileCreating) {
     res.status(200).json({ id: courseId, status: 'CREATING', idempotent: true });
     return;
   }
