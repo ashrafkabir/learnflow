@@ -1,233 +1,159 @@
-# IMPROVEMENT_QUEUE — Iter155 (Planner)
+# IMPROVEMENT_QUEUE — Iter160 (Planner)
 
-Status: DONE (built)
+Status: IN PROGRESS (PARTIAL BUILD COMPLETED)
 
 Date: 2026-03-30 (EDT)
 
 Inputs used (this run):
-- Spec: `LearnFlow_Product_Spec.md` (March 2026)
-- Code inspection: client + API + agents (file refs inline)
-- Fresh screenshot run (Iter155): `learnflow/screenshots/iter155/run-001/`
+
+- FULL spec: `LearnFlow_Product_Spec.md` (reviewed end-to-end; key deltas: §5.2 screens, §6 pipeline, §4.4 BYOAI, §11 WebSocket)
+- Code inspection (concrete refs): `apps/api/src`, `apps/client/src`, `packages/core/src`, `packages/agents/src`
+- Fresh Playwright screenshots (Iter160): `learnflow/screenshots/iter160/run-001/` (31 PNGs)
+
+OneDrive sync (this run):
+
+- ✅ Screenshots mirrored to: `onedrive:learnflow/screenshots/iter160/run-001/`
+- ✅ `IMPROVEMENT_QUEUE.md` mirrored to: `onedrive:learnflow/IMPROVEMENT_QUEUE.md`
 
 ---
 
 ## 0) Executive summary (brutally honest)
 
-**The two biggest Iter154 mismatches appear resolved (no regressions detected):**
+The repo is **still demoable**, but Iter160 has a **trust-breaking regression**: the Lesson Reader can render a raw “Course not found (not_found …)” error state (`learnflow/screenshots/iter160/run-001/lesson-reader.png`). That means deep links / stored state can land users on a dead lesson, and the UI exposes backend error strings.
 
-- **Tavily removal / OpenAI-only constraint:** The spec forbids Tavily/Firecrawl for MVP research (§6.1.1). In this repo now, the **client onboarding no longer mentions Tavily** and the provider list is **OpenAI/Anthropic/Google/Mistral/Groq/Ollama** only (`apps/client/src/screens/onboarding/ApiKeys.tsx`). On the agents side, “Tavily disabled” is enforced in code (`packages/agents/src/content-pipeline/web-search-provider.ts` returns `false` from `hasTavilyKey()` and does not import Tavily).
+Against the spec, the biggest functional gaps remain:
 
-- **LessonReader Quick Check + Next Steps rendering:** These sections are now **parsed and rendered** in the lesson body (`apps/client/src/screens/LessonReader.tsx` around the `data-testid="lesson-next-steps"` and `data-testid="lesson-quick-check"` blocks). This addresses the prior “parsed but not visible” gap.
+- **BYOAI enforcement is inconsistent**. The API layer is BYOAI-only (good) (`apps/api/src/llm/openai.ts`, `apps/api/src/llm/providers.ts`), but at least one agent still calls `process.env.OPENAI_API_KEY` directly (`packages/agents/src/course-builder/course-builder-agent.ts`). That violates spec §4.4 and “MVP truth”.
+- **Spec §6.1.4 “parallel lesson build (one worker per lesson)” is not real** in the pipeline implementation; lesson generation appears sequential in `apps/api/src/routes/pipeline.ts` (module/lesson loops; no explicit concurrency/worker pool).
+- **Spec §6.2 lesson structure compliance is inconsistent** (Next lesson links, citations density, and bounded <10 min read are not clearly enforced from the reader + generator).
 
-That said, LearnFlow still has **material spec gaps** that affect user trust and product coherence:
-
-1) **Spec says “collect sources once → recommended sources per lesson → suggested reads” (§6.1.3/6.2).** The UI’s “Suggested reads” is still effectively a **general sources list** (lesson-level curation is not clearly persisted and returned as first-class fields). The pipeline writes research artifacts, but lesson payloads don’t obviously carry “recommendedSources” vs “suggestedReads” as separate, stable concepts.
-
-2) **The “<10 min read / 1500 words” constraint is not clearly enforced as a hard quality gate.** The spec is explicit (§6.2). The API has multiple quality validators, but there’s no obvious, strict “word cap / estimated time cap” enforcement that blocks publishing/marking a course as complete.
-
-3) **Dashboard/mindmap spec calls for an interactive graph overview (§5.2.2/5.2.5).** Current dashboard has a **static teaser** and separate Mindmap screen; it’s acceptable as MVP, but it doesn’t meet the spec’s “interactive overview” bar.
+The UI side has major **data correctness** issues (dashboard duplicates + inconsistent counts) and **broken/placeholder states** (pipeline detail looks like a stuck skeleton in `pipeline-detail.png`).
 
 ---
 
-## 1) Evidence — Iter155 screenshots
+## P0 — Fix regressions + trust breakers (do these first)
 
-Stored in repo:
-- `learnflow/screenshots/iter155/run-001/`
+1. **P0 — Lesson Reader “Course not found” deep-link regression: make lesson fetch resilient + user-friendly**
+   - Evidence: `learnflow/screenshots/iter160/run-001/lesson-reader.png` shows raw backend error.
+   - Likely cause: client navigates to `/courses/:courseId/lessons/:lessonId` with stale IDs (localStorage / prior demo data), or server in-memory course map doesn’t contain that course.
+   - Build:
+     - In `apps/client/src/screens/LessonReader.tsx`: on `not_found`, show a friendly message (“This lesson isn’t available anymore”) + actions: “Go to Dashboard” and “Go to Course list”.
+     - Do **not** display raw error strings by default; only show in an expandable “Details” section and redact request IDs.
+     - Server-side: ensure `GET /courses/:id` and lesson endpoints fall back to DB (`dbCourses`, `dbLessons`) consistently; reduce dependency on in-memory `courses` map.
+   - Files to inspect/change: `apps/client/src/screens/LessonReader.tsx`, `apps/api/src/routes/courses.ts`, `apps/api/src/db.ts`.
 
-Captured screens include (desktop set):
-- Marketing: home/features/pricing/download/blog/about/docs
-- Auth: login/register
-- Onboarding steps 1–6
-- App: dashboard, conversation, mindmap, notifications, pipelines, settings, collaboration
-- Marketplace: courses, agents, creator dashboard
-- Course: course view, lesson reader
-- Pipeline: pipeline detail
+2. **P0 — Pipeline Detail stuck skeleton: implement real detail payload + error state**
+   - Evidence: `learnflow/screenshots/iter160/run-001/pipeline-detail.png` looks like a permanent loading skeleton.
+   - Build:
+     - Verify the pipeline detail route fetches the correct API endpoint and that the API returns a stable shape.
+     - Add explicit states: loading, empty (pipeline not found), error (with friendly copy), and success.
+     - Add a small “Debug id” disclosure only in dev.
+   - Files: `apps/client/src/screens/PipelineDetail.tsx`, `apps/client/src/screens/PipelineView.tsx`, `apps/api/src/routes/pipeline.ts`.
 
-Notes:
-- The capture script used a dev auth bypass and seeded stable routes (see `screenshot-all.mjs`).
+3. **P0 — Dashboard duplicates + inconsistent counts: dedupe + correct source-of-truth for progress**
+   - Evidence: `learnflow/screenshots/iter160/run-001/app-dashboard.png` shows many repeated course cards and inconsistent stats.
+   - Build:
+     - Deduplicate courses by `course.id` in the client store and/or server response.
+     - Ensure Today’s Lessons is derived from actual course modules/lessons (not repeated placeholders).
+     - Add a “no courses yet” empty state that guides to Create Course.
+   - Files: `apps/client/src/screens/Dashboard.tsx`, `apps/client/src/context/AppContext.tsx`, server endpoints that return courses (`apps/api/src/routes/courses.ts`).
 
----
-
-## 2) Spec → implementation delta map (Iter155)
-
-### 2.1 Research constraint (spec §6.1.1): **OpenAI Web Search only; no Tavily/Firecrawl**
-- Spec: `LearnFlow_Product_Spec.md` §6.1.1
-- Implementation:
-  - Pipeline uses OpenAI `web_search` + extraction (`apps/api/src/routes/pipeline.ts` around the `openai_web_search` logs + `searchAndExtractTopic()` usage).
-  - Agents layer contains an additional free multi-source search stack (Wikipedia/arXiv/GitHub/Medium/etc.) and explicitly disables Tavily (`packages/agents/src/content-pipeline/web-search-provider.ts`).
-  - UI no longer exposes Tavily as a key provider (`apps/client/src/screens/onboarding/ApiKeys.tsx`).
-- Risk: **two parallel “research stacks”** exist (OpenAI web_search in pipeline vs multi-source scrapers in agents). This increases drift risk and makes spec compliance harder to reason about.
-
-### 2.2 Lesson structure (spec §6.2)
-- Spec requires: estimated time, objectives, sources, suggested reads, next lesson link, next steps, quick check.
-- Implementation:
-  - Next lesson CTA exists (`apps/client/src/screens/LessonReader.tsx` `data-testid="next-lesson-cta"`).
-  - Next Steps and Quick Check are rendered (`data-testid="lesson-next-steps"`, `data-testid="lesson-quick-check"`).
-- Remaining mismatch: “Suggested Reads” should be **2–5 curated items**; current behavior appears closer to “sources list” rather than per-lesson curated reads persisted from `lessonplan.md` (§6.1.3).
-
-### 2.3 Dashboard (spec §5.2.2)
-- Implementation includes:
-  - Courses grid with progress rings (`apps/client/src/screens/Dashboard.tsx` `data-component="course-carousel"`)
-  - Today’s Lessons is API-driven (`apps/api/src/routes/daily.ts`)
-  - Mindmap overview is a teaser card (non-interactive)
-- Spec wants an interactive overview; current is MVP-ish but below spec.
-
-### 2.4 Conversation interface (spec §5.2.3)
-- Spec wants agent activity indicator + source drawer + mindmap panel.
-- Implementation:
-  - Agent activity indicator exists (`apps/client/src/screens/Conversation.tsx` “Agent activity indicator — Task 5”).
-  - WebSocket contract is implemented (`apps/api/src/websocket.ts` emits `connected`, `ws.contract`, streams via orchestrator).
-- Gap: there’s no explicit end-to-end assertion that agent activity + sources drawer work on real streamed messages (only partial unit/ws contract tests).
-
-### 2.5 Profile/settings transparency (spec §5.2.8 / §9)
-- Implementation is better than spec implies:
-  - Export endpoints exist (`apps/api/src/routes/export.ts`)
-  - UI exposes export + data deletion (“Danger Zone”) (`apps/client/src/screens/ProfileSettings.tsx`)
-- Gap: the spec implies a more explicit “what data is tracked” UX. There is a data summary endpoint (`GET /api/v1/profile/data-summary`), but the UI could surface it more clearly as a dedicated “Data & Privacy” section rather than mixed into a long settings page.
+4. **P0 — Stop leaking backend error strings into UI (global)**
+   - Problem: raw `code` + request IDs in user-facing surfaces breaks professionalism and contradicts spec §10 error handling (“do not expose the error”).
+   - Build:
+     - Add a shared `toUserError()` mapping that redacts secrets/ids by default.
+     - Ensure “Details” expansions are opt-in and safe.
+   - Files: `apps/client/src/lib/toUserError.ts` (and usages), `apps/client/src/components/ErrorBoundary.tsx`, error surfaces in screens.
 
 ---
 
-## 3) Iter155 — prioritized, buildable tasks (10–15)
+## P1 — Spec compliance gaps (core product promises)
 
-### P0 — Prevent future regressions on the recently-fixed mismatches
+5. **P1 — BYOAI-only enforcement: remove env-key fallbacks from agents (spec §4.4, MVP truth)**
+   - Evidence: `packages/agents/src/course-builder/course-builder-agent.ts` uses `process.env.OPENAI_API_KEY`.
+   - Build:
+     - Refactor agent creation to accept an OpenAI client from API layer (per-request override or saved key), or make the agent deterministic/offline when no user key exists.
+     - Add a regression test: forbid `process.env.OPENAI_API_KEY` access in `packages/agents/src/**` except explicit test harnesses.
+   - Files: `packages/agents/src/course-builder/course-builder-agent.ts`, `apps/api/src/llm/openai.ts`, `apps/api/src/llm/providers.ts`.
 
-1) **P0: E2E guard — Quick Check + Next Steps must render when present**
-   - Why: This was a major spec mismatch recently; lock it.
-   - Files:
-     - UI: `apps/client/src/screens/LessonReader.tsx` (`data-testid="lesson-next-steps"`, `data-testid="lesson-quick-check"`)
-     - New test: `e2e/iter155-lesson-endcap-renders.spec.ts`
-   - Acceptance: load a lesson fixture containing both headings and assert both testids are visible.
+6. **P1 — Content pipeline: make §6.1.4 “parallel lesson build” real (bounded concurrency)**
+   - Spec requires “one worker per lesson”; current pipeline appears sequential.
+   - Build:
+     - Implement concurrency (e.g., bounded Promise pool) for per-lesson generation.
+     - Add per-lesson timing telemetry + surfaced in Pipeline Detail.
+   - Files: `apps/api/src/routes/pipeline.ts` (lesson build loop), pipeline DB schema in `apps/api/src/db.ts` if needed.
 
-2) **P0: E2E guard — onboarding providers list stays spec-aligned (no Tavily)**
-   - Why: Spec §6.1.1 is explicit; prevent UI drift.
-   - Files:
-     - UI: `apps/client/src/screens/onboarding/ApiKeys.tsx`
-     - New test: `e2e/iter155-onboarding-providers.spec.ts`
-   - Acceptance: provider select options match `{openai, anthropic, google, mistral, groq, ollama}`.
+7. **P1 — Artifact-only invariant: enforce artifact-backed lesson generation everywhere, not just in tests**
+   - Good: `apps/api/src/pipeline/lesson-artifacts.ts` throws `artifacts_missing` and there’s a test (`apps/api/src/__tests__/artifact-only-lesson-generation.test.ts`).
+   - Missing: end-to-end flows should never silently re-scrape or generate from thin/DB-only state.
+   - Build:
+     - Ensure lesson generation reads from artifacts via `loadLessonSourcesForGeneration()`.
+     - When artifacts missing, surface a pipeline error with a “Re-run research” CTA.
+   - Files: `apps/api/src/routes/pipeline.ts`, `apps/api/src/pipeline/lesson-artifacts.ts`, `packages/agents/src/content-pipeline/artifact-writer.ts`.
 
-### P1 — “Suggested Reads” correctness (spec §6.1.3 / §6.2)
-
-3) **Persist per-lesson recommended sources from `lessonplan.md` and return them in lesson payload**
-   - Why: Spec requires “recommended sources per lesson” (§6.1.3) and “Suggested Reads 2–5 items” (§6.2). Current UI likely shows general sources.
-   - Files to inspect/extend:
-     - Pipeline artifact writing: `apps/api/src/routes/pipeline.ts` (where lessonplan is generated + persisted)
-     - Lesson fetch DTO shaping: `apps/api/src/routes/courses.ts` (lesson response)
-     - Client: `apps/client/src/screens/LessonReader.tsx` (drawer section that lists reads/sources)
-   - Acceptance:
-     - Each lesson includes `recommendedSources[]` (stable order) and UI renders them under “Suggested Reads”.
-
-4) **UI: Separate “Sources” vs “Suggested Reads” in the Lesson Drawer**
-   - Why: Conflating them undermines trust + spec coherence.
-   - Files: `apps/client/src/screens/LessonReader.tsx`
-   - Acceptance: “Sources” shows full list; “Suggested Reads” shows curated 2–5.
-
-### P1 — Enforce <10 min / 1500 word contract (spec §6.2)
-
-5) **Add a hard lesson length gate (word count + estimated time) during generation/validation**
-   - Why: Spec promises it; without enforcement lessons will drift.
-   - Files:
-     - Validators: `apps/api/src/utils/lessonQuality.ts`, `apps/api/src/utils/lessonSectionQuotas.ts`
-     - Generation pipeline: `apps/api/src/routes/courses.ts` (lesson generation) and/or `apps/api/src/routes/pipeline.ts` (quality stage)
-   - Acceptance: if lesson body exceeds threshold, it is automatically shortened or generation fails with a clear validator reason.
-
-6) **Expose the enforcement result in the UI**
-   - Why: transparency; prevents “it says 8 min but is 20 min”.
-   - Files: `apps/client/src/screens/LessonReader.tsx`
-   - Acceptance: badge shows “Estimated time” derived from the same server-side calculation used in validation.
-
-### P2 — Reduce research stack drift (spec compliance + maintainability)
-
-7) **Unify “web search” behavior behind one provider interface**
-   - Why: today there’s OpenAI-web_search in pipeline and a separate multi-source search in `@learnflow/agents`.
-   - Files:
-     - API: `apps/api/src/routes/pipeline.ts`, `apps/api/src/routes/search.ts`
-     - Agents: `packages/agents/src/content-pipeline/openai-websearch-provider.ts`, `packages/agents/src/content-pipeline/web-search-provider.ts`
-   - Acceptance: one “ResearchProvider” path (OpenAI web_search for MVP) and tests confirm no paid provider usage.
-
-8) **Docs truth pass: update `docs/api.md` search section**
-   - Why: it currently hints at “provider switching and Tavily support if configured” which contradicts MVP constraint.
-   - File: `docs/api.md`
-   - Acceptance: docs explicitly state OpenAI-only (or list exactly what’s used) with no Tavily implication.
-
-### P2 — Dashboard + mindmap spec alignment
-
-9) **Make the Dashboard “Knowledge Map” preview minimally interactive**
-   - Why: spec §5.2.2 calls for an interactive overview.
-   - Files: `apps/client/src/screens/Dashboard.tsx`
-   - Acceptance: clicking a node/teaser element filters/jumps to a course/module/lesson or opens the mindmap with focus.
-
-10) **Mindmap screen: ensure progress coloring is accurate and deterministic**
-   - Why: spec §5.2.5; avoid “random” colors.
-   - Files: `apps/client/src/screens/Mindmap.tsx` (and mindmap suggestions path via WS `mindmap.subscribe`)
-   - Acceptance: nodes reflect completion state (not started/in progress/complete) reliably.
-
-### P3 — UX polish and “truthful MVP” hardening
-
-11) **Settings: split into tabs/sections; make Data & Privacy first-class**
-   - Why: current settings page is extremely long; key trust features (export/delete) are buried.
-   - File: `apps/client/src/screens/ProfileSettings.tsx`
-   - Acceptance: clear sections (Account, Keys, Usage, Data & Privacy, Dev panels).
-
-12) **PipelineDetail: add “Copy logs (redacted)” and “Download artifacts” UX**
-   - Why: easier debugging without leaking keys.
-   - Files: `apps/client/src/screens/PipelineDetail.tsx`, API artifact endpoints (wherever served)
-   - Acceptance: one-click copy includes requestId and strips secrets.
-
-13) **Conversation: add an explicit “See sources” affordance when sources exist (not only chips)**
-   - Why: spec §5.2.3; improve discoverability.
-   - File: `apps/client/src/screens/Conversation.tsx`
-   - Acceptance: source drawer opens reliably for any message with sources.
-
-14) **Update Agent: clarify “manual tick” in UI copy + surface last run result**
-   - Why: spec implies proactive; MVP is manual (`POST /api/v1/update-agent/tick`). Make it honest.
-   - Files: `apps/client/src/components/update-agent/UpdateAgentSettingsPanel.tsx`, `apps/api/src/routes/update-agent.ts`
-   - Acceptance: user sees last tick time/status and the fact it’s manual in MVP.
-
-15) **Add a single “Spec compliance” checklist doc per iteration**
-   - Why: prevents recurring drift.
-   - Files: new `iterations/iter155/SPEC_DELTA.md`
-   - Acceptance: 1–2 pages summarizing any intentional deviations.
+8. **P1 — Lesson structure enforcement (spec §6.2): Next lesson link + citations density + <10 min read**
+   - Build:
+     - Add a validator stage that checks required headings/sections and blocks “generated” status until compliant.
+     - Add “Next lesson” navigation link rendering in reader if present; if missing, show auto-nav UI based on module order.
+   - Files: generator in `apps/api/src/routes/pipeline.ts`, reader in `apps/client/src/screens/LessonReader.tsx`.
 
 ---
 
-## 4) Concrete file refs (for Builder)
+## P2 — UX parity for key screens (spec §5.2)
 
-- Spec
-  - `LearnFlow_Product_Spec.md`
+9. **P2 — Conversation interface: make Sources drawer consistent + bind to the active message**
+   - Current: `apps/client/src/screens/Conversation.tsx` holds one `drawerSources` array; it is not clearly message-scoped.
+   - Build:
+     - Store sources per message id; “View Sources” should open sources for that message.
+     - If no sources, show a neutral empty state (not a new assistant message).
+   - Files: `apps/client/src/screens/Conversation.tsx`, `apps/api/src/wsOrchestrator.ts`, `apps/api/src/routes/chat.ts`.
 
-- Screenshots
-  - `learnflow/screenshots/iter155/run-001/`
+10. **P2 — Agent activity indicator: stop “fake” tracing; align with WS events**
 
-- OpenAI-only search constraint / research pipeline
-  - `apps/api/src/routes/pipeline.ts`
-  - `apps/api/src/routes/search.ts`
-  - `packages/agents/src/content-pipeline/openai-websearch-provider.ts`
-  - `packages/agents/src/content-pipeline/web-search-provider.ts`
+- Spec §5.2.3 expects transparency. WS emits `agent.spawned/agent.complete` (`apps/api/src/wsOrchestrator.ts`) and client listens.
+- Build:
+  - Show a compact “trace drawer” (optional) listing routing + agent calls with durations.
+  - Ensure routing-only events don’t trigger completion toasts (partially done already).
+- Files: `apps/client/src/screens/Conversation.tsx`, `apps/api/src/wsOrchestrator.ts`.
 
-- Lesson reader endcap sections
-  - `apps/client/src/screens/LessonReader.tsx`
+11. **P2 — Agent Marketplace activation UX: make toggles actually work (or clearly label as demo)**
 
-- Dashboard + daily lessons
-  - `apps/client/src/screens/Dashboard.tsx`
-  - `apps/api/src/routes/daily.ts`
+- Evidence: marketplace agents show “Inactive” toggles that look disabled (`marketplace-agents.png`).
+- Build:
+  - Ensure toggle activates via `/marketplace/agents/:id/activate` and reflects activated count.
+  - If activation is intentionally mocked, remove toggles and show “Planned” truth.
+- Files: `apps/client/src/screens/marketplace/AgentMarketplace.tsx`, server: `apps/api/src/routes/marketplace.ts`.
 
-- Conversation + WS contract
-  - `apps/client/src/screens/Conversation.tsx`
-  - `apps/api/src/websocket.ts`
+12. **P2 — Settings: add “BYOAI key required” gating UX across pipelines + chat**
 
-- Data export + deletion
-  - `apps/client/src/screens/ProfileSettings.tsx`
-  - `apps/api/src/routes/export.ts`
-  - `apps/api/src/routes/delete-my-data.ts`
+- Goal: users should never start generation that will fail later.
+- Build:
+  - Detect missing active key and block “Create course / Run pipeline” with a CTA to Settings → Keys.
+- Files: `apps/client/src/screens/ProfileSettings.tsx`, `apps/client/src/context/AppContext.tsx`, pipeline create screen.
 
 ---
 
-## 5) OneDrive sync (Iter155) — REQUIRED
+## P3 — Hygiene + guardrails
 
-Sync these outputs to OneDrive:
-- `learnflow/screenshots/iter155/run-001/`
-- `IMPROVEMENT_QUEUE.md`
+13. **P3 — Add an explicit “Spec compliance / MVP truth” test suite**
 
-Target paths:
-- `/home/aifactory/onedrive-learnflow/iter155/IMPROVEMENT_QUEUE.md`
-- `/home/aifactory/onedrive-learnflow/iter155/screenshots/run-001/`
+- Include:
+  - Forbidden provider guardrails (no Firecrawl/Tavily in MVP).
+  - No managed env-key fallback.
+  - WS contract smoke test (already exists; extend fields).
+- Files: `packages/agents/src/**/__tests__`, `apps/api/src/__tests__`.
+
+14. **P3 — Screenshot harness: verify it hits every screen that matters and fails on skeleton-only pages**
+
+- Harness: `screenshot-all.mjs`.
+- Build:
+  - Add assertions: Pipeline Detail must render a title/status, not only skeletons.
+  - Ensure Lesson Reader screenshot is taken with a valid seeded course/lesson.
+
+---
+
+## Builder notes (quick starting points)
+
+- BYOAI enforcement already exists in API: `apps/api/src/llm/openai.ts` and `apps/api/src/llm/providers.ts`.
+- WS spec parity is close: `apps/api/src/wsOrchestrator.ts` emits `response.start/chunk/end` and `agent.spawned/complete`, and client consumes them in `apps/client/src/screens/Conversation.tsx`.
+- Artifact-only invariant is present but needs end-to-end enforcement: `apps/api/src/pipeline/lesson-artifacts.ts` + tests.

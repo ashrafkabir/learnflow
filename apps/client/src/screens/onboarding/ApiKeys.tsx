@@ -83,8 +83,8 @@ export function OnboardingApiKeys() {
           Connect Your AI Provider
         </h1>
         <p className="text-gray-500 dark:text-gray-300 mb-8">
-          Bring your own API key from OpenAI, Anthropic, Google, Mistral, Groq, or Ollama.
-          Your key is encrypted and never shared.
+          Bring your own API key from OpenAI, Anthropic, Google, Mistral, Groq, or Ollama. Your key
+          is encrypted and never shared.
         </p>
 
         <div className="grid grid-cols-1 gap-4 mb-6">
@@ -123,10 +123,10 @@ export function OnboardingApiKeys() {
                     : provider === 'groq'
                       ? 'gsk_...'
                       : provider === 'ollama'
-                          ? 'optional (local)'
-                          : provider === 'mistral'
-                            ? 'mistral key...'
-                            : 'sk-...'
+                        ? 'optional (local)'
+                        : provider === 'mistral'
+                          ? 'mistral key...'
+                          : 'sk-...'
               }
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent"
             />

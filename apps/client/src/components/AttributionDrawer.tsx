@@ -41,9 +41,23 @@ export function AttributionDrawer(props: {
   images: AttributionImage[];
   sourcesMissingReason?: string;
   sourceMode?: 'real' | 'mock';
+  /** Optional curated list shown separately from full sources. */
+  recommendedSources?: AttributionSource[];
+  recommendedSourcesNote?: string;
 }) {
-  const { open, onClose, sources, images, sourcesMissingReason, sourceMode } = props;
+  const {
+    open,
+    onClose,
+    sources,
+    images,
+    sourcesMissingReason,
+    sourceMode,
+    recommendedSources,
+    recommendedSourcesNote,
+  } = props;
   if (!open) return null;
+
+  const rec = Array.isArray(recommendedSources) ? recommendedSources : [];
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Attribution">
@@ -83,14 +97,51 @@ export function AttributionDrawer(props: {
         </div>
 
         <div className="p-4 overflow-y-auto space-y-5">
+          {rec.length ? (
+            <section>
+              <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                Suggested reads
+              </h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
+                {recommendedSourcesNote ||
+                  'Curated recommendations for this lesson (derived from the lesson plan when available).'}
+              </p>
+              <div className="space-y-2" data-testid="attribution-recommended-sources">
+                {rec.map((s, i) => (
+                  <div
+                    key={String(s.id ?? `rec-${i}`)}
+                    className="rounded-xl border border-gray-200 dark:border-gray-800 p-3"
+                  >
+                    <p className="text-xs font-semibold text-gray-900 dark:text-white">
+                      {s.title || s.url || 'Untitled'}
+                    </p>
+                    {s.url ? (
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[11px] text-indigo-700 dark:text-indigo-300 hover:underline break-words"
+                      >
+                        {s.url}
+                      </a>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section>
-            <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-2">
-              Text sources
+            <h3 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">
+              All sources
             </h3>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
+              The full set of sources used for citations and attribution.
+            </p>
             {(!sources || sources.length === 0) && (
               <p className="text-xs text-gray-500 dark:text-gray-400">No sources available.</p>
             )}
-            <div className="space-y-2">
+            <div className="space-y-2" data-testid="attribution-all-sources">
               {(sources || []).map((s, i) => (
                 <div
                   key={String(s.id ?? i)}

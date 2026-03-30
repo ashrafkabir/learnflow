@@ -110,7 +110,7 @@ See: [Roadmap](./roadmap)
 ### Settings
 
 - **Profile & Goals**: Learning objectives and preferences
-- **API Keys**: Manage BYOK keys (encrypted at rest with AES-256-CBC)
+- **API Keys**: Manage BYOK keys (encrypted at rest with AES-256-GCM; legacy AES-256-CBC supported for backward-compatible decryption)
 - **Subscription**: Free/Pro plan management
 - **Privacy & Export**: Server-generated data export, account deletion
 - **Update Agent**: RSS monitoring + external scheduling (see: [Update Agent scheduling](./update-agent-scheduling))

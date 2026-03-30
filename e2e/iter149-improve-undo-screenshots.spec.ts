@@ -137,7 +137,7 @@ test.describe('Iter149 Improve + Undo screenshots', () => {
 
     const ids = await page.evaluate(async () => {
       const token = localStorage.getItem('learnflow-token');
-      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const authHeaders: Record<string, string> = { Authorization: `Bearer ${token || 'dev'}` };
 
       const res = await fetch('/api/v1/courses', { headers: authHeaders });
       const data = await res.json();
@@ -304,7 +304,7 @@ test.describe('Iter149 Improve + Undo screenshots', () => {
 
     const ids = await page.evaluate(async () => {
       const token = localStorage.getItem('learnflow-token');
-      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const authHeaders: Record<string, string> = { Authorization: `Bearer ${token || 'dev'}` };
 
       const res = await fetch('/api/v1/courses', { headers: authHeaders });
       const data = await res.json();

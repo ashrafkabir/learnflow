@@ -4,7 +4,9 @@ import { test, expect } from '@playwright/test';
 // No screenshots required.
 
 test.describe('Iter155: LessonReader endcap sections render', () => {
-  test('renders Next Steps + Quick Check blocks when lesson content includes headings', async ({ page }) => {
+  test('renders Next Steps + Quick Check blocks when lesson content includes headings', async ({
+    page,
+  }) => {
     await page.addInitScript(() => {
       (window as any).__LEARNFLOW_ENV__ = {
         ...(window as any).__LEARNFLOW_ENV__,
@@ -72,11 +74,19 @@ test.describe('Iter155: LessonReader endcap sections render', () => {
       return { courseId, lessonId };
     });
 
-    await page.goto(`/courses/${ids.courseId}/lessons/${ids.lessonId}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/courses/${ids.courseId}/lessons/${ids.lessonId}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
-    await expect(page.locator('[data-screen="lesson-reader"]').first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-screen="lesson-reader"]').first()).toBeVisible({
+      timeout: 60_000,
+    });
 
-    await expect(page.locator('[data-testid="lesson-next-steps"]').first()).toBeVisible({ timeout: 60_000 });
-    await expect(page.locator('[data-testid="lesson-quick-check"]').first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-testid="lesson-next-steps"]').first()).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.locator('[data-testid="lesson-quick-check"]').first()).toBeVisible({
+      timeout: 60_000,
+    });
   });
 });

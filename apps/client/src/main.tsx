@@ -8,6 +8,12 @@ import { AppProvider } from './context/AppContext.js';
 import { ToastProvider } from './components/Toast.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 
+// Playwright determinism: allow runtime env injection (set by tests via addInitScript)
+// without having to depend on baked Vite env variables.
+// Ensure the global exists before any components read it.
+(globalThis as any).__LEARNFLOW_ENV__ = (globalThis as any).__LEARNFLOW_ENV__ || {};
+(globalThis as any).__LEARNFLOW_E2E__ = (globalThis as any).__LEARNFLOW_E2E__ || false;
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>

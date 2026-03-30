@@ -317,8 +317,13 @@ test.describe('Selection tools (Discover / Illustrate / Mark / Dig Deeper)', () 
     // Wait on the actual UI signal ("Your marked takeaways") rather than timing.
     const marked = page.locator('[data-testid="marked-takeaways"]');
     await expect(marked).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText('Takeaway A')).toBeVisible();
-    await expect(page.getByText('Takeaway B')).toBeVisible();
+
+    // The takeaways themselves render as siblings below the header.
+    const markedContainer = marked
+      .locator('xpath=ancestor::div[contains(@class,"border-t")]')
+      .first();
+    await expect(markedContainer.getByText('Takeaway A')).toBeVisible();
+    await expect(markedContainer.getByText('Takeaway B')).toBeVisible();
   });
 
   test('opens preview for Dig Deeper, then attaches as annotation', async ({ page }) => {

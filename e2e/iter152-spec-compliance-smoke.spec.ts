@@ -42,7 +42,9 @@ test.describe('Iter152: spec compliance smoke', () => {
 
     // Landing (app landing)
     await page.goto('/');
-    await expect(page.locator('text=Welcome to the LearnFlow app.')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('text=Welcome to the LearnFlow app.')).toBeVisible({
+      timeout: 20_000,
+    });
     await snap(page, 'landing-app.png');
 
     // Auth screens
@@ -56,12 +58,36 @@ test.describe('Iter152: spec compliance smoke', () => {
 
     // Onboarding screens (6)
     const onboarding: Array<{ path: string; sel: string; shot: string }> = [
-      { path: '/onboarding/welcome', sel: '[data-screen="onboarding-welcome"]', shot: 'onboarding-welcome.png' },
-      { path: '/onboarding/goals', sel: '[data-screen="onboarding-goals"]', shot: 'onboarding-goals.png' },
-      { path: '/onboarding/topics', sel: '[data-screen="onboarding-topics"]', shot: 'onboarding-topics.png' },
-      { path: '/onboarding/api-keys', sel: '[data-screen="onboarding-apikeys"]', shot: 'onboarding-api-keys.png' },
-      { path: '/onboarding/subscription', sel: '[data-screen="onboarding-subscription"]', shot: 'onboarding-subscription.png' },
-      { path: '/onboarding/first-course', sel: '[data-screen="onboarding-ready"]', shot: 'onboarding-first-course.png' },
+      {
+        path: '/onboarding/welcome',
+        sel: '[data-screen="onboarding-welcome"]',
+        shot: 'onboarding-welcome.png',
+      },
+      {
+        path: '/onboarding/goals',
+        sel: '[data-screen="onboarding-goals"]',
+        shot: 'onboarding-goals.png',
+      },
+      {
+        path: '/onboarding/topics',
+        sel: '[data-screen="onboarding-topics"]',
+        shot: 'onboarding-topics.png',
+      },
+      {
+        path: '/onboarding/api-keys',
+        sel: '[data-screen="onboarding-apikeys"]',
+        shot: 'onboarding-api-keys.png',
+      },
+      {
+        path: '/onboarding/subscription',
+        sel: '[data-screen="onboarding-subscription"]',
+        shot: 'onboarding-subscription.png',
+      },
+      {
+        path: '/onboarding/first-course',
+        sel: '[data-screen="onboarding-ready"]',
+        shot: 'onboarding-first-course.png',
+      },
     ];
 
     for (const o of onboarding) {
@@ -75,8 +101,16 @@ test.describe('Iter152: spec compliance smoke', () => {
       { path: '/dashboard', sel: '[data-screen="dashboard"]', shot: 'dashboard.png' },
       { path: '/conversation', sel: '[data-screen="conversation"]', shot: 'conversation.png' },
       { path: '/mindmap', sel: '[data-screen="mindmap"]', shot: 'mindmap.png' },
-      { path: '/marketplace/courses', sel: '[data-screen="course-marketplace"]', shot: 'marketplace-courses.png' },
-      { path: '/marketplace/agents', sel: '[data-screen="agent-marketplace"]', shot: 'marketplace-agents.png' },
+      {
+        path: '/marketplace/courses',
+        sel: '[data-screen="course-marketplace"]',
+        shot: 'marketplace-courses.png',
+      },
+      {
+        path: '/marketplace/agents',
+        sel: '[data-screen="agent-marketplace"]',
+        shot: 'marketplace-agents.png',
+      },
       { path: '/settings', sel: '[data-screen="settings"]', shot: 'settings.png' },
       { path: '/notifications', sel: '[data-screen="notifications"]', shot: 'notifications.png' },
       { path: '/pipelines', sel: '[data-screen="pipelines"]', shot: 'pipelines.png' },
@@ -120,7 +154,9 @@ test.describe('Iter152: spec compliance smoke', () => {
     // The client app intentionally does not mount marketing routes.
     // Keep a lightweight reachability check for the app landing instead.
     await page.goto('/');
-    await expect(page.locator('text=Welcome to the LearnFlow app.')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('text=Welcome to the LearnFlow app.')).toBeVisible({
+      timeout: 20_000,
+    });
     await snap(page, 'app-landing.png');
   });
 });

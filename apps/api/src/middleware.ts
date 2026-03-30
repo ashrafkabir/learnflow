@@ -34,6 +34,23 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction):
   }
 
   const token = header.slice(7);
+
+  // Dev auth bypass (LEARNFLOW_DEV_AUTH=1): accept a deterministic dummy token so E2E
+  // can exercise authenticated routes without generating JWTs.
+  if (
+    (config.devMode || process.env.NODE_ENV === 'test' || !!process.env.VITEST) &&
+    token === 'dev'
+  ) {
+    req.user = {
+      sub: 'test-user-1',
+      email: 'dev@learnflow',
+      role: 'student',
+      tier: 'pro',
+    };
+    next();
+    return;
+  }
+
   try {
     const decoded = jwt.verify(token, config.jwtSecret) as AuthUser;
     req.user = decoded;

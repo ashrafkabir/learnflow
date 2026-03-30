@@ -21,7 +21,6 @@ async function axeScan(page: any, label: string) {
     critical,
     `axe critical violations on ${label}: ${critical.map((v: any) => v.id).join(', ')}`,
   ).toEqual([]);
-
 }
 
 test.describe('Accessibility smoke (axe)', () => {

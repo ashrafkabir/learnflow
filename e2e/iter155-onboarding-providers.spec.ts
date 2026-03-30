@@ -17,14 +17,16 @@ test.describe('Iter155: onboarding provider options', () => {
 
     await page.goto(`${baseURL}/onboarding/api-keys`, { waitUntil: 'domcontentloaded' });
 
-    await expect(page.locator('[data-screen="onboarding-apikeys"]').first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('[data-screen="onboarding-apikeys"]').first()).toBeVisible({
+      timeout: 60_000,
+    });
 
     const providerSelect = page.locator('select').first();
     await expect(providerSelect).toBeVisible();
 
-    const values = await providerSelect.locator('option').evaluateAll((opts) =>
-      opts.map((o) => (o as HTMLOptionElement).value),
-    );
+    const values = await providerSelect
+      .locator('option')
+      .evaluateAll((opts) => opts.map((o) => (o as HTMLOptionElement).value));
 
     expect(values).toEqual(['openai', 'anthropic', 'google', 'mistral', 'groq', 'ollama']);
   });

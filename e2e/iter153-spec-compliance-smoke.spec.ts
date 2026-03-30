@@ -40,7 +40,9 @@ test.describe('Iter153: key screens screenshots', () => {
 
     // Landing
     await page.goto('/');
-    await expect(page.locator('text=Welcome to the LearnFlow app.')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('text=Welcome to the LearnFlow app.')).toBeVisible({
+      timeout: 20_000,
+    });
     await snap(page, 'landing-app.png');
 
     // Auth
@@ -107,7 +109,11 @@ test.describe('Iter153: key screens screenshots', () => {
         sel: '[data-screen="agent-marketplace"]',
         shot: 'marketplace-agents.png',
       },
-      { path: '/marketplace/creator', sel: '[data-screen="creator-dashboard"]', shot: 'marketplace-creator.png' },
+      {
+        path: '/marketplace/creator',
+        sel: '[data-screen="creator-dashboard"]',
+        shot: 'marketplace-creator.png',
+      },
       { path: '/settings', sel: '[data-screen="settings"]', shot: 'settings.png' },
       { path: '/notifications', sel: '[data-screen="notifications"]', shot: 'notifications.png' },
       { path: '/pipelines', sel: '[data-screen="pipelines"]', shot: 'pipelines.png' },

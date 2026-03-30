@@ -114,9 +114,10 @@ describe('Iter77: CourseView shows restart/resume actions when FAILED', () => {
       });
     }) as typeof fetch;
 
-    renderAt('/course/c1');
-    // allow effects
-    await new Promise((r) => setTimeout(r, 250));
+    // NOTE: /course/:id is a legacy redirect; use canonical /courses/:id for stable UI assertions.
+    renderAt('/courses/c1');
+    // allow effects + lazy route load
+    await new Promise((r) => setTimeout(r, 400));
 
     // UI copy may vary across iterations; assert the action buttons directly.
     const resume = await screen.findByRole('button', { name: /resume/i });

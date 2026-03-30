@@ -32,7 +32,7 @@ LearnFlow uses a "Bring Your Own Key" (BYOK) model on the free tier:
 4. Paste your API key
 5. Click "Verify & Save"
 
-Your key is sent over TLS and encrypted server-side with AES-256-CBC.
+Your key is sent over TLS and encrypted server-side with AES-256-GCM (legacy AES-256-CBC supported for backward-compatible decryption).
 
 > **Note**: "Managed API keys" are not part of the current MVP. LearnFlow currently uses a Bring Your Own Key (BYOK) model.
 
@@ -77,7 +77,7 @@ Environment variables (see `.env.example`):
 
 - `DATABASE_URL` — PostgreSQL connection string
 - `REDIS_URL` — Redis for caching and rate limiting
-- `ENCRYPTION_KEY` — **Required in production**. 32-byte (64 hex chars) key used for API key encryption at rest (AES-256-CBC).
+- `ENCRYPTION_KEY` — **Required in production**. 32-byte (64 hex chars) key used for API key encryption at rest (AES-256-GCM; legacy AES-256-CBC supported for backward-compatible decryption).
 - `JWT_SECRET` — Secret for JWT token signing
 - `FIRECRAWL_API_KEY` — For web content sourcing
 

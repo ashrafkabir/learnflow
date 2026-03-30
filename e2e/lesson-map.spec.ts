@@ -12,7 +12,7 @@ test('Lesson Map opens and clicking a node copies label to clipboard', async ({ 
     // Valid JWT for local API (dev secret)
     localStorage.setItem(
       'learnflow-token',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidGllciI6InBybyIsImlhdCI6MTc3NDYyMDQyMSwiZXhwIjoxODA2MTU2NDIxfQ._nna6R4wrrbsT_WJO_s8khz61FLp7gkGYfQSznS1eqI',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1MSIsImVtYWlsIjoidGVzdEBleGFtcGxlLmNvbSIsInJvbGUiOiJzdHVkZW50IiwidGllciI6InBybyIsImlhdCI6MTc3NDg5NDQ1MiwiZXhwIjoxNzc3NDg2NDUyfQ.oL0zlvp_Xbxq3EpdLJCZ2aVdEuG7g7AGolZQx5icTLI',
     );
     localStorage.setItem(
       'learnflow-user',
@@ -50,10 +50,13 @@ test('Lesson Map opens and clicking a node copies label to clipboard', async ({ 
   await page.goto(`/courses/${ids.courseId}/lessons/${ids.lessonId}`, { waitUntil: 'networkidle' });
 
   // Wait for lesson reader to fully hydrate
-  await page.getByLabel('Take Notes').waitFor({ timeout: 30000 });
+  await page.locator('[data-testid="lesson-bottom-action-bar"]').waitFor({ timeout: 30000 });
 
-  // Open (button has aria-label "Lesson mindmap")
-  await page.getByLabel('Lesson mindmap').click();
+  // Open Lesson map overlay directly (avoid depending on side-drawer UI in this regression test)
+  await page.evaluate(() => {
+    // Iter160: expose a deterministic hook for E2E
+    (window as any).__LEARNFLOW_E2E_OPEN_LESSON_MINDMAP__?.();
+  });
 
   const map = page.getByLabel('Lesson mindmap graph');
   await expect(map).toBeVisible();

@@ -81,7 +81,10 @@ export function parseLessonplanRecommendedSources(md: string): LessonplanLessonS
       continue;
     }
 
-    if (/^[-*]\s*Recommended\s+sources\s*:?\s*$/i.test(line) || /^Recommended\s+sources\s*:?$/i.test(line)) {
+    if (
+      /^[-*]\s*Recommended\s+sources\s*:?\s*$/i.test(line) ||
+      /^Recommended\s+sources\s*:?$/i.test(line)
+    ) {
       inRecommended = true;
       continue;
     }

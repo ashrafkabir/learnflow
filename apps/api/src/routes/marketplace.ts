@@ -153,9 +153,16 @@ router.get('/agents', async (_req: Request, res: Response) => {
       status: String((a as any).status || 'approved'),
       submittedAt: String((a as any).submittedAt || ''),
     }));
+
+    // MVP/demo guardrail: if no persisted agents exist, return deterministic seeded agents
+    // so the UI never renders empty in normal dev/demo flows.
+    if (!agents.length) {
+      return res.status(200).json({ agents: marketplaceAgents, activationMode: 'routing_only' });
+    }
+
     res.status(200).json({ agents, activationMode: 'routing_only' });
   } catch {
-    res.status(200).json({ agents: marketplaceAgents });
+    res.status(200).json({ agents: marketplaceAgents, activationMode: 'routing_only' });
   }
 });
 

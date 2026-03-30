@@ -5,7 +5,6 @@
 import type { AgentInterface, AgentResponse, StudentContextObject } from '@learnflow/core';
 import { decomposeTopic } from './topic-decomposer.js';
 import { generateSyllabus } from './syllabus-generator.js';
-import OpenAI from 'openai';
 import { searchAndExtractTopic } from '../content-pipeline/openai-websearch-provider.js';
 import { synthesizeFromSources } from '../content-pipeline/web-search-provider.js';
 
@@ -48,13 +47,12 @@ export class CourseBuilderAgent implements AgentInterface {
 
     const sources = isTest
       ? []
-      : (
+      : ((
           await searchAndExtractTopic({
             topic,
-            // BYOAI required. If no OpenAI client is provided upstream, this will throw.
-            openai: process.env.OPENAI_API_KEY
-              ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-              : undefined,
+            // BYOAI-only: do not fall back to a managed env key inside agents.
+            // The API layer is responsible for injecting an authenticated OpenAI client.
+            openai: undefined,
             maxResults: 8,
             maxPagesToExtract: 4,
           })
@@ -70,7 +68,7 @@ export class CourseBuilderAgent implements AgentInterface {
           recencyScore: 0.6,
           relevanceScore: 0.7,
           wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
-        })) as any;
+        })) as any);
     const sampleLessonTitle = `${syllabus.modules[0]?.title || 'Introduction'}: Overview`;
 
     // Keep unit tests fast and deterministic: avoid network-bound discovery/synthesis.

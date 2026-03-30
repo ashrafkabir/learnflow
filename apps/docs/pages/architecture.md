@@ -128,14 +128,14 @@ learnflow/
 
 ## Technology Decisions
 
-| Decision   | Choice       | Rationale                                  |
-| ---------- | ------------ | ------------------------------------------ |
-| Monorepo   | Turborepo v2 | Fast incremental builds, shared configs    |
-| API        | Express.js   | Mature, large ecosystem, WebSocket support |
-| Client     | React + Vite | Fast dev experience, SSR not needed        |
-| Marketing  | Next.js 14   | SEO, static export, App Router             |
-| Database   | PostgreSQL   | Robust, JSON support, extensions           |
-| Cache      | Redis        | Pub/sub for WebSocket, rate limiting       |
-| Validation | Zod          | Runtime + compile-time type safety         |
-| Auth       | JWT + bcrypt | Stateless, industry standard               |
-| Encryption | AES-256-CBC  | NIST-approved, hardware acceleration       |
+| Decision   | Choice       | Rationale                                                 |
+| ---------- | ------------ | --------------------------------------------------------- |
+| Monorepo   | Turborepo v2 | Fast incremental builds, shared configs                   |
+| API        | Express.js   | Mature, large ecosystem, WebSocket support                |
+| Client     | React + Vite | Fast dev experience, SSR not needed                       |
+| Marketing  | Next.js 14   | SEO, static export, App Router                            |
+| Database   | PostgreSQL   | Robust, JSON support, extensions                          |
+| Cache      | Redis        | Pub/sub for WebSocket, rate limiting                      |
+| Validation | Zod          | Runtime + compile-time type safety                        |
+| Auth       | JWT + bcrypt | Stateless, industry standard                              |
+| Encryption | AES-256-GCM  | AEAD (integrity + confidentiality), hardware acceleration |

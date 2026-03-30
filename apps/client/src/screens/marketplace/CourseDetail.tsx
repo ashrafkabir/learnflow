@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { apiPost } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
-import { IconChat, IconCourse, IconStar } from '../../components/icons/index.js';
+import { IconCourse, IconStar } from '../../components/icons/index.js';
 
 interface CourseDetailData {
   id: string;
@@ -267,7 +267,7 @@ export function CourseDetail() {
         {/* Reviews */}
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 shadow-card">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 inline-flex items-center gap-2">
-            <IconChat className="w-5 h-5 text-accent" />
+            <IconStar className="w-5 h-5 text-accent" />
             Reviews
           </h2>
 

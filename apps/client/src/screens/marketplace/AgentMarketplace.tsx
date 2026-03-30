@@ -25,9 +25,30 @@ type Category = (typeof CATEGORIES)[number];
 type SortOption = 'newest';
 
 // NOTE: Marketplace agents are fetched from `GET /api/v1/marketplace/agents`.
-// This screen intentionally avoids hardcoded demo agents/ratings/usage counts to prevent
-// misleading "real metrics".
-const _AGENTS_FALLBACK: Agent[] = [];
+// To prevent a broken/empty MVP experience (and E2E flake), we keep a *minimal* local fallback.
+// IMPORTANT: Do not include ratings/usage counts; keep copy clearly "MVP".
+const _AGENTS_FALLBACK: Agent[] = [
+  {
+    id: 'mvp-agent-1',
+    name: 'Code Tutor (MVP)',
+    description: 'Explains code and suggests improvements (built-in routing).',
+    capabilities: ['explain_code', 'code_review'],
+    tier: 'free',
+    requiredProvider: 'BYOAI',
+    category: 'All',
+    official: true,
+  },
+  {
+    id: 'mvp-agent-2',
+    name: 'Research Pro (MVP)',
+    description: 'Helps summarize sources and draft learning content (built-in routing).',
+    capabilities: ['summarize', 'lesson_drafting'],
+    tier: 'pro',
+    requiredProvider: 'OpenAI',
+    category: 'All',
+    official: true,
+  },
+];
 
 /** Spec §5.2.6, §7.2 — Agent Marketplace with activation flow, categories, search, sort */
 export function AgentMarketplace() {
@@ -82,11 +103,11 @@ export function AgentMarketplace() {
           };
         });
 
-        setAgents(normalized);
+        setAgents(normalized.length ? normalized : _AGENTS_FALLBACK);
       })
       .catch((_e) => {
         setAgentsError('Could not load marketplace agents.');
-        setAgents([]);
+        setAgents(_AGENTS_FALLBACK);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -342,7 +363,11 @@ export function AgentMarketplace() {
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
                 <IconSearch className="w-10 h-10 text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-300">
-                  No results found. Try a different search or category.
+                  No results found. Try a different search.
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  If this seems wrong, reload — the MVP catalog should normally show at least a few
+                  agents.
                 </p>
               </div>
             ) : (

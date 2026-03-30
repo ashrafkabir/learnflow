@@ -120,9 +120,10 @@ describe('Marketing pages', () => {
     localStorage.removeItem('learnflow-token');
     renderAt('/register');
     await waitFor(() => {
-      const text = document.body.textContent || '';
-      expect(text.match(/sign up|register|create|account/i)).toBeTruthy();
+      // More deterministic than full-body regex (which can be intercepted by LoadingSpinner).
+      expect(document.querySelector('[data-screen="register"]')).toBeTruthy();
     });
+    expect(screen.getByText(/Create your account/i)).toBeInTheDocument();
   });
 
   it('renders 404 page for unknown routes', async () => {

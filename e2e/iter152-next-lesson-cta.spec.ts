@@ -94,9 +94,7 @@ test.describe('Iter152: Next lesson CTA', () => {
     // If still generating, we cannot assert lesson CTA.
     if (await page.locator('text=We are building your course').count()) return;
 
-    const lessonHref = await page
-      .getAttribute('a[href*="/lessons/"]', 'href')
-      .catch(() => null);
+    const lessonHref = await page.getAttribute('a[href*="/lessons/"]', 'href').catch(() => null);
     if (!lessonHref) throw new Error('No lesson link found on course view');
 
     await page.goto(lessonHref);

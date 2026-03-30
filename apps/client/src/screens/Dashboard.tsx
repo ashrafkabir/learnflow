@@ -939,7 +939,17 @@ export function Dashboard() {
                 </Button>
               </div>
               {state.courses.length > 0 ? (
-                <div className="relative h-32 bg-gradient-to-br from-accent/5 via-purple-50/50 to-blue-50/50 dark:from-accent/10 dark:via-gray-800/50 dark:to-gray-800/50 rounded-xl overflow-hidden flex items-center justify-center">
+                <div
+                  role="button"
+                  tabIndex={0}
+                  data-testid="knowledge-map-preview"
+                  onClick={() => nav('/mindmap')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') nav('/mindmap');
+                  }}
+                  className="relative h-32 bg-gradient-to-br from-accent/5 via-purple-50/50 to-blue-50/50 dark:from-accent/10 dark:via-gray-800/50 dark:to-gray-800/50 rounded-xl overflow-hidden flex items-center justify-center cursor-pointer hover:border-accent/30 border border-transparent focus:outline-none focus:ring-2 focus:ring-accent"
+                  title="Open Knowledge Map"
+                >
                   <svg
                     viewBox="0 0 200 100"
                     className="w-full h-full opacity-60"

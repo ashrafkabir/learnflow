@@ -49,6 +49,32 @@ export function PipelineDetail() {
     };
   }, [state?.id]);
 
+  if (!pipelineId) {
+    return (
+      <section
+        className="min-h-screen bg-bg dark:bg-bg-dark"
+        data-screen="pipeline-detail"
+        aria-label="Pipeline Detail"
+      >
+        <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
+            <Button variant="ghost" onClick={() => nav('/dashboard')}>
+              ← Back
+            </Button>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Pipeline not found
+            </h1>
+          </div>
+        </header>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            This pipeline link is missing an id.
+          </p>
+        </div>
+      </section>
+    );
+  }
+
   if (!state) {
     return (
       <section
@@ -75,6 +101,9 @@ export function PipelineDetail() {
               />
             ))}
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            If this never loads, the pipeline may not exist, or your session may have expired.
+          </p>
         </div>
       </section>
     );
@@ -314,8 +343,14 @@ export function PipelineDetail() {
             </div>
             {((state as any).lastError || state.error) && (
               <div className="text-xs text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
-                <span className="font-semibold">Last error:</span>{' '}
-                {String((state as any).lastError || state.error)}
+                <span className="font-semibold">Last error:</span> Something went wrong.
+                <button
+                  type="button"
+                  className="ml-2 font-semibold underline underline-offset-2"
+                  onClick={() => setShowLogs(true)}
+                >
+                  View details
+                </button>
               </div>
             )}
           </div>

@@ -44,13 +44,35 @@ test.describe('Iter99 screenshots (Agent Marketplace)', () => {
     });
     await snap(page, '02-agent-marketplace');
 
-    // Click first toggle; should show a toast (success/error) depending on API availability.
-    await page.locator('button[role="switch"]').first().click();
+    // Wait for either the catalog or the empty state, to avoid hanging on slow/dev API.
+    const catalog = page.locator('[data-component="agent-catalog"]');
+    const empty = page.getByText('No results found');
+    await Promise.race([
+      catalog.waitFor({ state: 'visible', timeout: 15000 }),
+      empty.waitFor({ state: 'visible', timeout: 15000 }),
+    ]);
+
+    // If empty, capture and exit (don’t hang).
+    if (await empty.isVisible()) {
+      await snap(page, '03-empty-state');
+      return;
+    }
+
+    const firstToggle = page.locator('button[role="switch"]').first();
+
+    // Click first toggle; may open disclosure modal on first activation.
+    await firstToggle.click();
+
+    const disclosure = page.getByRole('dialog', { name: /agent activation disclosure/i });
+    if (await disclosure.isVisible().catch(() => false)) {
+      await disclosure.getByRole('button', { name: /i understand/i }).click();
+    }
+
     await page.waitForTimeout(750);
     await snap(page, '03-activate-toast');
 
     // Toggle back for deactivation toast.
-    await page.locator('button[role="switch"]').first().click();
+    await firstToggle.click();
     await page.waitForTimeout(750);
     await snap(page, '04-deactivate-toast');
   });

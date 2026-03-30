@@ -319,6 +319,8 @@ interface QuickChip {
 
 function getContextChips(content: string, hasSources: boolean): QuickChip[] {
   const lower = content.toLowerCase();
+  // Spec §5.2.3: only show "See Sources" when a response includes citations.
+  // We approximate this via assistant meta.sourcesCount (passed in as hasSources).
   const maybeSources = hasSources ? [{ label: 'See Sources', message: '__open_sources__' }] : [];
 
   if (lower.includes('course') && (lower.includes('created') || lower.includes('ready')))
@@ -784,9 +786,7 @@ export function Conversation() {
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-semibold text-gray-900 dark:text-white">
-                  Agent trace
-                </p>
+                <p className="text-xs font-semibold text-gray-900 dark:text-white">Agent trace</p>
                 <p className="text-[11px] text-gray-600 dark:text-gray-300">
                   Shows which agent was selected and what it did (best-effort).
                 </p>
@@ -812,7 +812,8 @@ export function Conversation() {
                   {t.startedAt ? (
                     <span className="text-gray-500">
                       {' '}
-                      · started {new Date(t.startedAt).toLocaleTimeString([], {
+                      · started{' '}
+                      {new Date(t.startedAt).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',
                       })}
@@ -822,14 +823,10 @@ export function Conversation() {
                     <span className="text-gray-500"> · {(t.durationMs / 1000).toFixed(1)}s</span>
                   ) : null}
                   {t.taskSummary ? (
-                    <div className="mt-0.5 text-gray-600 dark:text-gray-300">
-                      {t.taskSummary}
-                    </div>
+                    <div className="mt-0.5 text-gray-600 dark:text-gray-300">{t.taskSummary}</div>
                   ) : null}
                   {t.resultSummary ? (
-                    <div className="mt-0.5 text-gray-600 dark:text-gray-300">
-                      {t.resultSummary}
-                    </div>
+                    <div className="mt-0.5 text-gray-600 dark:text-gray-300">{t.resultSummary}</div>
                   ) : null}
                 </li>
               ))}
@@ -992,7 +989,12 @@ export function Conversation() {
                         {a.label}
                       </Button>
                     ))
-                  : getContextChips(msg.content, drawerSources.length > 0).map((chip) => (
+                  : getContextChips(
+                      msg.content,
+                      typeof (msg as any)?.meta?.sourcesCount === 'number'
+                        ? (msg as any).meta.sourcesCount > 0
+                        : drawerSources.length > 0,
+                    ).map((chip) => (
                       <Button
                         key={chip.label}
                         variant="ghost"

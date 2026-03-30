@@ -1,4 +1,5 @@
 import type { ErrorEnvelope } from '@learnflow/shared';
+import { redactSecrets } from './redactSecrets.js';
 
 export type UserError = {
   message: string;
@@ -18,13 +19,13 @@ export function toUserError(err: unknown, fallbackMessage: string): UserError {
 
   // Native Error
   if (err instanceof Error) {
-    const msg = String(err.message || '').trim();
+    const msg = redactSecrets(String(err.message || '')).trim();
     return { message: msg || fallback };
   }
 
   // Strings
   if (typeof err === 'string') {
-    const msg = err.trim();
+    const msg = redactSecrets(err).trim();
     return { message: msg || fallback };
   }
 
@@ -45,7 +46,7 @@ export function toUserError(err: unknown, fallbackMessage: string): UserError {
         ? (maybeEnvelope as any).message
         : undefined;
 
-    const msg = String(envMsg || directMsg || '').trim();
+    const msg = redactSecrets(String(envMsg || directMsg || '')).trim();
 
     return { message: msg || fallback, requestId };
   }

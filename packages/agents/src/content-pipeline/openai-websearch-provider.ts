@@ -8,7 +8,7 @@
  */
 
 import OpenAI from 'openai';
-import { extractDomain } from './firecrawl-provider.js';
+import { extractDomain } from './url-utils.js';
 import { extractText } from './content-extractor.js';
 
 export type ExtractedImage = {

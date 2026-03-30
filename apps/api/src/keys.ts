@@ -177,7 +177,6 @@ router.post('/validate', validateBody(validateKeySchema), (req: Request, res: Re
     groq: /^gsk_[A-Za-z0-9_-]{20,}$/,
     // Ollama is local; accept any non-empty string as "key" (often unused).
     ollama: null,
-
   };
 
   const pattern = patterns[provider as (typeof PROVIDERS)[number]];

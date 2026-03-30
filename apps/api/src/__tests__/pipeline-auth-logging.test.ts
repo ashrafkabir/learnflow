@@ -16,7 +16,6 @@ beforeEach(() => {
   clearRateLimits();
 });
 
-
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -61,7 +60,6 @@ describe('Pipeline auth logging', () => {
       .set('Authorization', `Bearer ${tokenForAuth}`)
       .send({ provider: 'openai', apiKey: 'sk-test-placeholder-not-real', activate: true })
       .expect(201);
-
 
     const origFetch: any = (globalThis as any).fetch;
     (globalThis as any).fetch = async (input: any, init?: any) => {

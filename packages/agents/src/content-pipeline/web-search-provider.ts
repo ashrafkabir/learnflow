@@ -40,6 +40,7 @@ export {
 };
 
 import { createOpenAIQueryGenerator } from './trending-queries.js';
+import { assertMvpResearchAllowed } from './mvp.js';
 import {
   wikipediaSearch,
   wikipediaSummary,
@@ -211,6 +212,7 @@ export async function searchSources(
   topic: string,
   _config: Partial<FirecrawlConfig> = {},
 ): Promise<FirecrawlSearchResult[]> {
+  assertMvpResearchAllowed('legacy_multi_source');
   const results = await multiSourceSearch(topic, 6, (_config as any)?.enabledSources);
   return results.slice(0, 12);
 }
@@ -240,6 +242,7 @@ export async function crawlSourcesForTopic(
   topic: string,
   _config: Partial<FirecrawlConfig> = {},
 ): Promise<FirecrawlSource[]> {
+  assertMvpResearchAllowed('legacy_multi_source');
   // Use a small trending query set (LLM if available; heuristic otherwise)
   const qg = createOpenAIQueryGenerator();
   const queries = await qg.generateTrendingQueries(topic);
@@ -271,6 +274,7 @@ export async function searchTopicTrending(
   topic: string,
   _config: Partial<FirecrawlConfig> = {},
 ): Promise<FirecrawlSource[]> {
+  assertMvpResearchAllowed('legacy_multi_source');
   console.log(`[WebSearch] Stage 1: Bulk research for "${topic}"`);
 
   const qg = createOpenAIQueryGenerator();
@@ -350,6 +354,7 @@ export async function searchForLesson(
   lessonDescription: string,
   _config: Partial<FirecrawlConfig> = {},
 ): Promise<FirecrawlSource[]> {
+  assertMvpResearchAllowed('legacy_multi_source');
   console.log(`[WebSearch] Stage 2: Scraping for lesson "${lessonTitle}"`);
 
   const qg = createOpenAIQueryGenerator();

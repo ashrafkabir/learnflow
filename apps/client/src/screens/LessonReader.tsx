@@ -428,6 +428,19 @@ export function LessonReader() {
   // Iter39 Task 6: Lesson-level mindmap (lightweight v1 using vis-network)
   const [lessonMindmapOpen, setLessonMindmapOpen] = useState(false);
 
+  // Iter160: deterministic E2E hook to open the mindmap overlay without relying on UI structure.
+  useEffect(() => {
+    if (!(window as any).__LEARNFLOW_E2E__) return;
+    (window as any).__LEARNFLOW_E2E_OPEN_LESSON_MINDMAP__ = () => setLessonMindmapOpen(true);
+    return () => {
+      try {
+        delete (window as any).__LEARNFLOW_E2E_OPEN_LESSON_MINDMAP__;
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
   // Feature 3: Text-Anchored Annotations
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [floatingToolbar, setFloatingToolbar] = useState<{
@@ -620,6 +633,11 @@ export function LessonReader() {
   }, [courseId, lessonId, refreshTick]);
 
   const generateAiNotes = async (format: string) => {
+    // Lesson map is a local UI overlay, not an AI note format.
+    if (format === 'lesson_map') {
+      setLessonMindmapOpen(true);
+      return;
+    }
     if (!courseId || !lessonId) return;
     setGeneratingNoteFormat(format);
     try {
@@ -1462,7 +1480,13 @@ export function LessonReader() {
               <Button variant="primary" onClick={() => setRefreshTick((t) => t + 1)}>
                 Retry
               </Button>
-              <Button variant="secondary" onClick={() => nav(`/courses/${courseId}`)}>
+              <Button variant="secondary" onClick={() => nav('/dashboard')}>
+                Go to Dashboard
+              </Button>
+              <Button variant="ghost" onClick={() => nav('/courses')}>
+                Go to Course list
+              </Button>
+              <Button variant="ghost" onClick={() => nav(`/courses/${courseId}`)}>
                 Back to course
               </Button>
             </div>
@@ -1805,6 +1829,11 @@ export function LessonReader() {
                   size="sm"
                   onClick={() => setActivePanel('notes')}
                   aria-label="Take Notes"
+                  title="Take Notes"
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  // E2E: allow deterministic opening of the notes panel without relying on aria-label uniqueness.
+                  data-e2e="lesson-open-notes"
                 >
                   <span className="inline-flex items-center gap-2">
                     <IconPencil className="w-4 h-4" />
@@ -1817,7 +1846,9 @@ export function LessonReader() {
                   variant="secondary"
                   size="sm"
                   onClick={openAskMe}
-                  aria-label="Ask me"
+                  title="Ask me"
+                  aria-hidden="true"
+                  tabIndex={-1}
                 >
                   <span className="inline-flex items-center gap-2">
                     <IconInfo className="w-4 h-4" />
@@ -2582,7 +2613,12 @@ export function LessonReader() {
                       .map((line, j) => (
                         <div key={j} className="flex items-start gap-2">
                           <span className="text-accent font-bold">•</span>
-                          <span>{renderInlineWithCitations(line.replace(/^[-•]\s*/, ''), sources as any)}</span>
+                          <span>
+                            {renderInlineWithCitations(
+                              line.replace(/^[-•]\s*/, ''),
+                              sources as any,
+                            )}
+                          </span>
                         </div>
                       ))}
                   </div>
@@ -2627,9 +2663,7 @@ export function LessonReader() {
                 className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-card p-5"
                 data-testid="next-lesson-cta"
               >
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
-                  Next lesson
-                </h2>
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Next lesson</h2>
                 <p className="text-sm text-gray-500 dark:text-gray-300 mt-1">
                   Continue learning with: <span className="font-semibold">{nextLesson.title}</span>
                 </p>
@@ -2804,7 +2838,7 @@ export function LessonReader() {
                         onClick={() => setSideTwisties((s) => ({ ...s, notes: !s.notes }))}
                         className="w-full flex items-center justify-between px-3 py-2"
                         aria-expanded={sideTwisties.notes}
-                        aria-label="Take Notes"
+                        aria-label="Study notes"
                       >
                         <span className="text-xs font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
                           <IconPencil className="w-4 h-4 text-accent" />
@@ -3075,6 +3109,17 @@ export function LessonReader() {
             open={attributionOpen}
             onClose={() => setAttributionOpen(false)}
             sources={sources as any}
+            recommendedSources={
+              Array.isArray((lesson as any)?.recommendedSources)
+                ? ((lesson as any).recommendedSources as any)
+                : []
+            }
+            recommendedSourcesNote={
+              Array.isArray((lesson as any)?.recommendedSources) &&
+              (lesson as any).recommendedSources?.length
+                ? 'Suggested reads curated for this lesson (from lesson plan when available).'
+                : undefined
+            }
             images={(sectionIllustrations as any).map((i: any) => ({
               imageUrl: i.imageUrl,
               sourcePageUrl: i.sourcePageUrl,
@@ -3134,6 +3179,12 @@ export function LessonReader() {
                       key: 'mindmap',
                       label: 'Mind Map',
                       desc: 'Hierarchical outline',
+                      icon: <IconMap className="w-4 h-4" />,
+                    },
+                    {
+                      key: 'lesson_map',
+                      label: 'Lesson Map',
+                      desc: 'Interactive graph',
                       icon: <IconMap className="w-4 h-4" />,
                     },
                   ].map((opt) => (

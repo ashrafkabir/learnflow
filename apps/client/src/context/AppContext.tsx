@@ -482,6 +482,8 @@ export function getAuthHeaders(): Record<string, string> {
     typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
       ? (globalThis as any).__LEARNFLOW_ENV__
       : null;
+  // When dev auth bypass is enabled, the API accepts a dummy token. Keep this logic
+  // strictly limited to the explicit bypass flag.
   const devAuthBypass = runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1';
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -495,8 +497,9 @@ export function getAuthHeaders(): Record<string, string> {
     headers['x-learnflow-e2e-fixtures'] = 'true';
   }
 
-  // In dev bypass, avoid injecting Authorization header (it can trigger server auth flows).
-  if (!devAuthBypass && token) headers['Authorization'] = `Bearer ${token}`;
+  // In dev bypass, the API accepts a dummy token; in normal mode we only send when present.
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  else if (devAuthBypass) headers['Authorization'] = 'Bearer dev';
 
   // Iter86: propagate origin tagging to the API so harness/screenshot runs can be excluded.
   if (origin) headers['x-learnflow-origin'] = origin;
