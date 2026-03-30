@@ -184,9 +184,45 @@ function AppMobileNav() {
 
 function AnalyticsPageTracker() {
   const location = useLocation();
+
   useEffect(() => {
     analytics.page(location.pathname);
   }, [location.pathname]);
+
+  // Iter143: prevent client-side 404s for marketing pages served by apps/web.
+  useEffect(() => {
+    const handler = (e: any) => {
+      try {
+        const a = (e.target as HTMLElement | null)?.closest?.(
+          'a[href]',
+        ) as HTMLAnchorElement | null;
+        if (!a) return;
+
+        // Only intercept our explicit pricing links.
+        if (a.getAttribute('data-link') !== 'pricing') return;
+        const href = a.getAttribute('href') || '';
+        if (href !== '/pricing') return;
+
+        e.preventDefault();
+
+        // Use a runtime-configurable origin for apps/web (Next.js), fallback to same-origin /pricing.
+        const runtimeEnv =
+          (globalThis as any)?.__LEARNFLOW_ENV__ &&
+          typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+            ? ((globalThis as any).__LEARNFLOW_ENV__ as Record<string, string | undefined>)
+            : null;
+        const webOrigin = runtimeEnv?.VITE_WEB_ORIGIN || (import.meta as any)?.env?.VITE_WEB_ORIGIN;
+        const target = webOrigin ? `${String(webOrigin).replace(/\/$/, '')}/pricing` : '/pricing';
+        window.location.assign(target);
+      } catch {
+        // ignore
+      }
+    };
+
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, []);
+
   return null;
 }
 

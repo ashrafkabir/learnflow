@@ -2425,12 +2425,13 @@ router.post('/:id/lessons/:lessonId/compare', async (req: Request, res: Response
 // ── Selection Tools (Discover / Illustrate / Mark) ─────────────────────────
 
 const selectionToolsPreviewSchema = z.object({
-  tool: z.enum(['discover', 'illustrate', 'mark']),
+  tool: z.enum(['discover', 'illustrate', 'mark', 'dig_deeper']),
   selectedText: z
     .string()
     .min(3)
     .max(5000, 'selectedText too long (max 5000 chars)')
     .transform((s) => s.trim()),
+  provider: z.enum(['wikimedia', 'generate']).optional(),
 });
 
 // POST /api/v1/courses/:id/lessons/:lessonId/selection-tools/preview
@@ -2439,7 +2440,7 @@ router.post(
   '/:id/lessons/:lessonId/selection-tools/preview',
   validateBody(selectionToolsPreviewSchema),
   async (req: Request, res: Response) => {
-    const { tool, selectedText } = req.body;
+    const { tool, selectedText, provider } = req.body;
 
     const userId = req.user?.sub || 'anonymous';
     const tier = req.user?.tier || 'free';
@@ -2481,6 +2482,41 @@ router.post(
       }
 
       if (tool === 'illustrate') {
+        // Option A: license-safe image search (Wikimedia Commons)
+        if (String(provider || '').toLowerCase() === 'wikimedia') {
+          try {
+            const images: LicenseSafeImageCandidate[] = await searchWikimediaCommonsImages(
+              String(selectedText),
+              { limit: 4 },
+            );
+            const picked = images?.[0];
+            const imageUrl = picked?.url || null;
+            const summary =
+              `- Key idea: ${String(selectedText).slice(0, 140)}${String(selectedText).length > 140 ? '…' : ''}\n` +
+              `- Try restating it in your own words\n` +
+              `- Use this visual to anchor the concept`;
+            const note = `Illustrate (Wikimedia)\n\n${summary}${imageUrl ? `\n\nImage: ${imageUrl}` : ''}`;
+            res.status(200).json({
+              tool,
+              selectedText,
+              preview: {
+                note,
+                summary,
+                imageUrl,
+                attributionText: picked?.license
+                  ? `Wikimedia Commons · License: ${picked.license}${picked.author ? ` · Author: ${picked.author}` : ''}`
+                  : 'Wikimedia Commons',
+                sourcePageUrl: picked?.sourcePageUrl || '',
+              },
+            });
+            return;
+          } catch (err) {
+            console.warn('[LearnFlow] Wikimedia preview illustrate failed; falling back:', err);
+            // fall through
+          }
+        }
+
+        // Option B: generated image (OpenAI)
         const { client: openai } = getOpenAIForRequest({
           userId,
           tier,
@@ -2529,8 +2565,51 @@ router.post(
           imageUrl = null;
         }
 
-        const note = `Illustrate\n\n${summary}${imageUrl ? `\n\nImage: ${imageUrl}` : ''}`;
+        const note = `Illustrate (Generated)\n\n${summary}${imageUrl ? `\n\nImage: ${imageUrl}` : ''}`;
         res.status(200).json({ tool, selectedText, preview: { note, summary, imageUrl } });
+        return;
+      }
+
+      if (tool === 'dig_deeper') {
+        const { client: openai } = getOpenAIForRequest({
+          userId,
+          tier,
+          apiKeyOverride: (req.body as any)?.apiKey,
+        });
+
+        // Deterministic fallback in tests/offline.
+        if (!openai || process.env.NODE_ENV === 'test') {
+          const note =
+            `Dig Deeper (preview)\n\n` +
+            `Suggested expansion:\n` +
+            `- ${String(selectedText).slice(0, 180)}${String(selectedText).length > 180 ? '…' : ''}\n` +
+            `\nArtifacts:\n` +
+            `- (Add sources/links here)\n` +
+            `- (Add a diagram idea here)\n` +
+            `- (Add an interactive demo idea here)`;
+          res.status(200).json({ tool, selectedText, preview: { note, proposed: note } });
+          return;
+        }
+
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are an expert tutor. Expand a paragraph without changing its meaning. Add concrete artifacts. Return a plain-text proposal, no markdown tables.',
+            },
+            {
+              role: 'user',
+              content:
+                `Rewrite and expand this passage for clarity + depth, then add 3-6 artifacts (links, diagrams to draw, or interactive sites/tools) that help a learner.\n\n` +
+                `Rules:\n- Keep it scoped to this passage (do NOT rewrite the whole lesson)\n- Preserve intent\n- Make it more concrete\n- Put artifacts under a section titled "Artifacts"\n\nPassage:\n"""\n${selectedText}\n"""`,
+            },
+          ],
+        });
+        const proposed = completion.choices[0]?.message?.content || '';
+        const note = `Dig Deeper (preview)\n\n${proposed}`;
+        res.status(200).json({ tool, selectedText, preview: { note, proposed } });
         return;
       }
 

@@ -172,7 +172,7 @@ export function UpdateAgentSettingsPanel() {
           are <span className="font-semibold">best-effort</span>.
         </p>
         <div className="flex items-center gap-2">
-          <a href="/pricing" className="inline-flex">
+          <a href="/pricing" className="inline-flex" data-link="pricing">
             <Button variant="secondary" size="sm">
               Upgrade to Pro
             </Button>

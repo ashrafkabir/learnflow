@@ -214,8 +214,11 @@ export function LessonReader() {
   const [annotationNoteText, setAnnotationNoteText] = useState('');
   const [annotationLoading, setAnnotationLoading] = useState(false);
 
-  // Selection tool preview (Discover/Illustrate/Mark)
+  // Selection tool preview (Discover/Illustrate/Mark/Dig Deeper)
   const [toolPreviewOpen, setToolPreviewOpen] = useState(false);
+  const [selectionIllustrateProvider, setSelectionIllustrateProvider] = useState<
+    'wikimedia' | 'generate'
+  >('wikimedia');
   const [toolPreview, setToolPreview] = useState<any>(null);
   const [toolPreviewLoading, setToolPreviewLoading] = useState(false);
   const [toolSelectedText, setToolSelectedText] = useState<string>('');
@@ -605,7 +608,7 @@ export function LessonReader() {
   }, []);
 
   const runSelectionToolPreview = async (
-    tool: 'discover' | 'illustrate' | 'mark',
+    tool: 'discover' | 'illustrate' | 'mark' | 'dig_deeper',
     selectedText: string,
     startOffset: number,
     endOffset: number,
@@ -617,12 +620,16 @@ export function LessonReader() {
     setToolSelectedText(selectedText);
     setToolSelectedOffsets({ start: startOffset, end: endOffset });
     try {
+      const body: any = { tool, selectedText };
+      if (tool === 'illustrate') {
+        body.provider = selectionIllustrateProvider;
+      }
       const res = await fetch(
         `/api/v1/courses/${courseId}/lessons/${lessonId}/selection-tools/preview`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tool, selectedText }),
+          body: JSON.stringify(body),
         },
       );
       const data = await res.json();
@@ -640,7 +647,7 @@ export function LessonReader() {
 
   const attachPreviewAsAnnotation = async () => {
     if (!toolPreview || !toolSelectedOffsets) return;
-    const tool = toolPreview.tool as 'discover' | 'illustrate' | 'mark';
+    const tool = toolPreview.tool as 'discover' | 'illustrate' | 'mark' | 'dig_deeper';
 
     if (tool === 'mark') {
       // Mark adds bullets to takeaways (stored in lesson notes).
@@ -659,6 +666,17 @@ export function LessonReader() {
       } catch {
         toast('Could not refresh notes after applying takeaways.', 'error');
       }
+    } else if (tool === 'dig_deeper') {
+      // Dig Deeper applies a proposed rewrite as a reversible annotation overlay.
+      const note = toolPreview.preview?.note || '';
+      setAnnotationNoteText(note);
+      await createAnnotation(
+        'note',
+        toolSelectedText,
+        toolSelectedOffsets.start,
+        toolSelectedOffsets.end,
+      );
+      toast('Dig Deeper attached as an annotation. You can discard it anytime.', 'success');
     } else {
       // Discover/Illustrate attach as an annotation note.
       const note = toolPreview.preview?.note || '';
@@ -1197,7 +1215,7 @@ export function LessonReader() {
                 <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
                   <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-modal p-5">
                     <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
+                      <div className="min-w-0">
                         <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                           {toolPreview?.tool ? `Tool: ${toolPreview.tool}` : 'Tool'}
                         </h3>
@@ -1205,6 +1223,56 @@ export function LessonReader() {
                           “{toolSelectedText.slice(0, 140)}
                           {toolSelectedText.length > 140 ? '…' : ''}”
                         </p>
+
+                        {toolPreview?.tool === 'illustrate' && (
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="text-[11px] text-gray-600 dark:text-gray-300">
+                              Provider:
+                            </span>
+                            <button
+                              className={
+                                'text-[11px] px-2 py-1 rounded-full border ' +
+                                (selectionIllustrateProvider === 'wikimedia'
+                                  ? 'border-accent bg-accent/10 text-accent'
+                                  : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200')
+                              }
+                              onClick={() => {
+                                setSelectionIllustrateProvider('wikimedia');
+                                void runSelectionToolPreview(
+                                  'illustrate',
+                                  toolSelectedText,
+                                  toolSelectedOffsets?.start || 0,
+                                  toolSelectedOffsets?.end || Math.max(1, toolSelectedText.length),
+                                );
+                              }}
+                              disabled={toolPreviewLoading}
+                              type="button"
+                            >
+                              Wikimedia
+                            </button>
+                            <button
+                              className={
+                                'text-[11px] px-2 py-1 rounded-full border ' +
+                                (selectionIllustrateProvider === 'generate'
+                                  ? 'border-accent bg-accent/10 text-accent'
+                                  : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200')
+                              }
+                              onClick={() => {
+                                setSelectionIllustrateProvider('generate');
+                                void runSelectionToolPreview(
+                                  'illustrate',
+                                  toolSelectedText,
+                                  toolSelectedOffsets?.start || 0,
+                                  toolSelectedOffsets?.end || Math.max(1, toolSelectedText.length),
+                                );
+                              }}
+                              disabled={toolPreviewLoading}
+                              type="button"
+                            >
+                              Generate
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <Button
                         variant="ghost"
@@ -1258,142 +1326,165 @@ export function LessonReader() {
               {/* Floating toolbar */}
               {floatingToolbar && (
                 <div
-                  className="absolute z-50 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl shadow-modal px-2 py-1.5 flex items-center gap-1 -translate-x-1/2 -translate-y-full"
+                  className="absolute z-50 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl shadow-modal px-2 py-1.5 -translate-x-1/2 -translate-y-full max-w-[calc(100vw-1rem)]"
                   style={{ left: floatingToolbar.x, top: floatingToolbar.y }}
                 >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      const note = prompt('Add a note:');
-                      if (note !== null) {
-                        setAnnotationNoteText(note);
+                  <div className="flex items-center gap-1 overflow-x-auto flex-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const note = prompt('Add a note:');
+                        if (note !== null) {
+                          setAnnotationNoteText(note);
+                          createAnnotation(
+                            'note',
+                            floatingToolbar.text,
+                            floatingToolbar.startOffset,
+                            floatingToolbar.endOffset,
+                          );
+                        }
+                      }}
+                      disabled={annotationLoading}
+                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                      title="Add a note"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconLesson className="w-4 h-4" />
+                        <span className="hidden sm:inline">Note</span>
+                      </span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
                         createAnnotation(
-                          'note',
+                          'explain',
                           floatingToolbar.text,
                           floatingToolbar.startOffset,
                           floatingToolbar.endOffset,
-                        );
+                        )
                       }
-                    }}
-                    disabled={annotationLoading}
-                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                    title="Add a note"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <IconLesson className="w-4 h-4" />
-                      Note
-                    </span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      createAnnotation(
-                        'explain',
-                        floatingToolbar.text,
-                        floatingToolbar.startOffset,
-                        floatingToolbar.endOffset,
-                      )
-                    }
-                    disabled={annotationLoading}
-                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                    title="AI explanation"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <IconSearch className="w-4 h-4" />
-                      Explain
-                    </span>
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      createAnnotation(
-                        'example',
-                        floatingToolbar.text,
-                        floatingToolbar.startOffset,
-                        floatingToolbar.endOffset,
-                      )
-                    }
-                    disabled={annotationLoading}
-                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                    title="AI example"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <IconBulb className="w-4 h-4" />
-                      Example
-                    </span>
-                  </Button>
+                      disabled={annotationLoading}
+                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                      title="AI explanation"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconSearch className="w-4 h-4" />
+                        <span className="hidden sm:inline">Explain</span>
+                      </span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        createAnnotation(
+                          'example',
+                          floatingToolbar.text,
+                          floatingToolbar.startOffset,
+                          floatingToolbar.endOffset,
+                        )
+                      }
+                      disabled={annotationLoading}
+                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                      title="AI example"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconBulb className="w-4 h-4" />
+                        <span className="hidden sm:inline">Example</span>
+                      </span>
+                    </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      runSelectionToolPreview(
-                        'discover',
-                        floatingToolbar.text,
-                        floatingToolbar.startOffset,
-                        floatingToolbar.endOffset,
-                      )
-                    }
-                    disabled={annotationLoading}
-                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                    title="Discover related topics/resources"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <IconGlobe className="w-4 h-4" />
-                      Discover
-                    </span>
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        runSelectionToolPreview(
+                          'discover',
+                          floatingToolbar.text,
+                          floatingToolbar.startOffset,
+                          floatingToolbar.endOffset,
+                        )
+                      }
+                      disabled={annotationLoading}
+                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                      title="Discover related topics/resources"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconGlobe className="w-4 h-4" />
+                        <span className="hidden sm:inline">Discover</span>
+                      </span>
+                    </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      runSelectionToolPreview(
-                        'illustrate',
-                        floatingToolbar.text,
-                        floatingToolbar.startOffset,
-                        floatingToolbar.endOffset,
-                      )
-                    }
-                    disabled={annotationLoading}
-                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                    title="Illustrate this selection"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <IconPalette className="w-4 h-4" />
-                      Illustrate
-                    </span>
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        runSelectionToolPreview(
+                          'illustrate',
+                          floatingToolbar.text,
+                          floatingToolbar.startOffset,
+                          floatingToolbar.endOffset,
+                        )
+                      }
+                      disabled={annotationLoading}
+                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                      title="Illustrate this selection"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconPalette className="w-4 h-4" />
+                        <span className="hidden sm:inline">Illustrate</span>
+                      </span>
+                    </Button>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      runSelectionToolPreview(
-                        'mark',
-                        floatingToolbar.text,
-                        floatingToolbar.startOffset,
-                        floatingToolbar.endOffset,
-                      )
-                    }
-                    disabled={annotationLoading}
-                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                    title="Add to key takeaways"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <IconBookmark className="w-4 h-4" />
-                      Mark
-                    </span>
-                  </Button>
-                  {annotationLoading && (
-                    <span className="text-xs px-1 inline-flex items-center gap-1">
-                      <IconSparkles className="w-3.5 h-3.5" />
-                      Loading
-                    </span>
-                  )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        runSelectionToolPreview(
+                          'dig_deeper',
+                          floatingToolbar.text,
+                          floatingToolbar.startOffset,
+                          floatingToolbar.endOffset,
+                        )
+                      }
+                      disabled={annotationLoading}
+                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                      title="Dig deeper on this selection"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconSparkles className="w-4 h-4" />
+                        <span className="hidden sm:inline">Dig Deeper</span>
+                      </span>
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        runSelectionToolPreview(
+                          'mark',
+                          floatingToolbar.text,
+                          floatingToolbar.startOffset,
+                          floatingToolbar.endOffset,
+                        )
+                      }
+                      disabled={annotationLoading}
+                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                      title="Add to key takeaways"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconBookmark className="w-4 h-4" />
+                        <span className="hidden sm:inline">Mark</span>
+                      </span>
+                    </Button>
+                    {annotationLoading && (
+                      <span className="text-xs px-1 inline-flex items-center gap-1 whitespace-nowrap">
+                        <IconSparkles className="w-3.5 h-3.5" />
+                        Loading
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1473,7 +1564,7 @@ export function LessonReader() {
                                 }
                                 className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white mb-2"
                               />
-                              <div className="flex gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <Button
                                   variant="primary"
                                   size="sm"
@@ -1624,7 +1715,7 @@ export function LessonReader() {
                     <IconScale className="w-5 h-5 text-accent" />
                     Concept Comparison
                   </h2>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -2278,7 +2369,7 @@ export function LessonReader() {
                     Generate Illustration
                   </span>
                 </h3>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <input
                     value={illustrationDesc}
                     onChange={(e) => setIllustrationDesc(e.target.value)}

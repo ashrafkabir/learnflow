@@ -33,6 +33,11 @@
   --shadow-modal: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
+/* Iter143: external route hardening — route /pricing to apps/web pricing page (prevents client-side 404) */
+a[data-link='pricing'][href='/pricing'] {
+  cursor: pointer;
+}
+
 /* Task 2: Unified design tokens as CSS custom properties */
 :root {
   --color-primary: #2563eb;
