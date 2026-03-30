@@ -591,7 +591,7 @@ export function LessonReader() {
         setFloatingToolbar({ x: 220, y: 140, text, startOffset, endOffset });
       },
       openTool: (
-        tool: 'discover' | 'illustrate' | 'mark',
+        tool: 'discover' | 'illustrate' | 'mark' | 'dig_deeper',
         text: string,
         startOffset = 0,
         endOffset = Math.max(1, (text || '').length),
@@ -606,6 +606,8 @@ export function LessonReader() {
       if (w.__learnflowE2E) delete w.__learnflowE2E;
     };
   }, []);
+
+  const [mobileToolsHintOpen, setMobileToolsHintOpen] = useState(false);
 
   const handleTextSelection = useCallback(() => {
     const sel = window.getSelection();
@@ -700,7 +702,7 @@ export function LessonReader() {
       const note = toolPreview.preview?.note || '';
       setAnnotationNoteText(note);
       await createAnnotation(
-        'note',
+        'dig_deeper',
         toolSelectedText,
         toolSelectedOffsets.start,
         toolSelectedOffsets.end,
@@ -722,7 +724,7 @@ export function LessonReader() {
   };
 
   const createAnnotation = async (
-    type: 'note' | 'explain' | 'example' | 'discover' | 'illustrate',
+    type: 'note' | 'explain' | 'example' | 'discover' | 'illustrate' | 'dig_deeper',
     selectedText: string,
     startOffset: number,
     endOffset: number,
@@ -733,7 +735,12 @@ export function LessonReader() {
       const body: any = { selectedText, startOffset, endOffset, type };
 
       // Selection tools can attach AI output as an annotation note.
-      if (type === 'note' || type === 'discover' || type === 'illustrate') {
+      if (
+        type === 'note' ||
+        type === 'discover' ||
+        type === 'illustrate' ||
+        type === 'dig_deeper'
+      ) {
         body.note = annotationNoteText || '';
       }
       const res = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/annotations`, {
@@ -903,7 +910,9 @@ export function LessonReader() {
               Lesson unavailable
             </h2>
             <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
-              {courseStatusMeta?.failureMessage || err?.message || 'Failed to load lesson.'}
+              {courseStatusMeta?.failureMessage ||
+                err?.message ||
+                'Something went wrong while loading this lesson.'}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="primary" onClick={() => setRefreshTick((t) => t + 1)}>
@@ -913,13 +922,16 @@ export function LessonReader() {
                 Back to course
               </Button>
             </div>
-            {err?.requestId && (
+            {err && (
               <details className="mt-4">
                 <summary className="cursor-pointer text-xs text-gray-600 dark:text-gray-300">
                   Details
                 </summary>
                 <pre className="mt-2 text-xs bg-gray-50 dark:bg-gray-800 rounded-xl p-3 overflow-auto">
-                  Request ID: {err.requestId}
+                  {err?.requestId ? `Request ID: ${err.requestId}\n` : ''}
+                  {err?.code ? `Code: ${err.code}\n` : ''}
+                  {err?.status ? `Status: ${err.status}\n` : ''}
+                  {err?.message ? `Message: ${err.message}\n` : ''}
                 </pre>
               </details>
             )}
@@ -1353,6 +1365,24 @@ export function LessonReader() {
                   </div>
                 </div>
               )}
+              {/* Mobile hint: make selection tools discoverable even before first selection */}
+              <div className="sm:hidden mb-3">
+                <button
+                  type="button"
+                  className="text-xs text-gray-600 dark:text-gray-300 underline underline-offset-2"
+                  onClick={() => setMobileToolsHintOpen((v) => !v)}
+                  aria-expanded={mobileToolsHintOpen}
+                >
+                  Tools: select text to open
+                </button>
+                {mobileToolsHintOpen ? (
+                  <div className="mt-2 text-xs text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-3">
+                    Select any text in the lesson to open the tools bar (Note, Explain, Example,
+                    Discover, Illustrate, Dig Deeper, Mark). Then tap “Attach” to save the result.
+                  </div>
+                ) : null}
+              </div>
+
               {/* Floating toolbar */}
               {floatingToolbar && (
                 <div
@@ -1981,7 +2011,10 @@ export function LessonReader() {
                             {Array.isArray(savedNote?.content?.keyTakeawaysExtras) &&
                             savedNote.content.keyTakeawaysExtras.length > 0 ? (
                               <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
-                                <p className="text-[11px] font-semibold text-gray-500 uppercase mb-2">
+                                <p
+                                  className="text-[11px] font-semibold text-gray-500 uppercase mb-2"
+                                  data-testid="marked-takeaways"
+                                >
                                   Your marked takeaways
                                 </p>
                                 {savedNote.content.keyTakeawaysExtras.map(
@@ -2003,7 +2036,7 @@ export function LessonReader() {
                     )}
 
                     {/* Concept Comparison (above suggested reads) */}
-                    {comparison && (
+                    {
                       <div className="rounded-xl border border-gray-200 dark:border-gray-800">
                         <button
                           type="button"
@@ -2032,9 +2065,14 @@ export function LessonReader() {
                               >
                                 <span className="inline-flex items-center gap-2">
                                   <IconRefresh className="w-4 h-4" />
-                                  Regenerate
+                                  {comparison ? 'Regenerate' : 'Generate'}
                                 </span>
                               </Button>
+                              {!comparison ? (
+                                <span className="text-[11px] text-gray-500">
+                                  Generate a side-by-side table from this lesson.
+                                </span>
+                              ) : null}
                             </div>
                             {comparingLoading ? (
                               <p className="text-xs text-gray-500 inline-flex items-center gap-2">
@@ -2094,7 +2132,7 @@ export function LessonReader() {
                           </div>
                         )}
                       </div>
-                    )}
+                    }
 
                     {/* Suggested reads */}
                     <div className="rounded-xl border border-gray-200 dark:border-gray-800">

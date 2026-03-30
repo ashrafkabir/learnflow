@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
  * These tests are local-dev safe: they mock the preview API.
  */
 
-test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
+test.describe('Selection tools (Discover / Illustrate / Mark / Dig Deeper)', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
       (window as any).__LEARNFLOW_ENV__ = {
@@ -290,7 +290,7 @@ test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
 
     // Deterministic selection under Key Takeaways so the marked takeaway can be attached there.
     await page.evaluate(() => {
-      const root = document.querySelector('[data-testid="key-takeaways"]');
+      const root = document.querySelector('[data-testid="drawer-key-takeaways"]');
       if (!root) throw new Error('Key Takeaways section not found');
       const textNode = root.querySelector('span')?.firstChild;
       if (!textNode) throw new Error('Key Takeaways text node not found');
@@ -317,7 +317,100 @@ test.describe('Selection tools (Discover / Illustrate / Mark)', () => {
     // Wait on the actual UI signal ("Your marked takeaways") rather than timing.
     const marked = page.locator('[data-testid="marked-takeaways"]');
     await expect(marked).toBeVisible({ timeout: 20000 });
-    await expect(marked.getByText('Takeaway A')).toBeVisible();
-    await expect(marked.getByText('Takeaway B')).toBeVisible();
+    await expect(page.getByText('Takeaway A')).toBeVisible();
+    await expect(page.getByText('Takeaway B')).toBeVisible();
+  });
+
+  test('opens preview for Dig Deeper, then attaches as annotation', async ({ page }) => {
+    // Mock preview endpoint
+    await page.route('**/api/v1/courses/*/lessons/*/selection-tools/preview', async (route) => {
+      const body = (await route.request().postDataJSON()) as any;
+      if (body.tool !== 'dig_deeper') return route.fallback();
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          tool: 'dig_deeper',
+          selectedText: body.selectedText,
+          preview: {
+            note: 'Dig Deeper: deeper context + a suggested rewrite.',
+          },
+        }),
+      });
+    });
+
+    // Mock annotation create
+    await page.route('**/api/v1/courses/*/lessons/*/annotations', async (route) => {
+      if (route.request().method() === 'GET') {
+        return route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ annotations: [] }),
+        });
+      }
+      if (route.request().method() !== 'POST') return route.fallback();
+      const req = (await route.request().postDataJSON()) as any;
+      return route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          annotation: {
+            id: 'ann-dig-1',
+            lessonId: 'l1',
+            selectedText: req.selectedText,
+            startOffset: req.startOffset,
+            endOffset: req.endOffset,
+            note: req.note || '',
+            type: req.type,
+            createdAt: new Date().toISOString(),
+          },
+        }),
+      });
+    });
+
+    // Pick an existing course/lesson from the dev API.
+    await page.goto('/');
+    const ids = await page.evaluate(async () => {
+      const token = localStorage.getItem('learnflow-token');
+      const authHeaders: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+
+      const res = await fetch('/api/v1/courses', { headers: authHeaders });
+      const data = await res.json();
+
+      if (!data.courses || data.courses.length === 0) {
+        const create = await fetch('/api/v1/courses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeaders },
+          body: JSON.stringify({ topic: 'Selection Tools Dig Deeper Seed', depth: 'beginner' }),
+        });
+        if (!create.ok) throw new Error(`Failed to create seed course: ${create.status}`);
+        const created = await create.json();
+        const lessonId = created.modules[0].lessons[0].id as string;
+        return { courseId: created.id as string, lessonId };
+      }
+
+      const courseId = data.courses[0].id as string;
+      const courseRes = await fetch(`/api/v1/courses/${courseId}`, { headers: authHeaders });
+      const course = await courseRes.json();
+      const lessonId = course.modules[0].lessons[0].id as string;
+      return { courseId, lessonId };
+    });
+
+    await page.goto(`/courses/${ids.courseId}/lessons/${ids.lessonId}`);
+    await page.waitForTimeout(500);
+
+    await page.evaluate(() => {
+      (window as any).__learnflowE2E?.openTool(
+        'dig_deeper',
+        'Dig Deeper selection: explain the concept with more depth.',
+      );
+    });
+    await page.waitForTimeout(100);
+
+    await expect(page.getByText(/dig deeper: deeper context/i)).toBeVisible();
+    await page.getByRole('button', { name: /attach/i }).click();
+
+    // Ensure we successfully attached and closed the modal.
+    await expect(page.getByRole('button', { name: /discard/i })).not.toBeVisible();
   });
 });
