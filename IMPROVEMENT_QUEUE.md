@@ -1,83 +1,156 @@
-# Improvement Queue — Iter146 (Planner)
+# Iter147 — IMPROVEMENT_QUEUE
 
-Status: DONE
+Status: **IN PROGRESS**
 
-Scope focus:
+Date: 2026-03-30
 
-- External accessibility: validate/document remote access (LAN + tunnel)
-- Verify LessonReader UX after Iter144/145 is still correct
+Owner: Builder (next iteration)
 
-## P0 (must fix)
+## Why Iter147
 
-1. **Fix Playwright LessonReader regressions: `Take Notes` label + right-rail testids**
-   - Current E2E failures: `iter134-lesson-reader-ux`, `iter135-lesson-reader-sources-rail`, `lesson-map`.
-   - Root cause: LessonReader redesign removed `aria-label="Take Notes"` and `[data-testid="lesson-right-rail"]`.
-   - Options:
-     - Update E2E selectors to new UI strings (e.g., `Open notes`) + new testids, OR
-     - Re-introduce compatibility hooks: add a hidden/accessible button with aria-label `Take Notes`, restore `data-testid="lesson-right-rail"` on the drawer container.
+Iter146 delivered heading-level **Improve / Dig Deeper** that can persist subsection updates + Ask-me overlay + structured preview parsing with embedded images/links.
 
-2. **Make API bind address explicit for remote access clarity**
-   - Client already binds `0.0.0.0:3001` via `vite.config.ts (host:true)`.
-   - API in `apps/api/src/index.ts` uses `server.listen(config.port)` (not explicit).
-   - Make it explicit (`'0.0.0.0'`) and update logging to state LAN usage.
+Iter147 focus (per request): **reassess spec vs implementation** + validate LessonReader UX from a user POV:
 
-3. **Ship user-facing remote access doc**
-   - Add `REMOTE_ACCESS.md` (or merge into `TROUBLESHOOTING.md`) covering:
-     - why `0.0.0.0` isn’t browseable
-     - LAN IP discovery
-     - cloudflared quick tunnel + URL rotation
+- Improve actually changes subsection + heading title
+- images render
+- links are real
+- selection remains stable
 
-## P1 (should do)
+This queue is **brutally honest**: it prioritizes user-visible correctness and spec alignment over “nice-to-haves”.
 
-4. **LessonReader: re-assert spec-required “action chips”**
-   - Spec/E2E expects: Mark Complete + Notes + Quiz + Ask.
-   - New drawer consolidates actions; ensure these actions are still easily discoverable (esp. first-time users).
+---
 
-5. **LessonReader: add stable test hooks for rails/drawer**
-   - Add `data-testid` for:
-     - lesson drawer container (right rail)
-     - actions section
-     - notes section open button
-     - sources section link list
+## What I verified (baseline)
 
-6. **Remote access: confirm `/ws` proxy works through tunnel**
-   - Provide a simple manual checklist:
-     - open tunneled URL
-     - send chat message
-     - confirm streaming works
+### Tests
 
-7. **Remote access: document firewall + Wi‑Fi isolation gotchas**
-   - Common failures: UFW closed ports, guest Wi‑Fi blocks peer access.
+- `npm test` (turbo) ✅
+- Playwright (grep iter136/137/138/146) ✅ (13/13 passed)
+  - `iter146-lesson-reader-illustrate-heading.spec.ts` (Improve → replace-subsection)
+  - `iter146-lesson-reader-dig-deeper-heading.spec.ts`
+  - `iter146-lesson-reader-dig-deeper-empty-body.spec.ts`
+  - `iter146-lesson-reader-ask-me-overlay.spec.ts`
 
-8. **Add a one-command “share” script**
-   - e.g., `npm run share` → runs `cloudflared tunnel --url http://localhost:3001` and prints URL.
+### Screenshots captured (for Iter147 handoff)
 
-## P2 (nice-to-have)
+- **Before/After Improve applied** (desktop + mobile) captured via headless harness:
+  - `learnflow/screenshots/iter147-improve/desktop/desktop-1280x800__before.png`
+  - `learnflow/screenshots/iter147-improve/desktop/desktop-1280x800__after.png`
+  - `learnflow/screenshots/iter147-improve/mobile/mobile-375x812__before.png`
+  - `learnflow/screenshots/iter147-improve/mobile/mobile-375x812__after.png`
 
-9. **API/base URL ergonomics for LAN**
-   - Consider a helper UI in Settings showing “Your LAN URL” (computed from `window.location.hostname`) and copy button.
+> Note: “After” is simulated DOM-apply (to show the visual delta in headless CI). E2E tests already verify the _real_ network call to `replace-subsection` includes `newHeading` + markdown with embedded image markdown.
 
-10. **Tighten docs taxonomy**
+---
 
-- Add `TROUBLESHOOTING.md` that links to `DEV_PORTS.md`, `REMOTE_ACCESS.md`, and common env vars.
+## Top gaps vs Product Spec (highest impact)
 
-11. **Add a smoke test for remote binding**
+These are the next 10–15 gaps that most materially diverge from **LearnFlow_Product_Spec.md** or create UX trust issues.
 
-- Node test that asserts Vite config sets `host:true` and API listen is explicit (if changed).
+### P0 — Must fix (correctness / trust / UX breaks)
 
-12. **Ensure lesson drawer is keyboard navigable**
+1. **Dig Deeper behavior is inconsistent across UX surfaces**
+   - Heading-level Dig Deeper persists changes (replace-subsection).
+   - Text-selection Dig Deeper attaches an annotation overlay (non-persistent) (`attachPreviewAsAnnotation()`), while Improve persists.
+   - This is confusing and violates user mental model.
+   - **Decision needed**: Dig Deeper should either (a) always persist, or (b) always be “preview/annotate” with an explicit “Apply” step.
 
-- Verify accordion buttons have correct roles/aria-expanded.
+2. **Selection stability after Apply** (Improve/Dig Deeper)
+   - After `replace-subsection`, LessonReader calls `fetchLesson()`.
+   - Risk: user loses selected subsection highlight, hover state, or scroll position; feels like nothing happened.
+   - Implement **optimistic UI patch** (update in-memory lesson markdown + subsection index mapping) then refresh in background.
 
-13. **Update spec compliance suite to track redesign**
+3. **Heading rename correctness and downstream indexing**
+   - Server supports `newHeading` replacement for the markdown heading line.
+   - Need to guarantee:
+     - the visible heading row updates immediately
+     - internal subsection lookup continues to work (no stale `heading` key)
+     - re-running Improve on the same section still targets the right section after rename
 
-- Align selectors/expectations with new LessonReader UI while keeping user-visible semantics.
+4. **Image rendering hardening** (remote images)
+   - Iter146 appends `![caption](url)` plus attribution blockquote.
+   - Need:
+     - max-width / responsive sizing in markdown renderer
+     - lazy-loading and broken-image fallback (alt + “image failed to load” UI)
+     - prevent layout shift (set max height or aspect box)
+     - sanitize URLs (http/https only is done; also block data: and javascript:)
 
-14. **Add screenshots for remote access docs**
+5. **Links must be “real” and safe**
+   - Improve appends “Further resources” links.
+   - Add lightweight server-side validation (URL parse + block localhost/private IPs) to uphold “no fake/unsafe links”.
+   - Client: render external links with `rel="noopener noreferrer"` and optional external icon.
 
-- Show `ip addr` and cloudflared log snippet with URL.
+### P1 — High value (spec alignment / learning flow quality)
 
-15. **Remove/clarify legacy `apps/api/src/server.ts`**
+6. **Restore spec-required lesson sections that were intentionally hidden (Iter144)**
+   Spec (§6.2) requires: Key Takeaways, Sources, Suggested Reads, Next Lesson Link, Next Steps, Quick Check.
+   - Today: “Next Steps + Quick Check intentionally not rendered (Iter144)”.
+   - Propose: reintroduce at least **Next Lesson** + **Quick Check** (even if collapsed) to meet the learning loop.
 
-- It binds 3002 with `devMode:true`, but isn’t used by standard dev.
-- Either delete, or label as legacy/test-only to avoid confusion.
+7. **Source drawer / attribution UX**
+   Spec expects an expandable “Source drawer” with clickable citations.
+   - Iter146 removed a Sources button from the drawer.
+   - Recommend restoring a drawer section for sources/citations with:
+     - credibility label + “why trusted” (already available in structured sources)
+     - “Accessed at” timestamp (export already normalizes this)
+
+8. **Improve/Dig Deeper should show a clear BEFORE/AFTER diff view**
+   - Prevents “did it change?” anxiety.
+   - Simple MVP: show a modal with old heading/content vs new heading/content + images/links list.
+
+9. **Undo / revert for Apply actions**
+   - Apply actions rewrite lesson content in DB.
+   - Add a revision trail (even 1-level undo) to mitigate accidental damage.
+
+10. **Toast-only confirmations are insufficient**
+
+- Replace “Subsection improved.” toast with inline confirmation anchored near the edited section.
+- Add “View change” / “Undo” buttons.
+
+### P2 — Medium (polish / performance / readiness)
+
+11. **Performance: avoid full lesson re-render and heavy parse on every small change**
+
+- Apply should patch the relevant subsection instead of reparsing entire markdown synchronously.
+
+12. **Markdown sanitizer / allowlist**
+
+- Improve/Dig Deeper inject markdown with images and links.
+- Ensure markdown renderer sanitizes HTML and blocks scriptable URLs.
+
+13. **Mobile affordance for heading actions**
+
+- Desktop relies on hover to reveal buttons.
+- Mobile needs explicit tap affordance (kebab menu on heading row).
+
+14. **Ask-me overlay memory + scoped context**
+
+- Overlay currently passes `history: askMessages...` but uses stale state (race risk) and may not include the latest user message.
+- Ensure last message is included and cap history length.
+
+15. **Spec gap: “course-research artifacts persisted” and auditability**
+
+- Spec §6.1 requires `course-artifacts/{courseId}/course-research.md` + structured JSON artifacts.
+- Current MVP pipeline is functional but doesn’t visibly surface an audit trail.
+- Add a “Research artifacts” debug panel per course (even if hidden behind admin/dev toggle).
+
+---
+
+## Suggested build order (tight loop)
+
+1. Fix Dig Deeper consistency + explicit Apply/Annotate split (P0-1)
+2. Add optimistic apply + selection stability + heading rename mapping (P0-2/3)
+3. Harden images + links (P0-4/5)
+4. Restore Next lesson + Quick check (P1-6)
+5. Add undo + diff UI (P1-8/9)
+
+---
+
+## References / files
+
+- Spec: `LearnFlow_Product_Spec.md` (§6.1–6.3, §5.2.4)
+- Iter146 log: `BUILD_LOG_ITER146.md`
+- LessonReader: `apps/client/src/screens/LessonReader.tsx`
+- Apply endpoint: `apps/api/src/routes/courses.ts` (`POST .../content/replace-subsection`)
+- Screenshot harness (Iter147): `scripts/iter147-improve-screenshots.mjs`

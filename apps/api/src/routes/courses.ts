@@ -2774,6 +2774,9 @@ const replaceSubsectionSchema = z.object({
     .min(1)
     .max(200)
     .transform((s) => s.trim()),
+  // Optional client-provided discriminator for stable matching when headings rename.
+  // If present, prefer matching the Nth (0-indexed) occurrence of the heading in the lesson.
+  occurrenceIndex: z.number().int().min(0).max(999).optional(),
   newHeading: z
     .string()
     .min(1)
@@ -2789,7 +2792,7 @@ router.post(
   (req: Request, res: Response) => {
     const courseId = String(req.params.id);
     const lessonId = String(req.params.lessonId);
-    const { heading, newHeading, newContentMarkdown } = req.body;
+    const { heading, occurrenceIndex, newHeading, newContentMarkdown } = req.body;
 
     const course = courses.get(courseId) || (dbCourses.getById(courseId) as any);
     if (!course) {
@@ -2831,12 +2834,26 @@ router.post(
       return String(m[2] || '').trim() === h;
     };
 
-    const startIdx = lines.findIndex((l) => isHeadingLine(l));
+    const occ = typeof occurrenceIndex === 'number' ? occurrenceIndex : null;
+
+    const findHeadingIndex = () => {
+      if (occ === null) return lines.findIndex((l) => isHeadingLine(l));
+      let seen = 0;
+      for (let i = 0; i < lines.length; i++) {
+        if (isHeadingLine(lines[i])) {
+          if (seen === occ) return i;
+          seen++;
+        }
+      }
+      return -1;
+    };
+
+    const startIdx = findHeadingIndex();
     if (startIdx < 0) {
       sendError(res, req, {
         status: 404,
         code: 'heading_not_found',
-        message: `Heading not found: ${h}`,
+        message: `Heading not found: ${h}${occ !== null ? ` (occurrenceIndex=${occ})` : ''}`,
       });
       return;
     }

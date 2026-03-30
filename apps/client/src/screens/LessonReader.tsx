@@ -60,7 +60,7 @@ interface Annotation {
   startOffset: number;
   endOffset: number;
   note: string;
-  type: 'note' | 'explain' | 'example' | 'discover' | 'illustrate';
+  type: 'note' | 'explain' | 'example' | 'discover' | 'illustrate' | 'dig_deeper';
   createdAt: string;
 }
 
@@ -75,6 +75,60 @@ interface Comparison {
   dimensions: string[];
   cells: string[][];
   summary: string;
+}
+
+// Patch lesson markdown by replacing a subsection under a heading.
+// Best-effort: matches `##`/`###` heading lines. If occurrenceIndex is provided,
+// matches that Nth occurrence of the heading.
+function patchLessonSubsectionMarkdown(
+  content: string,
+  args: {
+    heading: string;
+    occurrenceIndex?: number;
+    newHeading?: string;
+    newContentMarkdown: string;
+  },
+) {
+  const lines = String(content || '').split('\n');
+  const h = String(args.heading || '').trim();
+  const occ = typeof args.occurrenceIndex === 'number' ? args.occurrenceIndex : null;
+
+  const isHeadingLine = (line: string) => {
+    const m = line.match(/^(#{2,3})\s+(.*)$/);
+    if (!m) return false;
+    return String(m[2] || '').trim() === h;
+  };
+
+  const findHeadingIndex = () => {
+    if (occ === null) return lines.findIndex((l) => isHeadingLine(l));
+    let seen = 0;
+    for (let i = 0; i < lines.length; i++) {
+      if (isHeadingLine(lines[i])) {
+        if (seen === occ) return i;
+        seen++;
+      }
+    }
+    return -1;
+  };
+
+  const startIdx = findHeadingIndex();
+  if (startIdx < 0) return content;
+
+  let endIdx = lines.length;
+  for (let i = startIdx + 1; i < lines.length; i++) {
+    if (/^#{2,3}\s+/.test(lines[i])) {
+      endIdx = i;
+      break;
+    }
+  }
+
+  const headingLine = args.newHeading
+    ? lines[startIdx].replace(/^(#{2,3})\s+.*$/, `$1 ${args.newHeading}`)
+    : lines[startIdx];
+
+  const newBlockLines = [headingLine, '', String(args.newContentMarkdown).trim(), ''];
+  const updatedLines = [...lines.slice(0, startIdx), ...newBlockLines, ...lines.slice(endIdx)];
+  return updatedLines.join('\n').replace(/\n{4,}/g, '\n\n\n');
 }
 
 // Parse lesson content into structured sections
@@ -177,7 +231,7 @@ export function LessonReader() {
   const fromCourseHref = String((location.state as any)?.from || '');
   const breadcrumbCourseTitle = String((location.state as any)?.courseTitle || '');
   const breadcrumbLessonTitle = String((location.state as any)?.lessonTitle || '');
-  const { state, fetchLesson, completeLesson, generateQuiz, apiGet } = useApp();
+  const { state, dispatch, fetchLesson, completeLesson, generateQuiz, apiGet } = useApp();
   const [loading, setLoading] = useState(false);
   const [statusLoading, setStatusLoading] = useState(false);
   const [statusError, setStatusError] = useState<null | { message: string; requestId?: string }>(
@@ -651,15 +705,36 @@ export function LessonReader() {
 
       const replace = await apiPost(
         `/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`,
-        { heading: sub.heading, newHeading: newTitle, newContentMarkdown },
+        {
+          heading: sub.heading,
+          occurrenceIndex: sub.globalIndex,
+          newHeading: newTitle,
+          newContentMarkdown,
+        },
       );
       if (!replace?.ok) throw new Error('Failed to replace subsection');
 
+      // Optimistic patch so the user sees immediate change.
       try {
-        await fetchLesson(courseId, lessonId);
+        const updated = patchLessonSubsectionMarkdown(lesson?.content || '', {
+          heading: sub.heading,
+          occurrenceIndex: sub.globalIndex,
+          newHeading: newTitle,
+          newContentMarkdown,
+        });
+        dispatch({ type: 'SET_ACTIVE_LESSON', lesson: { ...(lesson as any), content: updated } });
+        // Keep selection stable across rename.
+        setSelectedSubsection({
+          ...sub,
+          heading: newTitle || sub.heading,
+          bodyText: newContentMarkdown,
+        });
       } catch {
-        // ignore
+        // best-effort
       }
+
+      // Refresh in background for canonical content.
+      void fetchLesson(courseId, lessonId);
 
       toast('Subsection improved.', 'success');
     } catch (err: any) {
@@ -758,18 +833,27 @@ export function LessonReader() {
 
       const replace = await apiPost(
         `/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`,
-        { heading: sub.heading, newContentMarkdown: proposed },
+        { heading: sub.heading, occurrenceIndex: sub.globalIndex, newContentMarkdown: proposed },
       );
       if (!replace?.ok) {
         throw new Error('Failed to replace subsection');
       }
 
-      // Refresh lesson in-app.
+      // Optimistic patch so the user sees immediate change.
       try {
-        await fetchLesson(courseId, lessonId);
+        const updated = patchLessonSubsectionMarkdown(lesson?.content || '', {
+          heading: sub.heading,
+          occurrenceIndex: sub.globalIndex,
+          newContentMarkdown: proposed,
+        });
+        dispatch({ type: 'SET_ACTIVE_LESSON', lesson: { ...(lesson as any), content: updated } });
+        setSelectedSubsection({ ...sub, bodyText: proposed });
       } catch {
-        // best-effort; current render will still show previous content until refresh
+        // best-effort
       }
+
+      // Refresh in background for canonical content.
+      void fetchLesson(courseId, lessonId);
 
       toast('Subsection updated from Dig Deeper.', 'success');
     } catch (err: any) {
@@ -968,28 +1052,78 @@ export function LessonReader() {
       } catch {
         toast('Could not refresh notes after applying takeaways.', 'error');
       }
-    } else if (tool === 'dig_deeper') {
-      // Dig Deeper applies a proposed rewrite as a reversible annotation overlay.
-      const note = toolPreview.preview?.note || '';
-      setAnnotationNoteText(note);
-      await createAnnotation(
-        'dig_deeper',
-        toolSelectedText,
-        toolSelectedOffsets.start,
-        toolSelectedOffsets.end,
-      );
-      toast('Dig Deeper attached as an annotation. You can discard it anytime.', 'success');
-    } else {
-      // Discover/Illustrate attach as an annotation note.
-      const note = toolPreview.preview?.note || '';
-      setAnnotationNoteText(note);
-      await createAnnotation(
-        tool,
-        toolSelectedText,
-        toolSelectedOffsets.start,
-        toolSelectedOffsets.end,
-      );
+      setToolPreviewOpen(false);
+      return;
     }
+
+    if (tool === 'dig_deeper') {
+      // Iter147: selection-level Dig Deeper should persist the change (same mental model as heading-level).
+      // If we can't confidently target a subsection, fall back to attaching an annotation.
+      const proposed = String(
+        toolPreview.preview?.markdown ||
+          toolPreview.preview?.newContentMarkdown ||
+          toolPreview.preview?.proposed ||
+          toolPreview.preview?.note ||
+          '',
+      ).trim();
+
+      const target = selectedSubsection;
+      if (!courseId || !lessonId || !target?.heading) {
+        setAnnotationNoteText(toolPreview.preview?.note || proposed);
+        await createAnnotation(
+          'dig_deeper',
+          toolSelectedText,
+          toolSelectedOffsets.start,
+          toolSelectedOffsets.end,
+        );
+        toast('Dig Deeper saved as an annotation (no section selected).', 'success');
+        setToolPreviewOpen(false);
+        return;
+      }
+
+      if (!proposed) {
+        toast('No proposed content to apply.', 'error');
+        setToolPreviewOpen(false);
+        return;
+      }
+
+      await apiPost(`/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`, {
+        heading: target.heading,
+        occurrenceIndex: target.globalIndex,
+        newContentMarkdown: proposed,
+      });
+
+      // Update local selection body for perceived immediacy; then refetch best-effort.
+      setSelectedSubsection({ ...target, bodyText: proposed });
+      // Patch the global lesson content so the user sees immediate change (no confusing refresh).
+      // Then refresh in the background for canonical state.
+      try {
+        const updated = patchLessonSubsectionMarkdown(lesson?.content || '', {
+          heading: target.heading,
+          occurrenceIndex: target.globalIndex,
+          newHeading: undefined,
+          newContentMarkdown: proposed,
+        });
+        dispatch({ type: 'SET_ACTIVE_LESSON', lesson: { ...(lesson as any), content: updated } });
+      } catch {
+        // best-effort; fetch will still reconcile
+      }
+      void fetchLesson(courseId, lessonId);
+
+      toast('Subsection updated from Dig Deeper.', 'success');
+      setToolPreviewOpen(false);
+      return;
+    }
+
+    // Discover/Illustrate attach as an annotation note.
+    const note = toolPreview.preview?.note || '';
+    setAnnotationNoteText(note);
+    await createAnnotation(
+      tool,
+      toolSelectedText,
+      toolSelectedOffsets.start,
+      toolSelectedOffsets.end,
+    );
 
     setToolPreviewOpen(false);
   };
@@ -1227,6 +1361,10 @@ export function LessonReader() {
   }
 
   const sections = parseStructuredContent(lesson.content);
+
+  // Used to assign stable occurrenceIndex for heading/subsection actions.
+  // This resets each render so it remains aligned with the currently rendered markdown.
+  let subsectionCounter = 0;
 
   const renderLine = (line: string, key: number) => {
     if (line.startsWith('## '))
@@ -1471,7 +1609,7 @@ export function LessonReader() {
                                   className="underline"
                                   href={sectionIllustrations[0].sourcePageUrl}
                                   target="_blank"
-                                  rel="noreferrer"
+                                  rel="noopener noreferrer"
                                 >
                                   Source
                                 </a>
@@ -1779,7 +1917,9 @@ export function LessonReader() {
                     [];
                   let currentHeading = '';
                   let currentLines: string[] = [];
-                  let sIdx = contentIdx * 100;
+                  // globalIndex is used as a stable discriminator for replace-subsection calls.
+                  // Use a single counter across content blocks to keep occurrenceIndex stable.
+                  let sIdx = subsectionCounter;
                   for (const line of lines) {
                     if (line.startsWith('### ') || line.startsWith('## ')) {
                       // Only emit a subsection if it has meaningful content.
@@ -1812,6 +1952,8 @@ export function LessonReader() {
                       });
                     }
                   }
+
+                  subsectionCounter = sIdx;
 
                   return (
                     <div
@@ -1898,8 +2040,14 @@ export function LessonReader() {
                                   src={ill.imageUrl}
                                   alt={ill.prompt}
                                   className="w-full max-h-96 object-contain"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const el = e.currentTarget as HTMLImageElement;
+                                    el.style.display = 'none';
+                                  }}
                                 />
                                 <div className="p-2">
+                                  <noscript />
                                   <div className="flex items-center justify-between">
                                     <p className="text-xs text-gray-500 italic">{ill.prompt}</p>
                                     <Button
@@ -1923,7 +2071,7 @@ export function LessonReader() {
                                             className="underline"
                                             href={ill.sourcePageUrl}
                                             target="_blank"
-                                            rel="noreferrer"
+                                            rel="noopener noreferrer"
                                           >
                                             Source
                                           </a>
