@@ -61,7 +61,9 @@ Key implemented endpoints include:
 
 ### Search — `/search`
 
-- Search endpoints backing pipeline/research (includes provider switching and Tavily support if configured)
+- Search endpoints backing pipeline/research.
+- **MVP constraint:** LearnFlow’s MVP research path is **OpenAI-only** (OpenAI Web Search / extraction). No Tavily/Firecrawl key configuration is exposed in the client onboarding, and agents code disables Tavily usage.
+  - See: `apps/api/src/routes/search.ts`, `apps/api/src/routes/pipeline.ts`.
 
 ### Pipeline — `/pipeline`
 

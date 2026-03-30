@@ -21,6 +21,7 @@ async function axeScan(page: any, label: string) {
     critical,
     `axe critical violations on ${label}: ${critical.map((v: any) => v.id).join(', ')}`,
   ).toEqual([]);
+
 }
 
 test.describe('Accessibility smoke (axe)', () => {
@@ -38,6 +39,18 @@ test.describe('Accessibility smoke (axe)', () => {
     await page.goto('/dashboard');
     await page.waitForSelector('[data-screen="dashboard"]');
     await axeScan(page, 'dashboard');
+  });
+
+  test('Conversation has no serious/critical violations', async ({ page }) => {
+    await page.goto('/conversation');
+    await page.waitForSelector('[data-screen="conversation"]');
+    await axeScan(page, 'conversation');
+  });
+
+  test('CourseView has no serious/critical violations', async ({ page }) => {
+    await page.goto('/courses/c-1');
+    await page.waitForSelector('[data-screen="course-view"]');
+    await axeScan(page, 'course-view');
   });
 
   test('LessonReader has no serious/critical violations', async ({ page }) => {

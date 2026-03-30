@@ -32,7 +32,6 @@ const SOURCE_LABELS: Array<[string, string]> = [
   ['smashingmag', 'Smashing Magazine'],
   ['coursera', 'Coursera'],
   ['baiduscholar', 'Baidu Scholar'],
-  ['tavily', 'Tavily'],
 ];
 
 function parseLines(text: string): string[] {

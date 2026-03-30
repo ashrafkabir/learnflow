@@ -1,6 +1,32 @@
 import OpenAI from 'openai';
 import type { FirecrawlSource } from './firecrawl-provider.js';
-import { searchTopicTrending } from './web-search-provider.js';
+import { searchAndExtractTopic } from './openai-websearch-provider.js';
+
+function normalizeToFirecrawlSources(input: any[]): FirecrawlSource[] {
+  return (input || []).map((s: any) => {
+    const url = String(s?.url || '');
+    const title = String(s?.title || '');
+    const content = String(s?.content || s?.extractedText || s?.snippet || '');
+    const domain = String(s?.domain || s?.publisher || '');
+
+    return {
+      url,
+      title,
+      author: s?.author,
+      publishDate: s?.publishDate,
+      domain,
+      source: String(s?.source || 'openai_web_search'),
+      content,
+      wordCount:
+        typeof s?.wordCount === 'number'
+          ? s.wordCount
+          : content.split(/\s+/).filter(Boolean).length,
+      credibilityScore: typeof s?.credibilityScore === 'number' ? s.credibilityScore : 0.7,
+      recencyScore: typeof s?.recencyScore === 'number' ? s.recencyScore : 0.6,
+      relevanceScore: typeof s?.relevanceScore === 'number' ? s.relevanceScore : 0.7,
+    } as FirecrawlSource;
+  });
+}
 
 export type SuggestedMindmapNode = {
   id: string;
@@ -141,8 +167,8 @@ export async function generateSuggestedMindmapNodes(
   const trimmed = String(topic || '').trim();
   if (!trimmed) return { suggestions: [], sources: [] };
 
-  const sources = await searchTopicTrending(trimmed);
-
+  // BYOAI-only: we can only produce suggestions if a client is provided.
+  // In the app, the API layer should provide an OpenAI client configured with a user key.
   const apiKey = process.env.OPENAI_API_KEY;
   const looksMissingOrPlaceholder =
     !apiKey ||
@@ -152,10 +178,20 @@ export async function generateSuggestedMindmapNodes(
     apiKey.toLowerCase().includes('changeme');
 
   if (looksMissingOrPlaceholder) {
-    return { suggestions: heuristicAdjacentTopics(trimmed, sources).slice(0, max), sources };
+    return { suggestions: heuristicAdjacentTopics(trimmed, []).slice(0, max), sources: [] };
   }
 
   const openai = new OpenAI({ apiKey: apiKey.trim() });
+
+  const { sources: normalized } = await searchAndExtractTopic({
+    topic: trimmed,
+    openai,
+    maxResults: 8,
+    maxPagesToExtract: 0,
+    perPageTimeoutMs: 8_000,
+  });
+  const sources = normalizeToFirecrawlSources(normalized);
+
   const evidence = sources.slice(0, 12).map((s) => ({
     title: s.title,
     url: s.url,

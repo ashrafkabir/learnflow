@@ -376,7 +376,7 @@ export function Conversation() {
       const prompts: Record<string, string> = {
         notes: `Take detailed notes on the current lesson "${lessonTitle}"`,
         quiz: `Quiz me on the lesson "${lessonTitle}"`,
-        question: `I have a question about the lesson "${lessonTitle}": `,
+        ask: `I have a question about the lesson "${lessonTitle}": `,
       };
       if (prompts[action]) setInput(prompts[action]);
     }
@@ -399,6 +399,19 @@ export function Conversation() {
   const [mindmapOpen, setMindmapOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Iter152 Task 10: keep a simple trace of agent routing + execution events.
+  const [agentTrace, setAgentTrace] = useState<
+    Array<{
+      id: string;
+      agentName: string;
+      kind?: 'routing' | 'agent_call' | 'pipeline_stage';
+      startedAt?: string;
+      durationMs?: number;
+      taskSummary?: string;
+      resultSummary?: string;
+    }>
+  >([]);
+
   // WebSocket streaming
   const { connected: wsConnected, send: wsSend } = useWebSocket(
     (evt) => {
@@ -409,13 +422,27 @@ export function Conversation() {
             | 'agent_call'
             | 'pipeline_stage'
             | undefined;
+          const agentName = String((evt.data as any)?.agent_name || 'orchestrator');
+          const startedAt = (evt.data as any)?.startedAt as string | undefined;
+          const taskSummary = (evt.data as any)?.task_summary as string | undefined;
+
           setActiveAgentKind(kind || null);
-          setActiveAgentStartedAt((evt.data as any)?.startedAt || null);
+          setActiveAgentStartedAt(startedAt || null);
 
           // Keep a simple agent key for the existing icon/label map.
-          const rawName = String((evt.data as any)?.agent_name || 'orchestrator');
-          const key = rawName.toLowerCase().split(' ')[0];
+          const key = agentName.toLowerCase().split(' ')[0];
           setActiveAgent(key || 'orchestrator');
+
+          setAgentTrace((prev) => [
+            ...prev,
+            {
+              id: `spawned-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              agentName,
+              kind,
+              startedAt,
+              taskSummary,
+            },
+          ]);
           break;
         }
         case 'response.start':
@@ -503,11 +530,24 @@ export function Conversation() {
             | 'agent_call'
             | 'pipeline_stage'
             | undefined;
-          const durationMs = (evt.data as any)?.durationMs;
+          const durationMs = (evt.data as any)?.durationMs as number | undefined;
+          const agentName = String((evt.data as any)?.agent_name || 'orchestrator');
+          const resultSummary = (evt.data as any)?.result_summary as string | undefined;
 
           setActiveAgent(null);
           setActiveAgentKind(null);
           setActiveAgentStartedAt(null);
+
+          setAgentTrace((prev) => [
+            ...prev,
+            {
+              id: `complete-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              agentName,
+              kind,
+              durationMs,
+              resultSummary,
+            },
+          ]);
 
           // If only routing happened, avoid a misleading “agent completed” toast.
           if (kind === 'routing') break;
@@ -616,6 +656,7 @@ export function Conversation() {
     const msg = text || input.trim();
     if (!msg || state.loading.chat) return;
     setInput('');
+    setAgentTrace([]);
 
     const lower = msg.toLowerCase();
     if (lower.includes('note')) setActiveAgent('notes');
@@ -734,6 +775,67 @@ export function Conversation() {
         aria-label="Messages"
         className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4"
       >
+        {/* Iter152 Task 10: agent transparency trace */}
+        {agentTrace.length > 0 && (
+          <div
+            data-component="agent-trace"
+            data-testid="agent-trace"
+            className="mb-4 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white/70 dark:bg-gray-900/70 backdrop-blur px-4 py-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-900 dark:text-white">
+                  Agent trace
+                </p>
+                <p className="text-[11px] text-gray-600 dark:text-gray-300">
+                  Shows which agent was selected and what it did (best-effort).
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="border border-gray-200 dark:border-gray-700"
+                onClick={() => setAgentTrace([])}
+              >
+                Clear
+              </Button>
+            </div>
+
+            <ul className="mt-3 space-y-2">
+              {agentTrace.slice(-8).map((t) => (
+                <li
+                  key={t.id}
+                  className="text-[11px] leading-snug text-gray-700 dark:text-gray-200"
+                >
+                  <span className="font-semibold">{t.agentName}</span>
+                  {t.kind ? <span className="text-gray-500"> · {t.kind}</span> : null}
+                  {t.startedAt ? (
+                    <span className="text-gray-500">
+                      {' '}
+                      · started {new Date(t.startedAt).toLocaleTimeString([], {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
+                  ) : null}
+                  {typeof t.durationMs === 'number' ? (
+                    <span className="text-gray-500"> · {(t.durationMs / 1000).toFixed(1)}s</span>
+                  ) : null}
+                  {t.taskSummary ? (
+                    <div className="mt-0.5 text-gray-600 dark:text-gray-300">
+                      {t.taskSummary}
+                    </div>
+                  ) : null}
+                  {t.resultSummary ? (
+                    <div className="mt-0.5 text-gray-600 dark:text-gray-300">
+                      {t.resultSummary}
+                    </div>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {state.chat.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 space-y-6">
             <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">

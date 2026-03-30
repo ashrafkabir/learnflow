@@ -5,7 +5,7 @@ import { OnboardingProgress } from '../../components/OnboardingProgress.js';
 import { Button } from '../../components/Button.js';
 import { useToast } from '../../components/Toast.js';
 
-type KeyProvider = 'openai' | 'anthropic' | 'google' | 'mistral' | 'groq' | 'ollama' | 'tavily';
+type KeyProvider = 'openai' | 'anthropic' | 'google' | 'mistral' | 'groq' | 'ollama';
 
 export function OnboardingApiKeys() {
   const nav = useNavigate();
@@ -83,7 +83,7 @@ export function OnboardingApiKeys() {
           Connect Your AI Provider
         </h1>
         <p className="text-gray-500 dark:text-gray-300 mb-8">
-          Bring your own API key from OpenAI, Anthropic, Google, Mistral, Groq, Tavily, or Ollama.
+          Bring your own API key from OpenAI, Anthropic, Google, Mistral, Groq, or Ollama.
           Your key is encrypted and never shared.
         </p>
 
@@ -102,7 +102,6 @@ export function OnboardingApiKeys() {
               <option value="google">Google</option>
               <option value="mistral">Mistral</option>
               <option value="groq">Groq</option>
-              <option value="tavily">Tavily (search)</option>
               <option value="ollama">Ollama (local)</option>
             </select>
           </label>
@@ -123,9 +122,7 @@ export function OnboardingApiKeys() {
                     ? 'AI...'
                     : provider === 'groq'
                       ? 'gsk_...'
-                      : provider === 'tavily'
-                        ? 'tvly_...'
-                        : provider === 'ollama'
+                      : provider === 'ollama'
                           ? 'optional (local)'
                           : provider === 'mistral'
                             ? 'mistral key...'

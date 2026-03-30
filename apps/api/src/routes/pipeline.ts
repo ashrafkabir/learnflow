@@ -20,6 +20,7 @@ import {
   selectFurtherReadingCards,
   formatFurtherReadingBlock,
 } from '../utils/sourceCards.js';
+import { unwrapFencedMarkdown } from '../utils/markdownSanitizer.js';
 
 const router = Router();
 
@@ -63,6 +64,7 @@ export interface QualityResult {
     takeaways: { pass: boolean; count: number; min: number };
     sources: { pass: boolean; count: number; min: number };
     readability: { pass: boolean; score: number };
+    estimatedTime?: { pass: boolean; minutes: number; max: number };
   };
   overallPass: boolean;
 }
@@ -563,7 +565,10 @@ async function runAddTopicPipeline(pipelineId: string) {
   let crawledSources: FirecrawlSource[] = [];
 
   // In test mode, keep pipeline offline + deterministic.
-  const testMode = process.env.NODE_ENV === 'test';
+  // Some tests intentionally exercise OpenAI auth logging; allow opting-in to real OpenAI codepaths
+  // while still mocking fetch for deterministic behavior.
+  const testMode =
+    process.env.NODE_ENV === 'test' && String(process.env.PIPELINE_TEST_ALLOW_OPENAI || '') !== '1';
 
   for (let i = 0; i < threads.length; i++) {
     threads[i].status = 'crawling';
@@ -606,8 +611,19 @@ async function runAddTopicPipeline(pipelineId: string) {
       appendLog(p, 'info', `(test) using deterministic sources: ${crawledSources.length}`);
     } else {
       // OpenAI-only search: use OpenAI web_search + page extraction.
+      const { client: openaiForResearch } = getOpenAIForRequest({
+        userId: (p as any).userId || 'anonymous',
+        tier: (p as any).tier || 'free',
+      });
+      if (!openaiForResearch) {
+        throw new Error(
+          'openai_unavailable: Add your OpenAI API key in Settings → API Keys (BYOAI required) to run the pipeline.',
+        );
+      }
+
       const extracted = await searchAndExtractTopic({
         topic,
+        openai: openaiForResearch,
         maxResults: 12,
         perPageTimeoutMs: 12_000,
       } as any);
@@ -824,7 +840,9 @@ async function runPipeline(pipelineId: string) {
       });
     }
 
-    const testMode = process.env.NODE_ENV === 'test' || !!process.env.VITEST;
+    const testMode =
+      (process.env.NODE_ENV === 'test' || !!process.env.VITEST) &&
+      String(process.env.PIPELINE_TEST_ALLOW_OPENAI || '') !== '1';
 
     // OpenAI-only Phase 1: single research pass via OpenAI web_search.
     // In test mode, keep offline + deterministic.
@@ -862,8 +880,20 @@ async function runPipeline(pipelineId: string) {
       appendLog(p, 'info', `(test) using deterministic sources: ${crawledSources.length}`);
     } else {
       appendLog(p, 'info', `openai_web_search:course topic="${topic}"`);
+
+      const { client: openaiForResearch } = getOpenAIForRequest({
+        userId: (p as any).userId || 'anonymous',
+        tier: (p as any).tier || 'free',
+      });
+      if (!openaiForResearch) {
+        throw new Error(
+          'openai_unavailable: Add your OpenAI API key in Settings → API Keys (BYOAI required) to run the pipeline.',
+        );
+      }
+
       const extractedCourse = await searchAndExtractTopic({
         topic,
+        openai: openaiForResearch,
         maxResults: 12,
         perPageTimeoutMs: 12_000,
         // Log raw web_search req/resp into pipeline logs + disk artifacts.
@@ -932,7 +962,7 @@ async function runPipeline(pipelineId: string) {
     // Persist the Phase 1 research bundle (sources + extracted markdown + images manifest)
     // so later stages can run without re-scraping.
     const { client: openai } = getOpenAIForRequest({
-      userId: (p as any).userId || 'test-user-1',
+      userId: (p as any).userId || 'anonymous',
       tier: (p as any).tier || 'pro',
     });
 
@@ -940,19 +970,10 @@ async function runPipeline(pipelineId: string) {
     let modules: TopicModule[] = [];
 
     try {
-      // In test mode, ensure a Tavily auth error is emitted (this is a regression guard).
-      if (process.env.NODE_ENV === 'test' || !!process.env.VITEST) {
-        logAuthIssue(
-          p.id,
-          'Tavily',
-          401,
-          'Unauthorized: missing or invalid API key.',
-          'TAVILY_API_KEY',
-        );
-      }
+      // OpenAI-only research (MVP): no external search providers.
 
       const { client: openaiForResearch } = getOpenAIForRequest({
-        userId: (p as any).userId || 'test-user-1',
+        userId: (p as any).userId || 'anonymous',
         tier: (p as any).tier || 'pro',
       });
 
@@ -1052,7 +1073,10 @@ async function runPipeline(pipelineId: string) {
           ],
         };
 
-        if (!openai) throw new Error('openai_unavailable');
+        if (!openai)
+          throw new Error(
+            'openai_unavailable: Set your OpenAI API key in Settings → API Keys (BYOAI required).',
+          );
         const lessonplanResp = await openai.chat.completions.create(lessonplanReq as any);
 
         await logOpenAIRequestResponse({
@@ -1068,10 +1092,15 @@ async function runPipeline(pipelineId: string) {
           (lessonplanResp as any)?.output_text ||
           '';
 
+        const sanitizedLessonPlanMd = unwrapFencedMarkdown(lessonPlanMd);
+
         // Heartbeat so long-running builds don't stall while LLM generates.
         updatePipeline(p, { updatedAt: new Date().toISOString() });
 
-        const outPath = await writeLessonPlanMarkdown(`course-${p.courseId || p.id}`, lessonPlanMd);
+        const outPath = await writeLessonPlanMarkdown(
+          `course-${p.courseId || p.id}`,
+          sanitizedLessonPlanMd,
+        );
         appendLog(p, 'info', `artifacts:lessonplan.md written path=${outPath}`);
       } catch (err: any) {
         const msg = safeErrorMessage(err);
@@ -1148,7 +1177,10 @@ async function runPipeline(pipelineId: string) {
         ],
       };
 
-      if (!openai) throw new Error('openai_unavailable');
+      if (!openai)
+        throw new Error(
+          'openai_unavailable: Set your OpenAI API key in Settings → API Keys (BYOAI required).',
+        );
       const syllabusResp = await openai.chat.completions.create(syllabusReq as any);
       await logOpenAIRequestResponse({
         p,
@@ -1346,12 +1378,7 @@ async function runPipeline(pipelineId: string) {
             const statusCode = extractStatusCode(err);
             const msg = safeErrorMessage(err);
             const provider = String(err?.provider || 'web_search');
-            const envVar =
-              provider === 'tavily'
-                ? 'TAVILY_API_KEY'
-                : provider === 'openai'
-                  ? 'OPENAI_API_KEY'
-                  : undefined;
+            const envVar = provider === 'openai' ? 'OPENAI_API_KEY' : undefined;
             logAuthIssue(p.id, provider, statusCode, msg, envVar);
 
             console.warn(
@@ -1615,13 +1642,37 @@ async function runPipeline(pipelineId: string) {
       }
     }
 
+    // Ensure each lesson (except last) includes a "Next lesson" link for spec compliance.
+    // This keeps navigation present even if UI changes.
+    for (let i = 0; i < allLessons.length; i++) {
+      const lesson = allLessons[i];
+      const next = i < allLessons.length - 1 ? allLessons[i + 1] : null;
+      if (!next) continue;
+      const link = `/courses/${p.courseId}/lessons/${next.id}`;
+      const block = `\n\n---\n\n## Next lesson\n[Next: ${next.title}](${link})\n`;
+      if (!String(lesson.content || '').toLowerCase().includes('## next lesson')) {
+        lesson.content = `${String(lesson.content || '').trim()}${block}`;
+        // best-effort update word count after patch
+        lesson.wordCount = String(lesson.content).split(/\s+/).filter((w) => w).length;
+      }
+    }
+
     const synthesisSummary = `Generated ${allLessons.length} lessons across ${modules.length} modules using ${uniqueSources.length} primary sources. Key themes: ${themes.slice(0, 5).join(', ') || 'N/A'}. (Synthesis is best-effort; timeouts fall back to snippet-based drafts.)`;
     updatePipeline(p, { progress: 82, synthesisSummary });
 
     // ── STAGE 4: Quality Check ─────────────────────────────────────────────
     updatePipeline(p, { stage: 'quality_check', progress: 85 });
 
-    const qualityResults: QualityResult[] = allLessons.map((lesson) => {
+    type ValidationIssue = {
+      lessonId: string;
+      lessonTitle: string;
+      kind: 'missing_sources' | 'bad_citations' | 'missing_next_lesson';
+      message: string;
+    };
+
+    const validationIssues: ValidationIssue[] = [];
+
+    const qualityResults: QualityResult[] = allLessons.map((lesson, idx) => {
       const objectivesMatch = lesson.content.match(/^- .+$/gm);
       const takeawaysMatch = lesson.content.match(/^\d+\. .+$/gm);
       const sourcesMatch = lesson.content.match(/^\[\d+\]/gm);
@@ -1629,6 +1680,70 @@ async function runPipeline(pipelineId: string) {
         100,
         Math.max(40, 60 + (lesson.wordCount > 500 ? 20 : 0) + (objectivesMatch ? 10 : 0)),
       );
+
+      // Spec-aligned validation basics (Iter152 Task 3)
+      // 1) Ensure Sources exist
+      const hasSourcesBlock = /(^|\n)##\s+sources\b/i.test(lesson.content) || (sourcesMatch?.length || 0) >= 1;
+      if (!hasSourcesBlock) {
+        validationIssues.push({
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+          kind: 'missing_sources',
+          message: 'Missing Sources section',
+        });
+      }
+
+      // 2) Each citation [n] should map to a URL in the Sources section (deterministic).
+      const citations = Array.from(String(lesson.content || '').matchAll(/\[(\d+)\]/g))
+        .map((m) => Number(m[1]))
+        .filter((n) => Number.isFinite(n));
+
+      // Build a best-effort citation->URL map by scanning source lines.
+      const sourceUrlById = new Map<number, string>();
+      for (const m of String(lesson.content || '').matchAll(/\[(\d+)\][^\n]*?(https?:\/\/\S+)/g)) {
+        const id = Number(m[1]);
+        const url = String(m[2] || '').replace(/[)\].,;]+$/g, '');
+        if (Number.isFinite(id) && /^https?:\/\//i.test(url)) sourceUrlById.set(id, url);
+      }
+
+      const missing = Array.from(new Set(citations)).filter((n) => !sourceUrlById.has(n));
+      if (missing.length) {
+        validationIssues.push({
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+          kind: 'bad_citations',
+          message: `Citations missing sources: ${missing.slice(0, 8).join(', ')}`,
+        });
+      }
+
+      // 3) Next lesson link exists except for last lesson
+      const isLast = idx === allLessons.length - 1;
+      const hasNextLesson = /(^|\n)##\s+next lesson\b/i.test(lesson.content);
+      if (!isLast && !hasNextLesson) {
+        validationIssues.push({
+          lessonId: lesson.id,
+          lessonTitle: lesson.title,
+          kind: 'missing_next_lesson',
+          message: 'Missing Next lesson section',
+        });
+      }
+
+      const estMinutes = Math.max(0, Number((lesson as any).estimatedTime || 0));
+      const maxMinutes = 12;
+      const estimatedTimeCheck = {
+        pass: estMinutes > 0 && estMinutes <= maxMinutes,
+        minutes: estMinutes,
+        max: maxMinutes,
+      };
+
+      // Add as a warning-only issue if time is missing/too long. (Spec enforcement is uneven; keep deterministic but non-fatal.)
+      if (!estimatedTimeCheck.pass) {
+        appendLog(
+          p,
+          'warn',
+          `validation_warn | lesson="${lesson.title}" | kind=estimated_time | minutes=${estMinutes} max=${maxMinutes}`,
+        );
+      }
 
       return {
         lessonId: lesson.id,
@@ -1651,10 +1766,30 @@ async function runPipeline(pipelineId: string) {
             min: 2,
           },
           readability: { pass: readability >= 60, score: readability },
+          estimatedTime: estimatedTimeCheck,
         },
         overallPass: lesson.wordCount >= 500 && readability >= 60,
       };
     });
+
+    // Note: citation mapping is enforced deterministically from the lesson's Sources section above.
+
+    if (validationIssues.length) {
+      appendLog(
+        p,
+        'warn',
+        `validation_failed | issues=${validationIssues.length} | first="${validationIssues[0]?.message || ''}"`,
+      );
+      updatePipeline(p, {
+        status: 'FAILED',
+        stage: 'failed',
+        failReason: 'validation_failed',
+        lastError: validationIssues[0]?.message || 'Validation failed',
+        finishedAt: new Date().toISOString(),
+      });
+      broadcast(p.id, 'pipeline:complete', { courseId: p.courseId, status: 'FAILED' });
+      return;
+    }
 
     updatePipeline(p, { qualityResults, progress: 92 });
     if (!process.env.VITEST && process.env.NODE_ENV !== 'test') {
@@ -2556,9 +2691,9 @@ router.post(
     });
     if (!openai) {
       sendError(res, req, {
-        status: 500,
+        status: 400,
         code: 'openai_unavailable',
-        message: 'OpenAI not configured',
+        message: 'OpenAI API key not configured. Add your key in Settings → API Keys (BYOAI required).',
       });
       return;
     }

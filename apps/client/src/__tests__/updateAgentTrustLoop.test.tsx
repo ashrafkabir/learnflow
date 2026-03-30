@@ -8,14 +8,20 @@ import { ThemeProvider } from '../design-system/ThemeProvider.js';
 import { ToastProvider } from '../components/Toast.js';
 import { AppProvider } from '../context/AppContext.js';
 
+let originalFetch: typeof fetch | undefined;
+
 beforeEach(() => {
+  originalFetch = globalThis.fetch;
   localStorage.setItem(
     'learnflow-token',
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
   );
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  if (originalFetch) globalThis.fetch = originalFetch;
+  cleanup();
+});
 
 function renderPanel() {
   return render(

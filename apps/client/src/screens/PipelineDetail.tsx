@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { usePipeline, type PipelineArtifactsIndex } from '../hooks/usePipeline.js';
-import { apiGet } from '../context/AppContext.js';
+import { apiGet, apiPost } from '../context/AppContext.js';
 import { PipelineView } from '../components/pipeline/PipelineView.js';
 import { Button } from '../components/Button.js';
 import { useToast } from '../components/Toast.js';
@@ -51,7 +51,11 @@ export function PipelineDetail() {
 
   if (!state) {
     return (
-      <section className="min-h-screen bg-bg dark:bg-bg-dark">
+      <section
+        className="min-h-screen bg-bg dark:bg-bg-dark"
+        data-screen="pipeline-detail"
+        aria-label="Pipeline Detail"
+      >
         <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center gap-4">
             <Button variant="ghost" onClick={() => nav('/dashboard')}>
@@ -243,6 +247,18 @@ export function PipelineDetail() {
             </a>
             .
           </p>
+
+          {(state as any)?.sourcesMissingReason ? (
+            <div className="mt-3 rounded-lg border border-amber-300/60 dark:border-amber-400/40 bg-white/60 dark:bg-black/10 px-3 py-2">
+              <p className="text-xs font-semibold">Sources missing</p>
+              <p className="text-xs mt-0.5">
+                {String((state as any).sourcesMissingReason)}
+                <span className="ml-1 text-amber-900/80 dark:text-amber-200/80">
+                  (Try refining the topic or adding more context, then restart the pipeline.)
+                </span>
+              </p>
+            </div>
+          ) : null}
         </div>
 
         {/* Summary Stats */}
@@ -399,9 +415,49 @@ export function PipelineDetail() {
                   ]
                 ).map((k) => {
                   const isJson = k.rel.endsWith('.json');
-                  const href = isJson
-                    ? `/api/v1/pipeline/${state.id}/artifacts/file?path=${encodeURIComponent(k.rel)}`
-                    : null;
+                  const isMd = k.rel.endsWith('.md');
+
+                  const canOpenInline = isJson || isMd;
+
+                  const openArtifactInNewTab = async () => {
+                    if (!canOpenInline) return;
+
+                    if (!k.exists) {
+                      toast(
+                        `Artifact not found yet: ${k.rel}. If the pipeline is stalled, try Restart Pipeline.`,
+                        'error',
+                      );
+                      return;
+                    }
+
+                    try {
+                      // We cannot use a plain <a href> because the API requires Authorization headers.
+                      // Fetch with auth headers, then open a Blob URL.
+                      const { apiBase, getAuthHeaders } = await import('../context/AppContext.js');
+                      const base = apiBase();
+
+                      const url = `${base}/api/v1/pipeline/${state.id}/artifacts/file?path=${encodeURIComponent(k.rel)}`;
+                      const res = await fetch(url, { headers: getAuthHeaders() });
+                      if (!res.ok) {
+                        let msg = 'Unable to open artifact';
+                        try {
+                          const err = await res.json();
+                          if (err?.message) msg = String(err.message);
+                        } catch {
+                          // ignore
+                        }
+                        toast(msg, 'error');
+                        return;
+                      }
+
+                      const blob = await res.blob();
+                      const blobUrl = URL.createObjectURL(blob);
+                      window.open(blobUrl, '_blank', 'noopener,noreferrer');
+                      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+                    } catch {
+                      toast('Unable to open artifact (network error)', 'error');
+                    }
+                  };
 
                   return (
                     <div
@@ -424,16 +480,15 @@ export function PipelineDetail() {
                             : ''}
                         </p>
                       </div>
-                      {href ? (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noreferrer"
+                      {canOpenInline ? (
+                        <button
+                          type="button"
+                          onClick={() => void openArtifactInNewTab()}
                           className="shrink-0 text-accent font-semibold hover:underline"
-                          title="Open JSON"
+                          title={isJson ? 'Open JSON' : isMd ? 'Open Markdown' : 'Open'}
                         >
                           Open
-                        </a>
+                        </button>
                       ) : (
                         <button
                           className="shrink-0 text-gray-500 dark:text-gray-400 font-semibold"

@@ -21,7 +21,7 @@ export { aiPromptingRequiredModules } from './course-builder/domain-profiles/ai-
 // Content Pipeline
 export { discoverSources } from './content-pipeline/source-discovery.js';
 export { extractText } from './content-pipeline/content-extractor.js';
-export { searchAndExtractTopic } from './content-pipeline/openai-websearch-provider.js';
+
 export {
   writeCourseResearch,
   writeLessonResearch,
@@ -83,12 +83,12 @@ export type {
   CrdtOperation,
 } from './mindmap-agent/mindmap-agent.js';
 
-// Firecrawl Content Provider (default) + WebSearch fallback
-// NOTE: historically, `crawlSourcesForTopic/searchTopicTrending/searchForLesson` were exported from the
-// Firecrawl provider. In environments without FIRECRAWL_API_KEY this silently returns mock sources.
-// For spec compliance (Override #3), prefer the WebSearch provider which uses free public sources.
+// Content provider exports.
+// Iter152: Spec §6.1.1 requires OpenAI `web_search` only for discovery (no Wikipedia/arXiv/GitHub/etc pipelines).
+// The legacy multi-source provider remains in repo for reference/tests, but is NOT exported as the default.
 export {
-  crawlSourcesForTopic,
+  // NOTE: For pipeline research, use `searchAndExtractTopic` from openai-websearch-provider.
+  // Keep Firecrawl types + scoring helpers available for rendering.
   searchSources,
   scrapeUrl,
   scoreCredibility,
@@ -98,6 +98,17 @@ export {
   formatCitations,
   checkDomainDiversity,
   extractDomain,
+} from './content-pipeline/firecrawl-provider.js';
+
+export {
+  // OpenAI web_search based provider (spec-compliant discovery)
+  searchAndExtractTopic,
+  type NormalizedSource,
+} from './content-pipeline/openai-websearch-provider.js';
+
+export {
+  // Legacy / non-default provider (kept for backwards compatibility in dev)
+  crawlSourcesForTopic,
   searchForLesson,
   searchTopicTrending,
 } from './content-pipeline/web-search-provider.js';

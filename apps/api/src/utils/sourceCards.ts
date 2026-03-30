@@ -36,7 +36,7 @@ function normalizeProvider(s: FirecrawlSource): string {
   if (lower.includes('medium')) return 'medium';
   if (lower.includes('substack')) return 'substack';
   if (lower.includes('quora')) return 'quora';
-  if (lower.includes('tavily')) return 'tavily';
+
   return lower;
 }
 

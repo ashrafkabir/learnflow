@@ -21,8 +21,9 @@ export function enforceBiteSizedLesson(
   },
 ): { content: string; sizing: LessonSizing; truncated: boolean } {
   const maxMinutes = opts?.maxMinutes ?? 10;
-  // Soft cap for safety: 10 min * 200 wpm = 2000 words.
-  const maxWordsSoft = opts?.maxWordsSoft ?? maxMinutes * 200;
+  // Spec guardrail: keep lessons bite-sized. MVP uses a predictable soft cap of 1500 words
+  // (and separately caps estimated time via maxMinutes).
+  const maxWordsSoft = opts?.maxWordsSoft ?? 1500;
 
   const words = String(content || '')
     .split(/\s+/)

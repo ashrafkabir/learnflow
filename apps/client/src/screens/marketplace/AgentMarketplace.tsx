@@ -50,6 +50,11 @@ export function AgentMarketplace() {
       .then((data: any) => {
         const rows = Array.isArray(data?.agents) ? data.agents : [];
 
+        // Marketplace honesty: activation is routing-only in this MVP.
+        // Keep this value around if we want to display it later.
+        const activationMode = String(data?.activationMode || 'routing_only');
+        void activationMode;
+
         const normalized: Agent[] = rows.map((a: any) => {
           const name = String(a?.name || 'Untitled Agent');
           const description = String(a?.description || '');

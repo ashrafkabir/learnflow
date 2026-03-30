@@ -5,10 +5,9 @@
 import type { AgentInterface, AgentResponse, StudentContextObject } from '@learnflow/core';
 import { decomposeTopic } from './topic-decomposer.js';
 import { generateSyllabus } from './syllabus-generator.js';
-import {
-  crawlSourcesForTopic,
-  synthesizeFromSources,
-} from '../content-pipeline/web-search-provider.js';
+import OpenAI from 'openai';
+import { searchAndExtractTopic } from '../content-pipeline/openai-websearch-provider.js';
+import { synthesizeFromSources } from '../content-pipeline/web-search-provider.js';
 
 function isTestEnv(): boolean {
   // Vitest doesn't always set reliable process.env flags in this workspace.
@@ -47,7 +46,31 @@ export class CourseBuilderAgent implements AgentInterface {
     // In tests we still run this stage, but all underlying providers are deterministic/offline.
     const isTest = isTestEnv();
 
-    const sources = isTest ? [] : await crawlSourcesForTopic(topic);
+    const sources = isTest
+      ? []
+      : (
+          await searchAndExtractTopic({
+            topic,
+            // BYOAI required. If no OpenAI client is provided upstream, this will throw.
+            openai: process.env.OPENAI_API_KEY
+              ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+              : undefined,
+            maxResults: 8,
+            maxPagesToExtract: 4,
+          })
+        ).sources.map((s: any) => ({
+          url: s.url,
+          title: s.title || '',
+          author: undefined,
+          publishDate: undefined,
+          domain: s.publisher,
+          source: 'openai_web_search',
+          content: s.extractedText || s.snippet || '',
+          credibilityScore: 0.7,
+          recencyScore: 0.6,
+          relevanceScore: 0.7,
+          wordCount: (s.extractedText || s.snippet || '').split(/\s+/).filter(Boolean).length,
+        })) as any;
     const sampleLessonTitle = `${syllabus.modules[0]?.title || 'Introduction'}: Overview`;
 
     // Keep unit tests fast and deterministic: avoid network-bound discovery/synthesis.
@@ -68,7 +91,7 @@ export class CourseBuilderAgent implements AgentInterface {
           `\n\nSample lesson (with citations):\n${synthesis.content.slice(0, 900)}...`,
         syllabus,
         conceptTree,
-        sources: sources.map((s) => ({
+        sources: sources.map((s: any) => ({
           url: s.url,
           title: s.title,
           author: s.author,

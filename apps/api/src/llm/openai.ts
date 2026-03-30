@@ -52,15 +52,8 @@ export function getOpenAIForRequest(params: {
     }
   }
 
-  // Temporary: fall back to managed env key so BYOAI behaves the same as env in dev.
-  // This keeps the UX working without requiring per-user key setup.
-  const envKey = process.env.OPENAI_API_KEY;
-  if (envKey && envKey.trim().length > 0) {
-    return {
-      client: new OpenAI({ apiKey: envKey.trim() }),
-      source: { kind: 'managed_env' },
-    };
-  }
-
+  // BYOAI-only enforcement:
+  // Do not silently fall back to a server-managed env key.
+  // If the user hasn't supplied an override or saved key, return null.
   return { client: null, source: { kind: 'none' } };
 }

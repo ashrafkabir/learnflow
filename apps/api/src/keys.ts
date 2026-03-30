@@ -9,7 +9,7 @@ import { validateBody, validateParams } from './validation.js';
 
 const router = Router();
 
-const PROVIDERS = ['openai', 'anthropic', 'google', 'mistral', 'groq', 'ollama', 'tavily'] as const;
+const PROVIDERS = ['openai', 'anthropic', 'google', 'mistral', 'groq', 'ollama'] as const;
 
 const addKeySchema = z.object({
   provider: z.enum(PROVIDERS),
@@ -84,9 +84,7 @@ router.post('/', validateBody(addKeySchema), async (req: Request, res: Response)
         ? 'gsk_...'
         : provider === 'google'
           ? 'AI...'
-          : provider === 'tavily'
-            ? 'tvly_...'
-            : 'sk-...';
+          : 'sk-...';
 
   res.status(201).json({
     id: keyRecord.id,
@@ -142,9 +140,7 @@ router.get('/', (req: Request, res: Response) => {
           ? 'gsk_...'
           : k.provider === 'google'
             ? 'AI...'
-            : k.provider === 'tavily'
-              ? 'tvly_...'
-              : 'sk-...';
+            : 'sk-...';
 
     const usageCount = usageCounts.find((r) => r.provider === k.provider)?.count || 0;
     const lastUsed = lastUsedByProvider.find((r) => r.provider === k.provider)?.lastUsed;
@@ -181,8 +177,7 @@ router.post('/validate', validateBody(validateKeySchema), (req: Request, res: Re
     groq: /^gsk_[A-Za-z0-9_-]{20,}$/,
     // Ollama is local; accept any non-empty string as "key" (often unused).
     ollama: null,
-    // Tavily keys are opaque; accept any non-empty string.
-    tavily: null,
+
   };
 
   const pattern = patterns[provider as (typeof PROVIDERS)[number]];

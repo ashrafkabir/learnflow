@@ -9,7 +9,11 @@ import { AppProvider } from '../context/AppContext.js';
 import { ToastProvider } from '../components/Toast.js';
 import { App } from '../App.js';
 
+let originalFetch: typeof fetch | undefined;
+
 beforeEach(() => {
+  originalFetch = globalThis.fetch;
+
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem(
     'learnflow-token',
@@ -21,7 +25,10 @@ beforeEach(() => {
   };
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  if (originalFetch) globalThis.fetch = originalFetch;
+  cleanup();
+});
 
 function renderAt(path: string) {
   cleanup();

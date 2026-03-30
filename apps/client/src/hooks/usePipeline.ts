@@ -60,6 +60,7 @@ export interface QualityCheck {
     takeaways: { pass: boolean; count: number; min: number };
     sources: { pass: boolean; count: number; min: number };
     readability: { pass: boolean; score: number };
+    estimatedTime?: { pass: boolean; minutes: number; max: number };
   };
   overallPass: boolean;
 }

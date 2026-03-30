@@ -330,6 +330,38 @@ export function LessonReader() {
   }>(null);
   const [activePanel, setActivePanel] = useState<'none' | 'notes' | 'quiz'>('none');
 
+  // Iter152 Task 6: dynamically pad content for the fixed bottom action bar.
+  const bottomActionBarRef = useRef<HTMLDivElement | null>(null);
+  const [bottomActionBarHeight, setBottomActionBarHeight] = useState(96);
+  useEffect(() => {
+    const el = bottomActionBarRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const h = el.getBoundingClientRect().height;
+      if (Number.isFinite(h) && h > 0) setBottomActionBarHeight(Math.round(h));
+    };
+
+    update();
+    let ro: ResizeObserver | null = null;
+    try {
+      ro = new ResizeObserver(() => update());
+      ro.observe(el);
+    } catch {
+      // ignore
+    }
+
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      try {
+        ro?.disconnect();
+      } catch {
+        // ignore
+      }
+    };
+  }, [courseId, lessonId]);
+
   // Single fixed side drawer (Iter144): consolidate side elements + actions
   const [sideDrawerOpen, setSideDrawerOpen] = useState(true);
   const sideDrawerRef = useRef<HTMLDivElement | null>(null);
@@ -1701,7 +1733,10 @@ export function LessonReader() {
                 <IconBook className="w-4 h-4" />
               )}
             </Button>
-            <span className="text-xs text-gray-500 dark:text-gray-300">
+            <span
+              className="text-xs text-gray-500 dark:text-gray-300"
+              title="Estimated time + word count are computed server-side and enforced during generation (best-effort)."
+            >
               {lesson.wordCount} words · {lesson.estimatedTime} min
             </span>
             {isComplete && (
@@ -1716,17 +1751,28 @@ export function LessonReader() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 pb-24 lg:pb-8">
+      <main
+        className="max-w-7xl mx-auto px-4 sm:px-6 py-8 lg:pb-8"
+        // Iter152 Task 6: ensure content isn't covered by the fixed bottom action bar.
+        // Use a dynamic spacer so varying bar height (incl. safe-area inset) is handled.
+        style={{ paddingBottom: bottomActionBarHeight + 24 }}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8">
           <article
             data-component="lesson-content"
             aria-label="Lesson content"
             className="space-y-6"
           >
-            {/* Bottom action bar (spec parity): Mark Complete, Take Notes, Quiz Me, Ask Question (plus conditional Undo) */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md">
+            {/* Bottom action bar (spec parity): Mark Complete, Take Notes, Quiz Me, Ask me (plus conditional Undo) */}
+            <div
+              ref={bottomActionBarRef}
+              className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md"
+              style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+              data-testid="lesson-bottom-action-bar"
+            >
               <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
                 <Button
+                  data-testid="lesson-action-mark-complete"
                   variant={isComplete ? 'secondary' : 'primary'}
                   size="sm"
                   onClick={_handleMarkComplete}
@@ -1740,7 +1786,13 @@ export function LessonReader() {
                   </span>
                 </Button>
 
-                <Button variant="secondary" size="sm" onClick={handleQuiz} aria-label="Quiz me">
+                <Button
+                  data-testid="lesson-action-quiz"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleQuiz}
+                  aria-label="Quiz me"
+                >
                   <span className="inline-flex items-center gap-2">
                     <IconTestTube className="w-4 h-4" />
                     Quiz
@@ -1748,6 +1800,7 @@ export function LessonReader() {
                 </Button>
 
                 <Button
+                  data-testid="lesson-action-notes"
                   variant="secondary"
                   size="sm"
                   onClick={() => setActivePanel('notes')}
@@ -1759,15 +1812,22 @@ export function LessonReader() {
                   </span>
                 </Button>
 
-                <Button variant="secondary" size="sm" onClick={openAskMe} aria-label="Ask question">
+                <Button
+                  data-testid="lesson-action-ask"
+                  variant="secondary"
+                  size="sm"
+                  onClick={openAskMe}
+                  aria-label="Ask me"
+                >
                   <span className="inline-flex items-center gap-2">
                     <IconInfo className="w-4 h-4" />
-                    Ask question
+                    Ask me
                   </span>
                 </Button>
 
                 {lastEditUndo && (
                   <Button
+                    data-testid="lesson-action-undo"
                     variant="secondary"
                     size="sm"
                     onClick={async () => {
@@ -1809,6 +1869,7 @@ export function LessonReader() {
                     }}
                     disabled={undoLoading}
                     aria-label="Undo last edit"
+                    title="Undo last edit"
                   >
                     <span className="inline-flex items-center gap-2">
                       <IconRefresh className="w-4 h-4" />
@@ -2499,12 +2560,90 @@ export function LessonReader() {
 
             {/* Suggested reads now live in the unified side drawer (Iter144) */}
 
-            {/* Next Steps + Quick Check intentionally not rendered (Iter144) */}
-            {null}
+            {/* Next Steps */}
+            {sections
+              .filter((s) => s.type === 'nextsteps')
+              .map((s, i) => (
+                <div
+                  key={`nextsteps-${i}`}
+                  className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5"
+                  data-testid="lesson-next-steps"
+                >
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <IconSparkles className="w-4 h-4 text-accent" />
+                    Next Steps
+                  </h2>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                    {s.content
+                      .split('\n')
+                      .map((l) => l.trim())
+                      .filter(Boolean)
+                      .slice(0, 6)
+                      .map((line, j) => (
+                        <div key={j} className="flex items-start gap-2">
+                          <span className="text-accent font-bold">•</span>
+                          <span>{renderInlineWithCitations(line.replace(/^[-•]\s*/, ''), sources as any)}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+
+            {/* Quick Check (optional) */}
+            {sections
+              .filter((s) => s.type === 'quickcheck')
+              .map((s, i) => (
+                <div
+                  key={`quickcheck-${i}`}
+                  className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5"
+                  data-testid="lesson-quick-check"
+                >
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <IconLesson className="w-4 h-4" />
+                    Quick Check
+                  </h2>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
+                    {s.content
+                      .split('\n')
+                      .map((l) => l.trim())
+                      .filter(Boolean)
+                      .slice(0, 8)
+                      .map((line, j) => (
+                        <p key={j}>{renderInlineWithCitations(line, sources as any)}</p>
+                      ))}
+                  </div>
+                </div>
+              ))}
 
             {sections.filter((s) => s.type === 'objectives').length === 0 && (
               <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
                 No learning objectives listed for this lesson.
+              </div>
+            )}
+
+            {/* Spec §6.2: Next lesson link at end of lesson */}
+            {nextLesson && (
+              <div
+                className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-card p-5"
+                data-testid="next-lesson-cta"
+              >
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+                  Next lesson
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-300 mt-1">
+                  Continue learning with: <span className="font-semibold">{nextLesson.title}</span>
+                </p>
+                <div className="mt-3">
+                  <Button
+                    variant="primary"
+                    onClick={() => nav(`/courses/${courseId}/lessons/${nextLesson.id}`)}
+                    aria-label={`Go to next lesson: ${nextLesson.title}`}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      Go to next lesson <span aria-hidden="true">→</span>
+                    </span>
+                  </Button>
+                </div>
               </div>
             )}
           </article>
@@ -2575,11 +2714,11 @@ export function LessonReader() {
                             variant="secondary"
                             size="sm"
                             onClick={openAskMe}
-                            aria-label="Ask question"
+                            aria-label="Ask me"
                           >
                             <span className="inline-flex items-center gap-2">
                               <IconInfo className="w-4 h-4" />
-                              Ask question
+                              Ask me
                             </span>
                           </Button>
 
@@ -2880,33 +3019,49 @@ export function LessonReader() {
                       </button>
                       {sideTwisties.reads && (
                         <div className="px-3 pb-3 space-y-3" data-testid="drawer-suggested-reads">
-                          {sources.length === 0 ? (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              No sources available.
-                            </p>
-                          ) : (
-                            sources
+                          {(() => {
+                            // Iter155 P1: Prefer curated lesson-level reads if present.
+                            // Server returns lesson.recommendedSources[] as {url, title?}.
+                            const rec = Array.isArray((lesson as any)?.recommendedSources)
+                              ? ((lesson as any).recommendedSources as any[])
+                              : [];
+                            const recUrls = rec
+                              .map((x) => String(x?.url || '').trim())
+                              .filter((u) => /^https?:\/\//i.test(u));
+
+                            const fallback = (sources || [])
                               .filter(
                                 (s: any) =>
                                   typeof s?.url === 'string' && /^https?:\/\//i.test(String(s.url)),
                               )
-                              .slice(0, 8)
-                              .map((s: any) => (
-                                <div key={String(s.url)} className="text-sm">
-                                  <p className="text-gray-900 dark:text-white font-medium">
-                                    {s.title || s.url}
-                                  </p>
-                                  <a
-                                    href={s.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accent text-xs hover:underline break-all"
-                                  >
-                                    {s.url}
-                                  </a>
-                                </div>
-                              ))
-                          )}
+                              .slice(0, 5);
+
+                            const items = recUrls.length ? rec.slice(0, 5) : fallback;
+
+                            if (!items.length) {
+                              return (
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  No suggested reads available.
+                                </p>
+                              );
+                            }
+
+                            return items.map((s: any) => (
+                              <div key={String(s.url)} className="text-sm">
+                                <p className="text-gray-900 dark:text-white font-medium">
+                                  {s.title || s.url}
+                                </p>
+                                <a
+                                  href={s.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-accent text-xs hover:underline break-all"
+                                >
+                                  {s.url}
+                                </a>
+                              </div>
+                            ));
+                          })()}
                         </div>
                       )}
                     </div>

@@ -52,6 +52,8 @@ export function Collaboration() {
   const [newMessage, setNewMessage] = useState('');
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [groupsError, setGroupsError] = useState<string | null>(null);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
 
   // Shared mindmaps
   const [shareGroupId, setShareGroupId] = useState<string | null>(null);
@@ -87,14 +89,15 @@ export function Collaboration() {
 
   const refreshGroups = async () => {
     setLoadingGroups(true);
+    setGroupsError(null);
     try {
       const res = await apiGet('/collaboration/groups');
       setGroups(res?.groups || []);
       if (!selectedGroupId && (res?.groups || []).length > 0) {
         setSelectedGroupId(res.groups[0].id);
       }
-    } catch {
-      // errors already logged by apiGet
+    } catch (e: any) {
+      setGroupsError(String(e?.message || 'Failed to load groups'));
     } finally {
       setLoadingGroups(false);
     }
@@ -102,11 +105,12 @@ export function Collaboration() {
 
   const refreshMessages = async (groupId: string) => {
     setLoadingMessages(true);
+    setMessagesError(null);
     try {
       const res = await apiGet(`/collaboration/groups/${groupId}/messages`);
       setMessages(res?.messages || []);
-    } catch {
-      // errors already logged
+    } catch (e: any) {
+      setMessagesError(String(e?.message || 'Failed to load messages'));
     } finally {
       setLoadingMessages(false);
     }
@@ -178,7 +182,7 @@ export function Collaboration() {
   );
 
   return (
-    <section className="min-h-screen bg-bg dark:bg-bg-dark">
+    <section data-screen="collaboration" className="min-h-screen bg-bg dark:bg-bg-dark">
       <SEO
         title="Collaborate"
         description="Learn together — find study partners, join groups, and share mindmaps."
@@ -373,9 +377,18 @@ export function Collaboration() {
             <div className="space-y-3">
               {loadingGroups ? (
                 <div className="text-sm text-gray-600 dark:text-gray-300">Loading groups…</div>
+              ) : groupsError ? (
+                <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-200">
+                  {groupsError}
+                </div>
               ) : groups.length === 0 ? (
-                <div className="text-sm text-gray-600 dark:text-gray-300">
-                  No groups yet. Start one to collaborate.
+                <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 p-6">
+                  <div className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                    No groups yet.
+                  </div>
+                  <Button variant="primary" size="sm" onClick={() => setShowCreateGroup(true)}>
+                    Create group
+                  </Button>
                 </div>
               ) : (
                 groups.map((g: any) => (
@@ -426,6 +439,10 @@ export function Collaboration() {
                   {loadingMessages ? (
                     <div className="text-sm text-gray-600 dark:text-gray-300">
                       Loading messages…
+                    </div>
+                  ) : messagesError ? (
+                    <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-700 dark:text-red-200">
+                      {messagesError}
                     </div>
                   ) : messages.length === 0 ? (
                     <div className="text-sm text-gray-600 dark:text-gray-300">No messages yet.</div>
@@ -522,7 +539,7 @@ export function Collaboration() {
                       const link = `${window.location.origin}/mindmap?groupId=${encodeURIComponent(gid)}&courseId=${encodeURIComponent(cid)}`;
                       try {
                         await navigator.clipboard.writeText(link);
-                        notify('Share link copied.');
+                        notify('Copied! Share link copied to clipboard.');
                       } catch {
                         notify(link);
                       }

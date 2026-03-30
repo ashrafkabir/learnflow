@@ -19,8 +19,7 @@ export type SearchProviderId =
   | 'mdn'
   | 'smashingmag'
   | 'coursera'
-  | 'baiduscholar'
-  | 'tavily';
+  | 'baiduscholar';
 
 export const SEARCH_PROVIDER_IDS: SearchProviderId[] = [
   'wikipedia',
@@ -41,7 +40,6 @@ export const SEARCH_PROVIDER_IDS: SearchProviderId[] = [
   'smashingmag',
   'coursera',
   'baiduscholar',
-  'tavily',
 ];
 
 export type AdminSearchConfig = {

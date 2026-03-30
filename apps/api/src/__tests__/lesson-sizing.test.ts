@@ -14,12 +14,13 @@ describe('lesson sizing', () => {
     expect(s.estimatedMinutes).toBe(3);
   });
 
-  it('enforces bite-sized truncation at ~10 minutes', () => {
+  it('enforces bite-sized truncation at ~1500 words by default', () => {
     const input = words(2500);
     const out = enforceBiteSizedLesson(input, { maxMinutes: 10 });
     expect(out.truncated).toBe(true);
-    expect(out.sizing.wordCount).toBeLessThanOrEqual(2050); // allow note/footer words
-    expect(out.sizing.estimatedMinutes).toBeLessThanOrEqual(11);
+    // 1500 + footer words.
+    expect(out.sizing.wordCount).toBeLessThanOrEqual(1550);
+    expect(out.sizing.estimatedMinutes).toBeLessThanOrEqual(10);
   });
 
   it('does not modify content under cap', () => {

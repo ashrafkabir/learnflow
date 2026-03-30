@@ -113,7 +113,11 @@ export function PipelineViewScreen() {
   });
 
   return (
-    <section className="min-h-screen bg-bg dark:bg-bg-dark" aria-label="Pipeline Overview">
+    <section
+      className="min-h-screen bg-bg dark:bg-bg-dark"
+      aria-label="Pipeline Overview"
+      data-screen="pipelines"
+    >
       <header className="sticky top-0 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <div>

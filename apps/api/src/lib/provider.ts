@@ -5,7 +5,6 @@ export const KNOWN_PROVIDERS = [
   'mistral',
   'groq',
   'ollama',
-  'tavily',
 ] as const;
 
 export type KnownProvider = (typeof KNOWN_PROVIDERS)[number];

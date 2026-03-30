@@ -144,9 +144,13 @@ test.describe('Iter136: smoke assertions', () => {
       }
     }, token);
 
-    // 1) dashboard renders
+    // 1) dashboard renders (deterministic readiness)
     await page.goto('/dashboard');
-    await expect(page.locator('[aria-label="Dashboard"]')).toBeVisible({ timeout: 15_000 });
+    await expect(page.locator('[data-screen="dashboard"]')).toBeVisible({ timeout: 15_000 });
+    // Wait for skeleton to clear (data loaded) OR allow empty-state dashboard to render.
+    await expect(page.locator('[data-component="skeleton-dashboard"]')).toHaveCount(0, {
+      timeout: 20_000,
+    });
 
     // 2) course loads in UI (or truthful failure/generating state)
     await page.goto(`/courses/${courseId}`);

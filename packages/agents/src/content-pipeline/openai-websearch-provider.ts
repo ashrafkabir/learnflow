@@ -339,7 +339,7 @@ export async function searchAndExtractTopic(params: SearchAndExtractTopicParams)
   const {
     topic,
     courseId: _courseId,
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY }),
+    openai,
     model = process.env.OPENAI_WEBSEARCH_MODEL || 'gpt-4.1-mini',
     maxResults = 8,
     maxPagesToExtract = 6,
@@ -378,6 +378,13 @@ export async function searchAndExtractTopic(params: SearchAndExtractTopicParams)
       parsedResultsCount: 1,
       rawCount: 1,
     };
+  }
+
+  if (!openai) {
+    throw new OpenAIWebSearchProviderError(
+      'OpenAI client not provided (BYOAI required). Provide an OpenAI client configured with a user API key.',
+      { status: 401 },
+    );
   }
 
   // ── Query expansion (multi-pass) ───────────────────────────────────────────

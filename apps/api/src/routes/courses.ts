@@ -2,6 +2,8 @@ import { Router, Request, Response } from 'express';
 import { emitToUser } from '../wsHub.js';
 import { z } from 'zod';
 import {
+  // NOTE: course creation uses best-effort sourcing for planning/lesson prompts.
+  // Iter152: Spec requires OpenAI web_search for the pipeline; course creation remains legacy.
   crawlSourcesForTopic,
   searchForLesson,
   buildCourseOutline,
@@ -795,7 +797,6 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
                       smashingmag: true,
                       coursera: true,
                       baiduscholar: true,
-                      tavily: true,
                     },
                   } as any,
                 );
@@ -1851,7 +1852,7 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // GET /api/v1/courses/:id/lessons/:lessonId - Get lesson
-router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
+router.get('/:id/lessons/:lessonId', async (req: Request, res: Response) => {
   const courseId = String(req.params.id);
   const course = courses.get(courseId) || (dbCourses.getById(courseId) as any);
   if (!course) {
@@ -1929,9 +1930,44 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
     relatedImages = [];
   }
 
-  res
-    .status(200)
-    .json({ ...lesson, sources, sourcesMissingReason, sourceMode, takeaways, relatedImages });
+  // Iter155 P1: best-effort attach per-lesson recommended sources derived from pipeline lessonplan.md.
+  // This is used to render a distinct "Suggested reads" list (2–5 items) separate from full Sources.
+  let recommendedSources: { title?: string; url: string }[] = [];
+  try {
+    const fs = await import('node:fs/promises');
+    const path = await import('node:path');
+    const { courseArtifactsRoot } = await import('@learnflow/agents');
+    const { parseLessonplanRecommendedSources } = await import('../utils/lessonplanParser.js');
+
+    // courseId is already "course-<uuid>".
+    const root = courseArtifactsRoot(courseId);
+    const lessonplanPath = path.join(root, 'lessonplan.md');
+    const md = await fs.readFile(lessonplanPath, 'utf8');
+    const parsed = parseLessonplanRecommendedSources(md);
+
+    const m = String(req.params.lessonId || '').match(/-m(\d+)-l(\d+)$/);
+    const mi = m ? Number(m[1]) : null;
+    const li = m ? Number(m[2]) : null;
+
+    if (mi != null && li != null && !Number.isNaN(mi) && !Number.isNaN(li)) {
+      const hit = parsed.find((x) => x.moduleIndex === mi && x.lessonIndex === li);
+      const urls = (hit?.urls || []).filter(Boolean);
+      // Keep 2–5 as "Suggested Reads" per spec.
+      recommendedSources = urls.slice(0, 5).map((u) => ({ url: u }));
+    }
+  } catch {
+    recommendedSources = [];
+  }
+
+  res.status(200).json({
+    ...lesson,
+    sources,
+    sourcesMissingReason,
+    sourceMode,
+    takeaways,
+    relatedImages,
+    recommendedSources,
+  });
 });
 
 // POST /api/v1/courses/:id/add-topic - Add a new topic as a module+lesson to an existing course
@@ -2597,7 +2633,7 @@ router.post(
 
         // Deterministic fallback in tests/offline.
         if (!openai || process.env.NODE_ENV === 'test') {
-          // Real links are still required; use searchSources (tavily) even when LLM is unavailable.
+          // Real links are still required; use searchSources (OpenAI-only) even when LLM is unavailable.
           let links: any[] = [];
           try {
             // eslint-disable-next-line @typescript-eslint/no-require-imports

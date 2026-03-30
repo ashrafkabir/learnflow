@@ -36,6 +36,8 @@ for (const r of results) {
 }
 
 console.error('\nFix:');
+console.error('  npm run dev:clean   # safely SIGTERM known node/vite/next listeners on these ports');
+console.error('  npm run dev:status  # show what is listening');
 console.error('  ss -ltnp | egrep ":3000|:3001|:3003"');
 console.error(
   '  kill <pid>   # OR: systemctl --user restart learnflow-api learnflow-client learnflow-web',

@@ -1,4 +1,12 @@
-import { db, dbMarketplace, dbMarketplaceAgentSubmissions, dbBookmarks, dbEvents } from './db.js';
+import {
+  db,
+  dbMarketplace,
+  dbMarketplaceAgentSubmissions,
+  dbBookmarks,
+  dbEvents,
+  dbCourses,
+  dbProgress,
+} from './db.js';
 import { resolveMarketplaceAgentManifest } from './lib/marketplaceAgents.js';
 import type { StudentContextObject } from '@learnflow/core';
 import { AgentRegistry, Orchestrator } from '@learnflow/core';
@@ -29,20 +37,54 @@ export function buildStudentContext(userId: string): StudentContextObject {
     updatedAt: dbUser?.updatedAt || new Date(),
   };
 
+  const stats = (() => {
+    try {
+      // Uses progress + learning_events.
+      // Best-effort: if DB unavailable, fall back to zeros.
+      return dbProgress.getUserStats(userId) as any;
+    } catch {
+      return { totalStudyMinutes: 0, currentStreak: 0 } as any;
+    }
+  })();
+
+  const { enrolledCourseIds, completedLessonIds } = (() => {
+    try {
+      const allCourses = dbCourses.getAll() as any[];
+      const mine = allCourses
+        .filter((c) => String(c?.authorId || '') === userId)
+        .filter((c) => String(c?.origin || 'user') === 'user');
+      const enrolled = mine.map((c) => String(c.id)).filter(Boolean);
+
+      const completed = new Set<string>();
+      for (const c of mine) {
+        try {
+          const ids = dbProgress.getCompletedLessons(userId, String(c.id));
+          for (const lid of ids) completed.add(String(lid));
+        } catch {
+          // ignore per-course
+        }
+      }
+
+      return { enrolledCourseIds: enrolled, completedLessonIds: Array.from(completed) };
+    } catch {
+      return { enrolledCourseIds: [] as string[], completedLessonIds: [] as string[] };
+    }
+  })();
+
   return {
     userId,
     user,
     currentCourseId: undefined,
     currentLessonId: undefined,
-    enrolledCourseIds: [],
-    completedLessonIds: [],
+    enrolledCourseIds,
+    completedLessonIds,
     goals: user.goals,
     strengths: [],
     weaknesses: [],
     learningStyle: 'reading',
     quizScores: {},
-    studyStreak: 0,
-    totalStudyMinutes: 0,
+    studyStreak: Number(stats?.currentStreak || 0),
+    totalStudyMinutes: Number(stats?.totalStudyMinutes || 0),
     lastActiveAt: new Date(),
 
     goalDetails: user.goals.map((g) => ({ goal: g, priority: 'medium' as const })),

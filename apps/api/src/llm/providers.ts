@@ -50,7 +50,6 @@ export function getApiKeyForProvider(params: {
     mistral: process.env.MISTRAL_API_KEY,
     groq: process.env.GROQ_API_KEY,
     ollama: undefined,
-    tavily: process.env.TAVILY_API_KEY,
   };
 
   // MVP truth: this build does NOT support managed API keys. Even if env keys exist,
