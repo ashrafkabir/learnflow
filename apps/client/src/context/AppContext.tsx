@@ -527,18 +527,8 @@ export function apiBase(): string {
   if (typeof window !== 'undefined' && isVitest) return '';
 
   // In local dev, the client runs on :3001 and the API on :3000.
-  // Using same-origin would hit the Vite dev server and 404.
+  // However, Vite is configured to proxy /api -> :3000, so same-origin works.
   if (typeof window !== 'undefined') {
-    try {
-      if (
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-        window.location.port === '3001'
-      ) {
-        return 'http://127.0.0.1:3000';
-      }
-    } catch {
-      // ignore
-    }
     return '';
   }
 

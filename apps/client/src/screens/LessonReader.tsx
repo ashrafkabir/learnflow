@@ -1851,6 +1851,7 @@ export function LessonReader() {
                                 }
                                 className="opacity-0 group-hover/section:opacity-100 bg-accent/10 text-accent hover:bg-accent/20"
                                 title="Improve this subsection (rewrite + enrich)"
+                                aria-label={`Improve ${sub.heading}`}
                               >
                                 <span className="inline-flex items-center gap-2">
                                   <IconSparkles className="w-4 h-4" />
@@ -1873,6 +1874,7 @@ export function LessonReader() {
                                 }
                                 className="opacity-0 group-hover/section:opacity-100 bg-accent/10 text-accent hover:bg-accent/20"
                                 title="Reword and expand this subsection"
+                                aria-label={`Dig Deeper ${sub.heading}`}
                               >
                                 <span className="inline-flex items-center gap-2">
                                   <IconSearch className="w-4 h-4" />
