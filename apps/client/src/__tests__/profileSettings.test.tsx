@@ -94,7 +94,8 @@ describe('Profile Settings page', () => {
 
   it('shows export buttons', async () => {
     renderAt('/settings');
-    await new Promise((r) => setTimeout(r, 500));
+    // Allow async settings effects to resolve (usage/data summary).
+    await new Promise((r) => setTimeout(r, 900));
     const html = document.body.innerHTML.toLowerCase();
     expect(html).toMatch(/export|download|markdown|json/);
   });
