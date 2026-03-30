@@ -582,7 +582,11 @@ export function LessonReader() {
       }
 
       if (!markdown) {
-        const raw = String(preview?.proposed || preview?.note || '').trim();
+        const raw = (
+          typeof preview === 'string'
+            ? preview
+            : String((preview as any)?.proposed || (preview as any)?.note || '')
+        ).trim();
         if (!raw) throw new Error('No proposed content returned');
         try {
           const parsed = JSON.parse(raw);
@@ -738,7 +742,18 @@ export function LessonReader() {
           selectedText,
         },
       );
-      const proposed = String(data?.preview?.proposed || data?.preview?.note || '').trim();
+      const preview = data?.preview;
+      const proposed = (
+        typeof preview === 'string'
+          ? preview
+          : String(
+              (preview as any)?.markdown ||
+                (preview as any)?.newContentMarkdown ||
+                (preview as any)?.proposed ||
+                (preview as any)?.note ||
+                '',
+            )
+      ).trim();
       if (!proposed) throw new Error('No proposed content returned');
 
       const replace = await apiPost(
