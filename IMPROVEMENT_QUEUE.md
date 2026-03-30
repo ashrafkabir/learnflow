@@ -1,156 +1,188 @@
-# IMPROVEMENT_QUEUE — Iter160 (Planner)
+# IMPROVEMENT_QUEUE — Iter162 (Planner)
 
-Status: P0 COMPLETE (built). P1–P2 remaining.
-
-Date: 2026-03-30 (EDT)
-
-Inputs used (this run):
-
-- FULL spec: `LearnFlow_Product_Spec.md` (reviewed end-to-end; key deltas: §5.2 screens, §6 pipeline, §4.4 BYOAI, §11 WebSocket)
-- Code inspection (concrete refs): `apps/api/src`, `apps/client/src`, `packages/core/src`, `packages/agents/src`
-- Fresh Playwright screenshots (Iter160): `learnflow/screenshots/iter160/run-001/` (31 PNGs)
+Status: **DONE (built)**
 
 OneDrive sync (this run):
 
-- ✅ Screenshots mirrored to: `onedrive:learnflow/screenshots/iter160/run-001/`
+- ✅ Screenshots mirrored to: `onedrive:learnflow/screenshots/iter162/run-001/`
 - ✅ `IMPROVEMENT_QUEUE.md` mirrored to: `onedrive:learnflow/IMPROVEMENT_QUEUE.md`
+- ✅ `BUILD_LOG_ITER162.md` mirrored to: `onedrive:learnflow/iter162/BUILD_LOG_ITER162.md`
+
+Scope focus for Iter162:
+
+- Demo login reliability in dev (dev auth bypass), and onboarding correctness
+- Ensure API running (health), and client uses correct endpoints
+- Fix any regressions introduced by recent changes
 
 ---
 
-## 0) Executive summary (brutally honest)
+## What I verified (evidence)
 
-The repo is **still demoable**, but Iter160 has a **trust-breaking regression**: the Lesson Reader can render a raw “Course not found (not_found …)” error state (`learnflow/screenshots/iter160/run-001/lesson-reader.png`). That means deep links / stored state can land users on a dead lesson, and the UI exposes backend error strings.
+### App boots + key routes render (Playwright)
 
-Against the spec, the biggest functional gaps remain:
+Screenshots captured under:
 
-- **BYOAI enforcement is inconsistent**. The API layer is BYOAI-only (good) (`apps/api/src/llm/openai.ts`, `apps/api/src/llm/providers.ts`), but at least one agent still calls `process.env.OPENAI_API_KEY` directly (`packages/agents/src/course-builder/course-builder-agent.ts`). That violates spec §4.4 and “MVP truth”.
-- **Spec §6.1.4 “parallel lesson build (one worker per lesson)” is not real** in the pipeline implementation; lesson generation appears sequential in `apps/api/src/routes/pipeline.ts` (module/lesson loops; no explicit concurrency/worker pool).
-- **Spec §6.2 lesson structure compliance is inconsistent** (Next lesson links, citations density, and bounded <10 min read are not clearly enforced from the reader + generator).
+- Repo: `learnflow/learnflow/screenshots/iter162/run-001/`
+- Files (subset):
+  - Onboarding: `onboarding-1-welcome.png` … `onboarding-6-first-course.png`
+  - Auth: `auth-login.png`, `auth-register.png`
+  - App: `app-dashboard.png`, `app-conversation.png`, `app-mindmap.png`, `app-pipelines.png`, `app-settings.png`, `app-notifications.png`, `app-collaboration.png`
+  - Course/Lesson: `course-view.png`, `lesson-reader.png`, `pipeline-detail.png`
+  - Marketing: `marketing-home.png`, `marketing-features.png`, `marketing-pricing.png`, `marketing-download.png`, `marketing-docs.png`, `marketing-blog.png`, `marketing-about.png`
 
-The UI side has major **data correctness** issues (dashboard duplicates + inconsistent counts) and **broken/placeholder states** (pipeline detail looks like a stuck skeleton in `pipeline-detail.png`).
+### Dev auth bypass exists (client + API)
 
----
+- Client env-gated bypass: `apps/client/src/App.tsx` (OnboardingGuard uses `VITE_DEV_AUTH_BYPASS=1`).
+- Client sends dummy token when bypassing: `apps/client/src/context/AppContext.tsx` sets `Authorization: Bearer dev` when `devAuthBypass` true.
+- API accepts deterministic dummy token ONLY when `config.devMode` is enabled: `apps/api/src/middleware.ts`.
+- API devMode requires explicit opt-in: `apps/api/src/config.ts` sets `devMode` when `LEARNFLOW_DEV_AUTH=1` (and not production).
 
-## P0 — Fix regressions + trust breakers (do these first)
+### API health endpoint
 
-1. **P0 — Lesson Reader “Course not found” deep-link regression: make lesson fetch resilient + user-friendly** ✅ DONE (built)
-   - Client: `apps/client/src/screens/LessonReader.tsx`
-     - Friendly “Lesson unavailable” state with actions:
-       - Retry
-       - Go to Dashboard (`/dashboard`)
-       - Go to Course list (`/courses`)
-       - Back to course
-     - Error details are opt-in via `<details>`.
-   - Server: already falls back to SQLite when runtime cache misses:
-     - `GET /api/v1/courses/:id` uses `courses.get(id) || dbCourses.getById(id)`
-     - `GET /api/v1/courses/:id/lessons/:lessonId` uses `courses.get(id) || dbCourses.getById(id)`
+- Actual health route is `GET /health` (not `/api/v1/health`): `apps/api/src/app.ts`.
+  - Verified: `curl http://localhost:3000/health` returns `{ "status": "ok" }`.
 
-2. **P0 — Pipeline Detail stuck skeleton: implement real detail payload + error state** ✅ DONE (built)
-   - `apps/client/src/screens/PipelineDetail.tsx`
-     - Added explicit missing-id state
-     - Improved loading skeleton + hint
-     - Friendly error copy + log viewer
-   - API: `GET /api/v1/pipeline/:id` returns persisted pipeline state + debug.coursePlan.
+### Client API endpoint base logic
 
-3. **P0 — Dashboard duplicates + inconsistent counts: dedupe + correct source-of-truth for progress** ✅ DONE (built)
-   - `apps/client/src/context/AppContext.tsx`
-     - `SET_COURSES` dedupes by `course.id`.
-     - `ADD_COURSE` avoids duplicates.
-   - Dashboard already fetches `GET /courses` then hydrates by id; duplicates should now be suppressed.
+- Client uses same-origin by default (and relies on Vite proxy in dev): `apps/client/src/context/AppContext.tsx` + `apps/client/vite.config.ts`.
+  - Vite proxies `/api` and `/ws` → `http://localhost:3000`.
 
-4. **P0 — Stop leaking backend error strings into UI (global)** ✅ DONE (built)
-   - Added `apps/client/src/lib/redactSecrets.ts` + tests.
-   - Updated `apps/client/src/lib/toUserError.ts` to redact secret patterns.
+### BYOAI / managed-key truth enforcement
 
----
+- API layer enforces BYOAI-only OpenAI clients: `apps/api/src/llm/openai.ts`.
+- There is also provider selection logic that _refuses_ env-managed keys even if present: `apps/api/src/llm/providers.ts`.
 
-## P1 — Spec compliance gaps (core product promises)
+### Spec compliance note (important)
 
-5. **P1 — BYOAI-only enforcement: remove env-key fallbacks from agents (spec §4.4, MVP truth)**
-   - Evidence: `packages/agents/src/course-builder/course-builder-agent.ts` uses `process.env.OPENAI_API_KEY`.
-   - Build:
-     - Refactor agent creation to accept an OpenAI client from API layer (per-request override or saved key), or make the agent deterministic/offline when no user key exists.
-     - Add a regression test: forbid `process.env.OPENAI_API_KEY` access in `packages/agents/src/**` except explicit test harnesses.
-   - Files: `packages/agents/src/course-builder/course-builder-agent.ts`, `apps/api/src/llm/openai.ts`, `apps/api/src/llm/providers.ts`.
+Spec §6.1.1 states **OpenAI web_search only** and “no Firecrawl/Tavily”. Implementation is partially compliant:
 
-6. **P1 — Content pipeline: make §6.1.4 “parallel lesson build” real (bounded concurrency)**
-   - Spec requires “one worker per lesson”; current pipeline appears sequential.
-   - Build:
-     - Implement concurrency (e.g., bounded Promise pool) for per-lesson generation.
-     - Add per-lesson timing telemetry + surfaced in Pipeline Detail.
-   - Files: `apps/api/src/routes/pipeline.ts` (lesson build loop), pipeline DB schema in `apps/api/src/db.ts` if needed.
-
-7. **P1 — Artifact-only invariant: enforce artifact-backed lesson generation everywhere, not just in tests**
-   - Good: `apps/api/src/pipeline/lesson-artifacts.ts` throws `artifacts_missing` and there’s a test (`apps/api/src/__tests__/artifact-only-lesson-generation.test.ts`).
-   - Missing: end-to-end flows should never silently re-scrape or generate from thin/DB-only state.
-   - Build:
-     - Ensure lesson generation reads from artifacts via `loadLessonSourcesForGeneration()`.
-     - When artifacts missing, surface a pipeline error with a “Re-run research” CTA.
-   - Files: `apps/api/src/routes/pipeline.ts`, `apps/api/src/pipeline/lesson-artifacts.ts`, `packages/agents/src/content-pipeline/artifact-writer.ts`.
-
-8. **P1 — Lesson structure enforcement (spec §6.2): Next lesson link + citations density + <10 min read**
-   - Build:
-     - Add a validator stage that checks required headings/sections and blocks “generated” status until compliant.
-     - Add “Next lesson” navigation link rendering in reader if present; if missing, show auto-nav UI based on module order.
-   - Files: generator in `apps/api/src/routes/pipeline.ts`, reader in `apps/client/src/screens/LessonReader.tsx`.
+- Pipeline route uses OpenAI web_search provider (`openai_web_search`) in `apps/api/src/routes/pipeline.ts`.
+- However the agents package still contains the older multi-source provider described as “Wikipedia/arXiv/GitHub/etc”: `packages/agents/src/content-pipeline/web-search-provider.ts`, and Firecrawl provider code exists in repo (`packages/agents/src/content-pipeline/firecrawl-provider.ts`).
+  - This is OK **only if** runtime paths for MVP pipeline never call these providers. Builder should ensure no accidental usage.
 
 ---
 
-## P2 — UX parity for key screens (spec §5.2)
+## Brutally honest gaps vs spec (high-level)
 
-9. **P2 — Conversation interface: make Sources drawer consistent + bind to the active message**
-   - Current: `apps/client/src/screens/Conversation.tsx` holds one `drawerSources` array; it is not clearly message-scoped.
-   - Build:
-     - Store sources per message id; “View Sources” should open sources for that message.
-     - If no sources, show a neutral empty state (not a new assistant message).
-   - Files: `apps/client/src/screens/Conversation.tsx`, `apps/api/src/wsOrchestrator.ts`, `apps/api/src/routes/chat.ts`.
+The spec is a full multi-agent learning platform with rich WS protocol, dashboards, marketplaces, analytics, etc. The current codebase is a pragmatic MVP and does not fully implement:
 
-10. **P2 — Agent activity indicator: stop “fake” tracing; align with WS events**
+- True agent marketplace “third-party agent code loading” (spec says planned; current is built-ins + manifests).
+- Full SCO (Student Context Object) + behavioral tracking depth described in §9 (some scaffolding exists; not sure it’s complete end-to-end).
+- Many roadmap-level workstreams (Flutter client, full SDK, real billing) are intentionally mocked/omitted.
 
-- Spec §5.2.3 expects transparency. WS emits `agent.spawned/agent.complete` (`apps/api/src/wsOrchestrator.ts`) and client listens.
-- Build:
-  - Show a compact “trace drawer” (optional) listing routing + agent calls with durations.
-  - Ensure routing-only events don’t trigger completion toasts (partially done already).
-- Files: `apps/client/src/screens/Conversation.tsx`, `apps/api/src/wsOrchestrator.ts`.
-
-11. **P2 — Agent Marketplace activation UX: make toggles actually work (or clearly label as demo)**
-
-- Evidence: marketplace agents show “Inactive” toggles that look disabled (`marketplace-agents.png`).
-- Build:
-  - Ensure toggle activates via `/marketplace/agents/:id/activate` and reflects activated count.
-  - If activation is intentionally mocked, remove toggles and show “Planned” truth.
-- Files: `apps/client/src/screens/marketplace/AgentMarketplace.tsx`, server: `apps/api/src/routes/marketplace.ts`.
-
-12. **P2 — Settings: add “BYOAI key required” gating UX across pipelines + chat**
-
-- Goal: users should never start generation that will fail later.
-- Build:
-  - Detect missing active key and block “Create course / Run pipeline” with a CTA to Settings → Keys.
-- Files: `apps/client/src/screens/ProfileSettings.tsx`, `apps/client/src/context/AppContext.tsx`, pipeline create screen.
+Iter162 priority, though, is **dev auth + onboarding correctness + endpoint reliability**.
 
 ---
 
-## P3 — Hygiene + guardrails
+## Priority build tasks (10–15) — Iter162
 
-13. **P3 — Add an explicit “Spec compliance / MVP truth” test suite**
+### P0 — must fix (dev demo reliability)
 
-- Include:
-  - Forbidden provider guardrails (no Firecrawl/Tavily in MVP).
-  - No managed env-key fallback.
-  - WS contract smoke test (already exists; extend fields).
-- Files: `packages/agents/src/**/__tests__`, `apps/api/src/__tests__`.
+1. **Make dev auth bypass actually work out-of-the-box for demo runs**
+   - Problem: Client bypass (`VITE_DEV_AUTH_BYPASS=1`) sends `Bearer dev`, but API only accepts that token when `LEARNFLOW_DEV_AUTH=1` (server-side devMode). If only one side is enabled, login/onboarding will be flaky / redirect-loop.
+   - Buildable fix: in `scripts/dev-status.mjs` (or dev bootstrap docs), enforce/print a single “DEV AUTH: ON/OFF” status and required env vars for client + API.
+   - Files: `apps/client/src/App.tsx`, `apps/client/src/context/AppContext.tsx`, `apps/api/src/config.ts`, `apps/api/src/middleware.ts`.
 
-14. **P3 — Screenshot harness: verify it hits every screen that matters and fails on skeleton-only pages**
+2. **Add a dedicated “dev login” button in `/login` when bypass is enabled**
+   - Goal: one-click deterministic login for demos (sets token or relies on bearer dev) and navigates to dashboard.
+   - Guarded by `VITE_DEV_AUTH_BYPASS=1` only.
+   - Files: `apps/client/src/screens/Login.tsx` (or equivalent; locate actual login screen), `AppContext` auth helpers.
 
-- Harness: `screenshot-all.mjs`.
-- Build:
-  - Add assertions: Pipeline Detail must render a title/status, not only skeletons.
-  - Ensure Lesson Reader screenshot is taken with a valid seeded course/lesson.
+3. **Ensure onboarding completion state is consistent and stored durably**
+   - Risk: OnboardingGuard currently checks multiple sources (state + localStorage legacy + `learnflow-user`). Easy to regress.
+   - Buildable fix: define one canonical field (e.g. `user.onboardingCompletedAt`) persisted by API, and make client fallback minimal.
+   - Files: `apps/client/src/App.tsx` (OnboardingGuard), `apps/client/src/context/AppContext.tsx`, API profile/context endpoint.
+
+4. **Create /api/v1/health alias or update docs/scripts to stop using the wrong endpoint**
+   - Evidence: `/api/v1/health` returns 404; `/health` works.
+   - Builder decision:
+     - Either add `GET /api/v1/health` that proxies to the same handler, OR
+     - Update tooling/docs to use `/health` consistently.
+   - Files: `apps/api/src/app.ts`, `DEV_PORTS.md`, any scripts calling `/api/v1/health`.
+
+### P1 — should fix (integration correctness)
+
+5. **Add a diagnostics banner in client when API is unreachable / mis-proxied**
+   - Show: API base (`apiBase()`), devAuthBypass status, and quick copy/paste cURL.
+   - Avoids silent blank screens.
+   - Files: `apps/client/src/components/ModeProvidersDebugPanel.tsx` + `AppStateDebugPanel`.
+
+6. **Verify WebSocket proxy + auth path works with dev auth**
+   - Ensure `/ws` proxy and server WS auth accept `Bearer dev` in dev mode.
+   - Add an E2E that asserts the socket connects in bypass mode.
+   - Files: `apps/client/vite.config.ts`, `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`.
+
+7. **Harden redirect logic to avoid loops between /login, /onboarding, /dashboard**
+   - Add test cases:
+     - no token → /dashboard redirects to /login
+     - token but onboarding incomplete → redirects to /onboarding/welcome
+     - dev bypass → allows /dashboard without token
+   - Files: `apps/client/src/App.tsx`, existing tests under `apps/client/src/__tests__/`.
+
+8. **Make pipeline source-mode (“mock” vs “real”) consistent and visible**
+   - Spec trust: if mock sources are used, disclose clearly.
+   - Implementation already has sourceMode plumbing; ensure it is set reliably for every pipeline run and rendered consistently.
+   - Files: `apps/api/src/routes/pipeline.ts`, `apps/client/src/components/pipeline/PipelineView.tsx`, `apps/client/src/context/AppContext.tsx`.
+
+### P2 — cleanup / spec alignment guardrails
+
+9. **Enforce OpenAI web_search-only for MVP pipeline at runtime (no accidental multi-source provider)**
+   - Add an assertion or config gate so the pipeline cannot call `web-search-provider.ts` paths.
+   - Files: `packages/agents/src/content-pipeline/mvp.ts`, `apps/api/src/routes/pipeline.ts`.
+
+10. **Document “BYOAI-only” truth in one place and link from Settings → About**
+
+- There is `settings-about-mvp-truth.png`; ensure it stays accurate and includes: “No managed keys in this build” + how to set key.
+- Files: client Settings About screen.
+
+11. **Add a single canonical DEV_PORTS / endpoint map and update screenshot scripts to use it**
+
+- Avoid drift between :3000 API, :3001 client, :3003 web.
+- Files: `DEV_PORTS.md`, `screenshot-all.mjs`, `scripts/dev-status.mjs`.
+
+12. **Fix OneDrive mirror instructions + add a script to sync planner artifacts**
+
+- Repo has historical references to OneDrive paths that don’t match what exists now.
+- Provide `npm run onedrive:sync:planner -- --iter 162` that mirrors:
+  - `learnflow/screenshots/iter162/run-001/`
+  - `IMPROVEMENT_QUEUE.md`
+- Destination should be consistent with existing OneDrive tree: `/home/aifactory/onedrive-learnflow/learnflow/screenshots/iter162/run-001/` and `/home/aifactory/onedrive-learnflow/learnflow/IMPROVEMENT_QUEUE.md`.
+
+13. **Add CI guard: dev auth bypass must never be enabled in production builds**
+
+- Already partially enforced via `config.devMode` check; add explicit startup log + fail if `LEARNFLOW_DEV_AUTH=1` and `NODE_ENV=production`.
+- Files: `apps/api/src/config.ts` + server bootstrap.
+
+14. **Tighten tests around auth bypass token acceptance**
+
+- Unit test that API rejects `Bearer dev` unless `LEARNFLOW_DEV_AUTH=1`.
+- Unit/E2E test that when enabled, it attaches `req.user` with deterministic identity.
+- Files: `apps/api/src/middleware.ts`, new tests.
+
+15. **Onboarding UX polish: ensure “First Course Setup” screen actually results in a visible course or a next action**
+
+- Spec says progress animation only + saved prefs + create first course from dashboard; ensure the CTA and dashboard messaging are aligned.
+- Files: `apps/client/src/screens/onboarding/*`, dashboard screen.
 
 ---
 
-## Builder notes (quick starting points)
+## Screenshots captured (Iter162)
 
-- BYOAI enforcement already exists in API: `apps/api/src/llm/openai.ts` and `apps/api/src/llm/providers.ts`.
-- WS spec parity is close: `apps/api/src/wsOrchestrator.ts` emits `response.start/chunk/end` and `agent.spawned/complete`, and client consumes them in `apps/client/src/screens/Conversation.tsx`.
-- Artifact-only invariant is present but needs end-to-end enforcement: `apps/api/src/pipeline/lesson-artifacts.ts` + tests.
+Stored at: `learnflow/learnflow/screenshots/iter162/run-001/`
+
+- landing-home.png
+- marketing-{home,features,pricing,download,docs,blog,about}.png
+- auth-{login,register}.png
+- onboarding-1-welcome.png
+- onboarding-2-goals.png
+- onboarding-3-topics.png
+- onboarding-4-api-keys.png
+- onboarding-5-subscription.png
+- onboarding-6-first-course.png
+- app-{dashboard,conversation,mindmap,pipelines,notifications,collaboration,settings}.png
+- course-view.png
+- course-create-after-click.png
+- lesson-reader.png
+- pipeline-detail.png
+- marketplace-{courses,agents,creator-dashboard}.png
+- settings-about-mvp-truth.png

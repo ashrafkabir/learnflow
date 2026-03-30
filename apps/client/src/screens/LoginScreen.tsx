@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { apiPost } from '../context/AppContext.js';
 import { Button } from '../components/Button.js';
@@ -11,6 +11,26 @@ export function LoginScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const devAuth = useMemo(() => {
+    const runtimeEnv =
+      (globalThis as any)?.__LEARNFLOW_ENV__ &&
+      typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
+        ? ((globalThis as any).__LEARNFLOW_ENV__ as Record<string, string | undefined>)
+        : null;
+
+    const clientBypassEnabled =
+      runtimeEnv?.VITE_DEV_AUTH_BYPASS === '1' ||
+      (import.meta as any)?.env?.VITE_DEV_AUTH_BYPASS === '1';
+
+    // IMPORTANT: This is only a UX hint. The server remains the source of truth.
+    // We require the server to explicitly opt in via LEARNFLOW_DEV_AUTH=1 as well;
+    // if it is not enabled, the demo login will predictably fail with a clear message.
+    const serverOptInEnabled =
+      runtimeEnv?.LEARNFLOW_DEV_AUTH === '1' || runtimeEnv?.LEARNFLOW_DEV_AUTH === 'true';
+
+    return { clientBypassEnabled, serverOptInEnabled };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,6 +46,41 @@ export function LoginScreen() {
       else nav('/dashboard');
     } catch {
       setError('Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDevDemoLogin = async () => {
+    setError('');
+
+    if (!devAuth.clientBypassEnabled) {
+      setError('Dev Demo Login is disabled. Set VITE_DEV_AUTH_BYPASS=1 and reload.');
+      return;
+    }
+
+    if (!devAuth.serverOptInEnabled) {
+      setError(
+        'Dev Demo Login requires the API to opt in. Start the API with LEARNFLOW_DEV_AUTH=1 (and keep NODE_ENV != production).',
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Deterministic, server-validated bypass identity.
+      // The API will only accept this when LEARNFLOW_DEV_AUTH=1.
+      localStorage.setItem('learnflow-token', 'dev');
+      localStorage.removeItem('learnflow-refresh');
+      localStorage.setItem(
+        'learnflow-user',
+        JSON.stringify({ email: 'dev@learnflow', name: 'Dev Demo', onboardingCompletedAt: null }),
+      );
+
+      // Route decision matches normal login flow.
+      nav('/dashboard');
+    } catch {
+      setError('Dev Demo Login failed');
     } finally {
       setLoading(false);
     }
@@ -112,6 +167,27 @@ export function LoginScreen() {
           <Button type="submit" disabled={loading} variant="primary" size="large" fullWidth>
             {loading ? 'Signing in...' : 'Sign In'}
           </Button>
+
+          {devAuth.clientBypassEnabled && (
+            <div className="space-y-2">
+              <Button
+                type="button"
+                disabled={loading}
+                variant="secondary"
+                size="large"
+                fullWidth
+                onClick={handleDevDemoLogin}
+              >
+                {loading ? 'Starting demo…' : 'Dev Demo Login'}
+              </Button>
+              {!devAuth.serverOptInEnabled && (
+                <div className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                  Server dev auth is not enabled. Start API with <code>LEARNFLOW_DEV_AUTH=1</code>{' '}
+                  to use Dev Demo Login.
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="rounded-md border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900/20 p-3">
             <div className="text-xs text-gray-700/80 dark:text-gray-200">
