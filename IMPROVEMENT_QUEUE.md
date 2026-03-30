@@ -1,6 +1,6 @@
 # Iter150 — Improvement Queue (Planner)
 
-Status: IN PROGRESS (builder)
+Status: DONE
 
 Scope: **spec-vs-implementation gaps after Iter149 (Improve/Undo proofs)**.
 
