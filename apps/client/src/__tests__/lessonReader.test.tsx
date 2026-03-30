@@ -207,7 +207,8 @@ describe('Lesson Reader', () => {
 
     renderAt('/courses/c1/lessons/l1');
 
-    const btn = await screen.findByText('See Sources');
+    // Iter144: Sources entry point moved into the unified drawer (button label: "Sources").
+    const btn = await screen.findByText('Sources');
     fireEvent.click(btn);
 
     expect(await screen.findByText('Sources & Attribution')).toBeInTheDocument();

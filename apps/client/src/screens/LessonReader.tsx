@@ -31,7 +31,6 @@ import {
   IconProgressRing,
   IconRefresh,
   IconScale,
-  IconRocket,
   IconSearch,
   IconSparkles,
   IconTestTube,
@@ -80,11 +79,14 @@ function parseStructuredContent(content?: string) {
   let currentType = 'content';
   let buffer: string[] = [];
 
+  const bufferHasMeaningfulContent = () => buffer.some((l) => l.trim().length > 0);
+
   const flush = () => {
-    if (buffer.length > 0) {
+    // Avoid emitting empty/whitespace-only blocks (prevents blank titled sections).
+    if (buffer.length > 0 && bufferHasMeaningfulContent()) {
       sections.push({ type: currentType, content: buffer.join('\n') });
-      buffer = [];
     }
+    buffer = [];
   };
 
   for (const line of lines) {
@@ -92,51 +94,70 @@ function parseStructuredContent(content?: string) {
     if (lower.startsWith('## learning objectives') || lower.startsWith('## objectives')) {
       flush();
       currentType = 'objectives';
-    } else if (
-      lower.startsWith('## estimated time') ||
-      (lower.startsWith('**') && lower.includes('minute'))
-    ) {
+      continue;
+    }
+
+    // NOTE: Previously we treated any bold line mentioning "minute" as a time marker.
+    // That incorrectly *dropped* those lines from the rendered lesson (repro: "**Estimated time: 10 minutes**").
+    if (lower.startsWith('## estimated time')) {
       flush();
       currentType = 'time';
-    } else if (
+      continue;
+    }
+
+    if (
       lower.startsWith('## main content') ||
       lower.startsWith('## core content') ||
       lower.startsWith('## overview')
     ) {
       flush();
       currentType = 'content';
-    } else if (lower.startsWith('## key points') || lower.startsWith('## key concepts')) {
+      continue;
+    }
+    if (lower.startsWith('## key points') || lower.startsWith('## key concepts')) {
       flush();
       currentType = 'keypoints';
-    } else if (lower.startsWith('## recap') || lower.startsWith('## summary recap')) {
+      continue;
+    }
+    if (lower.startsWith('## recap') || lower.startsWith('## summary recap')) {
       flush();
       currentType = 'recap';
-    } else if (lower.startsWith('## key takeaways') || lower.startsWith('## takeaways')) {
+      continue;
+    }
+    if (lower.startsWith('## key takeaways') || lower.startsWith('## takeaways')) {
       flush();
       currentType = 'takeaways';
-    } else if (
+      continue;
+    }
+    if (
       lower.startsWith('## sources') ||
       lower.startsWith('## references') ||
       lower.startsWith('## further reading')
     ) {
       flush();
       currentType = 'sources';
-    } else if (lower.startsWith('## next steps') || lower.startsWith("## what's next")) {
+      continue;
+    }
+    if (lower.startsWith('## next steps') || lower.startsWith("## what's next")) {
       flush();
       currentType = 'nextsteps';
-    } else if (lower.startsWith('## quick check') || lower.startsWith('## comprehension')) {
+      continue;
+    }
+    if (lower.startsWith('## quick check') || lower.startsWith('## comprehension')) {
       flush();
       currentType = 'quickcheck';
-    } else if (line.startsWith('# ')) {
+      continue;
+    }
+    if (line.startsWith('# ')) {
       flush();
       currentType = 'title';
-      buffer.push(line);
+      buffer = [line];
       flush();
       currentType = 'content';
       continue;
-    } else {
-      buffer.push(line);
     }
+
+    buffer.push(line);
   }
   flush();
   return sections;
@@ -169,6 +190,22 @@ export function LessonReader() {
     lastQuizScore: number | null;
   }>(null);
   const [activePanel, setActivePanel] = useState<'none' | 'notes' | 'quiz'>('none');
+
+  // Single fixed side drawer (Iter144): consolidate side elements + actions
+  const [sideDrawerOpen, setSideDrawerOpen] = useState(true);
+  const [sideTwisties, setSideTwisties] = useState<{
+    actions: boolean;
+    notes: boolean;
+    takeaways: boolean;
+    comparison: boolean;
+    reads: boolean;
+  }>({
+    actions: true,
+    notes: false,
+    takeaways: true,
+    comparison: false,
+    reads: true,
+  });
   const [attributionOpen, setAttributionOpen] = useState(false);
   const [_notesFormat, _setNotesFormat] = useState<'cornell' | 'flashcard'>('cornell');
   const [savedNote, setSavedNote] = useState<any>(null);
@@ -196,7 +233,7 @@ export function LessonReader() {
   // Feature 2: Comparison Mode
   const [comparison, setComparison] = useState<Comparison | null>(null);
   const [comparingLoading, setComparingLoading] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
+  const [, setShowComparison] = useState(false);
 
   // Iter39 Task 6: Lesson-level mindmap (lightweight v1 using vis-network)
   const [lessonMindmapOpen, setLessonMindmapOpen] = useState(false);
@@ -256,9 +293,10 @@ export function LessonReader() {
   const apiTakeaways = Array.isArray((lesson as any)?.takeaways)
     ? ((lesson as any).takeaways as any[])
     : [];
-  const apiRelatedImages = Array.isArray((lesson as any)?.relatedImages)
-    ? ((lesson as any).relatedImages as any[])
-    : [];
+  // Related images rail removed in Iter144 (drawer-only side content)
+  // const apiRelatedImages = Array.isArray((lesson as any)?.relatedImages)
+  //   ? ((lesson as any).relatedImages as any[])
+  //   : [];
 
   useEffect(() => {
     if (courseId) {
@@ -741,7 +779,8 @@ export function LessonReader() {
     }
   };
 
-  const handleNotes = async () => {
+  // Notes are opened directly from the drawer; keep activePanel wiring.
+  const _handleNotes = async () => {
     if (activePanel === 'notes') {
       setActivePanel('none');
       return;
@@ -1082,8 +1121,8 @@ export function LessonReader() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-8">
           <article
             data-component="lesson-content"
             aria-label="Lesson content"
@@ -1490,24 +1529,36 @@ export function LessonReader() {
                   let sIdx = contentIdx * 100;
                   for (const line of lines) {
                     if (line.startsWith('### ') || line.startsWith('## ')) {
-                      if (currentLines.length > 0 || currentHeading)
+                      // Only emit a subsection if it has meaningful content.
+                      // This prevents empty headings like "Main Content" becoming blank sections.
+                      const hasMeaningful =
+                        currentHeading.trim().length > 0 ||
+                        currentLines.some((l) => l.trim().length > 0);
+                      if (hasMeaningful) {
                         subSections.push({
                           heading: currentHeading,
                           lines: currentLines,
                           globalIndex: sIdx++,
                         });
+                      }
                       currentHeading = line.replace(/^#{2,3}\s*/, '');
                       currentLines = [];
                     } else {
                       currentLines.push(line);
                     }
                   }
-                  if (currentLines.length > 0 || currentHeading)
-                    subSections.push({
-                      heading: currentHeading,
-                      lines: currentLines,
-                      globalIndex: sIdx++,
-                    });
+                  {
+                    const hasMeaningful =
+                      currentHeading.trim().length > 0 ||
+                      currentLines.some((l) => l.trim().length > 0);
+                    if (hasMeaningful) {
+                      subSections.push({
+                        heading: currentHeading,
+                        lines: currentLines,
+                        globalIndex: sIdx++,
+                      });
+                    }
+                  }
 
                   return (
                     <div
@@ -1698,116 +1749,7 @@ export function LessonReader() {
               )}
             </div>
 
-            {/* Comparison Mode */}
-            {showComparison && (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                    <IconScale className="w-5 h-5 text-accent" />
-                    Concept Comparison
-                  </h2>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={generateComparison}
-                      className="text-accent"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <IconRefresh className="w-4 h-4" />
-                        Regenerate
-                      </span>
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setShowComparison(false)}>
-                      <span className="inline-flex items-center gap-2">
-                        <IconClose className="w-4 h-4" />
-                        Close
-                      </span>
-                    </Button>
-                  </div>
-                </div>
-                {comparingLoading ? (
-                  <div className="text-center py-8 text-gray-500">
-                    <span className="inline-flex items-center gap-2 justify-center">
-                      <IconSparkles className="w-4 h-4" />
-                      Analyzing lesson for comparable concepts...
-                    </span>
-                  </div>
-                ) : comparison && comparison.concepts.length > 0 ? (
-                  <>
-                    {comparison.concepts.length === 2 ? (
-                      <div className="grid grid-cols-2 gap-4">
-                        {comparison.concepts.map((concept, ci) => (
-                          <div
-                            key={ci}
-                            className="rounded-xl border border-gray-200 dark:border-gray-700 p-4"
-                          >
-                            <h3 className="font-semibold text-accent mb-3 text-center">
-                              {concept}
-                            </h3>
-                            <div className="space-y-2">
-                              {comparison.dimensions.map((dim, di) => (
-                                <div key={di}>
-                                  <p className="text-xs font-medium text-gray-500 uppercase">
-                                    {dim}
-                                  </p>
-                                  <p className="text-sm text-gray-700 dark:text-gray-300">
-                                    {comparison.cells[di]?.[ci] || '—'}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr>
-                              <th className="text-left p-2 text-gray-500 font-medium border-b dark:border-gray-700">
-                                Dimension
-                              </th>
-                              {comparison.concepts.map((c, i) => (
-                                <th
-                                  key={i}
-                                  className="text-left p-2 text-accent font-semibold border-b dark:border-gray-700"
-                                >
-                                  {c}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {comparison.dimensions.map((dim, di) => (
-                              <tr key={di} className="border-b dark:border-gray-800">
-                                <td className="p-2 font-medium text-gray-700 dark:text-gray-300">
-                                  {dim}
-                                </td>
-                                {comparison.concepts.map((_, ci) => (
-                                  <td key={ci} className="p-2 text-gray-600 dark:text-gray-300">
-                                    {comparison.cells[di]?.[ci] || '—'}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                    {comparison.summary && (
-                      <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 italic bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
-                        {comparison.summary}
-                      </p>
-                    )}
-                  </>
-                ) : comparison ? (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    {comparison.summary || 'No comparable concepts found in this lesson.'}
-                  </p>
-                ) : null}
-              </div>
-            )}
+            {/* Concept Comparison now lives in the unified side drawer (Iter144) */}
 
             {/* Key Points */}
             {sections
@@ -1863,174 +1805,14 @@ export function LessonReader() {
                 </div>
               ))}
 
-            {/* Key Takeaways */}
-            {sections
-              .filter((s) => s.type === 'takeaways')
-              .map((s, i) => (
-                <div
-                  key={`take-${i}`}
-                  className="bg-success/5 border border-success/20 rounded-2xl p-5"
-                  data-testid="key-takeaways"
-                >
-                  <h2 className="text-sm font-semibold text-success mb-3 flex items-center gap-2">
-                    <IconBulb className="w-4 h-4" />
-                    Key Takeaways
-                  </h2>
-                  <div className="space-y-2">
-                    {s.content
-                      .split('\n')
-                      .filter((l) => l.trim())
-                      .map((line, j) => (
-                        <div
-                          key={j}
-                          className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-                        >
-                          <span className="text-success font-bold">{j + 1}.</span>
-                          <span>{line.replace(/^\d+\.\s*/, '').replace(/^[-•]\s*/, '')}</span>
-                        </div>
-                      ))}
-                  </div>
+            {/* Key Takeaways now live in the unified side drawer (Iter144) */}
 
-                  {Array.isArray(savedNote?.content?.keyTakeawaysExtras) &&
-                  savedNote.content.keyTakeawaysExtras.length > 0 ? (
-                    <div
-                      className="mt-4 pt-4 border-t border-success/20"
-                      data-testid="marked-takeaways"
-                    >
-                      <h3 className="text-xs font-semibold text-success/90 mb-2">
-                        Your marked takeaways
-                      </h3>
-                      <div className="space-y-2">
-                        {savedNote.content.keyTakeawaysExtras.map((b: string, j: number) => (
-                          <div
-                            key={`extra-${j}`}
-                            className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-                          >
-                            <span className="text-success font-bold">•</span>
-                            <span>{String(b).trim()}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
+            {/* Action chips removed (Iter144): actions live in the side drawer */}
 
-            {/* Iter73 P2.15: Action chips */}
-            <div
-              className="flex flex-wrap gap-2 mb-4"
-              data-testid="action-chips"
-              aria-label="Lesson actions"
-            >
-              <button
-                onClick={() => setActivePanel('notes')}
-                className="px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 inline-flex items-center gap-2"
-              >
-                <IconPencil className="w-4 h-4" />
-                Take Notes
-              </button>
-              <button
-                onClick={() => setActivePanel('quiz')}
-                className="px-3 py-2 rounded-xl text-xs font-semibold bg-accent/10 text-accent hover:bg-accent/20 inline-flex items-center gap-2"
-              >
-                <IconTestTube className="w-4 h-4" />
-                Quiz Me
-              </button>
-              <button
-                onClick={() => {
-                  // MVP: jump to Next Steps if present; otherwise open attribution.
-                  const el = document.querySelector('[data-testid="next-steps"]');
-                  if (el) (el as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  else setAttributionOpen(true);
-                }}
-                className="px-3 py-2 rounded-xl text-xs font-semibold bg-success/10 text-success hover:bg-success/20 inline-flex items-center gap-2"
-              >
-                <IconRocket className="w-4 h-4" />
-                Go Deeper
-              </button>
-              <button
-                onClick={() => setAttributionOpen(true)}
-                className="px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 inline-flex items-center gap-2"
-              >
-                <IconBook className="w-4 h-4" />
-                See Sources
-              </button>
-            </div>
+            {/* Suggested reads now live in the unified side drawer (Iter144) */}
 
-            {/* Suggested reads (moved to right rail on desktop; kept here for smaller screens) */}
-            <div className="lg:hidden bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <IconBook className="w-4 h-4" />
-                Suggested reads
-              </h2>
-              <div className="space-y-3">
-                {sources.length === 0 ? (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">No sources available.</p>
-                ) : (
-                  sources.map((s: any) => (
-                    <div key={s.id} className="flex items-start gap-3 text-sm">
-                      <span className="bg-accent/10 text-accent font-bold text-xs px-2 py-0.5 rounded-full flex-shrink-0">
-                        [{s.id}]
-                      </span>
-                      <div>
-                        <p className="text-gray-900 dark:text-white font-medium">{s.title}</p>
-                        <p className="text-gray-500 text-xs">
-                          {s.author} · {s.publication} · {s.year}
-                        </p>
-                        <a
-                          href={s.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-accent text-xs hover:underline"
-                        >
-                          {s.url}
-                        </a>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Next Steps */}
-            {sections.filter((s) => s.type === 'nextsteps').length > 0 ? (
-              sections
-                .filter((s) => s.type === 'nextsteps')
-                .map((s, i) => (
-                  <div
-                    key={`next-${i}`}
-                    className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5"
-                  >
-                    <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                      <IconRocket className="w-4 h-4" />
-                      Next Steps
-                    </h2>
-                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                      {s.content
-                        .split('\n')
-                        .filter((l) => l.trim())
-                        .map((line: string, j) => (
-                          <p key={j}>{line.replace(/^[-•]\s*/, '')}</p>
-                        ))}
-                    </div>
-                  </div>
-                ))
-            ) : (
-              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
-                No next steps listed for this lesson.
-              </div>
-            )}
-
-            {/* Quick Check */}
-            {sections.filter((s) => s.type === 'quickcheck').length > 0 ? (
-              sections
-                .filter((s) => s.type === 'quickcheck')
-                .map((s, i) => <InlineQuickCheck key={`qc-${i}`} content={s.content} />)
-            ) : (
-              <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
-                No quick check questions for this lesson. Try the "Quiz Me" button below!
-              </div>
-            )}
+            {/* Next Steps + Quick Check intentionally not rendered (Iter144) */}
+            {null}
 
             {sections.filter((s) => s.type === 'objectives').length === 0 && (
               <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
@@ -2039,112 +1821,333 @@ export function LessonReader() {
             )}
           </article>
 
-          {/* Right rail (desktop) / collapsible (mobile) */}
-          <aside className="lg:sticky lg:top-20 h-fit space-y-4" data-testid="lesson-right-rail">
-            {/* Key takeaways */}
-            {apiTakeaways.length > 0 ? (
-              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-                <details className="lg:open" open>
-                  <summary className="cursor-pointer list-none flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                      <IconBulb className="w-4 h-4 text-success" />
-                      Key takeaways
-                    </h2>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 lg:hidden">
-                      Tap to expand
-                    </span>
-                  </summary>
-                  <div className="mt-3 space-y-2">
-                    {apiTakeaways
-                      .map((t) => String(t || '').trim())
-                      .filter(Boolean)
-                      .slice(0, 10)
-                      .map((t, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-                        >
-                          <span className="text-success font-bold">{idx + 1}.</span>
-                          <span>{t}</span>
+          {/* Unified side drawer (fixed while scrolling) */}
+          <aside
+            className="hidden lg:block"
+            aria-label="Lesson side drawer"
+            data-testid="lesson-side-drawer"
+          >
+            <div className="sticky top-24 h-fit">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setSideDrawerOpen((v) => !v)}
+                  className="w-full flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800"
+                  aria-expanded={sideDrawerOpen}
+                >
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                    <IconBook className="w-4 h-4 text-accent" />
+                    Lesson Drawer
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-300">
+                    {sideDrawerOpen ? 'Hide' : 'Show'}
+                  </span>
+                </button>
+
+                {sideDrawerOpen && (
+                  <div className="p-4 space-y-3 max-h-[70vh] overflow-auto">
+                    {/* Actions */}
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => setSideTwisties((s) => ({ ...s, actions: !s.actions }))}
+                        className="w-full flex items-center justify-between px-3 py-2"
+                        aria-expanded={sideTwisties.actions}
+                      >
+                        <span className="text-xs font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                          <IconSparkles className="w-4 h-4 text-accent" />
+                          Actions
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {sideTwisties.actions ? '▾' : '▸'}
+                        </span>
+                      </button>
+                      {sideTwisties.actions && (
+                        <div className="px-3 pb-3 flex flex-wrap gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={handleQuiz}
+                            aria-label="Quiz me"
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <IconTestTube className="w-4 h-4" />
+                              Quiz me
+                            </span>
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() =>
+                              nav(
+                                `/conversation?courseId=${courseId}&lessonId=${lessonId}&action=question`,
+                              )
+                            }
+                            aria-label="Ask me"
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <IconInfo className="w-4 h-4" />
+                              Ask me
+                            </span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setAttributionOpen(true)}
+                            aria-label="See sources"
+                            className="text-accent"
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <IconBook className="w-4 h-4" />
+                              Sources
+                            </span>
+                          </Button>
                         </div>
-                      ))}
-                  </div>
-                </details>
-              </div>
-            ) : null}
+                      )}
+                    </div>
 
-            {/* Suggested reads (real URLs only) */}
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                <IconBook className="w-4 h-4" />
-                Suggested reads
-              </h2>
-              {sources.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">No sources available.</p>
-              ) : (
-                <div className="space-y-3">
-                  {sources
-                    .filter(
-                      (s: any) => typeof s?.url === 'string' && /^https?:\/\//i.test(String(s.url)),
-                    )
-                    .slice(0, 8)
-                    .map((s: any) => (
-                      <div key={String(s.url)} className="text-sm">
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          {s.title || s.url}
-                        </p>
-                        <a
-                          href={s.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-accent text-xs hover:underline break-all"
-                        >
-                          {s.url}
-                        </a>
-                      </div>
-                    ))}
-                </div>
-              )}
-            </div>
+                    {/* Study Notes */}
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => setSideTwisties((s) => ({ ...s, notes: !s.notes }))}
+                        className="w-full flex items-center justify-between px-3 py-2"
+                        aria-expanded={sideTwisties.notes}
+                      >
+                        <span className="text-xs font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                          <IconPencil className="w-4 h-4 text-accent" />
+                          Study notes
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {sideTwisties.notes ? '▾' : '▸'}
+                        </span>
+                      </button>
+                      {sideTwisties.notes && (
+                        <div className="px-3 pb-3">
+                          <p className="text-xs text-gray-500 dark:text-gray-300 mb-2">
+                            Open the notes panel to auto-format notes or write your own.
+                          </p>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setActivePanel('notes')}
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <IconPencil className="w-4 h-4" />
+                              Open notes
+                            </span>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
 
-            {/* Related images (from research bundle manifest) */}
-            {apiRelatedImages.length > 0 ? (
-              <div
-                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5"
-                data-testid="related-images"
-              >
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <IconPalette className="w-4 h-4" />
-                  Related images
-                </h2>
-                <div className="grid grid-cols-2 gap-3">
-                  {apiRelatedImages.slice(0, 6).map((img: any, idx: number) => (
-                    <a
-                      key={idx}
-                      href={img?.sourceUrl || img?.pageUrl || img?.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="block rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800"
-                      title={img?.alt || 'Related image'}
-                    >
-                      <img
-                        src={img?.url}
-                        alt={img?.alt || 'Related image'}
-                        className="w-full h-24 object-cover"
-                        loading="lazy"
-                        onError={(e) => {
-                          try {
-                            (e.currentTarget as any).style.display = 'none';
-                          } catch {
-                            /* ignore */
+                    {/* Key Takeaways */}
+                    {(apiTakeaways.length > 0 ||
+                      (Array.isArray(savedNote?.content?.keyTakeawaysExtras) &&
+                        savedNote.content.keyTakeawaysExtras.length > 0)) && (
+                      <div className="rounded-xl border border-gray-200 dark:border-gray-800">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSideTwisties((s) => ({ ...s, takeaways: !s.takeaways }))
                           }
-                        }}
-                      />
-                    </a>
-                  ))}
-                </div>
+                          className="w-full flex items-center justify-between px-3 py-2"
+                          aria-expanded={sideTwisties.takeaways}
+                        >
+                          <span className="text-xs font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                            <IconBulb className="w-4 h-4 text-success" />
+                            Key takeaways
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {sideTwisties.takeaways ? '▾' : '▸'}
+                          </span>
+                        </button>
+                        {sideTwisties.takeaways && (
+                          <div className="px-3 pb-3 space-y-2" data-testid="drawer-key-takeaways">
+                            {apiTakeaways
+                              .map((t) => String(t || '').trim())
+                              .filter(Boolean)
+                              .slice(0, 10)
+                              .map((t, idx) => (
+                                <div
+                                  key={`api-${idx}`}
+                                  className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                                >
+                                  <span className="text-success font-bold">{idx + 1}.</span>
+                                  <span>{t}</span>
+                                </div>
+                              ))}
+
+                            {Array.isArray(savedNote?.content?.keyTakeawaysExtras) &&
+                            savedNote.content.keyTakeawaysExtras.length > 0 ? (
+                              <div className="pt-2 border-t border-gray-200 dark:border-gray-800">
+                                <p className="text-[11px] font-semibold text-gray-500 uppercase mb-2">
+                                  Your marked takeaways
+                                </p>
+                                {savedNote.content.keyTakeawaysExtras.map(
+                                  (b: string, j: number) => (
+                                    <div
+                                      key={`extra-${j}`}
+                                      className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                                    >
+                                      <span className="text-success font-bold">•</span>
+                                      <span>{String(b).trim()}</span>
+                                    </div>
+                                  ),
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Concept Comparison (above suggested reads) */}
+                    {comparison && (
+                      <div className="rounded-xl border border-gray-200 dark:border-gray-800">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSideTwisties((s) => ({ ...s, comparison: !s.comparison }))
+                          }
+                          className="w-full flex items-center justify-between px-3 py-2"
+                          aria-expanded={sideTwisties.comparison}
+                        >
+                          <span className="text-xs font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                            <IconScale className="w-4 h-4 text-accent" />
+                            Concept comparison
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {sideTwisties.comparison ? '▾' : '▸'}
+                          </span>
+                        </button>
+                        {sideTwisties.comparison && (
+                          <div className="px-3 pb-3">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={generateComparison}
+                                className="text-accent"
+                              >
+                                <span className="inline-flex items-center gap-2">
+                                  <IconRefresh className="w-4 h-4" />
+                                  Regenerate
+                                </span>
+                              </Button>
+                            </div>
+                            {comparingLoading ? (
+                              <p className="text-xs text-gray-500 inline-flex items-center gap-2">
+                                <IconSparkles className="w-3.5 h-3.5" />
+                                Analyzing...
+                              </p>
+                            ) : comparison && comparison.concepts?.length > 0 ? (
+                              <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+                                <table className="min-w-full text-xs">
+                                  <thead className="bg-gray-50 dark:bg-gray-800/50">
+                                    <tr>
+                                      <th className="text-left p-2 text-gray-500 font-semibold">
+                                        Dimension
+                                      </th>
+                                      {comparison.concepts.map((c, i) => (
+                                        <th
+                                          key={i}
+                                          className="text-left p-2 text-accent font-semibold"
+                                        >
+                                          {c}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {comparison.dimensions.map((dim, di) => (
+                                      <tr
+                                        key={di}
+                                        className="border-t border-gray-200 dark:border-gray-800"
+                                      >
+                                        <td className="p-2 font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                          {dim}
+                                        </td>
+                                        {comparison.concepts.map((_, ci) => (
+                                          <td
+                                            key={ci}
+                                            className="p-2 text-gray-600 dark:text-gray-300 min-w-[180px]"
+                                          >
+                                            {comparison.cells?.[di]?.[ci] || '—'}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-gray-500">
+                                {comparison?.summary || 'No comparable concepts found.'}
+                              </p>
+                            )}
+                            {comparison?.summary ? (
+                              <p className="mt-2 text-[11px] text-gray-500 italic">
+                                {comparison.summary}
+                              </p>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Suggested reads */}
+                    <div className="rounded-xl border border-gray-200 dark:border-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => setSideTwisties((s) => ({ ...s, reads: !s.reads }))}
+                        className="w-full flex items-center justify-between px-3 py-2"
+                        aria-expanded={sideTwisties.reads}
+                      >
+                        <span className="text-xs font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
+                          <IconBook className="w-4 h-4" />
+                          Suggested reads
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {sideTwisties.reads ? '▾' : '▸'}
+                        </span>
+                      </button>
+                      {sideTwisties.reads && (
+                        <div className="px-3 pb-3 space-y-3" data-testid="drawer-suggested-reads">
+                          {sources.length === 0 ? (
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              No sources available.
+                            </p>
+                          ) : (
+                            sources
+                              .filter(
+                                (s: any) =>
+                                  typeof s?.url === 'string' && /^https?:\/\//i.test(String(s.url)),
+                              )
+                              .slice(0, 8)
+                              .map((s: any) => (
+                                <div key={String(s.url)} className="text-sm">
+                                  <p className="text-gray-900 dark:text-white font-medium">
+                                    {s.title || s.url}
+                                  </p>
+                                  <a
+                                    href={s.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-accent text-xs hover:underline break-all"
+                                  >
+                                    {s.url}
+                                  </a>
+                                </div>
+                              ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : null}
+            </div>
           </aside>
 
           <AttributionDrawer
@@ -2165,69 +2168,9 @@ export function LessonReader() {
             sourceMode={(lesson as any)?.sourceMode}
           />
 
-          {/* Previous / Next Lesson Navigation */}
-          {(prevLesson || nextLesson) && (
-            <div className="mt-8 flex items-center justify-between gap-4">
-              {prevLesson ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => nav(`/courses/${courseId}/lessons/${prevLesson.id}`)}
-                  className="max-w-[45%]"
-                >
-                  <span>←</span>
-                  <span className="truncate">Previous: {prevLesson.title}</span>
-                </Button>
-              ) : (
-                <div />
-              )}
-              {nextLesson ? (
-                <Button
-                  variant="secondary"
-                  onClick={() => nav(`/courses/${courseId}/lessons/${nextLesson.id}`)}
-                  className="max-w-[45%] ml-auto"
-                >
-                  <span className="truncate">Next: {nextLesson.title}</span>
-                  <span>→</span>
-                </Button>
-              ) : (
-                <div />
-              )}
-            </div>
-          )}
+          {/* Prev/Next navigation moved to floating bottom bar (Iter144) */}
 
-          {/* Action buttons */}
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button
-              variant={activePanel === 'notes' ? 'primary' : 'secondary'}
-              onClick={handleNotes}
-              aria-label="Take Notes"
-            >
-              <span className="inline-flex items-center gap-2">
-                <IconPencil className="w-4 h-4" />
-                Take Notes
-              </span>
-            </Button>
-            <Button
-              variant={activePanel === 'quiz' ? 'primary' : 'secondary'}
-              onClick={handleQuiz}
-              aria-label="Quiz Me"
-            >
-              <span className="inline-flex items-center gap-2">
-                <IconTestTube className="w-4 h-4" />
-                Quiz Me
-              </span>
-            </Button>
-            <Button
-              variant={lessonMindmapOpen ? 'primary' : 'secondary'}
-              onClick={() => setLessonMindmapOpen((v) => !v)}
-              aria-label="Lesson mindmap"
-            >
-              <span className="inline-flex items-center gap-2">
-                <IconMap className="w-4 h-4" />
-                Lesson Map
-              </span>
-            </Button>
-          </div>
+          {/* Bottom-of-page action buttons removed (Iter144): actions live in the side drawer */}
 
           {/* Enhanced Notes panel */}
           {activePanel === 'notes' && (
@@ -2423,61 +2366,39 @@ export function LessonReader() {
         suggestions={lessonMindmapSuggestions}
       />
 
-      {/* Bottom action bar */}
-      <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">
-        <div className="max-w-4xl mx-auto px-2 sm:px-6 py-3 flex items-center justify-around gap-1 sm:gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={async () => {
-              if (courseId && lessonId) await completeLesson(courseId, lessonId);
-            }}
-            className={`flex-col gap-1 h-auto ${state.completedLessons.has(lessonId || '') ? 'text-success' : ''}`}
-          >
-            <span className="text-lg">
-              {state.completedLessons.has(lessonId || '') ? (
-                <IconCheck className="w-5 h-5" />
-              ) : (
-                <IconProgressRing className="w-5 h-5" />
-              )}
-            </span>
-            <span>Mark Complete</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              nav(`/conversation?courseId=${courseId}&lessonId=${lessonId}&action=notes`)
-            }
-            className="flex-col gap-1 h-auto"
-          >
-            <IconPencil className="w-5 h-5" />
-            <span>Take Notes</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              nav(`/conversation?courseId=${courseId}&lessonId=${lessonId}&action=quiz`)
-            }
-            className="flex-col gap-1 h-auto"
-          >
-            <IconTestTube className="w-5 h-5" />
-            <span>Quiz Me</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              nav(`/conversation?courseId=${courseId}&lessonId=${lessonId}&action=question`)
-            }
-            className="flex-col gap-1 h-auto"
-          >
-            <IconInfo className="w-5 h-5" />
-            <span>Ask Question</span>
-          </Button>
+      {/* Bottom navigation bar (Iter144): only prev/next, floating */}
+      {(prevLesson || nextLesson) && (
+        <div className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-t border-gray-200 dark:border-gray-800">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
+            {prevLesson ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => nav(`/courses/${courseId}/lessons/${prevLesson.id}`)}
+                className="max-w-[45%] justify-start"
+              >
+                <span>←</span>
+                <span className="truncate">{prevLesson.title}</span>
+              </Button>
+            ) : (
+              <div />
+            )}
+            {nextLesson ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => nav(`/courses/${courseId}/lessons/${nextLesson.id}`)}
+                className="max-w-[45%] justify-end ml-auto"
+              >
+                <span className="truncate">{nextLesson.title}</span>
+                <span>→</span>
+              </Button>
+            ) : (
+              <div />
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
@@ -2511,7 +2432,7 @@ function renderInlineWithCitations(text: string, sources: Source[]): React.React
   return parts.length ? <>{parts}</> : text;
 }
 
-function InlineQuickCheck({ content }: { content: string }) {
+function _InlineQuickCheck({ content }: { content: string }) {
   const [revealed, setRevealed] = React.useState<Set<number>>(new Set());
   const lines = content.split('\n').filter((l) => l.trim());
 
