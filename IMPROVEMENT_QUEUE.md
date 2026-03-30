@@ -1,168 +1,197 @@
-# Iter148 — IMPROVEMENT_QUEUE
+# Iter149 — IMPROVEMENT_QUEUE
 
-Status: **DONE**
+Status: **IN PROGRESS**
 
 Date: 2026-03-30
 
 Owner: Builder (Iter149)
 
-Scope focus (per request): verify Improve/Dig Deeper multi-step workflow from user POV (new title applied, markdown only, embedded images render, real links), verify sticky sidebar + Ask-me overlay, identify next gaps vs `LearnFlow_Product_Spec.md`.
+Focus (per request): validate Improve/Dig Deeper now fully works (no `heading_not_found`, images+links render, undo works) on desktop+mobile; identify next 10–15 gaps vs `LearnFlow_Product_Spec.md` + user expectations.
 
 ---
 
 ## What I verified (brutally honest)
 
-### Tests
+### 1) `npm test`
 
-- `npm test` ✅ (turbo) — all packages passed.
-- Playwright ✅
-  - Iter136/137/138/146 suites passed.
-  - Added Iter148 screenshot spec (below) and it passed.
+- ✅ `npm test` (turbo) passes across all packages.
+  - Notes: Vite CJS deprecation warning appears in logs but does not fail.
 
-### Evidence captured (Iter148)
+### 2) Playwright regression suites (requested)
 
-Screenshots saved in **both** locations:
+- ✅ Ran (chromium) and all passed:
+  - `iter136-smoke-assertions.spec.ts`
+  - `iter137-creator-publish-flow.spec.ts`
+  - `iter137-key-screens.spec.ts`
+  - `iter137-marketplace-enroll-import.spec.ts`
+  - `iter137-todays-lessons-reasons.spec.ts`
+  - `iter138-adaptive-loop.spec.ts`
+  - `iter138-mastery-badges.spec.ts`
+  - `iter138-mindmap-mastery-legend.spec.ts`
+  - `iter146-lesson-reader-ask-me-overlay.spec.ts`
+  - `iter146-lesson-reader-dig-deeper-empty-body.spec.ts`
+  - `iter146-lesson-reader-dig-deeper-heading.spec.ts`
+  - `iter146-lesson-reader-illustrate-heading.spec.ts`
+  - `iter148-improve-askme-screenshots.spec.ts`
 
-- Repo: `/home/aifactory/.openclaw/workspace/learnflow/learnflow/screenshots/iter148/run-001/`
-- OneDrive: `/home/aifactory/onedrive-learnflow/iter148/screenshots/run-001/`
+### 3) Improve/Dig Deeper “fully works” validation (desktop + mobile)
 
-Files:
+- **Improve / Dig Deeper (heading-level):** ✅ appears fixed from user POV _in the deterministic screenshot run_.
+  - The Iter148 screenshot spec now consistently shows:
+    - no `heading_not_found` toast
+    - new title applied
+    - markdown rendered
+    - embedded image rendered
+    - real external links rendered
 
-- `01-desktop-lesson-reader-top.png` — Lesson Drawer visible, Actions expanded, **Ask me button visible** (in right rail).
-- `02-desktop-after-improve-applied.png` — “Improve” clicked; visible content changes, but **error toast** appears (details below).
-- `03-desktop-actions-no-ask-me.png` — Actions section collapsed state; Ask me not visible in body (expected given current UI).
+- **Mobile:** ⚠️ **only partially proven**.
+  - Iter148 covers **mobile Ask-me overlay only** (smoke).
+  - There is **no existing mobile “Improve apply” screenshot spec** demonstrating that:
+    - Improve/Dig Deeper apply works on mobile
+    - embedded images render
+    - links render
 
-> Note: I attempted to capture “Ask-me overlay open” desktop/mobile, but in this run the Ask-me button was not reliably reachable from the top-level page controls (see Gap P0-2). The existing E2E test `e2e/iter146-lesson-reader-ask-me-overlay.spec.ts` does verify the overlay can open without navigation.
+- **Undo:** ❌ not verified end-to-end with screenshots.
+  - There is Undo UI in `LessonReader.tsx` (`aria-label="Undo last edit"`), but I could not get a stable Playwright screenshot spec to exercise Undo, mainly because:
+    - Undo button only appears after `lastEditUndo` is set, which is only set on a successful apply path,
+    - and my attempt to stub the apply endpoint without breaking UI state wasn’t stable within the timebox.
 
----
-
-## User-POV findings vs requested workflow
-
-### 1) Improve/Dig Deeper multi-step workflow
-
-**Current status: partially working, but not trustworthy yet.**
-
-- **New title applied:** visually a new subsection label appears, but a red toast says:
-  - `Heading not found: Iter148 Test Subsection (occurrenceIndex=0)`
-    This indicates the persistence/apply step is not robust against real lesson content structure (or the detection logic is mismatched).
-
-- **Markdown only:** I did not observe raw JSON rendering in the UI (good).
-
-- **Embedded images render:** not confirmed from the user surface. The “after improve” screenshot did **not** visibly show the expected embedded image. Either:
-  - the image markdown is not being injected into the displayed subsection, or
-  - the section being edited isn’t the one being rendered, or
-  - markdown rendering/sanitization is stripping/ignoring images.
-
-- **Real links:** not confirmed in the lesson body view. I did not see the expected external link rendered in the improved subsection.
-
-**Net:** the “Improve” pipeline is passing tests at the request/contract level, but from a user’s point of view it is not yet reliable or visibly complete (images/links/title apply behavior is fragile).
-
-### 2) Sidebar sticky behavior (Lesson Drawer)
-
-- Desktop right rail exists and uses sticky positioning (`sticky top-24`).
-- I cannot conclusively prove “sticky on scroll” from static screenshots, but layout appears consistent with sticky.
-- UX issue: on desktop the actions are effectively **hidden inside a right-rail drawer**, which may conflict with spec expectations (see Gap P1-6).
-
-### 3) Ask-me overlay
-
-- Overlay exists in code and E2E tests pass.
-- But discoverability is inconsistent: Ask-me is only available when the **Lesson Drawer → Actions** is expanded, and only when the drawer is visible (desktop). On mobile the right rail is hidden, so Ask-me may be unreachable depending on other UI (see Gap P0-2).
+**Net:** Improve/Dig Deeper looks good on desktop and tests are green, but **Undo is not proven**, and **mobile Improve apply is not proven**.
 
 ---
 
-## Improvement queue (prioritized) — 10–15 tasks
+## Evidence captured (Iter149 run-001)
 
-### P0 — Must fix (correctness / user trust)
+Copied the latest “Improve applied” and “Ask-me overlay” proof into Iter149 folder.
 
-1. **Fix Improve/Dig Deeper apply targeting (“Heading not found” errors)**
-   - Symptom: toast error `heading_not_found` after Improve.
-   - Likely root: replace-subsection matching fails if subsection headings aren’t true markdown headings in the stored content OR if multiple identical headings exist.
-   - Fix: ensure LessonReader edits operate on a stable identifier (server-generated subsection id) instead of brittle text match.
+Locations:
 
-2. **Make Ask-me reachable on mobile (and without relying on the desktop right rail)**
-   - Today: right rail is `hidden lg:block`; Actions are effectively desktop-only.
-   - Spec §5.2.4 calls for a bottom action bar including “Ask Question”.
-   - Add a mobile-friendly Actions entry point (bottom bar or FAB) that opens Ask-me overlay.
+- Repo: `/home/aifactory/.openclaw/workspace/learnflow/learnflow/screenshots/iter149/run-001/`
+- OneDrive: `/home/aifactory/onedrive-learnflow/iter149/screenshots/run-001/`
 
-3. **Guarantee Improve/Dig Deeper visibly changes the content the user just acted on**
-   - Current: toast + refetch can feel like “nothing happened”, and can change scroll/selection context.
-   - Implement optimistic patching of the edited subsection in-memory (then refresh in background), and scroll-to/flash the edited subsection.
+Files present:
 
-4. **Ensure improved markdown embeds (images + links) actually render in the lesson body**
-   - Add a Playwright assertion that after Apply, the lesson DOM contains:
-     - an `<img>` for the injected markdown image
-     - an `<a href="https://developer.mozilla.org/">` (or other known external link)
-   - If sanitization is stripping content, adjust markdown renderer allowlist.
+- `01-desktop-lesson-reader-top.png`
+- `06-desktop-improve-applied-proof.png` (copy of iter148 apply proof)
+- `03-desktop-ask-me-overlay.png`
+- `04-mobile-ask-me-overlay.png`
 
-5. **Selection-level vs heading-level behavior mismatch (“Dig Deeper” mental model)**
-   - If selection-level Dig Deeper is “annotation/preview only” while heading Improve persists, users will be confused.
-   - Decide a single mental model:
-     - either both persist with an explicit Apply step, or
-     - both show preview and require Apply.
+Note: there is **no Undo screenshot** in run-001.
 
-### P1 — High value (spec alignment / workflow completeness)
+---
 
-6. **Reintroduce the spec’s lesson action surface (bottom action bar)**
-   - Spec §5.2.4: “Bottom action bar: Mark Complete, Take Notes, Quiz Me, Ask Question”.
-   - Today: actions live in a hidden desktop drawer; mobile may lose them.
-   - Implement a bottom action bar (responsive) as primary discovery; keep drawer as secondary.
+## Spec / expectation gaps — next 10–15 highest impact
 
-7. **Multi-step Improve UX: add an explicit preview modal with Before/After + Apply/Cancel**
-   - Required for trust. Today it feels like a background mutation.
-   - Include: new title, rendered markdown preview, list of images/links with attribution.
+These are prioritized for Iter149 builder work.
 
-8. **Add Undo / revision history for applied edits**
-   - Even a single-step undo would reduce fear.
-   - Spec doesn’t demand it explicitly, but it’s critical for “editing lesson content” features.
+### P0 — Must fix (correctness / trust)
 
-9. **Sidebar sticky behavior: confirm with an automated scroll test**
-   - Add Playwright: scroll main content and assert right rail stays within viewport (top position stable) and does not overlap bottom sticky nav.
+1. **Ship an E2E proof for Undo (desktop + mobile)**
 
-10. **Improve the “Actions” state clarity**
+- Add Playwright that:
+  - applies Improve/Dig Deeper
+  - confirms content changed
+  - clicks Undo
+  - confirms content reverted
+- This is the only way to claim “Undo works”. Right now it’s a code-path, not a product guarantee.
 
-- In screenshot `03-*`, Actions appears collapsed with no hint of Ask-me.
-- Add small inline preview of available actions (chips) or a count (e.g., “Actions (3)”).
+2. **Ship an E2E proof for mobile Improve apply**
+
+- Add a mobile test that clicks Improve (heading-level) and asserts:
+  - content changed in that subsection
+  - `<img>` renders
+  - `<a>` to an external URL renders
+  - no `heading_not_found` toast
+
+3. **Make Undo discoverable + safe**
+
+- Undo currently lives in header actions area and appears conditionally.
+- Improve UX:
+  - show a transient banner after apply: “Edit applied. Undo”
+  - keep Undo available for N minutes or until next edit.
+
+4. **Hard stop on regressions: `heading_not_found` should be impossible silently**
+
+- If apply targeting still relies on heading text + occurrence, add server-side debug payload with:
+  - matched range info
+  - available headings list
+  - clear failure reason
+- Also add Playwright assertion in Improve tests that no toast contains `heading not found`.
+
+### P1 — High value (spec alignment)
+
+5. **Bottom action bar (spec §5.2.4) is still missing / inconsistent**
+   Spec expects: Mark Complete, Take Notes, Quiz Me, Ask Question.
+
+- Today actions are mostly in right rail (desktop-only) + selection toolbar.
+- Implement a responsive bottom action bar.
+
+6. **Action discoverability on mobile**
+
+- Ask-me should never be “desktop-only”. Provide a mobile primary affordance.
+
+7. **Selection tools UX mismatch vs heading tools**
+
+- Selection toolbar currently supports Dig Deeper/Mark/Discover etc, but heading-level has Improve/Dig Deeper that _persist edits_.
+- Users will expect selection-level Dig Deeper to behave similarly. Decide and unify mental model:
+  - either “Preview + Apply” everywhere, or
+  - “Instant apply” everywhere.
+
+8. **Preview-before-apply for destructive edits**
+
+- Spec doesn’t explicitly demand it, but user expectations do.
+- Provide a before/after diff + explicit Apply/Cancel for Improve/Dig Deeper.
 
 ### P2 — Medium (polish, robustness)
 
-11. **Better empty-state and error messaging for Improve/Dig Deeper**
+9. **Keyboard accessibility for heading hover actions**
 
-- Replace generic toast with anchored inline message near edited heading.
-- Include actionable “Try again / Report issue” copy.
+- Improve/Dig Deeper buttons are hover-revealed (`opacity-0 group-hover`).
+- Add focus-visible behavior and ensure tab order works.
 
-12. **Hardening for external images**
+10. **External images: layout shift + failure handling**
 
-- Responsive sizing, lazy load, broken-image fallback, avoid layout shifts.
+- Add max-width sizing, lazy-loading, skeleton/fallback, and broken image display.
 
-13. **External link security + anti-fake-link validation**
+11. **External links: security + UX**
 
-- Server-side: block localhost/private IP ranges; enforce http(s).
-- Client-side: external icon + `rel="noopener noreferrer"`.
+- Ensure `rel="noopener noreferrer"` and `target="_blank"`.
+- Show external-link icon.
 
-14. **Keyboard accessibility for heading actions + drawer actions**
+12. **Sticky rail behavior should be tested**
 
-- Hover-only affordances are not accessible.
-- Ensure Improve/Dig Deeper/Ask-me reachable via tab/focus.
+- Add Playwright scroll assertion that right rail remains visible and doesn’t overlap bottom content.
 
-15. **Spec-driven lesson completeness: restore Next Lesson link + Quick Check (even collapsed)**
+13. **Lesson completeness vs spec §6.2**
 
-- Spec §6.2 includes Next Lesson Link and Quick Check; code currently comments these out (Iter144).
-- Implement as collapsed sections to satisfy spec and learning loop.
+- Re-add (even collapsed): Next Lesson link, Quick Check section, Suggested Reads.
+
+14. **Agent transparency**
+
+- Spec expects subtle “which agent is working” indicator.
+- Ensure the UI shows this consistently during Improve/Dig Deeper + Ask-me.
+
+15. **Telemetry/analytics transparency (spec §9.3)**
+
+- Add Profile → Data view for “everything tracked about me” (even stubbed) to align with spec promise.
 
 ---
 
-## Pointers (where to look)
+## Builder notes / pointers
 
-- LessonReader UI: `apps/client/src/screens/LessonReader.tsx`
-  - Right rail sticky: `data-testid="lesson-right-rail"`, `sticky top-24`.
-  - Ask-me overlay: `data-testid="lesson-ask-overlay"`.
-- E2E tests:
-  - Ask-me: `e2e/iter146-lesson-reader-ask-me-overlay.spec.ts`
-  - Improve apply contract: `e2e/iter146-lesson-reader-illustrate-heading.spec.ts`
-  - Iter148 screenshots: `e2e/iter148-improve-askme-screenshots.spec.ts`
+- LessonReader main implementation: `apps/client/src/screens/LessonReader.tsx`
+  - Heading-level Improve/Dig Deeper buttons are rendered within subsection header blocks.
+  - Undo UI exists and is gated by `lastEditUndo`.
+- Existing E2E proof that Improve apply works on desktop: `e2e/iter148-improve-askme-screenshots.spec.ts`.
+- Existing E2E proof that Ask-me overlay opens: `e2e/iter146-lesson-reader-ask-me-overlay.spec.ts`.
 
 ---
 
 ## Bottom line
 
-The codebase is **test-green**, but the Improve/Dig Deeper experience is not yet “user-trustworthy” because apply targeting is brittle (heading_not_found), and the user-visible proof of images/links rendering is missing. Ask-me exists, but is not reliably discoverable/accessible on mobile due to being buried in a desktop-only rail.
+- ✅ Tests are green.
+- ✅ Desktop Improve/Dig Deeper apply appears fixed and renders images + links (per screenshot proof).
+- ⚠️ Mobile Improve apply is not proven.
+- ❌ Undo is not proven with screenshots/tests.
+
+Iter149 should prioritize closing those proof gaps first, then align action surfaces with the spec (bottom action bar, mobile discoverability).
