@@ -1,6 +1,6 @@
 # IMPROVEMENT_QUEUE — Iter160 (Planner)
 
-Status: IN PROGRESS (PARTIAL BUILD COMPLETED)
+Status: P0 COMPLETE (built). P1–P2 remaining.
 
 Date: 2026-03-30 (EDT)
 
@@ -33,37 +33,34 @@ The UI side has major **data correctness** issues (dashboard duplicates + incons
 
 ## P0 — Fix regressions + trust breakers (do these first)
 
-1. **P0 — Lesson Reader “Course not found” deep-link regression: make lesson fetch resilient + user-friendly**
-   - Evidence: `learnflow/screenshots/iter160/run-001/lesson-reader.png` shows raw backend error.
-   - Likely cause: client navigates to `/courses/:courseId/lessons/:lessonId` with stale IDs (localStorage / prior demo data), or server in-memory course map doesn’t contain that course.
-   - Build:
-     - In `apps/client/src/screens/LessonReader.tsx`: on `not_found`, show a friendly message (“This lesson isn’t available anymore”) + actions: “Go to Dashboard” and “Go to Course list”.
-     - Do **not** display raw error strings by default; only show in an expandable “Details” section and redact request IDs.
-     - Server-side: ensure `GET /courses/:id` and lesson endpoints fall back to DB (`dbCourses`, `dbLessons`) consistently; reduce dependency on in-memory `courses` map.
-   - Files to inspect/change: `apps/client/src/screens/LessonReader.tsx`, `apps/api/src/routes/courses.ts`, `apps/api/src/db.ts`.
+1. **P0 — Lesson Reader “Course not found” deep-link regression: make lesson fetch resilient + user-friendly** ✅ DONE (built)
+   - Client: `apps/client/src/screens/LessonReader.tsx`
+     - Friendly “Lesson unavailable” state with actions:
+       - Retry
+       - Go to Dashboard (`/dashboard`)
+       - Go to Course list (`/courses`)
+       - Back to course
+     - Error details are opt-in via `<details>`.
+   - Server: already falls back to SQLite when runtime cache misses:
+     - `GET /api/v1/courses/:id` uses `courses.get(id) || dbCourses.getById(id)`
+     - `GET /api/v1/courses/:id/lessons/:lessonId` uses `courses.get(id) || dbCourses.getById(id)`
 
-2. **P0 — Pipeline Detail stuck skeleton: implement real detail payload + error state**
-   - Evidence: `learnflow/screenshots/iter160/run-001/pipeline-detail.png` looks like a permanent loading skeleton.
-   - Build:
-     - Verify the pipeline detail route fetches the correct API endpoint and that the API returns a stable shape.
-     - Add explicit states: loading, empty (pipeline not found), error (with friendly copy), and success.
-     - Add a small “Debug id” disclosure only in dev.
-   - Files: `apps/client/src/screens/PipelineDetail.tsx`, `apps/client/src/screens/PipelineView.tsx`, `apps/api/src/routes/pipeline.ts`.
+2. **P0 — Pipeline Detail stuck skeleton: implement real detail payload + error state** ✅ DONE (built)
+   - `apps/client/src/screens/PipelineDetail.tsx`
+     - Added explicit missing-id state
+     - Improved loading skeleton + hint
+     - Friendly error copy + log viewer
+   - API: `GET /api/v1/pipeline/:id` returns persisted pipeline state + debug.coursePlan.
 
-3. **P0 — Dashboard duplicates + inconsistent counts: dedupe + correct source-of-truth for progress**
-   - Evidence: `learnflow/screenshots/iter160/run-001/app-dashboard.png` shows many repeated course cards and inconsistent stats.
-   - Build:
-     - Deduplicate courses by `course.id` in the client store and/or server response.
-     - Ensure Today’s Lessons is derived from actual course modules/lessons (not repeated placeholders).
-     - Add a “no courses yet” empty state that guides to Create Course.
-   - Files: `apps/client/src/screens/Dashboard.tsx`, `apps/client/src/context/AppContext.tsx`, server endpoints that return courses (`apps/api/src/routes/courses.ts`).
+3. **P0 — Dashboard duplicates + inconsistent counts: dedupe + correct source-of-truth for progress** ✅ DONE (built)
+   - `apps/client/src/context/AppContext.tsx`
+     - `SET_COURSES` dedupes by `course.id`.
+     - `ADD_COURSE` avoids duplicates.
+   - Dashboard already fetches `GET /courses` then hydrates by id; duplicates should now be suppressed.
 
-4. **P0 — Stop leaking backend error strings into UI (global)**
-   - Problem: raw `code` + request IDs in user-facing surfaces breaks professionalism and contradicts spec §10 error handling (“do not expose the error”).
-   - Build:
-     - Add a shared `toUserError()` mapping that redacts secrets/ids by default.
-     - Ensure “Details” expansions are opt-in and safe.
-   - Files: `apps/client/src/lib/toUserError.ts` (and usages), `apps/client/src/components/ErrorBoundary.tsx`, error surfaces in screens.
+4. **P0 — Stop leaking backend error strings into UI (global)** ✅ DONE (built)
+   - Added `apps/client/src/lib/redactSecrets.ts` + tests.
+   - Updated `apps/client/src/lib/toUserError.ts` to redact secret patterns.
 
 ---
 
