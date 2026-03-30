@@ -16,3 +16,6 @@ monitoring/
 
 # One-off scripts
 debug-screenshot.mjs
+
+# Iteration evidence
+iterations/
