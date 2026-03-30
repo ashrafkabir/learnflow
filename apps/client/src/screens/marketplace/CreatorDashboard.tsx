@@ -135,6 +135,26 @@ export function CreatorDashboard() {
             status: p.status,
           })),
         });
+
+        // Load the user's real course library so creators can publish a real course (courseId)
+        // rather than a purely synthetic payload.
+        try {
+          const lib = await apiGet('/courses');
+          if (Array.isArray(lib?.courses)) {
+            const items = (lib.courses as any[])
+              .map((c) => ({
+                id: String(c.id),
+                title: String(c.title || c.id),
+                description: String(c.description || ''),
+                topic: String(c.topic || ''),
+                depth: String(c.depth || ''),
+              }))
+              .slice(0, 50);
+            setLibraryCourses(items);
+          }
+        } catch {
+          // non-fatal
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('forbidden')) {
@@ -155,15 +175,20 @@ export function CreatorDashboard() {
     void loadDashboard();
   }, []);
 
+  const [libraryCourses, setLibraryCourses] = useState<
+    Array<{ id: string; title: string; description?: string; topic?: string; depth?: string }>
+  >([]);
+
   const [newCourse, setNewCourse] = useState({
+    courseId: '',
     title: '',
     description: '',
     topic: 'programming',
     difficulty: 'beginner',
     price: '0',
 
-    // MVP note: These QC inputs are currently user-provided.
-    // If/when we support linking to a real library courseId, the server can compute them.
+    // QC inputs are only used when not linking to a real library course.
+    // If courseId is provided, the server computes QC from course content.
     lessonCount: '7',
     attributionCount: '3',
     readabilityScore: '0.7',
@@ -184,20 +209,25 @@ export function CreatorDashboard() {
   };
 
   const handleSubmitForReview = async () => {
-    if (!newCourse.title.trim()) {
+    if (!newCourse.courseId && !newCourse.title.trim()) {
       toast('Please enter a course title', 'error');
+      return;
+    }
+    if (!newCourse.courseId && !newCourse.description.trim()) {
+      toast('Please enter a description', 'error');
       return;
     }
     try {
       const payload = {
+        ...(newCourse.courseId ? { courseId: newCourse.courseId } : {}),
         title: newCourse.title,
         description: newCourse.description,
         topic: newCourse.topic,
         difficulty: newCourse.difficulty,
         price: parseFloat(newCourse.price || '0'),
 
-        // MVP: QC inputs are user-provided (not computed from real course content).
-        // Server enforces minimums via qualityCheck().
+        // QC inputs are only used when not linking to a real library course.
+        // Server enforces minimums via qualityCheck() either way.
         lessonCount: Math.max(1, Math.floor(parseFloat(newCourse.lessonCount || '0') || 0)),
         attributionCount: Math.max(
           0,
@@ -236,6 +266,7 @@ export function CreatorDashboard() {
       setShowPublishForm(false);
       setPublishStep(0);
       setNewCourse({
+        courseId: '',
         title: '',
         description: '',
         topic: 'programming',
@@ -263,12 +294,16 @@ export function CreatorDashboard() {
 
       <div className="rounded-2xl border border-amber-200/70 dark:border-amber-400/30 bg-amber-50/70 dark:bg-amber-950/30 px-5 py-4 text-sm">
         <p className="font-semibold text-amber-900 dark:text-amber-200 mb-1">
-          Marketplace pricing (MVP)
+          Marketplace publishing (MVP)
         </p>
-        <p className="text-amber-900/90 dark:text-amber-100/90">
-          You can publish free courses on any plan. Paid course publishing (price &gt; $0) requires
-          Pro.
-        </p>
+        <ul className="list-disc pl-5 text-amber-900/90 dark:text-amber-100/90 space-y-1">
+          <li>Publishing is enabled in this sandbox. Listings appear in the public marketplace.</li>
+          <li>
+            You can publish free courses on any plan. Paid course publishing (price &gt; $0)
+            requires Pro.
+          </li>
+          <li>Billing/payouts are mocked — no real money movement.</li>
+        </ul>
       </div>
 
       {/* Publish New Course Form (multi-step) */}
@@ -301,11 +336,61 @@ export function CreatorDashboard() {
           </div>
           {publishStep === 0 && (
             <div className="space-y-3">
+              <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 p-4 text-sm">
+                <p className="font-semibold text-gray-900 dark:text-white mb-1">
+                  What are you publishing?
+                </p>
+                <p className="text-gray-600 dark:text-gray-300">
+                  Recommended: publish a{' '}
+                  <span className="font-medium">real course from your library</span> so the
+                  marketplace listing matches actual course modules/lessons.
+                </p>
+              </div>
+
+              <label className="block">
+                <span className="text-sm text-gray-600 dark:text-gray-300">
+                  Select a course from your library (optional)
+                </span>
+                <select
+                  value={newCourse.courseId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const c = libraryCourses.find((x) => x.id === id);
+                    setNewCourse({
+                      ...newCourse,
+                      courseId: id,
+                      title: c?.title || newCourse.title,
+                      description: c?.description || newCourse.description,
+                      topic: (c?.topic as any) || newCourse.topic,
+                      difficulty: (c?.depth === 'beginner' ||
+                      c?.depth === 'intermediate' ||
+                      c?.depth === 'advanced'
+                        ? c.depth
+                        : newCourse.difficulty) as any,
+                    });
+                  }}
+                  className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="">— Create a marketplace listing from fields below —</option>
+                  {libraryCourses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  If you select a course, quality checks are computed from the course content
+                  (lesson count + source attributions).
+                </p>
+              </label>
+
               <label className="block">
                 <span className="text-sm text-gray-600 dark:text-gray-300">Course Title</span>
                 <input
                   value={newCourse.title}
-                  onChange={(e) => setNewCourse({ ...newCourse, title: e.target.value })}
+                  onChange={(e) =>
+                    setNewCourse({ ...newCourse, title: e.target.value, courseId: '' })
+                  }
                   placeholder="e.g., Introduction to Quantum Computing"
                   className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 />
@@ -314,7 +399,9 @@ export function CreatorDashboard() {
                 <span className="text-sm text-gray-600 dark:text-gray-300">Description</span>
                 <textarea
                   value={newCourse.description}
-                  onChange={(e) => setNewCourse({ ...newCourse, description: e.target.value })}
+                  onChange={(e) =>
+                    setNewCourse({ ...newCourse, description: e.target.value, courseId: '' })
+                  }
                   rows={3}
                   placeholder="What will students learn?"
                   className="mt-1 w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent resize-none"

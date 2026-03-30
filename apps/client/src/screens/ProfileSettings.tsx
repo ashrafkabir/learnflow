@@ -16,6 +16,9 @@ import {
   IconRobot,
 } from '../components/icons/index.js';
 import { AdminSearchConfigPanel } from '../components/AdminSearchConfigPanel.js';
+import { AppStateDebugPanel } from '../components/AppStateDebugPanel.js';
+import { ModeProvidersDebugPanel } from '../components/ModeProvidersDebugPanel.js';
+import { LearningStateDebugPanel } from '../components/LearningStateDebugPanel.js';
 import { UpdateAgentSettingsPanel } from '../components/update-agent/UpdateAgentSettingsPanel.js';
 
 export function ProfileSettings() {
@@ -166,12 +169,22 @@ export function ProfileSettings() {
             </div>
             {state.subscription === 'free' ? (
               <div className="flex flex-col items-end">
-                <a
-                  href="/pricing"
-                  className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 bg-white text-purple-600 hover:bg-white/90 border-0 shadow-card font-medium text-sm"
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await apiPost('/subscription', { action: 'upgrade', plan: 'pro' });
+                      dispatch({ type: 'SET_SUBSCRIPTION', tier: 'pro' });
+                      toast('Upgraded to Pro (mock billing)', 'success');
+                    } catch {
+                      toast('Failed to upgrade', 'error');
+                    }
+                  }}
+                  className="bg-white text-purple-600 hover:bg-white/90"
                 >
                   Upgrade to Pro
-                </a>
+                </Button>
                 <p className="mt-2 text-xs opacity-90">
                   Billing is in mock mode in this MVP (no real charges).
                 </p>
@@ -201,7 +214,7 @@ export function ProfileSettings() {
             <div className="flex items-center gap-3 text-sm text-gray-800/80 dark:text-gray-200">
               <span className="inline-flex items-center gap-2">
                 <IconChart className="w-4 h-4" />
-                Usage is shown below (best-effort).
+                Usage is shown below (best-effort; based on server-stored usage records).
               </span>
             </div>
             <div className="flex gap-3 pt-2">
@@ -392,6 +405,9 @@ export function ProfileSettings() {
               <span>Total tokens</span>
               <span className="font-mono">{usage ? usage.totalTokens : 0}</span>
             </div>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">
+              Usage is tracked on a best-effort basis from server-stored usage records.
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <div className="text-xs text-gray-500 dark:text-gray-300">Top agents</div>
@@ -844,6 +860,15 @@ export function ProfileSettings() {
 
         {/* Admin (server-driven) */}
         {serverRole === 'admin' ? <AdminSearchConfigPanel /> : null}
+
+        {/* Dev-only app state inspector (Iter136) */}
+        <AppStateDebugPanel />
+
+        {/* Dev-only: mode + provider truth panel (Iter137 P2.10) */}
+        <ModeProvidersDebugPanel />
+
+        {/* Dev-only: adaptive loop diagnostics (Iter138 P2.10) */}
+        <LearningStateDebugPanel />
 
         {/* Dev-only cleanup (Iter86) */}
         {serverRole === 'admin' && (window as any)?.location?.hostname !== 'test' ? (

@@ -201,6 +201,14 @@ describe('S05-A06: Exam Agent multiple-choice', () => {
     expect(data.questions[0].options.length).toBe(4);
     expect(data.questions[0].correctIndex).toBeGreaterThanOrEqual(0);
     expect(data.questions[0].correctIndex).toBeLessThan(4);
+
+    // Regression guard: no placeholder distractors.
+    for (const q of data.questions as any[]) {
+      const opts = Array.isArray(q.options) ? q.options : [];
+      for (const o of opts) {
+        expect(String(o).toLowerCase()).not.toContain('incorrect option');
+      }
+    }
   });
 });
 

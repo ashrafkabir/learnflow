@@ -212,8 +212,8 @@ describe('Lesson Reader', () => {
 
     expect(await screen.findByText('Sources & Attribution')).toBeInTheDocument();
 
-    // Title appears both in References list and inside drawer
-    expect(await screen.findAllByText('Example Docs')).toHaveLength(2);
+    // Title appears in Suggested reads list and inside drawer (rail may also show it)
+    expect((await screen.findAllByText('Example Docs')).length).toBeGreaterThanOrEqual(2);
 
     expect(await screen.findByText('A short summary.')).toBeInTheDocument();
     expect(await screen.findByText(/Because it clarifies the API surface\./)).toBeInTheDocument();

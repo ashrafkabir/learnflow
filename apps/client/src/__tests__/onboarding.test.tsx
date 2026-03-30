@@ -9,8 +9,19 @@ import { AppProvider } from '../context/AppContext.js';
 import { ToastProvider } from '../components/Toast.js';
 import { App } from '../App.js';
 
-beforeEach(() => {
-  localStorage.setItem('learnflow-token', 'test-token');
+beforeEach(async () => {
+  // Preload lazy-loaded onboarding modules so Suspense resolves deterministically in jsdom.
+  await import('../screens/onboarding/Welcome.js');
+  await import('../screens/onboarding/Goals.js');
+  await import('../screens/onboarding/Topics.js');
+  await import('../screens/onboarding/ApiKeys.js');
+  await import('../screens/onboarding/SubscriptionChoice.js');
+  await import('../screens/onboarding/FirstCourse.js');
+
+  localStorage.setItem(
+    'learnflow-token',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+  );
   localStorage.removeItem('learnflow-onboarding-complete');
   globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url =

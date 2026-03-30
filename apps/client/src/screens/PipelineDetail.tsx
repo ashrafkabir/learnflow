@@ -233,6 +233,18 @@ export function PipelineDetail() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <div className="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-400/30 text-sm text-amber-900 dark:text-amber-100">
+          <p className="font-semibold">MVP note: sourcing + scoring are best-effort</p>
+          <p className="mt-1">
+            Sources/citations depend on provider configuration and may be incomplete. Any
+            quality/credibility scores are heuristic.
+            <a href="/docs/mvp-truth" className="ml-1 underline underline-offset-2">
+              About MVP truth
+            </a>
+            .
+          </p>
+        </div>
+
         {/* Summary Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[

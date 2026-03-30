@@ -122,9 +122,11 @@ describe('Update Agent trust loop UI', () => {
 
     await new Promise((r) => setTimeout(r, 50));
 
-    // The client uses a configurable apiBase() in tests; match on suffix.
+    // The client uses a configurable apiBase() in tests; match on suffix (ignore querystrings).
     expect(
-      calls.some((c) => c.url.endsWith('/api/v1/update-agent/tick') && c.method === 'POST'),
+      calls.some(
+        (c) => c.url.split('?')[0].endsWith('/api/v1/update-agent/tick') && c.method === 'POST',
+      ),
     ).toBe(true);
   });
 });

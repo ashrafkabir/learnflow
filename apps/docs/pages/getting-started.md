@@ -43,28 +43,28 @@ Your key is sent over TLS and encrypted server-side with AES-256-CBC.
 3. Select difficulty: Beginner / Intermediate / Advanced
 4. Click "Generate Course"
 
-The Course Builder agent will:
+The Course Builder agent will (best-effort):
 
-- Research your topic using Firecrawl web scraping
-- Score sources for credibility
-- Generate a structured syllabus with 5-10 modules
-- Create individual lessons with real citations
+- Discover public web sources when a web-search provider is configured
+- Apply basic quality signals (domain/recency/readability heuristics) and reduce near-duplicates
+- Generate a structured syllabus with modules
+- Draft lessons with citations when sources are available
 
-This typically takes 30-60 seconds.
+Timing varies by topic, provider configuration, and rate limits.
 
 ### 5. Start Learning
 
-- **Read lessons** with full source attribution
+- **Read lessons** with citations when sources are available
 - **Take notes** (Cornell, Zettelkasten, or Flashcards)
 - **Take quizzes** to identify knowledge gaps
-- **Explore your knowledge mindmap** to see connections
+- **Explore your mindmap** to see your course map and progress
 
 ## Self-Hosting (Optional)
 
 For self-hosting the LearnFlow API:
 
 ```bash
-git clone https://github.com/learnflow/learnflow.git
+git clone https://github.com/ashrafkabir/learnflow.git
 cd learnflow
 npm install
 cp .env.example .env

@@ -1,253 +1,141 @@
-# LearnFlow — Improvement Queue (Iter134)
+# IMPROVEMENT_QUEUE — Iter141
 
-Owner: Builder  
-Planner: Ash (planner subagent)  
-Last updated: 2026-03-29
+Status: **READY FOR REVIEW**
 
-Status: **READY FOR BUILDER**
+Owner: Builder
 
-### Iter134 (Builder focus)
+Date: 2026-03-29
 
-- [x] Persist course-level research bundle to course-artifacts (web search + extracted markdown + image manifest) so later stages don’t re-scrape.
-- [x] Persist per-lesson research bundles to course-artifacts (sources + extracted text + image manifest) during lesson scraping.
-- [x] Track pipeline `lastError` and `retryCount` (API state) so UI can show failures + retries without digging through logs.
-- [x] Wire lesson generation to use saved research bundles (no re-scrape), and include citations sourced from those bundles.
-- [x] Update PipelineDetail UI: show stage progress + `lastError` + retry affordance, and render links to saved artifacts.
-- [x] Generate consolidated markdown artifacts: `course-research.md` (with source index + bounded extracts + image attributions) and `lessonplan.md` (LLM-generated lesson plan referencing research URLs).
+Scope focus (per Iter141 brief):
 
-#### Iter134 follow-ups from user feedback (P0)
-
-- [x] **Lesson reader UX**: remove duplicate “Mark complete” buttons; keep a single primary CTA per lesson.
-- [x] **Lesson navigation**: add “Next lesson” (and “Previous” if easy) based on course/module/lesson ordering.
-- [x] **Illustrations/hero**: fix “Illustrate” so lessons actually show a hero section and rendered images/illustrations.
-  - Fix:
-    - Ensure course generation embeds a license-safe illustration into lesson markdown even in `fastTestMode` (with deterministic placeholder fallback).
-    - Add API integration test to assert at least one illustration exists for new fast courses.
-  - Evidence:
-    - `apps/api/src/routes/courses.ts` embeds `![...](https://upload.wikimedia.org/...)` and persists illustration rows.
-    - `apps/api/src/__tests__/iter134-illustrations-fastmode.test.ts`.
-    - Manual: `GET /api/v1/courses/:id/lessons/:lessonId` now includes a markdown image early in content; `/illustrations` returns length >= 1.
-  - Status: DONE
+- Quiz rationales
+- Concept tagging
+- Gap → lesson matching
+- Adaptive difficulty
+- Notes loop polish
 
 ---
 
-## Evidence captured (Iter134 planner run)
+## What’s already in good shape (verified)
 
-Screenshots + notes captured into:
+- **Quiz gap surfaced in /daily and Dashboard UI**
+  - API: `apps/api/src/routes/daily.ts` emits `reasonTag: 'quiz_gap'` and `reason: Focus: <tag> (from last quiz)` using recent mastery `gapsJson`.
+  - Client: `apps/client/src/screens/Dashboard.tsx` renders a distinct **Quiz gap** pill (fuchsia styling).
+  - Tests: `apps/api/src/__tests__/daily-quiz-gap.test.ts` covers quiz-gap recommendation + “don’t recommend completed” behavior.
 
-- Desktop: `learnflow/screenshots/iter134/planner-run/desktop/`
-- Mobile: `learnflow/screenshots/iter134/planner-run/mobile/`
-- Notes: `learnflow/screenshots/iter134/planner-run/NOTES.md`
+- **Test suite health**
+  - `npm test`: PASS
+  - Playwright:
+    - `e2e/iter136-smoke-assertions.spec.ts`: PASS
+    - `e2e/iter137-key-screens.spec.ts`: PASS
+    - `e2e/iter138-adaptive-loop.spec.ts`: PASS
 
-Representative screenshots to reference in PRs:
-
-- `learnflow/screenshots/iter134/planner-run/desktop/landing-home.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/onboarding-4-api-keys.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/onboarding-5-subscription.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-dashboard.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-conversation.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-mindmap.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/course-create-after-click.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/course-view.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/lesson-reader.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/marketplace-courses.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/marketplace-agents.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-collaboration.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/app-settings.png`
-- `learnflow/screenshots/iter134/planner-run/desktop/settings-about-mvp-truth.png`
-
-Dev runtime ports (repo convention; verified during run):
-
-- API: http://localhost:3000 (`GET /health`)
-- Client (app): http://localhost:3001
-- Web/marketing (Next): http://localhost:3003
+- **Quick-action chips exist in Conversation** (basic notes/quiz/research loop): `apps/client/src/screens/Conversation.tsx`.
 
 ---
 
-## Brutally honest spec ↔ implementation parity (Iter134)
+## Iter141 priority queue (10–15 tasks)
 
-### Spec sections that are materially implemented
+### P0 — Must ship (learning loop correctness)
 
-- **§5.2.1 Onboarding**: 6-step flow exists (welcome → goals → topics → API keys → subscription → first course).
-  - Evidence (UI): `learnflow/screenshots/iter134/planner-run/desktop/onboarding-*.png`
-  - Evidence (routing): `apps/client/src/App.tsx` (onboarding routes)
+1. **Quiz rationales: make explanations actionable, per option**
+   - Current MCQ has `explanation: sentence` (single blob). Users need: why correct is correct, why each distractor is wrong.
+   - Output schema for MCQ should include:
+     - `rationale.correct` (2–4 sentences)
+     - `rationale.perOption[]` aligned to options
+     - `commonMistake` (1 line)
+   - Add unit tests asserting non-empty rationales and that they reference the question keyword.
 
-- **§5.2.3 Conversation surface (partial)**: chat UI with markdown rendering, syntax highlighting, KaTeX math, quick-action chips, source drawer, agent activity indicator driven by WS events.
-  - Evidence (code): `apps/client/src/screens/Conversation.tsx` (markdown + chips + SourceDrawer + `agent.spawned/complete` handling)
-  - Evidence (UI): `.../desktop/app-conversation.png`
+2. **Introduce normalized concept tags for both lessons and quiz gaps (single canonical format)**
+   - Define a canonical tag format: lowercase, dash-separated, max length, no punctuation.
+   - Store on lesson metadata: `lesson.conceptTags: string[]`.
+   - Store on quiz results: `gapTags: string[]` (already hinted in `QuizResult.gapTags?`).
+   - Add migration/back-compat: if missing, derive tags from titles (best-effort).
 
-- **§11 WebSocket contract (exists)**: server emits `response.start/chunk/end`, `agent.spawned/complete`, `mindmap.update`, `progress.update`.
-  - Evidence (code): `apps/api/src/websocket.ts`, `apps/api/src/wsOrchestrator.ts`, `apps/api/src/routes/courses.ts` (`emitToUser(... 'progress.update' ...)`)
-  - Evidence (docs): `apps/docs/pages/websocket-events.md`
+3. **Gap → lesson matching should use tags + fuzzy matching, not only title substring**
+   - Current `/daily` mapping uses `titleNorm.includes(tag)` (too brittle).
+   - Implement matching pipeline:
+     - Primary: intersection of `lesson.conceptTags` and `gapTags`
+     - Secondary: token-based match (Jaccard / cosine on bag-of-words)
+     - Tertiary: title substring (current behavior)
+   - Ensure deterministic ordering for testability.
 
-- **BYOAI key vault (MVP)**: key entry + validation + server-side encryption-at-rest.
-  - Evidence (UI copy): `apps/client/src/screens/onboarding/ApiKeys.tsx`
-  - Evidence (server): `apps/api/src/keys.ts` uses `encrypt()`; crypto is in `apps/api/src/crypto.js`.
+4. **Add “Why am I seeing this?” interaction for daily recommendations**
+   - In Dashboard “Today’s Lessons” card, add an inline expander or tooltip that shows:
+     - lastSeenAt, count, lastScore for quiz gap
+     - nextReviewAt for review
+   - Keep it local-only; no new network calls if possible (include in API response).
 
-- **Usage tracking (more real than the spec implies, but still “best-effort”)**: API tracks usage_records and exposes `/api/v1/usage/dashboard`.
-  - Evidence (API): `apps/api/src/routes/usage.ts`
-  - Evidence (UI): `apps/client/src/screens/ProfileSettings.tsx` loads and renders usage dashboard
+5. **Adaptive difficulty: persist and apply difficulty adjustments based on quiz history**
+   - Spec says: >90% increase, <60% offer prereqs/breakdown.
+   - Implement per-course or per-topic difficulty scalar in Student Context / DB.
+   - Apply to:
+     - quiz generation difficulty (question wording, distractor strength)
+     - lesson recommendations (prereq suggestions vs next lessons)
 
-- **Collaboration (MVP truth-first)**: groups + messages persisted; partner matches synthetic; shared mindmaps via live sync links.
-  - Evidence (UI disclosure): `apps/client/src/screens/Collaboration.tsx`
-  - Evidence (API): `apps/api/src/routes/collaboration.ts`
+### P1 — Should ship (quality + polish)
 
-### Major parity / trust gaps (spec implies more than shipped)
+6. **Notes loop polish: make “Take Notes” contextual to the active lesson/course automatically**
+   - Today chips fire generic prompts; often loses context.
+   - When user clicks “Take Notes” from Lesson Reader, send structured payload (courseId, lessonId) or inject lesson excerpt automatically.
+   - Ensure the notes output is saved/linked to the lesson (so the loop closes).
 
-1. **Marketing web app is misconfigured in dev**: Next app uses `output: 'export'` (static export) but also has middleware → Next warns “Middleware cannot be used with output: export”. This undermines credibility and can mask real routing/SEO problems.
-   - Evidence (code): `apps/web/next.config.js` (`output: 'export'`), `apps/web/src/middleware.ts`.
-   - Evidence (runtime): dev logs during `npm run dev` show the middleware/export warning.
+7. **Surface quiz-gap callout in CourseView and LessonReader**
+   - If a lesson is being opened due to quiz gap, show a small banner:
+     - “Recommended because you missed: <tags>”
+     - CTA: “Start 3-question micro-quiz after reading”
 
-2. **Spec §6 “Content Pipeline” (search APIs, Firecrawl, MinHash/SimHash, authority/recency/readability scoring) is not truly implemented end-to-end.** You have a course builder + pipeline UI, and some attribution gates/quality checks exist (esp marketplace QC), but there’s no credible multi-source ingestion/scoring/dedup system as described.
-   - Evidence (code reality): course generation is primarily orchestrated through API routes and built-in agents; there is no MinHash/SimHash module present.
-   - Evidence (UI): `.../desktop/app-pipelines.png` (pipeline visibility exists, but not the spec’s pipeline depth).
+8. **Micro-remediation quiz (3 questions) after a quiz-gap lesson**
+   - Short, targeted assessment using the gap tags.
+   - Record mastery update and clear/reduce the gap signal upon success.
 
-3. **Mindmap Explorer (§5.2.5) is not a true “all domains knowledge graph.”** Current “knowledge map” is course/module/lesson nodes rendered via `vis-network` on the Conversation screen (side panel), plus a separate Mindmap screen. It’s useful, but it is not the spec’s D3 full-screen graph with concept relationships.
-   - Evidence (code): `apps/client/src/screens/Conversation.tsx` MindmapPanel is course/lesson graph.
+9. **Concept tagging for generated lesson content (MVP heuristic)**
+   - Without LLM tagging, implement heuristic tagging:
+     - extract keywords from headings + bold terms + glossary
+     - normalize + keep top N
+   - Add tests that tags are stable for same content.
 
-4. **Marketplace spec (§7) is intentionally watered down** (good), but needs stricter “no real metrics” enforcement. Some fields (rating/usageCount) are derived from manifests and default to 0; the UI says it avoids misleading metrics but still displays numeric defaults in some layouts.
-   - Evidence (code): `apps/client/src/screens/marketplace/AgentMarketplace.tsx` sets `rating/usageCount` from manifest.
+10. **Improve gap signal storage: store structured entries, not just strings**
 
----
+- `/daily` already supports `{tag,lastSeenAt,count,lastScore}` in `gapsJson`.
+- Ensure the event ingestion always writes that richer form; add tests.
 
-## Iter134 — Evidence-first tasks (10–15)
+### P2 — Nice to have (UX + guardrails)
 
-Each task includes: priority, acceptance criteria, and evidence pointers. Preference order: **(1) remove misleading claims/UX, (2) fix broken fundamentals, (3) add capabilities.**
+11. **Dashboard: visually separate “Review”, “Continue”, “Quiz gap” recommendations**
 
-### P0 — Fix correctness + credibility (dev/runtime + user trust)
+- Add small grouping headers or icons so users understand variety.
 
-- **[DONE] Iter134 — Fix course research discovery (OpenAI web_search parsing + multi-query expansion) + persist sources/topics/queries + request/response logs**
-  - Evidence:
-    - `packages/agents/src/content-pipeline/openai-websearch-provider.ts` now uses `extractResultsFromResponse()` and query expansion.
-    - `apps/api/src/routes/pipeline.ts` passes `topics/queries/rawCount/parsedResultsCount` into `writeCourseResearch()`.
-    - `packages/agents/src/content-pipeline/artifact-writer.ts` writes these fields into `research/course/sources.json` and includes them in `course-research.md`.
-    - Raw OpenAI web_search req/resp now persisted under `course-artifacts/<courseId>/logs/openai/*web_search*_request.json` + `*_response.json` (hooked via API route).
+12. **Explainability copy and empty states**
 
-- **[DONE] Iter134 — Fix "Start Reading" failure in dev auth bypass mode**
-  - Evidence:
-    - `apps/client/src/context/AppContext.tsx` now fully respects `VITE_DEV_AUTH_BYPASS=1` (no refresh, no forced /login redirects on 401, no Authorization header injection).
+- If no daily lessons: show “No lessons due today — want to continue or take a quiz?”
+- If no quiz gaps: hide pill, avoid confusing labels.
 
-1. **P0 — Fix `apps/web` static export + middleware incompatibility (choose one).**
-   - Evidence:
-     - `apps/web/next.config.js` sets `output: 'export'`.
-     - `apps/web/src/middleware.ts` exists and matches all paths.
-     - Dev runtime warning: “Middleware cannot be used with output: export”.
-   - Acceptance:
-     - Either remove middleware entirely (and replace HEAD / behavior in a different way), OR remove `output: 'export'` and run as a normal Next server.
-     - `npm run dev` shows **no** middleware/export warning.
+13. **Add a compact “Concepts you’re struggling with” panel**
 
-2. **P0 — Make screenshot harness “marketing canonical” explicit and stable.**
-   - Evidence:
-     - `screenshot-all.mjs` uses `BASE_WEB` for marketing, but it still calls `safeGoto()` on client `BASE` first (wasted + potentially flaky).
-   - Acceptance:
-     - Marketing screenshots should only ever hit `BASE_WEB`.
-     - Harness should fail fast if `BASE_WEB` is unreachable (clear error).
+- Show top 3 gapTags across courses + quick jump to remediation lessons.
 
-3. **P0 — Conversation “See Sources” must never be a dead action.**
-   - Evidence:
-     - Chips send `__open_sources__` in `apps/client/src/screens/Conversation.tsx`.
-     - SourceDrawer only populates when `response.end` includes sources.
-   - Acceptance:
-     - If no sources exist, “See Sources” chip is hidden/disabled and replaced with a truthful message (“No sources available for this response”).
-     - If sources exist, chip opens drawer reliably.
+14. **E2E test: quiz gap appears on Dashboard**
 
-4. **P0 — Marketplace Agent activation disclosure: enforce in UI _and_ server response.**
-   - Evidence:
-     - UI has disclosure modal: `apps/client/src/screens/marketplace/AgentMarketplace.tsx`.
-     - Spec says MVP is manifest-based routing only.
-   - Acceptance:
-     - Server returns `activationMode: 'routing_only'` (or similar) on `GET /marketplace/agents` and activation endpoints; UI uses that field to render disclosure.
-     - If server ever changes to `runtime_code`, disclosure copy must change automatically.
+- Existing `iter138-adaptive-loop` covers /daily review; add explicit assertion for Quiz gap pill (or a new iter141 e2e).
 
-### P1 — Spec parity where it matters (learning loop + transparency)
+15. **Telemetry (local-only) for loop completion**
 
-5. **P1 — Build a minimal “Today’s Lessons” queue that is consistent with real progress state.**
-   - Evidence:
-     - Dashboard exists: `.../desktop/app-dashboard.png`.
-     - Progress updates exist: `apps/api/src/routes/courses.ts` emits `progress.update`.
-   - Acceptance:
-     - “Today’s Lessons” never recommends a completed lesson.
-     - When a lesson is marked complete, queue updates without refresh (WS-driven) or with a clear refresh action.
-
-6. **P1 — Mindmap: tighten claims to what’s real, or implement concept-level graph.**
-   - Evidence:
-     - Spec §5.2.5 describes concept relationships; current is course/module/lesson graph.
-   - Acceptance (choose one):
-     - (A) Update UX copy (“Course Map”, “Lesson nodes”) and remove “knowledge graph of domains” language; OR
-     - (B) Implement concept nodes + edges in API (persisted) and render full-screen explorer with expandable nodes.
-
-7. **P1 — Usage transparency: reconcile spec “token usage” vs current “best-effort usage_records”.**
-   - Evidence:
-     - API exists: `apps/api/src/routes/usage.ts`.
-     - UI exists: `apps/client/src/screens/ProfileSettings.tsx`.
-   - Acceptance:
-     - Settings screen labels usage as “best-effort” and clearly explains what’s measured (tokensTotal from usage_records) and what is not.
-     - Add one deterministic test proving `/usage/dashboard` renders and numbers are non-negative.
-
-8. **P1 — Content pipeline truth pass: remove any copy implying multi-source scraping/scoring is live if it isn’t.**
-   - Evidence:
-     - Spec §6 is ambitious; current implementation is partial.
-   - Acceptance:
-     - Audit marketing + in-app docs pages (especially `apps/client/src/screens/marketing/*` and `apps/web`) and remove/qualify claims about Google/Bing/Semantic Scholar/Firecrawl/MinHash unless code exists.
-     - “About MVP Truth” remains the source of truth; add links to it from any “pipeline” UI.
-
-### P2 — Reliability + cleanup to prevent regressions
-
-9. **P2 — Remove/avoid duplicate dev processes (`dev-status` shows leftover turbo pids).**
-   - Evidence:
-     - `node scripts/dev-status.mjs` lists multiple turbo dev processes from old sessions.
-   - Acceptance:
-     - Add a safe `npm run dev:clean` step (or improve `scripts/dev-clean.mjs`) that finds and terminates only LearnFlow dev processes.
-     - Document it in root README.
-
-10. **P2 — Playwright robustness: avoid EPIPE crashes on `--list` piping.**
-
-- Evidence:
-  - Running `npx playwright test --list | head` can throw EPIPE in Node 22.
-- Acceptance:
-  - Document “don’t pipe Playwright list mode to head” and/or adjust CI scripts to not pipe.
-  - Optional: add a tiny node wrapper that catches EPIPE for `--list` commands.
-
-11. **P2 — Align client vs web marketing routing decisions (reduce split-brain).**
-
-- Evidence:
-  - Client comment: `apps/client/src/App.tsx` says marketing is served by `apps/web`.
-  - Client still has marketing screen files and screenshot harness captures marketing pages.
-- Acceptance:
-  - Either (A) delete client marketing screens and ensure client `/` becomes LandingApp/login, OR (B) make client marketing canonical and delete `apps/web`.
-  - Screenshot harness updated accordingly.
-
-12. **P2 — Add a single “Spec claims vs MVP reality” checklist in docs and keep it current.**
-
-- Evidence:
-  - `apps/client/src/screens/AboutMvpTruth.tsx` exists, but it’s app-only.
-- Acceptance:
-  - Add `apps/docs/pages/mvp-truth.md` (or equivalent) and link it from Settings + marketing footer.
+- Track: gap detected → recommended → lesson opened → remediation quiz passed.
+- Use this to confirm the loop is working before adding heavier personalization.
 
 ---
 
-## Recent shipped commits (git log -10)
+## Screenshots captured (Iter141)
 
-2b5ce7e Iter133: mark improvement queue DONE
-ca94a8b Iter133 P0: mock billing CTA sweep + collaboration synthetic disclosure
-d7afffb Prevent pipeline hangs: add timeouts for scraping/synthesis
-c36c8b4 Surface create-course pipeline errors instead of dead list
-292f2ae Fix Create Course button: pipeline hook uses apiPost/apiGet
-8521846 Filter courses list to user-owned courses
-d41006c Iter129: mark improvement queue done
-0280d5a Iter129: standardize API calls + marketplace parity + dashboard today
-3378903 Iter128: mark improvement queue done + refresh shipped commits
-d78ba55 Iter128: update build log for tasks 08-12
+Saved via `node screenshot-all.mjs` to:
+
+- `learnflow/screenshots/iterunknown/run-2026-03-29/`
+  - Includes: `app-dashboard.png`, `course-view.png`, `lesson-reader.png`, `marketplace-*.png`, etc.
 
 ---
 
-## OneDrive sync (required)
+## Notes / risks
 
-After updating this queue + adding Iter134 screenshots/notes, run a non-destructive mirror sync:
-
-```bash
-rsync -av --progress \
-  --exclude node_modules --exclude .git --exclude dist --exclude .turbo --exclude .next \
-  /home/aifactory/.openclaw/workspace/learnflow/ \
-  /home/aifactory/onedrive-learnflow/learnflow/learnflow/
-```
+- The product spec is broad and “future-state”; Iter141 work should stay **local/deterministic** where possible.
+- Current exam agent is heuristic and does not truly measure mastery; adding better rationales + tags is the highest-leverage improvement without needing external model calls.

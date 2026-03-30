@@ -61,6 +61,17 @@ export interface Lesson {
   // Iter121 Task 2: UX transparency for demo/mock mode
   sourcesMissingReason?: string;
   sourceMode?: 'real' | 'mock';
+
+  // Iter135: persisted rails
+  takeaways?: string[];
+  relatedImages?: Array<{
+    url: string;
+    alt?: string;
+    credit?: string;
+    license?: string;
+    sourceUrl?: string;
+    pageUrl?: string;
+  }>;
 }
 
 export interface ChatMessage {
@@ -91,6 +102,12 @@ export interface QuizQuestion {
   options?: string[];
   correctAnswer: string;
   explanation: string;
+  /** Iter141: richer, actionable rationales for learning (esp. MCQ). */
+  rationale?: {
+    correct?: string;
+    perOption?: string[];
+    commonMistake?: string;
+  };
 }
 
 export interface Quiz {
@@ -469,6 +486,15 @@ export function getAuthHeaders(): Record<string, string> {
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
 
+  // Iter137: E2E determinism — allow Playwright to request server-side fixtures for marketplace publish QC.
+  // This is safe because the API also checks devMode before applying fixture behavior.
+  if (
+    runtimeEnv?.PLAYWRIGHT_E2E_FIXTURES === '1' ||
+    runtimeEnv?.PLAYWRIGHT_E2E_FIXTURES === 'true'
+  ) {
+    headers['x-learnflow-e2e-fixtures'] = 'true';
+  }
+
   // In dev bypass, avoid injecting Authorization header (it can trigger server auth flows).
   if (!devAuthBypass && token) headers['Authorization'] = `Bearer ${token}`;
 
@@ -497,10 +523,21 @@ export function apiBase(): string {
     (import.meta as any)?.env?.VITE_API_BASE_URL;
   if (envBase) return String(envBase).replace(/\/$/, '');
 
-  // In real browser usage (no test runners), use same-origin.
   // In Vitest/jsdom, prefer relative to satisfy fetch stubs in tests.
   if (typeof window !== 'undefined' && isVitest) return '';
-  if (typeof window !== 'undefined' && !isVitest) return '';
+
+  // In local dev, the client runs on :3001 and the API on :3000.
+  // Using same-origin would hit the Vite dev server and 404.
+  if (typeof window !== 'undefined') {
+    try {
+      if (window.location.hostname === 'localhost' && window.location.port === '3001') {
+        return 'http://localhost:3000';
+      }
+    } catch {
+      // ignore
+    }
+    return '';
+  }
 
   return 'http://localhost:3000';
 }
@@ -699,6 +736,7 @@ interface AppContextType {
     opts?: { parentLessonId?: string },
   ) => Promise<{ course: Course; pipelineId?: string }>;
   deleteCourse: (courseId: string) => Promise<void>;
+  apiGet: (path: string) => Promise<any>;
   webSearch: (
     query: string,
     limit?: number,
@@ -1053,6 +1091,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     deleteCourse,
     searchResearch,
     addTopicToCourse,
+    apiGet,
     webSearch,
   };
 

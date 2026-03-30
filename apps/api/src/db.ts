@@ -30,6 +30,10 @@ if (!isTest) {
       if (!hasColumn('courses', 'origin')) {
         sqlite.exec(`ALTER TABLE courses ADD COLUMN origin TEXT NOT NULL DEFAULT 'user';`);
       }
+      // Iter137 P1.9: Link user-owned course instances back to the marketplace course they were enrolled from.
+      if (!hasColumn('courses', 'marketplaceCourseId')) {
+        sqlite.exec(`ALTER TABLE courses ADD COLUMN marketplaceCourseId TEXT;`);
+      }
     } catch {
       // If courses doesn't exist yet, CREATE TABLE below will handle it.
     }
@@ -188,6 +192,24 @@ if (!isTest) {
 
     // Iter70: lesson_sources gained missingReason
 
+    // Iter135: add new tables for takeaways + images manifests (legacy DBs)
+    try {
+      sqlite.exec(
+        `CREATE TABLE IF NOT EXISTS lesson_takeaways (lessonId TEXT PRIMARY KEY, courseId TEXT NOT NULL, takeaways TEXT NOT NULL DEFAULT '[]', provider TEXT NOT NULL DEFAULT 'unknown', model TEXT NOT NULL DEFAULT 'unknown', createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL);`,
+      );
+      sqlite.exec(
+        `CREATE INDEX IF NOT EXISTS idx_lesson_takeaways_course ON lesson_takeaways(courseId);`,
+      );
+      sqlite.exec(
+        `CREATE TABLE IF NOT EXISTS lesson_images (lessonId TEXT PRIMARY KEY, courseId TEXT NOT NULL, images TEXT NOT NULL DEFAULT '[]', createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL);`,
+      );
+      sqlite.exec(
+        `CREATE INDEX IF NOT EXISTS idx_lesson_images_course ON lesson_images(courseId);`,
+      );
+    } catch {
+      // ignore
+    }
+
     // Iter85: api_keys gained validationStatus + validatedAt
     // Iter97: api_keys gained tag + encVersion (AEAD)
     try {
@@ -331,6 +353,7 @@ sqlite.exec(`
     failureReason TEXT NOT NULL DEFAULT '',
     failureMessage TEXT NOT NULL DEFAULT '',
     origin TEXT NOT NULL DEFAULT 'user',
+    marketplaceCourseId TEXT,
     createdAt TEXT NOT NULL
   );
 
@@ -356,6 +379,28 @@ sqlite.exec(`
     updatedAt TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS idx_lesson_sources_course ON lesson_sources(courseId);
+
+  -- Iter135: per-lesson key takeaways (persisted so UI can render a right-rail)
+  CREATE TABLE IF NOT EXISTS lesson_takeaways (
+    lessonId TEXT PRIMARY KEY,
+    courseId TEXT NOT NULL,
+    takeaways TEXT NOT NULL DEFAULT '[]',
+    provider TEXT NOT NULL DEFAULT 'unknown',
+    model TEXT NOT NULL DEFAULT 'unknown',
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_lesson_takeaways_course ON lesson_takeaways(courseId);
+
+  -- Iter135: per-lesson image manifest (from extracted sources; license/credit best-effort)
+  CREATE TABLE IF NOT EXISTS lesson_images (
+    lessonId TEXT PRIMARY KEY,
+    courseId TEXT NOT NULL,
+    images TEXT NOT NULL DEFAULT '[]',
+    createdAt TEXT NOT NULL,
+    updatedAt TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_lesson_images_course ON lesson_images(courseId);
 
   -- Iter73 P1: quality telemetry (best-effort)
   CREATE TABLE IF NOT EXISTS lesson_quality (
@@ -385,6 +430,22 @@ sqlite.exec(`
     origin TEXT NOT NULL DEFAULT 'user',
     createdAt TEXT NOT NULL
   );
+
+  -- Iter138: mastery + spaced repetition scheduling
+  CREATE TABLE IF NOT EXISTS mastery (
+    userId TEXT NOT NULL,
+    courseId TEXT NOT NULL,
+    lessonId TEXT NOT NULL,
+    masteryLevel REAL NOT NULL DEFAULT 0,
+    lastStudiedAt TEXT,
+    nextReviewAt TEXT,
+    lastQuizScore INTEGER,
+    lastQuizAt TEXT,
+    gapsJson TEXT NOT NULL DEFAULT '[]',
+    updatedAt TEXT NOT NULL,
+    PRIMARY KEY (userId, courseId, lessonId)
+  );
+  CREATE INDEX IF NOT EXISTS idx_mastery_user_next_review ON mastery(userId, nextReviewAt);
 
   CREATE TABLE IF NOT EXISTS api_keys (
     id TEXT PRIMARY KEY,
@@ -730,6 +791,19 @@ sqlite.exec(`
 // ── Prepared Statements ─────────────────────────────────────────────────────
 
 const stmts = {
+  // Mastery (Iter138)
+  upsertMastery: sqlite.prepare(
+    `INSERT OR REPLACE INTO mastery (userId, courseId, lessonId, masteryLevel, lastStudiedAt, nextReviewAt, lastQuizScore, lastQuizAt, gapsJson, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ),
+  getMasteryByUser: sqlite.prepare(`SELECT * FROM mastery WHERE userId = ?`),
+  getMasteryByUserCourse: sqlite.prepare(`SELECT * FROM mastery WHERE userId = ? AND courseId = ?`),
+  getMasteryByUserLesson: sqlite.prepare(
+    `SELECT * FROM mastery WHERE userId = ? AND courseId = ? AND lessonId = ? LIMIT 1`,
+  ),
+  getDueReviewsByUser: sqlite.prepare(
+    `SELECT * FROM mastery WHERE userId = ? AND nextReviewAt IS NOT NULL AND nextReviewAt <= ? ORDER BY nextReviewAt ASC LIMIT ?`,
+  ),
+
   // App settings (global)
   getAppSetting: sqlite.prepare(`SELECT value FROM app_settings WHERE key = ?`),
   upsertAppSetting: sqlite.prepare(
@@ -978,6 +1052,17 @@ const stmts = {
     `SELECT sources, missingReason FROM lesson_sources WHERE lessonId = ?`,
   ),
 
+  // Iter135: Lesson takeaways + images manifests
+  upsertLessonTakeaways: sqlite.prepare(
+    `INSERT OR REPLACE INTO lesson_takeaways (lessonId, courseId, takeaways, provider, model, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ),
+  getLessonTakeaways: sqlite.prepare(`SELECT takeaways FROM lesson_takeaways WHERE lessonId = ?`),
+
+  upsertLessonImages: sqlite.prepare(
+    `INSERT OR REPLACE INTO lesson_images (lessonId, courseId, images, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)`,
+  ),
+  getLessonImages: sqlite.prepare(`SELECT images FROM lesson_images WHERE lessonId = ?`),
+
   // Lesson quality telemetry
   upsertLessonQuality: sqlite.prepare(
     `INSERT OR REPLACE INTO lesson_quality (lessonId, courseId, telemetry, updatedAt) VALUES (?, ?, ?, ?)`,
@@ -986,7 +1071,7 @@ const stmts = {
 
   // Courses
   insertCourse: sqlite.prepare(
-    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, generationAttempt, generationStartedAt, lastProgressAt, failedAt, failureReason, failureMessage, origin, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, generationAttempt, generationStartedAt, lastProgressAt, failedAt, failureReason, failureMessage, origin, marketplaceCourseId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   updateCourseStatus: sqlite.prepare(`UPDATE courses SET status = ?, error = ? WHERE id = ?`),
   updateCourseBuildTelemetry: sqlite.prepare(
@@ -994,6 +1079,9 @@ const stmts = {
   ),
   updateCourseLastProgressAt: sqlite.prepare(`UPDATE courses SET lastProgressAt = ? WHERE id = ?`),
   findCourseById: sqlite.prepare(`SELECT * FROM courses WHERE id = ?`),
+  findCourseByMarketplaceCourseId: sqlite.prepare(
+    `SELECT * FROM courses WHERE authorId = ? AND marketplaceCourseId = ? LIMIT 1`,
+  ),
   getAllCourses: sqlite.prepare(`SELECT * FROM courses`),
   deleteCourse: sqlite.prepare(`DELETE FROM courses WHERE id = ?`),
 
@@ -2144,6 +2232,55 @@ export const dbLessonSources = {
   },
 };
 
+// Iter135: persist key takeaways so the client can show a right-rail/accordion.
+export const dbLessonTakeaways = {
+  save(
+    lessonId: string,
+    courseId: string,
+    takeaways: string[],
+    meta?: { provider?: string; model?: string },
+  ): void {
+    const now = new Date().toISOString();
+    stmts.upsertLessonTakeaways.run(
+      lessonId,
+      courseId,
+      JSON.stringify(takeaways || []),
+      meta?.provider || 'unknown',
+      meta?.model || 'unknown',
+      now,
+      now,
+    );
+  },
+
+  get(lessonId: string): { takeaways: string[] } {
+    const row = stmts.getLessonTakeaways.get(lessonId) as any;
+    if (!row) return { takeaways: [] };
+    try {
+      return { takeaways: JSON.parse(row.takeaways || '[]') };
+    } catch {
+      return { takeaways: [] };
+    }
+  },
+};
+
+// Iter135: persist extracted images manifest per lesson for UI rendering.
+export const dbLessonImages = {
+  save(lessonId: string, courseId: string, images: any[]): void {
+    const now = new Date().toISOString();
+    stmts.upsertLessonImages.run(lessonId, courseId, JSON.stringify(images || []), now, now);
+  },
+
+  get(lessonId: string): { images: any[] } {
+    const row = stmts.getLessonImages.get(lessonId) as any;
+    if (!row) return { images: [] };
+    try {
+      return { images: JSON.parse(row.images || '[]') };
+    } catch {
+      return { images: [] };
+    }
+  },
+};
+
 export const dbLessonQuality = {
   save(lessonId: string, courseId: string, telemetry: any): void {
     stmts.upsertLessonQuality.run(
@@ -2186,6 +2323,20 @@ export const dbCourses = {
     };
   },
 
+  getByMarketplaceCourseId(authorId: string, marketplaceCourseId: string): any | undefined {
+    const row = (stmts as any).findCourseByMarketplaceCourseId.get(
+      authorId,
+      marketplaceCourseId,
+    ) as any;
+    if (!row) return undefined;
+    return {
+      ...row,
+      modules: JSON.parse(row.modules || '[]'),
+      progress: JSON.parse(row.progress || '{}'),
+      plan: JSON.parse(row.plan || '{}'),
+    };
+  },
+
   save(course: any): void {
     stmts.insertCourse.run(
       course.id,
@@ -2206,6 +2357,7 @@ export const dbCourses = {
       course.failureReason || '',
       course.failureMessage || '',
       course.origin || 'user',
+      (course as any).marketplaceCourseId || null,
       course.createdAt || new Date().toISOString(),
     );
   },
@@ -2276,6 +2428,13 @@ export const dbProgress = {
         meta: {},
         origin: 'user',
       });
+    } catch {
+      // best effort
+    }
+
+    // Iter138: update mastery (best-effort)
+    try {
+      dbMastery.applyLessonCompleted(userId, courseId, lessonId);
     } catch {
       // best effort
     }
@@ -2383,6 +2542,199 @@ export const dbEvents = {
 
   list(userId: string, limit = 200): any[] {
     return stmts.getLearningEventsByUser.all(userId, limit) as any[];
+  },
+};
+
+// ── Mastery helpers (Iter138) ─────────────────────────────────────────────
+
+function clamp01(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.min(1, n));
+}
+
+function daysFromNow(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+function scheduleNextReview(masterLevel: number, lastQuizScore?: number | null): string {
+  // MVP spaced repetition: map mastery (+ quiz score) to rough intervals.
+  const score = Number.isFinite(Number(lastQuizScore)) ? Number(lastQuizScore) : null;
+  const m = clamp01(masterLevel);
+  if (score !== null && score < 60) return daysFromNow(1);
+  if (m < 0.3) return daysFromNow(1);
+  if (m < 0.6) return daysFromNow(3);
+  if (m < 0.8) return daysFromNow(7);
+  return daysFromNow(14);
+}
+
+export const dbMastery = {
+  upsert(row: {
+    userId: string;
+    courseId: string;
+    lessonId: string;
+    masteryLevel: number;
+    lastStudiedAt?: string | null;
+    nextReviewAt?: string | null;
+    lastQuizScore?: number | null;
+    lastQuizAt?: string | null;
+    // Stored as JSON in mastery.gapsJson.
+    // Iter140: can be either string tags or structured entries.
+    gaps?: any[];
+  }): void {
+    const now = new Date().toISOString();
+    stmts.upsertMastery.run(
+      row.userId,
+      row.courseId,
+      row.lessonId,
+      clamp01(row.masteryLevel),
+      row.lastStudiedAt || null,
+      row.nextReviewAt || null,
+      row.lastQuizScore ?? null,
+      row.lastQuizAt || null,
+      JSON.stringify(row.gaps || []),
+      now,
+    );
+  },
+
+  getByUser(userId: string): any[] {
+    return stmts.getMasteryByUser.all(userId) as any[];
+  },
+
+  getByCourse(userId: string, courseId: string): any[] {
+    return stmts.getMasteryByUserCourse.all(userId, courseId) as any[];
+  },
+
+  getByLesson(userId: string, courseId: string, lessonId: string): any | null {
+    const row = stmts.getMasteryByUserLesson.get(userId, courseId, lessonId) as any;
+    return row || null;
+  },
+
+  listDue(userId: string, nowIso = new Date().toISOString(), limit = 5): any[] {
+    return stmts.getDueReviewsByUser.all(userId, nowIso, limit) as any[];
+  },
+
+  applyLessonCompleted(userId: string, courseId: string, lessonId: string): void {
+    const existing = this.getByLesson(userId, courseId, lessonId);
+    const now = new Date().toISOString();
+    const prev = existing ? Number(existing.masteryLevel || 0) : 0;
+    const masteryLevel = clamp01(prev + 0.2);
+    const lastQuizScore = existing ? existing.lastQuizScore : null;
+    const nextReviewAt = scheduleNextReview(masteryLevel, lastQuizScore);
+    const gaps = (() => {
+      try {
+        return existing?.gapsJson ? JSON.parse(existing.gapsJson) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    this.upsert({
+      userId,
+      courseId,
+      lessonId,
+      masteryLevel,
+      lastStudiedAt: now,
+      nextReviewAt,
+      lastQuizScore: lastQuizScore ?? null,
+      lastQuizAt: existing?.lastQuizAt || null,
+      gaps,
+    });
+  },
+
+  applyQuizSubmitted(
+    userId: string,
+    courseId: string,
+    lessonId: string,
+    score: number | null,
+    gapTags: string[],
+  ): void {
+    const existing = this.getByLesson(userId, courseId, lessonId);
+    const now = new Date().toISOString();
+    const prev = existing ? Number(existing.masteryLevel || 0) : 0;
+    const s = Number.isFinite(Number(score)) ? Math.max(0, Math.min(100, Number(score))) : null;
+
+    let masteryLevel = prev;
+    if (s !== null) {
+      if (s >= 85) masteryLevel = clamp01(prev + 0.3);
+      else if (s >= 70) masteryLevel = clamp01(prev + 0.2);
+      else if (s >= 60) masteryLevel = clamp01(prev + 0.1);
+      else masteryLevel = clamp01(prev - 0.1);
+    }
+
+    // Iter140: store gaps with recency + frequency.
+    // Backward compatible with old `string[]` gapsJson.
+    const existingRawGaps = (() => {
+      try {
+        return existing?.gapsJson ? JSON.parse(existing.gapsJson) : [];
+      } catch {
+        return [];
+      }
+    })();
+
+    type GapEntry = { tag: string; lastSeenAt: string; count: number; lastScore: number | null };
+
+    const asEntries = (arr: any[]): GapEntry[] => {
+      if (!Array.isArray(arr)) return [];
+      const out: GapEntry[] = [];
+      for (const x of arr) {
+        if (typeof x === 'string') {
+          const tag = String(x).trim();
+          if (!tag) continue;
+          out.push({ tag, lastSeenAt: now, count: 1, lastScore: null });
+          continue;
+        }
+        if (x && typeof x === 'object') {
+          const tag = String((x as any).tag || '').trim();
+          if (!tag) continue;
+          const lastSeenAt = String((x as any).lastSeenAt || (x as any).lastSeen || now);
+          const countRaw = Number((x as any).count || 0);
+          const count = Number.isFinite(countRaw) && countRaw > 0 ? Math.round(countRaw) : 1;
+          const ls = (x as any).lastScore;
+          const lastScore = ls === null || ls === undefined ? null : Number(ls);
+          out.push({
+            tag,
+            lastSeenAt,
+            count,
+            lastScore: Number.isFinite(lastScore) ? lastScore : null,
+          });
+        }
+      }
+      return out;
+    };
+
+    const merged = new Map<string, GapEntry>();
+    for (const e of asEntries(existingRawGaps)) merged.set(e.tag, e);
+    for (const t of (Array.isArray(gapTags) ? gapTags : [])
+      .map((x) => String(x).trim())
+      .filter(Boolean)) {
+      const prevE = merged.get(t);
+      merged.set(t, {
+        tag: t,
+        lastSeenAt: now,
+        count: (prevE?.count || 0) + 1,
+        lastScore: s,
+      });
+    }
+
+    const nextReviewAt = scheduleNextReview(masteryLevel, s);
+    this.upsert({
+      userId,
+      courseId,
+      lessonId,
+      masteryLevel,
+      lastStudiedAt: now,
+      nextReviewAt,
+      lastQuizScore: s,
+      lastQuizAt: now,
+      gaps: Array.from(merged.values()).sort((a, b) => {
+        const ad = Date.parse(a.lastSeenAt || '');
+        const bd = Date.parse(b.lastSeenAt || '');
+        if (Number.isFinite(ad) && Number.isFinite(bd) && bd !== ad) return bd - ad;
+        return (b.count || 0) - (a.count || 0);
+      }),
+    });
   },
 };
 

@@ -21,6 +21,8 @@ import {
   dbCourses,
   dbLessonQuality,
   dbLessonSources,
+  dbLessonTakeaways,
+  dbLessonImages,
   dbProgress,
   dbNotes,
   dbIllustrations,
@@ -30,6 +32,7 @@ import {
 } from '../db.js';
 import { parseLessonSources, type LessonSource } from '../utils/sources.js';
 import { buildCoursePlan } from '../utils/coursePlan.js';
+import { extractConceptTagsFromLesson } from '../utils/conceptTags.js';
 import { enforceBiteSizedLesson } from '../utils/lessonSizing.js';
 import { lessonHasRequiredStructure } from '../utils/lessonStructure.js';
 import {
@@ -124,7 +127,7 @@ function buildSourceContextForPrompt(crawledSources?: FirecrawlSource[]): string
 }
 
 function formatSourcesForPrompt(sourceRefs: StructuredLessonSource[]): string {
-  if (!sourceRefs || sourceRefs.length === 0) return 'No sources available.';
+  if (!sourceRefs || sourceRefs.length === 0) return '';
   return sourceRefs
     .map((s, i) => {
       const author = s.author || 'Unknown';
@@ -162,8 +165,10 @@ ${basis}
 
 Format the output as markdown starting with # ${lessonTitle}
 
-In the ## Sources section, list ONLY the provided sources (no extras), with this format:
-${sourcesSectionTemplate}
+In the ## Sources section:
+- If sources are provided below, list ONLY those sources (no extras), with this format:
+${sourcesSectionTemplate || '- No sources available.'}
+- If no sources are provided, write exactly: "No sources available." and do not add any URLs.
 
 In ## Quick Check, include a "### Answer Key" subsection.
 
@@ -327,6 +332,8 @@ interface Lesson {
   estimatedTime: number;
   wordCount: number;
   sources?: LessonSource[];
+  /** Iter141: canonical concept tags for recommendations + analytics. */
+  conceptTags?: string[];
 }
 
 interface Module {
@@ -468,6 +475,11 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
         estimatedTime: 5,
         wordCount: 0,
         sources: [],
+        conceptTags: extractConceptTagsFromLesson({
+          lessonTitle: les.title,
+          moduleTitle: mod.title,
+          courseTopic: topic,
+        }),
       })),
     })),
     progress: {},
@@ -1236,6 +1248,11 @@ Continue.`,
             estimatedTime: estimatedMinutes,
             wordCount,
             sources,
+            conceptTags: extractConceptTagsFromLesson({
+              lessonTitle: les.title,
+              moduleTitle: mod.title,
+              courseTopic: topic,
+            }),
           };
         });
 
@@ -1897,7 +1914,23 @@ router.get('/:id/lessons/:lessonId', (req: Request, res: Response) => {
     // best effort
   }
 
-  res.status(200).json({ ...lesson, sources, sourcesMissingReason, sourceMode });
+  // Iter135: best-effort attach persisted takeaways + images manifests.
+  let takeaways: string[] = [];
+  let relatedImages: any[] = [];
+  try {
+    takeaways = (dbLessonTakeaways.get(lesson.id)?.takeaways || []) as any;
+  } catch {
+    takeaways = [];
+  }
+  try {
+    relatedImages = (dbLessonImages.get(lesson.id)?.images || []) as any;
+  } catch {
+    relatedImages = [];
+  }
+
+  res
+    .status(200)
+    .json({ ...lesson, sources, sourcesMissingReason, sourceMode, takeaways, relatedImages });
 });
 
 // POST /api/v1/courses/:id/add-topic - Add a new topic as a module+lesson to an existing course

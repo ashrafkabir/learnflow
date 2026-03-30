@@ -71,6 +71,7 @@ const pages = [
   ['/notifications', 'notifications'],
   ['/marketplace/courses', 'marketplace-courses'],
   ['/marketplace/agents', 'marketplace-agents'],
+  ['/marketplace/creator', 'marketplace-creator-dashboard'],
 ];
 
 if (DRY_RUN) {

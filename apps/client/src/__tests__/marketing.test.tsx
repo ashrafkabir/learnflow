@@ -89,14 +89,20 @@ describe('Marketing pages', () => {
   });
 
   it('renders 404 page for unknown routes', async () => {
-    localStorage.setItem('learnflow-token', 'test-token');
+    localStorage.setItem(
+      'learnflow-token',
+      'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+    );
     localStorage.setItem('learnflow-onboarding-complete', 'true');
     renderAt('/this-does-not-exist');
     expect(await screen.findByText('404')).toBeInTheDocument();
   });
 
   it('404 has navigation buttons', async () => {
-    localStorage.setItem('learnflow-token', 'test-token');
+    localStorage.setItem(
+      'learnflow-token',
+      'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+    );
     localStorage.setItem('learnflow-onboarding-complete', 'true');
     renderAt('/this-does-not-exist');
     expect(await screen.findByText(/Go Home/i)).toBeInTheDocument();

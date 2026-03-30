@@ -15,6 +15,10 @@ beforeEach(() => {
     'learnflow-token',
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
   );
+  (globalThis as any).__LEARNFLOW_ENV__ = {
+    VITE_DEV_AUTH_BYPASS: '1',
+    PLAYWRIGHT_E2E_FIXTURES: '1',
+  };
 });
 
 afterEach(() => cleanup());
@@ -48,6 +52,30 @@ describe('Iter77: CourseView shows restart/resume actions when FAILED', () => {
 
       if (url.includes('/api/v1/courses/c1/resume') || url.includes('/api/v1/courses/c1/restart')) {
         return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (url.includes('/api/v1/profile/context')) {
+        return new Response(
+          JSON.stringify({
+            goals: [],
+            topics: [],
+            experience: 'beginner',
+            subscriptionTier: 'free',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.includes('/api/v1/subscription')) {
+        return new Response(JSON.stringify({ tier: 'free', capabilities: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.includes('/api/v1/notifications')) {
+        return new Response(JSON.stringify({ notifications: [] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         });

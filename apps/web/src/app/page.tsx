@@ -162,17 +162,17 @@ export default function HomePage() {
             {
               icon: '🧪',
               title: 'Exam Agent',
-              desc: 'Adaptive quizzes that identify knowledge gaps.',
+              desc: 'Quizzes (best-effort). Adaptive targeting is planned.',
             },
             {
               icon: '🔬',
               title: 'Research Agent',
-              desc: 'Find and synthesize academic papers and articles.',
+              desc: 'Find and synthesize web sources (best-effort). Academic paper workflows are planned.',
             },
             {
               icon: '🗺️',
               title: 'Knowledge Mindmap',
-              desc: 'Visualize learning connections across all your courses.',
+              desc: 'Visualize your course map and progress (MVP). Richer knowledge graphs are planned.',
             },
             {
               icon: '🏪',

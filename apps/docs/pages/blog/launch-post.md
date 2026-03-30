@@ -16,9 +16,9 @@ LearnFlow uses a multi-agent architecture where each agent specializes in one as
 
 ### 1. Course Builder Agent
 
-Enter any topic and our AI generates a structured, multi-module course. But here's the key difference: every lesson is built from real web sources, not hallucinated content. We use Firecrawl to scrape and synthesize authoritative sources, score them for credibility, and cite everything inline.
+Enter any topic and our AI generates a structured, multi-module course draft. When a web source provider is configured, lessons can be grounded in public sources with citations (best-effort). The exact provider and coverage depend on deployment configuration (BYOAI + optional web sourcing).
 
-A course on "Rust Programming" doesn't just contain generic descriptions — it synthesizes content from rust-lang.org, the Rust Book, high-quality Medium posts, and Stack Overflow discussions, with full attribution.
+A course on "Rust Programming" can draw from official docs, books, and high-quality articles with attribution when sources are available.
 
 ### 2. Notes Agent
 
@@ -34,7 +34,7 @@ Not your typical multiple-choice quiz. Our Exam Agent generates assessments that
 
 ### 4. Research Agent
 
-Integrated with Semantic Scholar and web search, the Research Agent finds and synthesizes academic papers and articles related to any topic. It's like having a research assistant that reads papers for you and provides structured summaries.
+When enabled via deployment configuration, the Research Agent can use web search providers and other source backends to find and summarize relevant papers and articles (best-effort).
 
 ### 5. Summarizer Agent
 
@@ -46,16 +46,16 @@ Behind the scenes, the Orchestrator routes your natural language requests to the
 
 ## Source Attribution: No More Hallucinations
 
-One of our core principles is that **every fact should be traceable to a source**. Every lesson in LearnFlow includes:
+One of our core principles is that **important claims should be traceable to a source when sources are available**. Every lesson in LearnFlow includes:
 
 - Inline citations: "Quantum entanglement was experimentally verified by Aspect et al. [1]"
 - A References section with full URLs, authors, and publication dates
-- Credibility scores for each source (academic papers score higher than random blogs)
-- Source diversity enforcement (no single domain provides more than 50% of sources)
+- Quality signals (heuristic; not a guarantee of credibility)
+- Basic source diversity heuristics (best-effort)
 
 ## Knowledge Mindmap
 
-As you learn across multiple topics, LearnFlow builds a knowledge graph that visualizes how concepts connect. The interactive mindmap shows mastery indicators for each node, helping you identify strong areas and gaps.
+As you learn across multiple topics, LearnFlow builds a course map that visualizes your courses/modules/lessons and progress. Richer concept graphs and cross-course linking are planned.
 
 ## Marketplace
 
@@ -80,8 +80,8 @@ LearnFlow is built on a modern stack:
 
 LearnFlow is free to use with your own AI API key (BYOK). Some Pro features (e.g., proactive updates) are supported in the app, while others like managed API keys are planned for a future release.
 
-[Download LearnFlow →](https://learnflow.ai/download)
+[Get Started →](https://learnflow.ai)
 
 ---
 
-_LearnFlow is open-source. Star us on [GitHub](https://github.com/learnflow/learnflow)._
+_LearnFlow is open-source. Star us on [GitHub](https://github.com/ashrafkabir/learnflow)._

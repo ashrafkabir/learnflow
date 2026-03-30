@@ -8,11 +8,11 @@ When reading a lesson, you can select text to open quick tools:
 - **Illustrate**: simplified explanation (and an image if BYOAI is configured)
 - **Mark**: save a key takeaway
 
-See: `Selection Tools (Discover / Illustrate / Mark)`.
+See: [Selection Tools (Discover / Illustrate / Mark)](./selection-tools).
 
 ## Overview
 
-LearnFlow is an AI-powered learning platform with six specialized agents that work together to create personalized educational experiences.
+LearnFlow is an AI-powered learning platform (MVP). Some capabilities described in older copy are **planned**; see [MVP Truth](./mvp-truth) and [Roadmap](./roadmap).
 
 ## Features
 
@@ -38,21 +38,18 @@ Chat with LearnFlow's AI orchestrator:
 
 ### Course Builder
 
-Generate courses from any topic:
+Generate courses from any topic (best-effort):
 
 1. Enter a topic and select difficulty
-2. The builder researches via Firecrawl web scraping
-3. Sources are scored for credibility (0-1 scale)
-4. A syllabus is generated with prerequisite ordering
-5. Each lesson includes content with inline citations
+2. If a web source provider is configured, the builder discovers public sources and extracts text
+3. Basic quality signals may be applied (e.g., domain heuristics, recency/readability approximations)
+4. A syllabus is generated and lessons are drafted
+5. Lessons include citations when sources are available
 
-**Source Quality**:
+**Notes**:
 
-- Academic (.edu, arxiv.org) → 0.9-1.0
-- Official docs (rust-lang.org) → 0.9-1.0
-- Major publications → 0.8-0.9
-- Quality blogs → 0.6-0.8
-- Sources below 0.5 are rejected
+- Source coverage varies by topic and provider configuration.
+- Quality scoring is heuristic and not a guarantee of credibility.
 
 ### Notes Agent
 
@@ -62,22 +59,25 @@ Three note formats:
 - **Zettelkasten**: Atomic notes with inter-links
 - **Flashcards**: Question/answer pairs for spaced repetition
 
-### Exam Agent
+### Exam Agent (MVP)
 
-AI-generated assessments:
+AI-generated assessments (best-effort):
 
 - Multiple choice (4 options each)
 - Short answer questions
-- Bloom's taxonomy coverage (recall → application)
-- Knowledge gap analysis after scoring
+
+Planned (see roadmap):
+
+- Adaptive targeting / knowledge-gap analysis
+- Bloom's taxonomy coverage guarantees
 
 ### Research Agent
 
-Find and synthesize academic papers:
+Find and synthesize sources (best-effort):
 
-- Semantic Scholar integration
+- Can use web search providers and/or curated sources depending on deployment configuration
 - Structured research summaries
-- Citation management
+- Citation management (when source metadata is available)
 
 ### Summarizer Agent
 
@@ -87,18 +87,25 @@ Condense lessons to key points:
 - No hallucinated content
 - Output ≤500 words from 3000-word input
 
-### Knowledge Mindmap
+### Knowledge Mindmap (MVP)
 
-Visualize learning connections:
+Visualize your course map and progress:
 
 - Interactive graph with clickable nodes
-- Mastery indicators per node
-- Collaborative editing is planned (not part of the current MVP)
+- Progress-style indicators per node (best-effort)
+- Collaborative editing exists in this repo for mindmaps (Yjs-backed) but should be treated as **planned/best-effort** in MVP deployments
 - SVG export
+
+See: [Roadmap](./roadmap)
 
 ### Marketplace (MVP/mock)
 
-Marketplace UI flows exist for MVP/testing, but publishing, monetization, and third-party agent distribution are not yet implemented.
+Marketplace UI flows exist for MVP/testing.
+
+- Publishing is best-effort and may be limited by deployment configuration.
+- Monetization/payments and durable trust signals (ratings/reviews) are **planned**.
+
+See: [Roadmap](./roadmap)
 
 ### Settings
 

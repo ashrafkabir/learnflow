@@ -12,6 +12,7 @@ import { subscriptionRouter } from './routes/subscription.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { collaborationRouter } from './routes/collaboration.js';
 import { dailyRouter } from './routes/daily.js';
+import { masteryCourseRouter, masteryLessonRouter } from './routes/mastery.js';
 import { eventsRouter } from './routes/events.js';
 import { pipelineRouter } from './routes/pipeline.js';
 import { searchRouter } from './routes/search.js';
@@ -24,6 +25,8 @@ import { bookmarksRouter } from './routes/bookmarks.js';
 import { yjsRouter } from './yjsRouter.js';
 import { adminSearchConfigRouter } from './routes/admin-search-config.js';
 import { adminCleanupRouter } from './routes/admin-cleanup.js';
+import { diagnosticsRouter } from './routes/diagnostics.js';
+import { learningDiagnosticsRouter } from './routes/learningDiagnostics.js';
 import { authMiddleware, requireTier, tokenUsageMiddleware, type AuthUser } from './middleware.js';
 import { errorHandler, notFoundHandler, requestIdMiddleware, sendError } from './errors.js';
 import jwt from 'jsonwebtoken';
@@ -282,6 +285,13 @@ export function createApp(options?: { devMode?: boolean }) {
 
   app.use('/api/v1/chat', protectedAuth, rateLimiter, writeRateLimiter, chatRouter);
   app.use('/api/v1/courses', protectedAuth, rateLimiter, writeRateLimiter, coursesRouter);
+  app.use('/api/v1/courses/:id/mastery', protectedAuth, rateLimiter, masteryCourseRouter);
+  app.use(
+    '/api/v1/courses/:id/lessons/:lessonId/mastery',
+    protectedAuth,
+    rateLimiter,
+    masteryLessonRouter,
+  );
   app.use('/api/v1/mindmap', protectedAuth, rateLimiter, writeRateLimiter, mindmapRouter);
   app.use(
     '/api/v1/collaboration',
@@ -337,6 +347,8 @@ export function createApp(options?: { devMode?: boolean }) {
   app.use('/api/v1/yjs', protectedAuth, rateLimiter, yjsRouter);
   app.use('/api/v1/admin', protectedAuth, rateLimiter, writeRateLimiter, adminSearchConfigRouter);
   app.use('/api/v1/admin', protectedAuth, rateLimiter, writeRateLimiter, adminCleanupRouter);
+  app.use('/api/v1/diagnostics', protectedAuth, rateLimiter, diagnosticsRouter);
+  app.use('/api/v1/diagnostics/learning', protectedAuth, rateLimiter, learningDiagnosticsRouter);
 
   // Pro-only endpoint for RBAC testing
   app.get('/api/v1/pro/features', authMiddleware, requireTier('pro'), (_req, res) => {

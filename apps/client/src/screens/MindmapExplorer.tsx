@@ -64,29 +64,32 @@ export function MindmapExplorer() {
       return null;
     }
   })();
-  const activeCourseId =
-    queryCourseId || state.activeCourse?.id || state.courses?.[0]?.id || 'dev-course';
+  // Choose an active course for the mindmap room.
+  // IMPORTANT: do not fall back to a synthetic id when the user has 0 courses.
+  // Otherwise we incorrectly connect to a "dev-course" room and the empty state never shows.
+  const activeCourseId = queryCourseId || state.activeCourse?.id || state.courses?.[0]?.id || null;
 
   // Shared mindmaps: allow overriding courseId/groupId via query params.
-  const [sharedParams, setSharedParams] = useState<{ courseId: string; groupId?: string | null }>(
-    () => {
-      try {
-        const p = new URLSearchParams(window.location.search);
-        const courseId = p.get('courseId') || activeCourseId;
-        const groupId = p.get('groupId');
-        return { courseId, groupId };
-      } catch {
-        return { courseId: activeCourseId, groupId: null };
-      }
-    },
-  );
+  const [sharedParams, setSharedParams] = useState<{
+    courseId: string | null;
+    groupId?: string | null;
+  }>(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const courseId = p.get('courseId') || activeCourseId;
+      const groupId = p.get('groupId');
+      return { courseId: courseId || null, groupId };
+    } catch {
+      return { courseId: activeCourseId, groupId: null };
+    }
+  });
 
   useEffect(() => {
     try {
       const p = new URLSearchParams(window.location.search);
       const courseId = p.get('courseId') || activeCourseId;
       const groupId = p.get('groupId');
-      setSharedParams({ courseId, groupId });
+      setSharedParams({ courseId: courseId || null, groupId });
     } catch {
       // ignore
     }
@@ -201,6 +204,82 @@ export function MindmapExplorer() {
       });
   }, []);
 
+  type MasteryRow = {
+    courseId: string;
+    lessonId: string;
+    masteryLevel: number;
+    nextReviewAt: string | null;
+    lastQuizScore: number | null;
+  };
+
+  const [masteryByLessonId, setMasteryByLessonId] = useState<Record<string, MasteryRow>>({});
+
+  function masteryBucket(
+    level: number | null | undefined,
+  ): 'new' | 'learning' | 'solid' | 'mastered' {
+    const v =
+      typeof level === 'number' && Number.isFinite(level) ? Math.max(0, Math.min(1, level)) : 0;
+    if (v >= 0.85) return 'mastered';
+    if (v >= 0.55) return 'solid';
+    if (v >= 0.25) return 'learning';
+    return 'new';
+  }
+
+  function masteryColor(level: number | null | undefined): { background: string; border: string } {
+    const b = masteryBucket(level);
+    if (b === 'mastered') return { background: '#16A34A', border: '#15803D' };
+    if (b === 'solid') return { background: '#2563EB', border: '#1D4ED8' };
+    if (b === 'learning') return { background: '#F59E0B', border: '#D97706' };
+    return { background: '#9CA3AF', border: '#6B7280' };
+  }
+
+  function reviewDue(nextReviewAt: string | null | undefined): boolean {
+    if (!nextReviewAt) return false;
+    return new Date(nextReviewAt).getTime() <= Date.now();
+  }
+
+  // Iter138: fetch mastery rows for all loaded courses so mindmap colors reflect learning state.
+  // Best-effort (does not block rendering). Updates on refresh; real-time is optional.
+  useEffect(() => {
+    if (!state.courses?.length) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const token = localStorage.getItem('learnflow-token') || '';
+        const maps = await Promise.all(
+          state.courses.map(async (c) => {
+            try {
+              const res = await fetch(`/api/v1/courses/${c.id}/mastery`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (!res.ok) return [] as MasteryRow[];
+              const data = (await res.json()) as { mastery?: MasteryRow[] };
+              return Array.isArray(data?.mastery) ? (data.mastery as MasteryRow[]) : [];
+            } catch {
+              return [] as MasteryRow[];
+            }
+          }),
+        );
+
+        if (cancelled) return;
+        const map: Record<string, MasteryRow> = {};
+        for (const rows of maps) {
+          for (const r of rows || []) {
+            if (r?.lessonId) map[String(r.lessonId)] = r;
+          }
+        }
+        setMasteryByLessonId(map);
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.courses]);
+
   useEffect(() => {
     if (!loaded || !containerRef.current || !Network || !DataSet) return;
 
@@ -234,7 +313,8 @@ export function MindmapExplorer() {
       );
       const coursePct = totalLessons > 0 ? completedLessons / totalLessons : 0;
 
-      // Color by progress level:
+      // Color by progress level (legacy heuristic).
+      // Iter138 TODO: use mastery store for course-level coloring.
       // - not started → gray (#9CA3AF)
       // - in progress → amber (#F59E0B)
       // - complete → green (#16A34A)
@@ -278,22 +358,34 @@ export function MindmapExplorer() {
           const lessonNodeId = nodeId++;
           const isComplete = state.completedLessons.has(lesson.id);
           const isInProgress = !isComplete && lesson.id === firstIncompleteLessonId;
-          const lessonBg = isComplete ? '#16A34A' : isInProgress ? '#F59E0B' : '#E5E7EB';
-          const lessonBorder = isComplete ? '#15803D' : isInProgress ? '#D97706' : '#9CA3AF';
-          const statusLabel = isComplete ? ' (complete)' : isInProgress ? ' (in progress)' : '';
+          const mastery = masteryByLessonId[String(lesson.id)] || null;
+          const mColor = masteryColor(mastery?.masteryLevel);
+          const due = reviewDue(mastery?.nextReviewAt);
+
+          const lessonBg = isComplete ? '#16A34A' : mColor.background;
+          const lessonBorder = isComplete ? '#15803D' : mColor.border;
+          const statusLabel = isComplete
+            ? ' (complete)'
+            : due
+              ? ' (review due)'
+              : isInProgress
+                ? ' (in progress)'
+                : '';
           lessonIdToNodeId.set(lesson.id, lessonNodeId);
           nodes.push({
             id: lessonNodeId,
             label: lesson.title.length > 35 ? lesson.title.slice(0, 35) + '…' : lesson.title,
             title: `${lesson.title}${statusLabel}`,
-            shape: 'dot',
+            shape: due ? 'star' : 'dot',
             color: {
               background: lessonBg,
               border: lessonBorder,
             },
-            size: 10,
+            size: due ? 12 : 10,
             _courseId: course.id,
             _lessonId: lesson.id,
+            _masteryBucket: masteryBucket(mastery?.masteryLevel),
+            _reviewDue: due,
           });
           edges.push({ from: modNodeId, to: lessonNodeId, color: { color: '#94A3B8' }, width: 2 });
         }
@@ -545,24 +637,44 @@ export function MindmapExplorer() {
             </Button>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
               <span
-                className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600 inline-block border border-gray-400"
+                className="w-3 h-3 rounded-full inline-block border border-gray-400"
+                style={{ background: '#9CA3AF' }}
                 aria-hidden="true"
               />{' '}
-              Not started
+              New
             </span>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
               <span
-                className="w-3 h-3 rounded-full bg-warning inline-block border border-amber-500"
+                className="w-3 h-3 rounded-full inline-block border border-amber-500"
+                style={{ background: '#F59E0B' }}
                 aria-hidden="true"
               />{' '}
-              In progress
+              Learning
             </span>
             <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
               <span
-                className="w-3 h-3 rounded-full bg-success inline-block border border-green-600"
+                className="w-3 h-3 rounded-full inline-block border border-blue-700"
+                style={{ background: '#2563EB' }}
+                aria-hidden="true"
+              />{' '}
+              Solid
+            </span>
+            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+              <span
+                className="w-3 h-3 rounded-full inline-block border border-green-600"
+                style={{ background: '#16A34A' }}
                 aria-hidden="true"
               />{' '}
               Mastered
+            </span>
+            <span
+              className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300"
+              title="Review due"
+            >
+              <span className="text-[12px] font-bold text-rose-600 dark:text-rose-300" aria-hidden>
+                ★
+              </span>{' '}
+              Due
             </span>
           </div>
         </div>
@@ -840,22 +952,29 @@ export function MindmapExplorer() {
                 )}
               </div>
 
-              {/* Progress legend */}
+              {/* Mastery legend (Iter138): uses server mastery store (best-effort) */}
               <div className="absolute top-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-3 shadow-card z-10 text-xs space-y-1.5">
                 <div className="font-semibold text-gray-700 dark:text-gray-200 mb-1">
-                  Progress Legend
+                  Mastery Legend
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full" style={{ background: '#9CA3AF' }} />{' '}
-                  <span className="text-gray-600 dark:text-gray-300">Not started</span>
+                  <span className="text-gray-600 dark:text-gray-300">New</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full" style={{ background: '#F59E0B' }} />{' '}
-                  <span className="text-gray-600 dark:text-gray-300">In progress</span>
+                  <span className="text-gray-600 dark:text-gray-300">Learning</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full" style={{ background: '#2563EB' }} />{' '}
+                  <span className="text-gray-600 dark:text-gray-300">Solid</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full" style={{ background: '#16A34A' }} />{' '}
-                  <span className="text-gray-600 dark:text-gray-300">Complete</span>
+                  <span className="text-gray-600 dark:text-gray-300">Mastered</span>
+                </div>
+                <div className="pt-1 text-[10px] text-gray-500 dark:text-gray-400">
+                  ★ = review due
                 </div>
               </div>
               {/* Zoom controls */}

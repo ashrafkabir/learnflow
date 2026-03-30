@@ -16,7 +16,7 @@ export default function BlogPage() {
       slug: 'how-course-builder-works',
       title: 'How the Course Builder Agent Works',
       excerpt:
-        'A deep dive into how we use Firecrawl, credibility scoring, and LLM synthesis to generate quality courses.',
+        'A deep dive into our best-effort sourcing, basic quality signals, and LLM synthesis to generate course drafts.',
       date: '2026-03-10',
       author: 'Engineering Team',
       readTime: '8 min',

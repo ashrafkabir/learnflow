@@ -63,9 +63,17 @@ export function AboutMvpTruth() {
             For the canonical description of what ships in the MVP (and what is future-state), see
             the in-app docs and the product spec’s MVP architecture section.
           </p>
-          <Button variant="secondary" size="sm" onClick={() => nav('/docs')}>
-            Open docs
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={() => nav('/docs')}>
+              Open docs
+            </Button>
+            <a
+              href="/docs/mvp-truth"
+              className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-900 hover:border-accent/40"
+            >
+              About MVP truth
+            </a>
+          </div>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-3">
             Tip: if you have the repo checked out, open{' '}
             <span className="font-medium">LearnFlow_Product_Spec.md</span> and jump to §3.2.0 “MVP

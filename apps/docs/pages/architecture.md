@@ -52,8 +52,8 @@ LearnFlow is a monorepo-based platform with a multi-agent architecture.
 ┌───────┼─────────────────────────────────────────────┐
 │       │       Content Pipeline                       │
 │  ┌────┴───────────────────────────────────────┐     │
-│  │  Firecrawl → Credibility Scorer →          │     │
-│  │  Deduplicator → LLM Synthesis →            │     │
+│  │  Web Source Provider → Quality Signals →   │     │
+│  │  Near-dup reduction → LLM Synthesis →      │     │
 │  │  Citation Formatter → Lesson Output        │     │
 │  └────────────────────────────────────────────┘     │
 └─────────────────────────────────────────────────────┘

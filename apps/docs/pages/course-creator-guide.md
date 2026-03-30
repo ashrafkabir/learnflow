@@ -11,17 +11,17 @@ LearnFlow allows you to create AI-generated courses and publish them to the mark
 1. Use the Course Builder to generate a course on any topic
 2. Review the generated syllabus and lessons
 3. Edit any content that needs refinement
-4. Ensure all lessons have proper source citations
+4. Add or verify citations when sources are available
 
 ### 2. Quality Check
 
-Before publishing, your course must pass quality checks:
+Before publishing, your course should pass these MVP checks (best-effort):
 
 - **Minimum lessons**: At least 5 lessons per course
-- **Source attribution**: Every lesson must have ≥3 cited sources with URLs
-- **Readability**: Content must be at appropriate reading level
-- **Deduplication**: No two lessons should overlap >40%
-- **Completeness**: All modules must have learning objectives
+- **attribution**: Include citations where available; some topics/providers may have limited coverage
+- **Readability**: Content should be at an appropriate reading level (heuristic)
+- **Near-duplicate reduction**: Avoid highly overlapping lessons (heuristic)
+- **Completeness**: All modules should have learning objectives
 
 ### 3. Publish
 
@@ -45,10 +45,10 @@ Payouts are **not yet** implemented in this MVP. Stripe payouts/integration are 
 ### Content Standards
 
 - **Accuracy**: All claims must be verifiable
-- **Attribution**: Every lesson needs ≥3 sources
+- **Attribution**: Add citations where available
 - **Depth**: Lessons should be 800-1500 words
 - **Structure**: Each lesson needs objectives, examples, and exercises
-- **Originality**: No copied content (synthesis from sources only)
+- **Originality**: Avoid copied content; prefer synthesis and clearly-marked quotes
 
 ### What Gets Rejected
 
@@ -60,10 +60,4 @@ Payouts are **not yet** implemented in this MVP. Stripe payouts/integration are 
 
 ## Analytics
 
-The Creator Dashboard shows:
-
-- **Enrollments**: How many learners enrolled
-- **Completion rate**: % who finish the course
-- **Ratings**: Average rating and reviews
-- **Revenue**: Earnings breakdown by month
-- **Engagement**: Which lessons are most/least viewed
+Creator analytics are planned. In this MVP, dashboards may be mock/limited until backed by stored data.

@@ -37,7 +37,10 @@ if (typeof globalThis.EventSource === 'undefined') {
 
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
-  localStorage.setItem('learnflow-token', 'test-token');
+  localStorage.setItem(
+    'learnflow-token',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+  );
   // OnboardingGuard now requires an explicit, env-gated bypass for deterministic tests.
   (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
 
@@ -77,7 +80,10 @@ describe('PipelineDetail screen', () => {
   });
 
   it('renders milestones section when lessonMilestones present', async () => {
-    localStorage.setItem('learnflow-token', 'test-token');
+    localStorage.setItem(
+      'learnflow-token',
+      'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+    );
 
     globalThis.fetch = (async (input: RequestInfo | URL) => {
       const url =

@@ -83,6 +83,9 @@ This project uses [Turborepo](https://turbo.build/) for monorepo management. Key
 - `npm run lint` — Lint all packages
 - `npm run test` — Run all tests
 - `npm run dev` — Start development servers
+- `npm run dev:status` — Show what’s currently listening on dev ports + any leftover Turbo dev processes
+- `npm run dev:clean` — Safely free the canonical dev ports (3000/3001/3003) by terminating only node/vite/next listeners on those ports
+- `npm run pw:list` — List Playwright tests (safe to pipe to `head` without crashing Node with EPIPE)
 
 ### Docs
 
@@ -99,6 +102,15 @@ npm run rg -- "TODO" .
 # Search within a package/app
 npm run rg -- "useWebSocket" apps/client/src
 ```
+
+### Persistence / local state
+
+LearnFlow uses **SQLite** for runtime persistence (see `apps/api/src/db.ts`). In local dev you may see a `.data/` folder created at the repo root.
+
+- `.data/` is **local-only runtime state** (SQLite DB backups, local users/keys in dev, etc.)
+- It is intentionally **gitignored** and should not be treated as seeded fixtures.
+
+If you need a clean slate locally, stop dev servers and delete `.data/`.
 
 - Selection Tools (Discover / Illustrate / Mark): `apps/docs/pages/selection-tools.md`
 - API reference: `apps/docs/pages/api-reference.md`

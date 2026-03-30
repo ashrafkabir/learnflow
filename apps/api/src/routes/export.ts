@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { dbCourses, db, dbNotes, dbLessonSources } from '../db.js';
 import { sendError } from '../errors.js';
 import { scoreSourceCredibility } from '../utils/sourceCredibility.js';
+import { buildProvenanceManifest } from '../utils/exportProvenance.js';
 
 const router = Router();
 
@@ -206,20 +207,34 @@ router.get('/', async (req: Request, res: Response) => {
 
   if (format === 'zip') {
     const zip = new JSZip();
-    zip.file('learnflow-export.json', JSON.stringify(payload, null, 2));
-    zip.file('learnflow-export.md', coursesToMarkdown(courses, lessonSourcesByLessonId));
-    zip.file(
-      'metadata.json',
-      JSON.stringify(
-        {
-          exportedAt: payload.exportedAt,
-          appVersion: payload.version,
-          schemaVersion: payload.schemaVersion || 'v1',
-        },
-        null,
-        2,
-      ),
+
+    const jsonStr = JSON.stringify(payload, null, 2);
+    const mdStr = coursesToMarkdown(courses, lessonSourcesByLessonId);
+    const metadataStr = JSON.stringify(
+      {
+        exportedAt: payload.exportedAt,
+        appVersion: payload.version,
+        schemaVersion: payload.schemaVersion || 'v1',
+      },
+      null,
+      2,
     );
+
+    zip.file('learnflow-export.json', jsonStr);
+    zip.file('learnflow-export.md', mdStr);
+    zip.file('metadata.json', metadataStr);
+
+    // Iter137 P2.14: Provenance manifest (hashes) for export artifacts.
+    // This is integrity-focused metadata, not a security guarantee.
+    const provenance = buildProvenanceManifest({
+      appVersion: payload.version,
+      files: [
+        { path: 'learnflow-export.json', mime: 'application/json', content: jsonStr },
+        { path: 'learnflow-export.md', mime: 'text/markdown; charset=utf-8', content: mdStr },
+        { path: 'metadata.json', mime: 'application/json', content: metadataStr },
+      ],
+    });
+    zip.file('provenance.json', JSON.stringify(provenance, null, 2));
 
     const buf = await zip.generateAsync({ type: 'nodebuffer' });
     res.setHeader('Content-Type', 'application/zip');

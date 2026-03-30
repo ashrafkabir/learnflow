@@ -31,7 +31,6 @@ import {
   IconTrash,
   IconFlame,
   IconMap,
-  IconRocket,
   IconSparkles,
 } from '../components/icons/index.js';
 
@@ -67,6 +66,8 @@ export function Dashboard() {
       if (result) {
         setActivePipelineId(result.pipelineId);
         refreshPipelines();
+        // Happy path: take the user directly to their new course.
+        nav(`/courses/${result.courseId}`);
       }
     } catch (err: any) {
       // Show the real reason (auth, tier limit, server error) instead of failing silently.
@@ -163,6 +164,7 @@ export function Dashboard() {
       lessonId: string;
       lessonTitle: string;
       estimatedTime: number;
+      reasonTag?: 'continue' | 'review' | 'new' | 'quiz_gap' | 'other';
       reason?: string;
     }>
   >([]);
@@ -266,9 +268,10 @@ export function Dashboard() {
               <div className="bg-gradient-to-r from-accent to-accent-dark rounded-2xl p-6 sm:p-8 text-white shadow-card">
                 <h2 className="text-xl sm:text-2xl font-bold mb-2">Start Your Learning Journey</h2>
                 <p className="text-sm opacity-80 mb-4">
-                  Enter any topic and our AI agents will build a personalized course for you in
-                  minutes.
+                  Create a course from any topic. LearnFlow will generate an outline and draft
+                  lessons (best-effort; may be incomplete in this MVP).
                 </p>
+
                 <div className="flex flex-wrap gap-2 mb-4">
                   {['Agentic AI', 'Rust Programming', 'Quantum Computing'].map((t) => (
                     <Button
@@ -282,18 +285,38 @@ export function Dashboard() {
                     </Button>
                   ))}
                 </div>
-                <Button
-                  onClick={() => {
-                    const el = document.querySelector<HTMLInputElement>(
-                      'input[placeholder*="Enter a topic"]',
-                    );
-                    el?.focus();
-                  }}
-                  variant="secondary"
-                  className="bg-white text-accent hover:bg-white/90 border-0 shadow-card"
-                >
-                  Create Your First Course
-                </Button>
+
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input
+                    value={newTopic}
+                    onChange={(e) => setNewTopic(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleCreateCourse()}
+                    placeholder="Enter a topic (e.g., Agentic AI, Rust, Quantum Computing)..."
+                    className="flex-1 min-w-0 px-4 py-3 rounded-xl border border-white/30 bg-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/60 focus:border-transparent transition-all"
+                  />
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                      onClick={handleCreateCourse}
+                      disabled={creating || pipelineLoading || !newTopic.trim()}
+                      variant="secondary"
+                      size="large"
+                      className="bg-white text-accent hover:bg-white/90 border-0 shadow-card whitespace-nowrap"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <IconSparkles size={16} className="text-accent" decorative />
+                        {creating || pipelineLoading ? 'Starting…' : 'Create course'}
+                      </span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="large"
+                      onClick={() => nav('/marketplace/courses')}
+                      className="text-white bg-white/15 hover:bg-white/25 border border-white/20 whitespace-nowrap"
+                    >
+                      Browse marketplace
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : null}
 
@@ -541,8 +564,22 @@ export function Dashboard() {
                         </p>
                         <p className="text-xs text-gray-800/80 dark:text-gray-200 truncate">
                           {tl.courseTitle} · {tl.estimatedTime} min
-                          {tl.reason ? ` · ${tl.reason}` : ''}
                         </p>
+                        {tl.reason && (
+                          <p className="text-[11px] text-gray-700/80 dark:text-gray-300 mt-0.5">
+                            <span
+                              className={
+                                'inline-flex items-center rounded-full border px-2 py-0.5 mr-2 ' +
+                                (tl.reasonTag === 'quiz_gap'
+                                  ? 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-900/60 dark:bg-fuchsia-900/20 dark:text-fuchsia-200'
+                                  : 'border-gray-200 dark:border-gray-700')
+                              }
+                            >
+                              {tl.reasonTag === 'quiz_gap' ? 'Quiz gap' : tl.reasonTag || 'other'}
+                            </span>
+                            <span>{tl.reason}</span>
+                          </p>
+                        )}
                       </div>
                       <span className="text-gray-300 dark:text-gray-600">→</span>
                     </Button>
@@ -551,19 +588,25 @@ export function Dashboard() {
               </div>
             )}
 
-            {/* New Course */}
+            {/* New Course (secondary placement) */}
             <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                Start Learning Something New
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Create another course
               </h2>
+              <p className="text-sm text-gray-800/80 dark:text-gray-200 mb-3">
+                Enter a topic and we’ll generate an outline and draft lessons (best-effort in this
+                MVP).
+              </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 {upgradeMessage && (
                   <div className="w-full rounded-xl border border-amber-200 bg-amber-50 text-amber-900 px-4 py-3 text-sm dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100">
                     <div className="flex items-center justify-between gap-3">
                       <span>{upgradeMessage}</span>
-                      <Button variant="secondary" size="sm" onClick={() => nav('/pricing')}>
-                        View plans
-                      </Button>
+                      <a href="/pricing" className="inline-flex">
+                        <Button variant="secondary" size="sm">
+                          View plans
+                        </Button>
+                      </a>
                     </div>
                   </div>
                 )}
@@ -583,7 +626,7 @@ export function Dashboard() {
                 >
                   <span className="inline-flex items-center gap-2">
                     <IconSparkles size={16} className="text-white" decorative />
-                    {creating || pipelineLoading ? 'Starting...' : 'Create Course'}
+                    {creating || pipelineLoading ? 'Starting…' : 'Create course'}
                   </span>
                 </Button>
               </div>
@@ -808,52 +851,16 @@ export function Dashboard() {
                 )}
               </div>
               {state.courses.length === 0 ? (
-                <div className="bg-white dark:bg-gray-900 rounded-2xl border-2 border-dashed border-accent/30 dark:border-accent/20 shadow-card p-12 text-center">
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-accent/10 flex items-center justify-center">
-                    <IconRocket size={34} className="text-accent" decorative />
+                <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 text-center">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-accent/10 flex items-center justify-center">
+                    <IconCourse size={28} className="text-accent" decorative />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    Create your first course
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                    No courses yet
                   </h3>
-                  <p className="text-gray-800/80 dark:text-gray-200 text-sm max-w-md mx-auto mb-6">
-                    Enter any topic above and our AI agents will research, organize, and build a
-                    personalized course for you in minutes.
+                  <p className="text-gray-800/80 dark:text-gray-200 text-sm max-w-md mx-auto">
+                    Use the “Create course” box above to generate your first course.
                   </p>
-                  <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                    <Button
-                      variant="primary"
-                      size="large"
-                      onClick={() => {
-                        const el = document.querySelector<HTMLInputElement>(
-                          'input[placeholder*="Enter a topic"]',
-                        );
-                        el?.focus();
-                      }}
-                    >
-                      Start Learning Now
-                    </Button>
-                    <Button variant="secondary" onClick={() => nav('/marketplace/courses')}>
-                      Browse Marketplace
-                    </Button>
-                  </div>
-                  <div className="mt-6 flex flex-wrap gap-2 justify-center">
-                    {[
-                      'Agentic AI',
-                      'Rust Programming',
-                      'Quantum Computing',
-                      'Machine Learning',
-                    ].map((topic) => (
-                      <Button
-                        key={topic}
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setNewTopic(topic)}
-                        className="rounded-full border border-gray-200 dark:border-gray-700"
-                      >
-                        {topic}
-                      </Button>
-                    ))}
-                  </div>
                 </div>
               ) : (
                 <div
@@ -1000,38 +1007,38 @@ export function Dashboard() {
                 <span className="text-xs text-accent font-medium">View Full Map →</span>
               </div>
               <div className="flex items-center justify-center gap-6 py-4">
-                {/* Mini mindmap teaser nodes */}
-                {[
-                  {
-                    label: state.courses[0]?.title || 'Machine Learning',
-                    color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-                  },
-                  {
-                    label: state.courses[1]?.title || 'Data Structures',
-                    color: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-                  },
-                  {
-                    label: state.courses[2]?.title || 'Web Development',
-                    color:
-                      'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
-                  },
-                ].map((node, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1">
-                    <div
-                      className={`w-14 h-14 rounded-full ${node.color} flex items-center justify-center text-lg font-bold`}
-                    >
-                      {node.label.charAt(0)}
-                    </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[80px] truncate text-center">
-                      {node.label}
-                    </span>
-                    {i < 2 && <div className="hidden sm:block absolute" />}
+                {state.courses.length === 0 ? (
+                  <div className="h-24 w-full bg-gray-50 dark:bg-gray-800/50 rounded-xl flex items-center justify-center">
+                    <p className="text-sm text-gray-400">Start a course to build your mindmap</p>
                   </div>
-                ))}
+                ) : (
+                  <>
+                    {/* Mini mindmap teaser nodes */}
+                    {state.courses.slice(0, 3).map((c: any, i: number) => {
+                      const colors = [
+                        'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+                        'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
+                        'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+                      ];
+                      const label = String(c?.title || '');
+                      return (
+                        <div key={c.id || i} className="flex flex-col items-center gap-1">
+                          <div
+                            className={`w-14 h-14 rounded-full ${colors[i] || colors[0]} flex items-center justify-center text-lg font-bold`}
+                          >
+                            {(label || '?').charAt(0)}
+                          </div>
+                          <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[80px] truncate text-center">
+                            {label || 'Untitled'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Explore your interactive knowledge graph — see progress levels and connections
-                across all topics.
+                Explore your course map — see course/module/lesson nodes and your progress.
               </p>
             </div>
 

@@ -12,7 +12,15 @@ import { colors, typography, breakpoints } from '../design-system/tokens.js';
 
 import { beforeEach } from 'vitest';
 
-beforeEach(() => {
+beforeEach(async () => {
+  // Preload lazy-loaded onboarding modules so Suspense resolves deterministically in jsdom.
+  await import('../screens/onboarding/Welcome.js');
+  await import('../screens/onboarding/Goals.js');
+  await import('../screens/onboarding/Topics.js');
+  await import('../screens/onboarding/ApiKeys.js');
+  await import('../screens/onboarding/SubscriptionChoice.js');
+  await import('../screens/onboarding/FirstCourse.js');
+
   // Mark onboarding complete and set token so routes don't redirect
   localStorage.setItem('learnflow-onboarding-complete', 'true');
   localStorage.setItem(
@@ -155,7 +163,9 @@ describe('S08-A04: Dashboard', () => {
   it('renders create course input', async () => {
     renderAt('/dashboard');
     await waitFor(() => {
-      expect(document.body.innerHTML).toContain('Start Learning Something New');
+      // Keep this check resilient to copy tweaks.
+      expect(document.body.innerHTML).toContain('Create');
+      expect(document.querySelector('input[placeholder*="Enter a topic"]')).not.toBeNull();
     });
   });
   it('renders settings and chat buttons', async () => {

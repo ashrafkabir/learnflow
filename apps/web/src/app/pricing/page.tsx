@@ -14,7 +14,7 @@ export default function PricingPage() {
         { label: 'Courses', value: '3 active' },
         { label: 'Bring Your Own API Key', value: '✓' },
         { label: 'Notes & Flashcards', value: '✓' },
-        { label: 'Quizzes', value: '✓' },
+        { label: 'Quizzes', value: 'Planned' },
         { label: 'Knowledge Mindmap', value: 'Basic' },
         { label: 'Research Agent', value: '5 searches/day' },
         { label: 'Proactive Updates', value: '✗' },
@@ -33,7 +33,7 @@ export default function PricingPage() {
         { label: 'Courses', value: 'Unlimited' },
         { label: 'Bring Your Own API Key', value: '✓' },
         { label: 'Notes & Flashcards', value: '✓' },
-        { label: 'Quizzes', value: '✓' },
+        { label: 'Quizzes', value: 'Planned' },
         { label: 'Knowledge Mindmap', value: 'Unlimited + Collab' },
         { label: 'Research Agent', value: 'Unlimited' },
         { label: 'Proactive Updates', value: '✓ (best-effort RSS/Atom monitoring)' },
@@ -49,6 +49,9 @@ export default function PricingPage() {
       <h1 style={{ fontSize: 40, fontWeight: 800, textAlign: 'center', marginBottom: 16 }}>
         Pricing
       </h1>
+      <p style={{ textAlign: 'center', fontSize: 16, color: '#374151', marginTop: 8 }}>
+        Simple, transparent pricing
+      </p>
       <p style={{ textAlign: 'center', fontSize: 18, color: '#6b7280', marginBottom: 48 }}>
         Start free. Upgrade when you need more.
       </p>

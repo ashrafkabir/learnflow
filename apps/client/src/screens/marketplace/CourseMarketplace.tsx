@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../lib/routes.js';
 import { apiGet, apiPost } from '../../context/AppContext.js';
 import { Button } from '../../components/Button.js';
 import { SkeletonMarketplace } from '../../components/Skeleton.js';
@@ -36,11 +37,13 @@ export function CourseMarketplace() {
   const [sortBy, setSortBy] = useState<'newest' | 'price'>('newest');
   const [courses, setCourses] = useState<MarketplaceCourse[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [enrolling, setEnrolling] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
         const params = new URLSearchParams();
         if (search) params.set('keyword', search);
@@ -54,9 +57,11 @@ export function CourseMarketplace() {
           // Do not silently fall back to sample data; show an honest empty state.
           setCourses([]);
         }
-      } catch {
-        // Network failure: keep empty list and let UI show error/empty state.
+      } catch (e: any) {
+        // Network failure: keep empty list and show an actionable, truthful state.
         setCourses([]);
+        const msg = String(e?.message || '').trim();
+        setLoadError(msg || 'Failed to load marketplace courses.');
       } finally {
         setLoading(false);
       }
@@ -236,10 +241,27 @@ export function CourseMarketplace() {
         {!loading && filtered.length === 0 && (
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6">
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-              No courses found
+              {loadError ? 'Marketplace unavailable' : 'No courses found'}
             </h3>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
-              Try adjusting filters, or check back later.
+              {loadError
+                ? loadError
+                : 'This marketplace list is empty in local/dev until a creator publishes a course.'}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="primary" size="sm" onClick={() => nav('/dashboard')}>
+                Create a course
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => nav(ROUTES.marketplaceCreator)}>
+                Creator dashboard
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => window.location.reload()}>
+                Refresh
+              </Button>
+            </div>
+            <p className="mt-4 text-xs text-gray-500 dark:text-gray-400">
+              Tip: Publishing is currently available from the Creator Dashboard (requires being
+              signed in).
             </p>
           </div>
         )}

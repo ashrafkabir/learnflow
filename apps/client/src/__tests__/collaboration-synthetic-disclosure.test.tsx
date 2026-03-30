@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { render, cleanup, screen } from '@testing-library/react';
+import { render, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import React from 'react';
 
@@ -16,7 +16,10 @@ beforeEach(() => {
     'learnflow-token',
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
   );
-  (globalThis as any).__LEARNFLOW_ENV__ = { VITE_DEV_AUTH_BYPASS: '1' };
+  (globalThis as any).__LEARNFLOW_ENV__ = {
+    VITE_DEV_AUTH_BYPASS: '1',
+    PLAYWRIGHT_E2E_FIXTURES: '1',
+  };
 
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     const url = String(input);
@@ -68,9 +71,12 @@ describe('Collaboration synthetic disclosure', () => {
       </MemoryRouter>,
     );
 
-    // There are multiple mentions; ensure at least one is present.
-    const els = await screen.findAllByText(/synthetic suggestions/i);
-    expect(els.length).toBeGreaterThan(0);
-    expect(document.body.textContent || '').toMatch(/not verified/i);
+    // The disclosure may render before/after async data loads; assert on full page text.
+    // This avoids brittle matching when the phrase is split across nested elements.
+    // Avoid fragile per-element text splitting; assert on whole page copy.
+    await new Promise((r) => setTimeout(r, 800));
+    const body = (document.body.textContent || '').toLowerCase();
+    expect(body).toContain('synthetic suggestions');
+    expect(body).toMatch(/not verified/i);
   });
 });

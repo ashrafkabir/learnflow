@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useApp, apiPost } from '../context/AppContext.js';
 import { CitationTooltip, Source } from '../components/CitationTooltip.js';
 import { LessonMindmap } from '../components/LessonMindmap.js';
@@ -12,6 +12,7 @@ import { useSwipe } from '../hooks/useSwipe.js';
 import { analytics } from '../lib/analytics.js';
 import { useBookmarks } from '../hooks/useBookmarks.js';
 import { useToast } from '../components/Toast.js';
+import { toUserError } from '../lib/toUserError.js';
 import {
   IconBookmark,
   IconBook,
@@ -143,10 +144,30 @@ function parseStructuredContent(content?: string) {
 
 export function LessonReader() {
   const { courseId, lessonId } = useParams();
+  const location = useLocation();
   const nav = useNavigate();
   const { toast } = useToast();
-  const { state, fetchLesson, completeLesson, generateQuiz } = useApp();
+
+  const fromCourseHref = String((location.state as any)?.from || '');
+  const breadcrumbCourseTitle = String((location.state as any)?.courseTitle || '');
+  const breadcrumbLessonTitle = String((location.state as any)?.lessonTitle || '');
+  const { state, fetchLesson, completeLesson, generateQuiz, apiGet } = useApp();
   const [loading, setLoading] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+  const [statusError, setStatusError] = useState<null | { message: string; requestId?: string }>(
+    null,
+  );
+  const [courseStatus, setCourseStatus] = useState<string | null>(null);
+  const [courseStatusMeta, setCourseStatusMeta] = useState<any>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  // Iter138: lesson-level mastery banner (learning estimate, not a guarantee)
+  const [mastery, setMastery] = useState<null | {
+    masteryLevel: number;
+    nextReviewAt: string | null;
+    lastStudiedAt: string | null;
+    lastQuizScore: number | null;
+  }>(null);
   const [activePanel, setActivePanel] = useState<'none' | 'notes' | 'quiz'>('none');
   const [attributionOpen, setAttributionOpen] = useState(false);
   const [_notesFormat, _setNotesFormat] = useState<'cornell' | 'flashcard'>('cornell');
@@ -228,10 +249,18 @@ export function LessonReader() {
 
   const [allLessons, setAllLessons] = useState<{ id: string; title: string }[]>([]);
 
+  // Iter135: persisted key takeaways + related images (from research bundle)
+  const apiTakeaways = Array.isArray((lesson as any)?.takeaways)
+    ? ((lesson as any).takeaways as any[])
+    : [];
+  const apiRelatedImages = Array.isArray((lesson as any)?.relatedImages)
+    ? ((lesson as any).relatedImages as any[])
+    : [];
+
   useEffect(() => {
     if (courseId) {
-      fetch(`/api/v1/courses/${courseId}`)
-        .then((r) => (r.ok ? r.json() : null))
+      // Use apiGet so Vitest fetch stubs (relative urls) work consistently.
+      apiGet(`/courses/${courseId}`)
         .then((course) => {
           if (!course?.modules) return;
           const flat: { id: string; title: string }[] = [];
@@ -244,7 +273,7 @@ export function LessonReader() {
         })
         .catch(() => {});
     }
-  }, [courseId]);
+  }, [courseId, refreshTick]);
 
   const currentIdx = allLessons.findIndex((l) => l.id === lessonId);
   const prevLesson = currentIdx > 0 ? allLessons[currentIdx - 1] : null;
@@ -279,8 +308,49 @@ export function LessonReader() {
 
   useEffect(() => {
     if (courseId && lessonId) {
+      setStatusError(null);
       setLoading(true);
-      fetchLesson(courseId, lessonId).finally(() => setLoading(false));
+      fetchLesson(courseId, lessonId)
+        .catch((e) => {
+          // If lesson isn't ready yet, the course may still be generating.
+          setStatusError(toUserError(e, 'Failed to load lesson. Please retry.'));
+        })
+        .finally(() => setLoading(false));
+
+      // Best-effort: hydrate mastery state for in-lesson review banner.
+      // Use apiGet so Vitest fetch stubs (relative urls) work consistently.
+      apiGet(`/courses/${courseId}/lessons/${lessonId}/mastery`)
+        .then((data) => {
+          const row = data?.mastery;
+          if (row) {
+            setMastery({
+              masteryLevel: Number(row.masteryLevel || 0),
+              nextReviewAt: row.nextReviewAt || null,
+              lastStudiedAt: row.lastStudiedAt || null,
+              lastQuizScore:
+                row.lastQuizScore === null || row.lastQuizScore === undefined
+                  ? null
+                  : Number(row.lastQuizScore),
+            });
+          } else {
+            setMastery(null);
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
+
+      // Also hydrate course status so we can distinguish generating vs failed.
+      setStatusLoading(true);
+      apiGet(`/courses/${courseId}`)
+        .then((c: any) => {
+          setCourseStatus(c?.status || null);
+          setCourseStatusMeta(c || null);
+        })
+        .catch((e) => {
+          setStatusError(toUserError(e, 'Failed to load course status.'));
+        })
+        .finally(() => setStatusLoading(false));
       fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/illustrations`)
         .then((r) => (r.ok ? r.json() : null))
         .then((data) => {
@@ -319,7 +389,7 @@ export function LessonReader() {
           toast('Could not load notes for this lesson.', 'error');
         });
     }
-  }, [courseId, lessonId]);
+  }, [courseId, lessonId, refreshTick]);
 
   const generateAiNotes = async (format: string) => {
     if (!courseId || !lessonId) return;
@@ -334,6 +404,14 @@ export function LessonReader() {
       if (data.note?.content?.text) {
         setAiNoteContent(data.note.content.text);
         setSavedNote(data.note);
+
+        // Best-effort learner loop: note auto-format generated
+        apiPost('/events', {
+          type: 'notes.generated',
+          courseId,
+          lessonId,
+          meta: { format },
+        }).catch(() => {});
       }
     } catch (err) {
       console.error('Failed to generate notes:', err);
@@ -354,6 +432,19 @@ export function LessonReader() {
           illustrations,
         }),
       });
+
+      // Best-effort learner loop: record that notes were saved (durable event)
+      apiPost('/events', {
+        type: 'notes.saved',
+        courseId,
+        lessonId,
+        meta: {
+          format: 'custom',
+          hasAiText: Boolean(aiNoteContent && aiNoteContent.trim().length > 0),
+          customChars: (customNoteText || '').length,
+          illustrationCount: illustrations?.length || 0,
+        },
+      }).catch(() => {});
     } catch (err) {
       console.error('Failed to save note:', err);
       toast('Failed to save your note. Please try again.', 'error');
@@ -658,7 +749,140 @@ export function LessonReader() {
     if (courseId) await generateQuiz(courseId, 'current');
   };
 
-  if (loading || !lesson) {
+  const showGenerating =
+    !lesson && (loading || statusLoading) && (courseStatus === 'CREATING' || courseStatus === null);
+
+  const showFailed =
+    !lesson && !loading && !statusLoading && (courseStatus === 'FAILED' || Boolean(statusError));
+
+  if ((loading || statusLoading) && !lesson && !showFailed) {
+    // Loading or generating
+    return (
+      <section
+        data-screen="lesson-reader"
+        aria-label="Lesson Reader"
+        className="min-h-screen bg-bg dark:bg-bg-dark"
+      >
+        <header className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => nav(`/courses/${courseId}`)}>
+                ← Back to Course
+              </Button>
+              {showGenerating && (
+                <span className="text-xs text-gray-600 dark:text-gray-300">
+                  Course is generating…
+                </span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setRefreshTick((t) => t + 1)}
+              title="Refresh"
+            >
+              <IconRefresh className="w-4 h-4" />
+              <span className="ml-2">Refresh</span>
+            </Button>
+          </div>
+        </header>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
+          {showGenerating && (
+            <div className="mb-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-4">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200">
+                  Creating
+                </span>
+                {typeof courseStatusMeta?.generationAttempt === 'number' && (
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    Attempt {courseStatusMeta.generationAttempt}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                This lesson is still being generated. You can refresh, or go back to the course to
+                monitor progress.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button variant="secondary" onClick={() => setRefreshTick((t) => t + 1)}>
+                  Retry
+                </Button>
+                <Button variant="ghost" onClick={() => nav(`/courses/${courseId}`)}>
+                  Back to course
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <SkeletonLessonContent />
+        </div>
+      </section>
+    );
+  }
+
+  if (showFailed) {
+    const err = statusError;
+    return (
+      <section
+        data-screen="lesson-reader"
+        aria-label="Lesson Reader"
+        className="min-h-screen bg-bg dark:bg-bg-dark"
+      >
+        <header className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <Button variant="ghost" size="sm" onClick={() => nav(`/courses/${courseId}`)}>
+              ← Back to Course
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setRefreshTick((t) => t + 1)}>
+              <IconRefresh className="w-4 h-4" />
+              <span className="ml-2">Refresh</span>
+            </Button>
+          </div>
+        </header>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200">
+                Failed
+              </span>
+              {courseStatusMeta?.failureReason === 'stalled' && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">Stalled</span>
+              )}
+            </div>
+            <h2 className="mt-3 text-lg font-semibold text-gray-900 dark:text-white">
+              Lesson unavailable
+            </h2>
+            <p className="text-sm text-gray-700 dark:text-gray-300 mt-2">
+              {courseStatusMeta?.failureMessage || err?.message || 'Failed to load lesson.'}
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="primary" onClick={() => setRefreshTick((t) => t + 1)}>
+                Retry
+              </Button>
+              <Button variant="secondary" onClick={() => nav(`/courses/${courseId}`)}>
+                Back to course
+              </Button>
+            </div>
+            {err?.requestId && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-xs text-gray-600 dark:text-gray-300">
+                  Details
+                </summary>
+                <pre className="mt-2 text-xs bg-gray-50 dark:bg-gray-800 rounded-xl p-3 overflow-auto">
+                  Request ID: {err.requestId}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!lesson) {
+    // Fallback: no lesson, but not explicitly loading — keep the old skeleton.
     return (
       <section
         data-screen="lesson-reader"
@@ -719,6 +943,14 @@ export function LessonReader() {
     );
   };
 
+  // "Due" = next review time is now/past OR within the next 24h.
+  // This is a learning estimate, not a guarantee.
+  const reviewDue = mastery?.nextReviewAt
+    ? new Date(mastery.nextReviewAt).getTime() <= Date.now() + 24 * 60 * 60 * 1000
+    : false;
+  const lastQuizPct =
+    typeof mastery?.lastQuizScore === 'number' ? Math.round(mastery.lastQuizScore * 100) : null;
+
   return (
     <section
       aria-label="Lesson Reader"
@@ -729,10 +961,59 @@ export function LessonReader() {
       <Confetti trigger={showConfetti} />
       {/* Top bar */}
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-gray-200 dark:border-gray-800">
+        {/* Breadcrumbs */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-2">
+          <nav
+            aria-label="Breadcrumb"
+            className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1"
+          >
+            <button
+              onClick={() => nav('/dashboard')}
+              className="hover:text-accent transition-colors"
+            >
+              Dashboard
+            </button>
+            <span>/</span>
+            <button
+              onClick={() => nav(fromCourseHref || `/courses/${courseId}`)}
+              className="hover:text-accent transition-colors max-w-[14rem] truncate"
+              title={breadcrumbCourseTitle || 'Course'}
+            >
+              {breadcrumbCourseTitle || 'Course'}
+            </button>
+            <span>/</span>
+            <span
+              className="text-gray-900 dark:text-white font-medium max-w-[16rem] truncate"
+              title={breadcrumbLessonTitle || lesson.title}
+            >
+              {breadcrumbLessonTitle || lesson.title}
+            </span>
+          </nav>
+        </div>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => nav(`/courses/${courseId}`)}>
-            ← Back to Course
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => (fromCourseHref ? nav(fromCourseHref) : nav(-1))}
+              title="Back"
+            >
+              ← Back
+            </Button>
+
+            {reviewDue && (
+              <div
+                data-testid="review-due-banner"
+                className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200 text-xs font-semibold"
+                title="Learning estimate — review is due (best-effort)."
+              >
+                Review due
+                {lastQuizPct !== null && (
+                  <span className="font-normal">(last quiz {lastQuizPct}%)</span>
+                )}
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <Button
               variant="ghost"
@@ -792,1136 +1073,1263 @@ export function LessonReader() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        <article data-component="lesson-content" aria-label="Lesson content" className="space-y-6">
-          {/* Hero */}
-          {sections
-            .filter((s) => s.type === 'title')
-            .map((s, i) => (
-              <div
-                key={`title-${i}`}
-                data-component="lesson-hero"
-                className="bg-gradient-to-br from-primary-900 to-primary-800 text-white rounded-2xl shadow-card overflow-hidden"
-              >
-                <div className="p-6 sm:p-8">
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                    {s.content.replace(/^#\s*/, '')}
-                  </h1>
-                  <p className="mt-2 text-sm text-primary-200 max-w-prose">
-                    <span className="font-semibold text-primary-100">Why it matters:</span>{' '}
-                    {lesson.description ||
-                      'This lesson builds a practical mental model you can apply immediately.'}
-                  </p>
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6">
+          <article
+            data-component="lesson-content"
+            aria-label="Lesson content"
+            className="space-y-6"
+          >
+            {/* Hero */}
+            {sections
+              .filter((s) => s.type === 'title')
+              .map((s, i) => (
+                <div
+                  key={`title-${i}`}
+                  data-component="lesson-hero"
+                  className="bg-gradient-to-br from-primary-900 to-primary-800 text-white rounded-2xl shadow-card overflow-hidden"
+                >
+                  <div className="p-6 sm:p-8">
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                      {s.content.replace(/^#\s*/, '')}
+                    </h1>
+                    <p className="mt-2 text-sm text-primary-200 max-w-prose">
+                      <span className="font-semibold text-primary-100">Why it matters:</span>{' '}
+                      {lesson.description ||
+                        'This lesson builds a practical mental model you can apply immediately.'}
+                    </p>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
-                      <IconProgressRing className="w-4 h-4" />
-                      {lesson.estimatedTime} min read
-                    </span>
-                    <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
-                      <IconBook className="w-4 h-4" />
-                      {lesson.wordCount} words
-                    </span>
-                    <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
-                      <IconBrainSpark className="w-4 h-4" />
-                      {(state.profile as any)?.difficulty || 'intermediate'}
-                    </span>
-                    {isComplete && (
-                      <span className="inline-flex items-center gap-1 bg-success/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                        <IconCheck className="w-4 h-4" />
-                        Completed
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
+                        <IconProgressRing className="w-4 h-4" />
+                        {lesson.estimatedTime} min read
                       </span>
+                      <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
+                        <IconBook className="w-4 h-4" />
+                        {lesson.wordCount} words
+                      </span>
+                      <span className="inline-flex items-center gap-1 bg-white/10 text-white text-xs font-medium px-3 py-1 rounded-full">
+                        <IconBrainSpark className="w-4 h-4" />
+                        {(state.profile as any)?.difficulty || 'intermediate'}
+                      </span>
+                      {isComplete && (
+                        <span className="inline-flex items-center gap-1 bg-success/20 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                          <IconCheck className="w-4 h-4" />
+                          Completed
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Illustration (hero) */}
+                    {sectionIllustrations?.[0]?.imageUrl && (
+                      <div className="mt-5 rounded-xl overflow-hidden border border-white/10 bg-white/5">
+                        <img
+                          src={sectionIllustrations[0].imageUrl}
+                          alt={sectionIllustrations[0].prompt || 'Lesson illustration'}
+                          className="w-full h-56 sm:h-64 object-cover"
+                          loading="lazy"
+                        />
+                        {sectionIllustrations[0].prompt && (
+                          <div className="px-4 py-3 text-xs text-primary-100/90">
+                            {sectionIllustrations[0].prompt}
+                          </div>
+                        )}
+                        {(sectionIllustrations[0].attributionText ||
+                          sectionIllustrations[0].license ||
+                          sectionIllustrations[0].sourcePageUrl) && (
+                          <div className="px-4 pb-3 text-[11px] text-primary-100/80">
+                            {sectionIllustrations[0].attributionText ||
+                              `Image attribution: ${sectionIllustrations[0].license || 'unknown'}`}
+                            {sectionIllustrations[0].sourcePageUrl ? (
+                              <>
+                                {' '}
+                                <a
+                                  className="underline"
+                                  href={sectionIllustrations[0].sourcePageUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  Source
+                                </a>
+                              </>
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-
-                  {/* Illustration (hero) */}
-                  {sectionIllustrations?.[0]?.imageUrl && (
-                    <div className="mt-5 rounded-xl overflow-hidden border border-white/10 bg-white/5">
-                      <img
-                        src={sectionIllustrations[0].imageUrl}
-                        alt={sectionIllustrations[0].prompt || 'Lesson illustration'}
-                        className="w-full h-56 sm:h-64 object-cover"
-                        loading="lazy"
-                      />
-                      {sectionIllustrations[0].prompt && (
-                        <div className="px-4 py-3 text-xs text-primary-100/90">
-                          {sectionIllustrations[0].prompt}
-                        </div>
-                      )}
-                      {(sectionIllustrations[0].attributionText ||
-                        sectionIllustrations[0].license ||
-                        sectionIllustrations[0].sourcePageUrl) && (
-                        <div className="px-4 pb-3 text-[11px] text-primary-100/80">
-                          {sectionIllustrations[0].attributionText ||
-                            `Image attribution: ${sectionIllustrations[0].license || 'unknown'}`}
-                          {sectionIllustrations[0].sourcePageUrl ? (
-                            <>
-                              {' '}
-                              <a
-                                className="underline"
-                                href={sectionIllustrations[0].sourcePageUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                Source
-                              </a>
-                            </>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
-              </div>
-            ))}
+              ))}
 
-          {/* Learning Objectives */}
-          {sections
-            .filter((s) => s.type === 'objectives')
-            .map((s, i) => (
-              <div key={`obj-${i}`} className="bg-accent/5 border border-accent/20 rounded-2xl p-5">
-                <h2 className="text-sm font-semibold text-accent mb-3 flex items-center gap-2">
-                  <IconBrainSpark className="w-4 h-4" />
-                  Learning Objectives
-                </h2>
-                <div className="space-y-1">
-                  {s.content
-                    .split('\n')
-                    .filter((l) => l.trim())
-                    .map((line, j) => (
-                      <div
-                        key={j}
-                        className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        <span className="text-accent mt-0.5">•</span>
-                        <span>{line.replace(/^[-•]\s*/, '')}</span>
+            {/* Learning Objectives */}
+            {sections
+              .filter((s) => s.type === 'objectives')
+              .map((s, i) => (
+                <div
+                  key={`obj-${i}`}
+                  className="bg-accent/5 border border-accent/20 rounded-2xl p-5"
+                >
+                  <h2 className="text-sm font-semibold text-accent mb-3 flex items-center gap-2">
+                    <IconBrainSpark className="w-4 h-4" />
+                    Learning Objectives
+                  </h2>
+                  <div className="space-y-1">
+                    {s.content
+                      .split('\n')
+                      .filter((l) => l.trim())
+                      .map((line, j) => (
+                        <div
+                          key={j}
+                          className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          <span className="text-accent mt-0.5">•</span>
+                          <span>{line.replace(/^[-•]\s*/, '')}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              ))}
+
+            {/* Main Content */}
+            <div ref={contentRef} onMouseUp={handleTextSelection} className="relative">
+              {/* Selection tool preview modal */}
+              {toolPreviewOpen && (
+                <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+                  <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-modal p-5">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                          {toolPreview?.tool ? `Tool: ${toolPreview.tool}` : 'Tool'}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                          “{toolSelectedText.slice(0, 140)}
+                          {toolSelectedText.length > 140 ? '…' : ''}”
+                        </p>
                       </div>
-                    ))}
-                </div>
-              </div>
-            ))}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setToolPreviewOpen(false)}
+                        className="text-gray-500"
+                      >
+                        <IconClose className="w-4 h-4" />
+                      </Button>
+                    </div>
 
-          {/* Main Content */}
-          <div ref={contentRef} onMouseUp={handleTextSelection} className="relative">
-            {/* Selection tool preview modal */}
-            {toolPreviewOpen && (
-              <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
-                <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-modal p-5">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {toolPreview?.tool ? `Tool: ${toolPreview.tool}` : 'Tool'}
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                        “{toolSelectedText.slice(0, 140)}
-                        {toolSelectedText.length > 140 ? '…' : ''}”
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setToolPreviewOpen(false)}
-                      className="text-gray-500"
-                    >
-                      <IconClose className="w-4 h-4" />
-                    </Button>
-                  </div>
+                    {toolPreviewLoading ? (
+                      <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                        <IconSparkles className="w-4 h-4" />
+                        Working…
+                      </div>
+                    ) : toolPreview?.error ? (
+                      <div className="text-sm text-red-600">{toolPreview.error}</div>
+                    ) : toolPreview?.tool === 'mark' ? (
+                      <div>
+                        <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Proposed takeaways:
+                        </p>
+                        <ul className="list-disc pl-5 text-sm text-gray-800 dark:text-gray-200 space-y-1">
+                          {(toolPreview.preview?.bullets || []).map((b: string, idx: number) => (
+                            <li key={idx}>{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                        {toolPreview?.preview?.note || ''}
+                      </div>
+                    )}
 
-                  {toolPreviewLoading ? (
-                    <div className="text-sm text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                      <IconSparkles className="w-4 h-4" />
-                      Working…
+                    <div className="mt-4 flex items-center justify-end gap-2">
+                      <Button variant="secondary" onClick={() => setToolPreviewOpen(false)}>
+                        Discard
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={attachPreviewAsAnnotation}
+                        disabled={toolPreviewLoading}
+                      >
+                        Attach
+                      </Button>
                     </div>
-                  ) : toolPreview?.error ? (
-                    <div className="text-sm text-red-600">{toolPreview.error}</div>
-                  ) : toolPreview?.tool === 'mark' ? (
-                    <div>
-                      <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Proposed takeaways:
-                      </p>
-                      <ul className="list-disc pl-5 text-sm text-gray-800 dark:text-gray-200 space-y-1">
-                        {(toolPreview.preview?.bullets || []).map((b: string, idx: number) => (
-                          <li key={idx}>{b}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
-                      {toolPreview?.preview?.note || ''}
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex items-center justify-end gap-2">
-                    <Button variant="secondary" onClick={() => setToolPreviewOpen(false)}>
-                      Discard
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={attachPreviewAsAnnotation}
-                      disabled={toolPreviewLoading}
-                    >
-                      Attach
-                    </Button>
                   </div>
                 </div>
-              </div>
-            )}
-            {/* Floating toolbar */}
-            {floatingToolbar && (
-              <div
-                className="absolute z-50 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl shadow-modal px-2 py-1.5 flex items-center gap-1 -translate-x-1/2 -translate-y-full"
-                style={{ left: floatingToolbar.x, top: floatingToolbar.y }}
-              >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    const note = prompt('Add a note:');
-                    if (note !== null) {
-                      setAnnotationNoteText(note);
+              )}
+              {/* Floating toolbar */}
+              {floatingToolbar && (
+                <div
+                  className="absolute z-50 bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 rounded-xl shadow-modal px-2 py-1.5 flex items-center gap-1 -translate-x-1/2 -translate-y-full"
+                  style={{ left: floatingToolbar.x, top: floatingToolbar.y }}
+                >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const note = prompt('Add a note:');
+                      if (note !== null) {
+                        setAnnotationNoteText(note);
+                        createAnnotation(
+                          'note',
+                          floatingToolbar.text,
+                          floatingToolbar.startOffset,
+                          floatingToolbar.endOffset,
+                        );
+                      }
+                    }}
+                    disabled={annotationLoading}
+                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                    title="Add a note"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <IconLesson className="w-4 h-4" />
+                      Note
+                    </span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
                       createAnnotation(
-                        'note',
+                        'explain',
                         floatingToolbar.text,
                         floatingToolbar.startOffset,
                         floatingToolbar.endOffset,
-                      );
+                      )
                     }
-                  }}
-                  disabled={annotationLoading}
-                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                  title="Add a note"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <IconLesson className="w-4 h-4" />
-                    Note
-                  </span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    createAnnotation(
-                      'explain',
-                      floatingToolbar.text,
-                      floatingToolbar.startOffset,
-                      floatingToolbar.endOffset,
-                    )
-                  }
-                  disabled={annotationLoading}
-                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                  title="AI explanation"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <IconSearch className="w-4 h-4" />
-                    Explain
-                  </span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    createAnnotation(
-                      'example',
-                      floatingToolbar.text,
-                      floatingToolbar.startOffset,
-                      floatingToolbar.endOffset,
-                    )
-                  }
-                  disabled={annotationLoading}
-                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                  title="AI example"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <IconBulb className="w-4 h-4" />
-                    Example
-                  </span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    runSelectionToolPreview(
-                      'discover',
-                      floatingToolbar.text,
-                      floatingToolbar.startOffset,
-                      floatingToolbar.endOffset,
-                    )
-                  }
-                  disabled={annotationLoading}
-                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                  title="Discover related topics/resources"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <IconGlobe className="w-4 h-4" />
-                    Discover
-                  </span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    runSelectionToolPreview(
-                      'illustrate',
-                      floatingToolbar.text,
-                      floatingToolbar.startOffset,
-                      floatingToolbar.endOffset,
-                    )
-                  }
-                  disabled={annotationLoading}
-                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                  title="Illustrate this selection"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <IconPalette className="w-4 h-4" />
-                    Illustrate
-                  </span>
-                </Button>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    runSelectionToolPreview(
-                      'mark',
-                      floatingToolbar.text,
-                      floatingToolbar.startOffset,
-                      floatingToolbar.endOffset,
-                    )
-                  }
-                  disabled={annotationLoading}
-                  className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                  title="Add to key takeaways"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <IconBookmark className="w-4 h-4" />
-                    Mark
-                  </span>
-                </Button>
-                {annotationLoading && (
-                  <span className="text-xs px-1 inline-flex items-center gap-1">
-                    <IconSparkles className="w-3.5 h-3.5" />
-                    Loading
-                  </span>
-                )}
-              </div>
-            )}
-
-            {sections
-              .filter((s) => s.type === 'content')
-              .map((s, contentIdx) => {
-                const lines = s.content.split('\n');
-                const subSections: { heading: string; lines: string[]; globalIndex: number }[] = [];
-                let currentHeading = '';
-                let currentLines: string[] = [];
-                let sIdx = contentIdx * 100;
-                for (const line of lines) {
-                  if (line.startsWith('### ') || line.startsWith('## ')) {
-                    if (currentLines.length > 0 || currentHeading)
-                      subSections.push({
-                        heading: currentHeading,
-                        lines: currentLines,
-                        globalIndex: sIdx++,
-                      });
-                    currentHeading = line.replace(/^#{2,3}\s*/, '');
-                    currentLines = [];
-                  } else {
-                    currentLines.push(line);
-                  }
-                }
-                if (currentLines.length > 0 || currentHeading)
-                  subSections.push({
-                    heading: currentHeading,
-                    lines: currentLines,
-                    globalIndex: sIdx++,
-                  });
-
-                return (
-                  <div
-                    key={`content-${contentIdx}`}
-                    className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 sm:p-8"
+                    disabled={annotationLoading}
+                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                    title="AI explanation"
                   >
-                    {subSections.map((sub) => (
-                      <div key={sub.globalIndex} className="group/section relative">
-                        {sub.heading && (
-                          <div className="flex items-center gap-2 mt-6 mb-3">
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white flex-1">
-                              {sub.heading}
-                            </h3>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const suggested = `Educational diagram showing ${sub.heading.toLowerCase()}`;
-                                setIllustratePopover({
-                                  sectionIndex: sub.globalIndex,
-                                  suggestedPrompt: suggested,
-                                });
-                                setIllustratePrompt(suggested);
-                              }}
-                              className="opacity-0 group-hover/section:opacity-100 bg-accent/10 text-accent hover:bg-accent/20"
-                              title="Generate illustration for this section"
-                            >
-                              <span className="inline-flex items-center gap-2">
-                                <IconPalette className="w-4 h-4" />
-                                Illustrate
-                              </span>
-                            </Button>
-                          </div>
-                        )}
-                        {illustratePopover?.sectionIndex === sub.globalIndex && (
-                          <div className="mb-4 p-4 bg-accent/5 border border-accent/20 rounded-xl">
-                            <label className="text-xs font-medium text-accent mb-2 block">
-                              Illustration prompt:
-                            </label>
-                            <input
-                              value={illustratePrompt}
-                              onChange={(e) => setIllustratePrompt(e.target.value)}
-                              onKeyDown={(e) => e.key === 'Enter' && generateSectionIllustration()}
-                              className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white mb-2"
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                variant="primary"
-                                size="sm"
-                                onClick={generateSectionIllustration}
-                                disabled={generatingSectionIll || !illustratePrompt.trim()}
-                              >
-                                {generatingSectionIll ? (
-                                  <span className="inline-flex items-center gap-2">
-                                    <IconSparkles className="w-4 h-4" />
-                                    Generating...
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-2">
-                                    <IconPalette className="w-4 h-4" />
-                                    Generate
-                                  </span>
-                                )}
-                              </Button>
+                    <span className="inline-flex items-center gap-2">
+                      <IconSearch className="w-4 h-4" />
+                      Explain
+                    </span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      createAnnotation(
+                        'example',
+                        floatingToolbar.text,
+                        floatingToolbar.startOffset,
+                        floatingToolbar.endOffset,
+                      )
+                    }
+                    disabled={annotationLoading}
+                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                    title="AI example"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <IconBulb className="w-4 h-4" />
+                      Example
+                    </span>
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      runSelectionToolPreview(
+                        'discover',
+                        floatingToolbar.text,
+                        floatingToolbar.startOffset,
+                        floatingToolbar.endOffset,
+                      )
+                    }
+                    disabled={annotationLoading}
+                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                    title="Discover related topics/resources"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <IconGlobe className="w-4 h-4" />
+                      Discover
+                    </span>
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      runSelectionToolPreview(
+                        'illustrate',
+                        floatingToolbar.text,
+                        floatingToolbar.startOffset,
+                        floatingToolbar.endOffset,
+                      )
+                    }
+                    disabled={annotationLoading}
+                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                    title="Illustrate this selection"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <IconPalette className="w-4 h-4" />
+                      Illustrate
+                    </span>
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      runSelectionToolPreview(
+                        'mark',
+                        floatingToolbar.text,
+                        floatingToolbar.startOffset,
+                        floatingToolbar.endOffset,
+                      )
+                    }
+                    disabled={annotationLoading}
+                    className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
+                    title="Add to key takeaways"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <IconBookmark className="w-4 h-4" />
+                      Mark
+                    </span>
+                  </Button>
+                  {annotationLoading && (
+                    <span className="text-xs px-1 inline-flex items-center gap-1">
+                      <IconSparkles className="w-3.5 h-3.5" />
+                      Loading
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {sections
+                .filter((s) => s.type === 'content')
+                .map((s, contentIdx) => {
+                  const lines = s.content.split('\n');
+                  const subSections: { heading: string; lines: string[]; globalIndex: number }[] =
+                    [];
+                  let currentHeading = '';
+                  let currentLines: string[] = [];
+                  let sIdx = contentIdx * 100;
+                  for (const line of lines) {
+                    if (line.startsWith('### ') || line.startsWith('## ')) {
+                      if (currentLines.length > 0 || currentHeading)
+                        subSections.push({
+                          heading: currentHeading,
+                          lines: currentLines,
+                          globalIndex: sIdx++,
+                        });
+                      currentHeading = line.replace(/^#{2,3}\s*/, '');
+                      currentLines = [];
+                    } else {
+                      currentLines.push(line);
+                    }
+                  }
+                  if (currentLines.length > 0 || currentHeading)
+                    subSections.push({
+                      heading: currentHeading,
+                      lines: currentLines,
+                      globalIndex: sIdx++,
+                    });
+
+                  return (
+                    <div
+                      key={`content-${contentIdx}`}
+                      className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 sm:p-8"
+                    >
+                      {subSections.map((sub) => (
+                        <div key={sub.globalIndex} className="group/section relative">
+                          {sub.heading && (
+                            <div className="flex items-center gap-2 mt-6 mb-3">
+                              <h3 className="text-lg font-medium text-gray-900 dark:text-white flex-1">
+                                {sub.heading}
+                              </h3>
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  setIllustratePopover(null);
-                                  setIllustratePrompt('');
+                                  const suggested = `Educational diagram showing ${sub.heading.toLowerCase()}`;
+                                  setIllustratePopover({
+                                    sectionIndex: sub.globalIndex,
+                                    suggestedPrompt: suggested,
+                                  });
+                                  setIllustratePrompt(suggested);
                                 }}
+                                className="opacity-0 group-hover/section:opacity-100 bg-accent/10 text-accent hover:bg-accent/20"
+                                title="Generate illustration for this section"
                               >
-                                Cancel
+                                <span className="inline-flex items-center gap-2">
+                                  <IconPalette className="w-4 h-4" />
+                                  Illustrate
+                                </span>
                               </Button>
                             </div>
-                          </div>
-                        )}
-                        {sub.lines.map((line, j) => renderLine(line, sub.globalIndex * 1000 + j))}
-                        {sectionIllustrations
-                          .filter((ill) => ill.sectionIndex === sub.globalIndex)
-                          .map((ill) => (
-                            <div
-                              key={ill.id}
-                              className="my-4 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
-                            >
-                              <img
-                                src={ill.imageUrl}
-                                alt={ill.prompt}
-                                className="w-full max-h-96 object-contain"
+                          )}
+                          {illustratePopover?.sectionIndex === sub.globalIndex && (
+                            <div className="mb-4 p-4 bg-accent/5 border border-accent/20 rounded-xl">
+                              <label className="text-xs font-medium text-accent mb-2 block">
+                                Illustration prompt:
+                              </label>
+                              <input
+                                value={illustratePrompt}
+                                onChange={(e) => setIllustratePrompt(e.target.value)}
+                                onKeyDown={(e) =>
+                                  e.key === 'Enter' && generateSectionIllustration()
+                                }
+                                className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white mb-2"
                               />
-                              <div className="p-2">
-                                <div className="flex items-center justify-between">
-                                  <p className="text-xs text-gray-500 italic">{ill.prompt}</p>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => deleteSectionIllustration(ill.id)}
-                                    className="text-red-400 hover:text-red-600"
-                                    title="Remove illustration"
-                                  >
-                                    <IconX className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                                {(ill.attributionText || ill.license || ill.sourcePageUrl) && (
-                                  <div className="mt-1 text-[11px] text-gray-500">
-                                    {ill.attributionText ||
-                                      `Image attribution: ${ill.license || 'unknown'}`}
-                                    {ill.sourcePageUrl ? (
-                                      <>
-                                        {' '}
-                                        <a
-                                          className="underline"
-                                          href={ill.sourcePageUrl}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                        >
-                                          Source
-                                        </a>
-                                      </>
-                                    ) : null}
-                                  </div>
-                                )}
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="primary"
+                                  size="sm"
+                                  onClick={generateSectionIllustration}
+                                  disabled={generatingSectionIll || !illustratePrompt.trim()}
+                                >
+                                  {generatingSectionIll ? (
+                                    <span className="inline-flex items-center gap-2">
+                                      <IconSparkles className="w-4 h-4" />
+                                      Generating...
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-2">
+                                      <IconPalette className="w-4 h-4" />
+                                      Generate
+                                    </span>
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setIllustratePopover(null);
+                                    setIllustratePrompt('');
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
                               </div>
                             </div>
-                          ))}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-
-            {/* Annotations display */}
-            {annotations.length > 0 && (
-              <div className="mt-4 bg-yellow-50/50 dark:bg-yellow-900/10 rounded-2xl border border-yellow-200 dark:border-yellow-800/30 p-5">
-                <h3 className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-3">
-                  <span className="inline-flex items-center gap-2">
-                    <IconLesson className="w-4 h-4" />
-                    Your Annotations ({annotations.length})
-                  </span>
-                </h3>
-                <div className="space-y-3">
-                  {annotations.map((ann) => (
-                    <div key={ann.id} className="relative">
-                      <Button
-                        variant="ghost"
-                        fullWidth
-                        onClick={() =>
-                          setActiveAnnotation(activeAnnotation === ann.id ? null : ann.id)
-                        }
-                        className="text-left p-3 bg-white/80 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 h-auto justify-start"
-                      >
-                        <span className="inline-block bg-yellow-200 dark:bg-yellow-700/40 px-1 rounded text-sm text-gray-900 dark:text-white">
-                          "{ann.selectedText.slice(0, 80)}
-                          {ann.selectedText.length > 80 ? '…' : ''}"
-                        </span>
-                        <span className="ml-2 text-xs text-gray-500 dark:text-gray-300">
-                          {ann.type === 'note'
-                            ? 'Note'
-                            : ann.type === 'explain'
-                              ? 'Explain'
-                              : 'Example'}
-                        </span>
-                      </Button>
-                      {activeAnnotation === ann.id && (
-                        <div className="mt-2 ml-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-                          <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                            {ann.note}
-                          </p>
-                          <Button
-                            variant="danger"
-                            size="sm"
-                            onClick={() => deleteAnnotation(ann.id)}
-                            className="mt-2"
-                          >
-                            <span className="inline-flex items-center gap-2">
-                              <IconTrash className="w-4 h-4" />
-                              Delete
-                            </span>
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Comparison Mode */}
-          {showComparison && (
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                  <IconScale className="w-5 h-5 text-accent" />
-                  Concept Comparison
-                </h2>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={generateComparison}
-                    className="text-accent"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <IconRefresh className="w-4 h-4" />
-                      Regenerate
-                    </span>
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setShowComparison(false)}>
-                    <span className="inline-flex items-center gap-2">
-                      <IconClose className="w-4 h-4" />
-                      Close
-                    </span>
-                  </Button>
-                </div>
-              </div>
-              {comparingLoading ? (
-                <div className="text-center py-8 text-gray-500">
-                  <span className="inline-flex items-center gap-2 justify-center">
-                    <IconSparkles className="w-4 h-4" />
-                    Analyzing lesson for comparable concepts...
-                  </span>
-                </div>
-              ) : comparison && comparison.concepts.length > 0 ? (
-                <>
-                  {comparison.concepts.length === 2 ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      {comparison.concepts.map((concept, ci) => (
-                        <div
-                          key={ci}
-                          className="rounded-xl border border-gray-200 dark:border-gray-700 p-4"
-                        >
-                          <h3 className="font-semibold text-accent mb-3 text-center">{concept}</h3>
-                          <div className="space-y-2">
-                            {comparison.dimensions.map((dim, di) => (
-                              <div key={di}>
-                                <p className="text-xs font-medium text-gray-500 uppercase">{dim}</p>
-                                <p className="text-sm text-gray-700 dark:text-gray-300">
-                                  {comparison.cells[di]?.[ci] || '—'}
-                                </p>
+                          )}
+                          {sub.lines.map((line, j) => renderLine(line, sub.globalIndex * 1000 + j))}
+                          {sectionIllustrations
+                            .filter((ill) => ill.sectionIndex === sub.globalIndex)
+                            .map((ill) => (
+                              <div
+                                key={ill.id}
+                                className="my-4 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50"
+                              >
+                                <img
+                                  src={ill.imageUrl}
+                                  alt={ill.prompt}
+                                  className="w-full max-h-96 object-contain"
+                                />
+                                <div className="p-2">
+                                  <div className="flex items-center justify-between">
+                                    <p className="text-xs text-gray-500 italic">{ill.prompt}</p>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => deleteSectionIllustration(ill.id)}
+                                      className="text-red-400 hover:text-red-600"
+                                      title="Remove illustration"
+                                    >
+                                      <IconX className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                  {(ill.attributionText || ill.license || ill.sourcePageUrl) && (
+                                    <div className="mt-1 text-[11px] text-gray-500">
+                                      {ill.attributionText ||
+                                        `Image attribution: ${ill.license || 'unknown'}`}
+                                      {ill.sourcePageUrl ? (
+                                        <>
+                                          {' '}
+                                          <a
+                                            className="underline"
+                                            href={ill.sourcePageUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                          >
+                                            Source
+                                          </a>
+                                        </>
+                                      ) : null}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             ))}
-                          </div>
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr>
-                            <th className="text-left p-2 text-gray-500 font-medium border-b dark:border-gray-700">
-                              Dimension
-                            </th>
-                            {comparison.concepts.map((c, i) => (
-                              <th
-                                key={i}
-                                className="text-left p-2 text-accent font-semibold border-b dark:border-gray-700"
-                              >
-                                {c}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {comparison.dimensions.map((dim, di) => (
-                            <tr key={di} className="border-b dark:border-gray-800">
-                              <td className="p-2 font-medium text-gray-700 dark:text-gray-300">
-                                {dim}
-                              </td>
-                              {comparison.concepts.map((_, ci) => (
-                                <td key={ci} className="p-2 text-gray-600 dark:text-gray-300">
-                                  {comparison.cells[di]?.[ci] || '—'}
-                                </td>
-                              ))}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {comparison.summary && (
-                    <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 italic bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
-                      {comparison.summary}
-                    </p>
-                  )}
-                </>
-              ) : comparison ? (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  {comparison.summary || 'No comparable concepts found in this lesson.'}
-                </p>
-              ) : null}
-            </div>
-          )}
+                  );
+                })}
 
-          {/* Key Points */}
-          {sections
-            .filter((s) => s.type === 'keypoints')
-            .map((s, i) => (
-              <div key={`kp-${i}`} className="bg-accent/5 border border-accent/20 rounded-2xl p-5">
-                <h2 className="text-sm font-semibold text-accent mb-3 flex items-center gap-2">
-                  <IconSparkles className="w-4 h-4" />
-                  Key Points
-                </h2>
-                <div className="space-y-2">
-                  {s.content
-                    .split('\n')
-                    .filter((l) => l.trim())
-                    .slice(0, 10)
-                    .map((line, j) => (
-                      <div
-                        key={j}
-                        className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        <span className="text-accent font-bold">•</span>
-                        <span>{line.replace(/^\d+\.\s*/, '').replace(/^[-•]\s*/, '')}</span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-            ))}
-
-          {/* Recap */}
-          {sections
-            .filter((s) => s.type === 'recap')
-            .map((s, i) => (
-              <div
-                key={`recap-${i}`}
-                className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5"
-              >
-                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <IconClipboard className="w-4 h-4" />
-                  Recap
-                </h2>
-                <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2 whitespace-pre-wrap">
-                  {s.content
-                    .split('\n')
-                    .filter((l) => l.trim())
-                    .slice(0, 12)
-                    .map((line, j) => (
-                      <p key={j}>{renderInlineWithCitations(line, sources as any)}</p>
-                    ))}
-                </div>
-              </div>
-            ))}
-
-          {/* Key Takeaways */}
-          {sections
-            .filter((s) => s.type === 'takeaways')
-            .map((s, i) => (
-              <div
-                key={`take-${i}`}
-                className="bg-success/5 border border-success/20 rounded-2xl p-5"
-                data-testid="key-takeaways"
-              >
-                <h2 className="text-sm font-semibold text-success mb-3 flex items-center gap-2">
-                  <IconBulb className="w-4 h-4" />
-                  Key Takeaways
-                </h2>
-                <div className="space-y-2">
-                  {s.content
-                    .split('\n')
-                    .filter((l) => l.trim())
-                    .map((line, j) => (
-                      <div
-                        key={j}
-                        className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-                      >
-                        <span className="text-success font-bold">{j + 1}.</span>
-                        <span>{line.replace(/^\d+\.\s*/, '').replace(/^[-•]\s*/, '')}</span>
-                      </div>
-                    ))}
-                </div>
-
-                {Array.isArray(savedNote?.content?.keyTakeawaysExtras) &&
-                savedNote.content.keyTakeawaysExtras.length > 0 ? (
-                  <div
-                    className="mt-4 pt-4 border-t border-success/20"
-                    data-testid="marked-takeaways"
-                  >
-                    <h3 className="text-xs font-semibold text-success/90 mb-2">
-                      Your marked takeaways
-                    </h3>
-                    <div className="space-y-2">
-                      {savedNote.content.keyTakeawaysExtras.map((b: string, j: number) => (
-                        <div
-                          key={`extra-${j}`}
-                          className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
-                        >
-                          <span className="text-success font-bold">•</span>
-                          <span>{String(b).trim()}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ))}
-
-          {/* Iter73 P2.15: Action chips */}
-          <div
-            className="flex flex-wrap gap-2 mb-4"
-            data-testid="action-chips"
-            aria-label="Lesson actions"
-          >
-            <button
-              onClick={() => setActivePanel('notes')}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 inline-flex items-center gap-2"
-            >
-              <IconPencil className="w-4 h-4" />
-              Take Notes
-            </button>
-            <button
-              onClick={() => setActivePanel('quiz')}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-accent/10 text-accent hover:bg-accent/20 inline-flex items-center gap-2"
-            >
-              <IconTestTube className="w-4 h-4" />
-              Quiz Me
-            </button>
-            <button
-              onClick={() => {
-                // MVP: jump to Next Steps if present; otherwise open attribution.
-                const el = document.querySelector('[data-testid="next-steps"]');
-                if (el) (el as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
-                else setAttributionOpen(true);
-              }}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-success/10 text-success hover:bg-success/20 inline-flex items-center gap-2"
-            >
-              <IconRocket className="w-4 h-4" />
-              Go Deeper
-            </button>
-            <button
-              onClick={() => setAttributionOpen(true)}
-              className="px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 inline-flex items-center gap-2"
-            >
-              <IconBook className="w-4 h-4" />
-              See Sources
-            </button>
-          </div>
-
-          {/* Sources / References */}
-          <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              <IconBook className="w-4 h-4" />
-              References
-            </h2>
-            <div className="space-y-3">
-              {sources.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  No sources were attached to this lesson yet.
-                </p>
-              ) : (
-                sources.map((s: any) => (
-                  <div key={s.id} className="flex items-start gap-3 text-sm">
-                    <span className="bg-accent/10 text-accent font-bold text-xs px-2 py-0.5 rounded-full flex-shrink-0">
-                      [{s.id}]
+              {/* Annotations display */}
+              {annotations.length > 0 && (
+                <div className="mt-4 bg-yellow-50/50 dark:bg-yellow-900/10 rounded-2xl border border-yellow-200 dark:border-yellow-800/30 p-5">
+                  <h3 className="text-sm font-semibold text-yellow-700 dark:text-yellow-300 mb-3">
+                    <span className="inline-flex items-center gap-2">
+                      <IconLesson className="w-4 h-4" />
+                      Your Annotations ({annotations.length})
                     </span>
-                    <div>
-                      <p className="text-gray-900 dark:text-white font-medium">{s.title}</p>
-                      <p className="text-gray-500 text-xs">
-                        {s.author} · {s.publication} · {s.year}
-                      </p>
-                      <a
-                        href={s.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-accent text-xs hover:underline"
-                      >
-                        {s.url}
-                      </a>
-                    </div>
+                  </h3>
+                  <div className="space-y-3">
+                    {annotations.map((ann) => (
+                      <div key={ann.id} className="relative">
+                        <Button
+                          variant="ghost"
+                          fullWidth
+                          onClick={() =>
+                            setActiveAnnotation(activeAnnotation === ann.id ? null : ann.id)
+                          }
+                          className="text-left p-3 bg-white/80 dark:bg-gray-800/50 hover:bg-white dark:hover:bg-gray-800 h-auto justify-start"
+                        >
+                          <span className="inline-block bg-yellow-200 dark:bg-yellow-700/40 px-1 rounded text-sm text-gray-900 dark:text-white">
+                            "{ann.selectedText.slice(0, 80)}
+                            {ann.selectedText.length > 80 ? '…' : ''}"
+                          </span>
+                          <span className="ml-2 text-xs text-gray-500 dark:text-gray-300">
+                            {ann.type === 'note'
+                              ? 'Note'
+                              : ann.type === 'explain'
+                                ? 'Explain'
+                                : 'Example'}
+                          </span>
+                        </Button>
+                        {activeAnnotation === ann.id && (
+                          <div className="mt-2 ml-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                              {ann.note}
+                            </p>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => deleteAnnotation(ann.id)}
+                              className="mt-2"
+                            >
+                              <span className="inline-flex items-center gap-2">
+                                <IconTrash className="w-4 h-4" />
+                                Delete
+                              </span>
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))
+                </div>
               )}
             </div>
-          </div>
 
-          {/* Next Steps */}
-          {sections.filter((s) => s.type === 'nextsteps').length > 0 ? (
-            sections
-              .filter((s) => s.type === 'nextsteps')
-              .map((s, i) => (
-                <div
-                  key={`next-${i}`}
-                  className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5"
-                >
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                    <IconRocket className="w-4 h-4" />
-                    Next Steps
+            {/* Comparison Mode */}
+            {showComparison && (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <IconScale className="w-5 h-5 text-accent" />
+                    Concept Comparison
                   </h2>
-                  <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                    {s.content
-                      .split('\n')
-                      .filter((l) => l.trim())
-                      .map((line: string, j) => (
-                        <p key={j}>{line.replace(/^[-•]\s*/, '')}</p>
-                      ))}
-                  </div>
-                </div>
-              ))
-          ) : (
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
-              No next steps listed for this lesson.
-            </div>
-          )}
-
-          {/* Quick Check */}
-          {sections.filter((s) => s.type === 'quickcheck').length > 0 ? (
-            sections
-              .filter((s) => s.type === 'quickcheck')
-              .map((s, i) => <InlineQuickCheck key={`qc-${i}`} content={s.content} />)
-          ) : (
-            <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
-              No quick check questions for this lesson. Try the "Quiz Me" button below!
-            </div>
-          )}
-
-          {sections.filter((s) => s.type === 'objectives').length === 0 && (
-            <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
-              No learning objectives listed for this lesson.
-            </div>
-          )}
-        </article>
-
-        <AttributionDrawer
-          open={attributionOpen}
-          onClose={() => setAttributionOpen(false)}
-          sources={sources as any}
-          images={(sectionIllustrations as any).map((i: any) => ({
-            imageUrl: i.imageUrl,
-            sourcePageUrl: i.sourcePageUrl,
-            license: i.license,
-            attributionText: i.attributionText,
-            provider: i.provider,
-            createdAt: i.createdAt,
-            imageReason: (i as any).imageReason,
-          }))}
-          sourcesMissingReason={(lesson as any)?.sourcesMissingReason}
-          // @ts-expect-error server may include sourceMode
-          sourceMode={(lesson as any)?.sourceMode}
-        />
-
-        {/* Previous / Next Lesson Navigation */}
-        {(prevLesson || nextLesson) && (
-          <div className="mt-8 flex items-center justify-between gap-4">
-            {prevLesson ? (
-              <Button
-                variant="secondary"
-                onClick={() => nav(`/courses/${courseId}/lessons/${prevLesson.id}`)}
-                className="max-w-[45%]"
-              >
-                <span>←</span>
-                <span className="truncate">Previous: {prevLesson.title}</span>
-              </Button>
-            ) : (
-              <div />
-            )}
-            {nextLesson ? (
-              <Button
-                variant="secondary"
-                onClick={() => nav(`/courses/${courseId}/lessons/${nextLesson.id}`)}
-                className="max-w-[45%] ml-auto"
-              >
-                <span className="truncate">Next: {nextLesson.title}</span>
-                <span>→</span>
-              </Button>
-            ) : (
-              <div />
-            )}
-          </div>
-        )}
-
-        {/* Action buttons */}
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button
-            variant={activePanel === 'notes' ? 'primary' : 'secondary'}
-            onClick={handleNotes}
-            aria-label="Take Notes"
-          >
-            <span className="inline-flex items-center gap-2">
-              <IconPencil className="w-4 h-4" />
-              Take Notes
-            </span>
-          </Button>
-          <Button
-            variant={activePanel === 'quiz' ? 'primary' : 'secondary'}
-            onClick={handleQuiz}
-            aria-label="Quiz Me"
-          >
-            <span className="inline-flex items-center gap-2">
-              <IconTestTube className="w-4 h-4" />
-              Quiz Me
-            </span>
-          </Button>
-          <Button
-            variant={lessonMindmapOpen ? 'primary' : 'secondary'}
-            onClick={() => setLessonMindmapOpen((v) => !v)}
-            aria-label="Lesson mindmap"
-          >
-            <span className="inline-flex items-center gap-2">
-              <IconMap className="w-4 h-4" />
-              Lesson Map
-            </span>
-          </Button>
-        </div>
-
-        {/* Enhanced Notes panel */}
-        {activePanel === 'notes' && (
-          <div className="mt-4 space-y-4">
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 inline-flex items-center gap-2">
-                <IconPencil className="w-5 h-5 text-accent" />
-                Notes
-              </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
-                Auto-format notes from this lesson (template-based) or write your own:
-              </p>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {[
-                  {
-                    key: 'summary',
-                    label: 'Auto-Summary',
-                    desc: 'Concise lesson summary',
-                    icon: <IconDocument className="w-4 h-4" />,
-                  },
-                  {
-                    key: 'cornell',
-                    label: 'Cornell Notes',
-                    desc: 'Cues, notes, summary',
-                    icon: <IconClipboard className="w-4 h-4" />,
-                  },
-                  {
-                    key: 'zettelkasten',
-                    label: 'Zettelkasten',
-                    desc: 'Atomic linked notes',
-                    icon: <IconBook className="w-4 h-4" />,
-                  },
-                  {
-                    key: 'flashcards',
-                    label: 'Flashcards',
-                    desc: 'Q/A study cards',
-                    icon: <IconTestTube className="w-4 h-4" />,
-                  },
-                  {
-                    key: 'mindmap',
-                    label: 'Mind Map',
-                    desc: 'Hierarchical outline',
-                    icon: <IconMap className="w-4 h-4" />,
-                  },
-                ].map((opt) => (
-                  <Button
-                    key={opt.key}
-                    variant="ghost"
-                    onClick={() => generateAiNotes(opt.key)}
-                    disabled={!!generatingNoteFormat}
-                    className="flex-col items-start px-4 py-3 border border-gray-200 dark:border-gray-700 hover:border-accent hover:bg-accent/5 h-auto text-left"
-                  >
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      <span className="inline-flex items-center gap-2">
-                        <span className="text-accent">{opt.icon}</span>
-                        {opt.label}
-                      </span>
-                    </span>
-                    <span className="text-xs text-gray-500">{opt.desc}</span>
-                    {generatingNoteFormat === opt.key && (
-                      <span className="text-xs text-accent mt-1 inline-flex items-center gap-1">
-                        <IconSparkles className="w-3.5 h-3.5" />
-                        Generating...
-                      </span>
-                    )}
-                  </Button>
-                ))}
-              </div>
-
-              {aiNoteContent && (
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-accent uppercase">
-                      Auto-formatted Notes
-                    </span>
+                  <div className="flex gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={saveCustomNote}
+                      onClick={generateComparison}
                       className="text-accent"
                     >
                       <span className="inline-flex items-center gap-2">
-                        <IconBook className="w-4 h-4" />
-                        Save
+                        <IconRefresh className="w-4 h-4" />
+                        Regenerate
+                      </span>
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setShowComparison(false)}>
+                      <span className="inline-flex items-center gap-2">
+                        <IconClose className="w-4 h-4" />
+                        Close
                       </span>
                     </Button>
                   </div>
-                  <div className="prose dark:prose-invert max-w-none text-sm">
-                    {aiNoteContent.split('\n').map((line, i) => renderLine(line, i))}
+                </div>
+                {comparingLoading ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <span className="inline-flex items-center gap-2 justify-center">
+                      <IconSparkles className="w-4 h-4" />
+                      Analyzing lesson for comparable concepts...
+                    </span>
+                  </div>
+                ) : comparison && comparison.concepts.length > 0 ? (
+                  <>
+                    {comparison.concepts.length === 2 ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        {comparison.concepts.map((concept, ci) => (
+                          <div
+                            key={ci}
+                            className="rounded-xl border border-gray-200 dark:border-gray-700 p-4"
+                          >
+                            <h3 className="font-semibold text-accent mb-3 text-center">
+                              {concept}
+                            </h3>
+                            <div className="space-y-2">
+                              {comparison.dimensions.map((dim, di) => (
+                                <div key={di}>
+                                  <p className="text-xs font-medium text-gray-500 uppercase">
+                                    {dim}
+                                  </p>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300">
+                                    {comparison.cells[di]?.[ci] || '—'}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr>
+                              <th className="text-left p-2 text-gray-500 font-medium border-b dark:border-gray-700">
+                                Dimension
+                              </th>
+                              {comparison.concepts.map((c, i) => (
+                                <th
+                                  key={i}
+                                  className="text-left p-2 text-accent font-semibold border-b dark:border-gray-700"
+                                >
+                                  {c}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {comparison.dimensions.map((dim, di) => (
+                              <tr key={di} className="border-b dark:border-gray-800">
+                                <td className="p-2 font-medium text-gray-700 dark:text-gray-300">
+                                  {dim}
+                                </td>
+                                {comparison.concepts.map((_, ci) => (
+                                  <td key={ci} className="p-2 text-gray-600 dark:text-gray-300">
+                                    {comparison.cells[di]?.[ci] || '—'}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {comparison.summary && (
+                      <p className="mt-4 text-sm text-gray-600 dark:text-gray-300 italic bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3">
+                        {comparison.summary}
+                      </p>
+                    )}
+                  </>
+                ) : comparison ? (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    {comparison.summary || 'No comparable concepts found in this lesson.'}
+                  </p>
+                ) : null}
+              </div>
+            )}
+
+            {/* Key Points */}
+            {sections
+              .filter((s) => s.type === 'keypoints')
+              .map((s, i) => (
+                <div
+                  key={`kp-${i}`}
+                  className="bg-accent/5 border border-accent/20 rounded-2xl p-5"
+                >
+                  <h2 className="text-sm font-semibold text-accent mb-3 flex items-center gap-2">
+                    <IconSparkles className="w-4 h-4" />
+                    Key Points
+                  </h2>
+                  <div className="space-y-2">
+                    {s.content
+                      .split('\n')
+                      .filter((l) => l.trim())
+                      .slice(0, 10)
+                      .map((line, j) => (
+                        <div
+                          key={j}
+                          className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          <span className="text-accent font-bold">•</span>
+                          <span>{line.replace(/^\d+\.\s*/, '').replace(/^[-•]\s*/, '')}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
-              )}
+              ))}
 
-              {state.notes?.flashcards && state.notes.flashcards.length > 0 && (
-                <div className="space-y-3 mb-4">
-                  <span className="text-xs font-medium text-gray-500 uppercase">Flashcards</span>
-                  {state.notes.flashcards.map((fc, i) => (
-                    <div key={i} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-                      <p className="font-medium text-gray-900 dark:text-white mb-2">
-                        Q: {fc.front}
-                      </p>
-                      <p className="text-gray-600 dark:text-gray-300">A: {fc.back}</p>
-                    </div>
-                  ))}
+            {/* Recap */}
+            {sections
+              .filter((s) => s.type === 'recap')
+              .map((s, i) => (
+                <div
+                  key={`recap-${i}`}
+                  className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5"
+                >
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                    <IconClipboard className="w-4 h-4" />
+                    Recap
+                  </h2>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2 whitespace-pre-wrap">
+                    {s.content
+                      .split('\n')
+                      .filter((l) => l.trim())
+                      .slice(0, 12)
+                      .map((line, j) => (
+                        <p key={j}>{renderInlineWithCitations(line, sources as any)}</p>
+                      ))}
+                  </div>
                 </div>
-              )}
+              ))}
 
-              <div className="mt-4">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">
-                  <span className="inline-flex items-center gap-2">
-                    <IconPencil className="w-4 h-4" />
-                    Your Notes
-                  </span>
-                </label>
-                <textarea
-                  value={customNoteText}
-                  onChange={(e) => setCustomNoteText(e.target.value)}
-                  onBlur={saveCustomNote}
-                  placeholder="Write your own notes here..."
-                  className="w-full p-3 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white resize-y min-h-[100px]"
-                  rows={4}
-                />
+            {/* Key Takeaways */}
+            {sections
+              .filter((s) => s.type === 'takeaways')
+              .map((s, i) => (
+                <div
+                  key={`take-${i}`}
+                  className="bg-success/5 border border-success/20 rounded-2xl p-5"
+                  data-testid="key-takeaways"
+                >
+                  <h2 className="text-sm font-semibold text-success mb-3 flex items-center gap-2">
+                    <IconBulb className="w-4 h-4" />
+                    Key Takeaways
+                  </h2>
+                  <div className="space-y-2">
+                    {s.content
+                      .split('\n')
+                      .filter((l) => l.trim())
+                      .map((line, j) => (
+                        <div
+                          key={j}
+                          className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          <span className="text-success font-bold">{j + 1}.</span>
+                          <span>{line.replace(/^\d+\.\s*/, '').replace(/^[-•]\s*/, '')}</span>
+                        </div>
+                      ))}
+                  </div>
+
+                  {Array.isArray(savedNote?.content?.keyTakeawaysExtras) &&
+                  savedNote.content.keyTakeawaysExtras.length > 0 ? (
+                    <div
+                      className="mt-4 pt-4 border-t border-success/20"
+                      data-testid="marked-takeaways"
+                    >
+                      <h3 className="text-xs font-semibold text-success/90 mb-2">
+                        Your marked takeaways
+                      </h3>
+                      <div className="space-y-2">
+                        {savedNote.content.keyTakeawaysExtras.map((b: string, j: number) => (
+                          <div
+                            key={`extra-${j}`}
+                            className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                          >
+                            <span className="text-success font-bold">•</span>
+                            <span>{String(b).trim()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+
+            {/* Iter73 P2.15: Action chips */}
+            <div
+              className="flex flex-wrap gap-2 mb-4"
+              data-testid="action-chips"
+              aria-label="Lesson actions"
+            >
+              <button
+                onClick={() => setActivePanel('notes')}
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 inline-flex items-center gap-2"
+              >
+                <IconPencil className="w-4 h-4" />
+                Take Notes
+              </button>
+              <button
+                onClick={() => setActivePanel('quiz')}
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-accent/10 text-accent hover:bg-accent/20 inline-flex items-center gap-2"
+              >
+                <IconTestTube className="w-4 h-4" />
+                Quiz Me
+              </button>
+              <button
+                onClick={() => {
+                  // MVP: jump to Next Steps if present; otherwise open attribution.
+                  const el = document.querySelector('[data-testid="next-steps"]');
+                  if (el) (el as any).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  else setAttributionOpen(true);
+                }}
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-success/10 text-success hover:bg-success/20 inline-flex items-center gap-2"
+              >
+                <IconRocket className="w-4 h-4" />
+                Go Deeper
+              </button>
+              <button
+                onClick={() => setAttributionOpen(true)}
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 inline-flex items-center gap-2"
+              >
+                <IconBook className="w-4 h-4" />
+                See Sources
+              </button>
+            </div>
+
+            {/* Suggested reads (moved to right rail on desktop; kept here for smaller screens) */}
+            <div className="lg:hidden bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <IconBook className="w-4 h-4" />
+                Suggested reads
+              </h2>
+              <div className="space-y-3">
+                {sources.length === 0 ? (
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No sources available.</p>
+                ) : (
+                  sources.map((s: any) => (
+                    <div key={s.id} className="flex items-start gap-3 text-sm">
+                      <span className="bg-accent/10 text-accent font-bold text-xs px-2 py-0.5 rounded-full flex-shrink-0">
+                        [{s.id}]
+                      </span>
+                      <div>
+                        <p className="text-gray-900 dark:text-white font-medium">{s.title}</p>
+                        <p className="text-gray-500 text-xs">
+                          {s.author} · {s.publication} · {s.year}
+                        </p>
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent text-xs hover:underline"
+                        >
+                          {s.url}
+                        </a>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
-              <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
-                <span className="inline-flex items-center gap-2">
-                  <IconPalette className="w-5 h-5 text-accent" />
-                  Generate Illustration
-                </span>
-              </h3>
-              <div className="flex gap-2">
-                <input
-                  value={illustrationDesc}
-                  onChange={(e) => setIllustrationDesc(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && generateIllustration()}
-                  placeholder="Describe what you want illustrated..."
-                  className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
-                />
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={generateIllustration}
-                  disabled={generatingIllustration || !illustrationDesc.trim()}
-                >
-                  {generatingIllustration ? (
-                    <span className="inline-flex items-center gap-2">
-                      <IconSparkles className="w-4 h-4" />
-                      Generating
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2">
-                      <IconPalette className="w-4 h-4" />
-                      Generate
-                    </span>
-                  )}
-                </Button>
+            {/* Next Steps */}
+            {sections.filter((s) => s.type === 'nextsteps').length > 0 ? (
+              sections
+                .filter((s) => s.type === 'nextsteps')
+                .map((s, i) => (
+                  <div
+                    key={`next-${i}`}
+                    className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5"
+                  >
+                    <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                      <IconRocket className="w-4 h-4" />
+                      Next Steps
+                    </h2>
+                    <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
+                      {s.content
+                        .split('\n')
+                        .filter((l) => l.trim())
+                        .map((line: string, j) => (
+                          <p key={j}>{line.replace(/^[-•]\s*/, '')}</p>
+                        ))}
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
+                No next steps listed for this lesson.
               </div>
-              {illustrations.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {illustrations.map((ill) => (
-                    <div
-                      key={ill.id}
-                      className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"
+            )}
+
+            {/* Quick Check */}
+            {sections.filter((s) => s.type === 'quickcheck').length > 0 ? (
+              sections
+                .filter((s) => s.type === 'quickcheck')
+                .map((s, i) => <InlineQuickCheck key={`qc-${i}`} content={s.content} />)
+            ) : (
+              <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
+                No quick check questions for this lesson. Try the "Quiz Me" button below!
+              </div>
+            )}
+
+            {sections.filter((s) => s.type === 'objectives').length === 0 && (
+              <div className="bg-accent/5 dark:bg-accent/5 rounded-2xl p-5 text-sm text-gray-500 dark:text-gray-300 italic">
+                No learning objectives listed for this lesson.
+              </div>
+            )}
+          </article>
+
+          {/* Right rail (desktop) / collapsible (mobile) */}
+          <aside className="lg:sticky lg:top-20 h-fit space-y-4" data-testid="lesson-right-rail">
+            {/* Key takeaways */}
+            {apiTakeaways.length > 0 ? (
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5">
+                <details className="lg:open" open>
+                  <summary className="cursor-pointer list-none flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      <IconBulb className="w-4 h-4 text-success" />
+                      Key takeaways
+                    </h2>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 lg:hidden">
+                      Tap to expand
+                    </span>
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    {apiTakeaways
+                      .map((t) => String(t || '').trim())
+                      .filter(Boolean)
+                      .slice(0, 10)
+                      .map((t, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300"
+                        >
+                          <span className="text-success font-bold">{idx + 1}.</span>
+                          <span>{t}</span>
+                        </div>
+                      ))}
+                  </div>
+                </details>
+              </div>
+            ) : null}
+
+            {/* Suggested reads (real URLs only) */}
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700 p-5">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                <IconBook className="w-4 h-4" />
+                Suggested reads
+              </h2>
+              {sources.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">No sources available.</p>
+              ) : (
+                <div className="space-y-3">
+                  {sources
+                    .filter(
+                      (s: any) => typeof s?.url === 'string' && /^https?:\/\//i.test(String(s.url)),
+                    )
+                    .slice(0, 8)
+                    .map((s: any) => (
+                      <div key={String(s.url)} className="text-sm">
+                        <p className="text-gray-900 dark:text-white font-medium">
+                          {s.title || s.url}
+                        </p>
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-accent text-xs hover:underline break-all"
+                        >
+                          {s.url}
+                        </a>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
+            {/* Related images (from research bundle manifest) */}
+            {apiRelatedImages.length > 0 ? (
+              <div
+                className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-5"
+                data-testid="related-images"
+              >
+                <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                  <IconPalette className="w-4 h-4" />
+                  Related images
+                </h2>
+                <div className="grid grid-cols-2 gap-3">
+                  {apiRelatedImages.slice(0, 6).map((img: any, idx: number) => (
+                    <a
+                      key={idx}
+                      href={img?.sourceUrl || img?.pageUrl || img?.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800"
+                      title={img?.alt || 'Related image'}
                     >
                       <img
-                        src={ill.url}
-                        alt={ill.description}
-                        className="w-full h-48 object-cover"
+                        src={img?.url}
+                        alt={img?.alt || 'Related image'}
+                        className="w-full h-24 object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          try {
+                            (e.currentTarget as any).style.display = 'none';
+                          } catch {
+                            /* ignore */
+                          }
+                        }}
                       />
-                      <p className="text-xs text-gray-500 p-2">{ill.description}</p>
-                    </div>
+                    </a>
                   ))}
                 </div>
+              </div>
+            ) : null}
+          </aside>
+
+          <AttributionDrawer
+            open={attributionOpen}
+            onClose={() => setAttributionOpen(false)}
+            sources={sources as any}
+            images={(sectionIllustrations as any).map((i: any) => ({
+              imageUrl: i.imageUrl,
+              sourcePageUrl: i.sourcePageUrl,
+              license: i.license,
+              attributionText: i.attributionText,
+              provider: i.provider,
+              createdAt: i.createdAt,
+              imageReason: (i as any).imageReason,
+            }))}
+            sourcesMissingReason={(lesson as any)?.sourcesMissingReason}
+            // @ts-expect-error server may include sourceMode
+            sourceMode={(lesson as any)?.sourceMode}
+          />
+
+          {/* Previous / Next Lesson Navigation */}
+          {(prevLesson || nextLesson) && (
+            <div className="mt-8 flex items-center justify-between gap-4">
+              {prevLesson ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => nav(`/courses/${courseId}/lessons/${prevLesson.id}`)}
+                  className="max-w-[45%]"
+                >
+                  <span>←</span>
+                  <span className="truncate">Previous: {prevLesson.title}</span>
+                </Button>
+              ) : (
+                <div />
+              )}
+              {nextLesson ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => nav(`/courses/${courseId}/lessons/${nextLesson.id}`)}
+                  className="max-w-[45%] ml-auto"
+                >
+                  <span className="truncate">Next: {nextLesson.title}</span>
+                  <span>→</span>
+                </Button>
+              ) : (
+                <div />
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {activePanel === 'quiz' && <QuizPanel />}
+          {/* Action buttons */}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              variant={activePanel === 'notes' ? 'primary' : 'secondary'}
+              onClick={handleNotes}
+              aria-label="Take Notes"
+            >
+              <span className="inline-flex items-center gap-2">
+                <IconPencil className="w-4 h-4" />
+                Take Notes
+              </span>
+            </Button>
+            <Button
+              variant={activePanel === 'quiz' ? 'primary' : 'secondary'}
+              onClick={handleQuiz}
+              aria-label="Quiz Me"
+            >
+              <span className="inline-flex items-center gap-2">
+                <IconTestTube className="w-4 h-4" />
+                Quiz Me
+              </span>
+            </Button>
+            <Button
+              variant={lessonMindmapOpen ? 'primary' : 'secondary'}
+              onClick={() => setLessonMindmapOpen((v) => !v)}
+              aria-label="Lesson mindmap"
+            >
+              <span className="inline-flex items-center gap-2">
+                <IconMap className="w-4 h-4" />
+                Lesson Map
+              </span>
+            </Button>
+          </div>
+
+          {/* Enhanced Notes panel */}
+          {activePanel === 'notes' && (
+            <div className="mt-4 space-y-4">
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 inline-flex items-center gap-2">
+                  <IconPencil className="w-5 h-5 text-accent" />
+                  Notes
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-300 mb-3">
+                  Auto-format notes from this lesson (template-based) or write your own:
+                </p>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {[
+                    {
+                      key: 'summary',
+                      label: 'Auto-Summary',
+                      desc: 'Concise lesson summary',
+                      icon: <IconDocument className="w-4 h-4" />,
+                    },
+                    {
+                      key: 'cornell',
+                      label: 'Cornell Notes',
+                      desc: 'Cues, notes, summary',
+                      icon: <IconClipboard className="w-4 h-4" />,
+                    },
+                    {
+                      key: 'zettelkasten',
+                      label: 'Zettelkasten',
+                      desc: 'Atomic linked notes',
+                      icon: <IconBook className="w-4 h-4" />,
+                    },
+                    {
+                      key: 'flashcards',
+                      label: 'Flashcards',
+                      desc: 'Q/A study cards',
+                      icon: <IconTestTube className="w-4 h-4" />,
+                    },
+                    {
+                      key: 'mindmap',
+                      label: 'Mind Map',
+                      desc: 'Hierarchical outline',
+                      icon: <IconMap className="w-4 h-4" />,
+                    },
+                  ].map((opt) => (
+                    <Button
+                      key={opt.key}
+                      variant="ghost"
+                      onClick={() => generateAiNotes(opt.key)}
+                      disabled={!!generatingNoteFormat}
+                      className="flex-col items-start px-4 py-3 border border-gray-200 dark:border-gray-700 hover:border-accent hover:bg-accent/5 h-auto text-left"
+                    >
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="text-accent">{opt.icon}</span>
+                          {opt.label}
+                        </span>
+                      </span>
+                      <span className="text-xs text-gray-500">{opt.desc}</span>
+                      {generatingNoteFormat === opt.key && (
+                        <span className="text-xs text-accent mt-1 inline-flex items-center gap-1">
+                          <IconSparkles className="w-3.5 h-3.5" />
+                          Generating...
+                        </span>
+                      )}
+                    </Button>
+                  ))}
+                </div>
+
+                {aiNoteContent && (
+                  <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-accent uppercase">
+                        Auto-formatted Notes
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={saveCustomNote}
+                        className="text-accent"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <IconBook className="w-4 h-4" />
+                          Save
+                        </span>
+                      </Button>
+                    </div>
+                    <div className="prose dark:prose-invert max-w-none text-sm">
+                      {aiNoteContent.split('\n').map((line, i) => renderLine(line, i))}
+                    </div>
+                  </div>
+                )}
+
+                {state.notes?.flashcards && state.notes.flashcards.length > 0 && (
+                  <div className="space-y-3 mb-4">
+                    <span className="text-xs font-medium text-gray-500 uppercase">Flashcards</span>
+                    {state.notes.flashcards.map((fc, i) => (
+                      <div key={i} className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                        <p className="font-medium text-gray-900 dark:text-white mb-2">
+                          Q: {fc.front}
+                        </p>
+                        <p className="text-gray-600 dark:text-gray-300">A: {fc.back}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">
+                    <span className="inline-flex items-center gap-2">
+                      <IconPencil className="w-4 h-4" />
+                      Your Notes
+                    </span>
+                  </label>
+                  <textarea
+                    value={customNoteText}
+                    onChange={(e) => setCustomNoteText(e.target.value)}
+                    onBlur={saveCustomNote}
+                    placeholder="Write your own notes here..."
+                    className="w-full p-3 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white resize-y min-h-[100px]"
+                    rows={4}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6">
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
+                  <span className="inline-flex items-center gap-2">
+                    <IconPalette className="w-5 h-5 text-accent" />
+                    Generate Illustration
+                  </span>
+                </h3>
+                <div className="flex gap-2">
+                  <input
+                    value={illustrationDesc}
+                    onChange={(e) => setIllustrationDesc(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && generateIllustration()}
+                    placeholder="Describe what you want illustrated..."
+                    className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={generateIllustration}
+                    disabled={generatingIllustration || !illustrationDesc.trim()}
+                  >
+                    {generatingIllustration ? (
+                      <span className="inline-flex items-center gap-2">
+                        <IconSparkles className="w-4 h-4" />
+                        Generating
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-2">
+                        <IconPalette className="w-4 h-4" />
+                        Generate
+                      </span>
+                    )}
+                  </Button>
+                </div>
+                {illustrations.length > 0 && (
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {illustrations.map((ill) => (
+                      <div
+                        key={ill.id}
+                        className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700"
+                      >
+                        <img
+                          src={ill.url}
+                          alt={ill.description}
+                          className="w-full h-48 object-cover"
+                        />
+                        <p className="text-xs text-gray-500 p-2">{ill.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activePanel === 'quiz' && (
+            <QuizPanel courseId={courseId || ''} lessonId={lessonId || ''} />
+          )}
+        </div>
       </main>
 
       {/* Lesson mindmap (Iter39 Task 6) */}
@@ -2094,9 +2502,11 @@ function InlineQuickCheck({ content }: { content: string }) {
   );
 }
 
-function QuizPanel() {
+function QuizPanel({ courseId, lessonId }: { courseId: string; lessonId: string }) {
   const { state, dispatch } = useApp();
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [persisting, setPersisting] = useState(false);
+  const [persistError, setPersistError] = useState<string | null>(null);
 
   const quiz = state.quiz;
   if (state.loading.quiz)
@@ -2110,8 +2520,40 @@ function QuizPanel() {
     );
   if (!quiz || !quiz.questions.length) return null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setPersistError(null);
     dispatch({ type: 'SUBMIT_QUIZ', answers });
+
+    // Best-effort persistence + learner loop (no blocking UI)
+    try {
+      setPersisting(true);
+      const correctAnswers: Record<string, string> = {};
+      const questionTypes: Record<string, string> = {};
+      quiz.questions.forEach((q) => {
+        correctAnswers[q.id] = q.correctAnswer;
+        questionTypes[q.id] = q.type;
+      });
+
+      await apiPost('/events', {
+        type: 'quiz.submitted',
+        courseId: courseId || undefined,
+        lessonId: lessonId || undefined,
+        meta: {
+          score: quiz.score,
+          totalQuestions: quiz.questions.length,
+          // Prefer normalized tags when available; fall back to question text gaps.
+          gaps: (quiz as any).gapTags || quiz.gaps || [],
+          answers,
+          correctAnswers,
+          questionTypes,
+        },
+      });
+    } catch (e: any) {
+      // Don't fail the quiz UX if persistence fails.
+      setPersistError(toUserError(e, 'Could not save quiz results.'));
+    } finally {
+      setPersisting(false);
+    }
   };
 
   return (
@@ -2175,9 +2617,15 @@ function QuizPanel() {
           </div>
         ))}
       </div>
+      {persistError && (
+        <div className="mt-3 text-xs text-warning bg-warning/10 border border-warning/20 rounded-xl p-3">
+          {persistError}
+        </div>
+      )}
+
       {!quiz.submitted && (
-        <Button variant="primary" onClick={handleSubmit} className="mt-4">
-          Submit Answers
+        <Button variant="primary" onClick={handleSubmit} className="mt-4" disabled={persisting}>
+          {persisting ? 'Saving…' : 'Submit Answers'}
         </Button>
       )}
     </div>

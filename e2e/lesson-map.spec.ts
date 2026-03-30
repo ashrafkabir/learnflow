@@ -6,7 +6,7 @@ test('Lesson Map opens and clicking a node copies label to clipboard', async ({ 
   await page.addInitScript(() => {
     (window as any).__LEARNFLOW_ENV__ = {
       VITE_DEV_AUTH_BYPASS: '1',
-      VITE_API_ORIGIN: 'http://localhost:3000',
+      VITE_API_BASE_URL: 'http://127.0.0.1:3000',
     };
     (window as any).__LEARNFLOW_E2E__ = true;
     // Valid JWT for local API (dev secret)

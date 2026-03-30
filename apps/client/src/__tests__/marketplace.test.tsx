@@ -11,7 +11,16 @@ import { App } from '../App.js';
 
 beforeEach(() => {
   localStorage.setItem('learnflow-onboarding-complete', 'true');
-  localStorage.setItem('learnflow-token', 'test-token');
+  // Use a JWT-shaped token so apiGet/apiPost won't attempt refresh/redirect during tests.
+  localStorage.setItem(
+    'learnflow-token',
+    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
+  );
+
+  (globalThis as any).__LEARNFLOW_ENV__ = {
+    VITE_DEV_AUTH_BYPASS: '1',
+    PLAYWRIGHT_E2E_FIXTURES: '1',
+  };
 
   // Provide route-specific API mocks so marketplace routes render reliably.
   globalThis.fetch = (async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -36,6 +45,14 @@ beforeEach(() => {
       });
     }
 
+    // Support legacy /marketplace alias route used in some navigation/tests.
+    if (url.includes('/api/v1/marketplace')) {
+      return new Response(JSON.stringify({ courses: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     if (url.includes('/api/v1/marketplace/checkout')) {
       return new Response(JSON.stringify({ ok: true }), {
         status: 200,
@@ -43,8 +60,29 @@ beforeEach(() => {
       });
     }
 
+    if (url.includes('/api/v1/profile/context')) {
+      return new Response(
+        JSON.stringify({ goals: [], topics: [], experience: 'beginner', subscriptionTier: 'free' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
+    if (url.includes('/api/v1/subscription')) {
+      return new Response(JSON.stringify({ tier: 'free', capabilities: {} }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (url.includes('/api/v1/notifications')) {
+      return new Response(JSON.stringify({ notifications: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // Default.
-    return new Response(JSON.stringify({ courses: [], agents: [], keys: [] }), {
+    return new Response(JSON.stringify({ courses: [], agents: [], keys: [], currentStreak: 0 }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
@@ -79,12 +117,16 @@ function renderAt(path: string) {
 describe('Marketplace', () => {
   it('renders course marketplace', async () => {
     renderAt('/marketplace');
-    await waitFor(() => expect(document.querySelector('[data-screen]')).toBeTruthy());
+    await waitFor(() =>
+      expect(document.querySelector('[data-screen="course-marketplace"]')).toBeTruthy(),
+    );
   });
 
   it('renders agent marketplace', async () => {
     renderAt('/marketplace/agents');
-    await waitFor(() => expect(document.querySelector('[data-screen]')).toBeTruthy());
+    await waitFor(() =>
+      expect(document.querySelector('[data-screen="agent-marketplace"]')).toBeTruthy(),
+    );
   });
 
   it('renders creator dashboard', async () => {

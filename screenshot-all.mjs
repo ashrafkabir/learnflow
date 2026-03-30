@@ -12,6 +12,15 @@ function readArg(name) {
 const BASE = process.env.BASE_URL || readArg('base') || 'http://localhost:3001';
 const BASE_WEB = process.env.BASE_WEB_URL || readArg('baseWeb') || 'http://localhost:3003';
 
+function requireBaseWeb() {
+  if (!BASE_WEB) throw new Error('BASE_WEB is required');
+  try {
+    URL.parse(BASE_WEB);
+  } catch {
+    throw new Error(`Invalid BASE_WEB_URL: ${BASE_WEB}`);
+  }
+}
+
 const ITER_ARG = process.env.ITERATION || process.env.ITER || readArg('iter');
 const DATE = new Date().toISOString().slice(0, 10);
 
@@ -73,6 +82,7 @@ const AUTHED_PAGES = [
   ['/mindmap', 'app-mindmap'],
   ['/marketplace/courses', 'marketplace-courses'],
   ['/marketplace/agents', 'marketplace-agents'],
+  ['/marketplace/creator', 'marketplace-creator-dashboard'],
   ['/collaborate', 'app-collaboration'],
   ['/settings', 'app-settings'],
   ['/settings/about', 'settings-about-mvp-truth'],
@@ -133,8 +143,29 @@ function isNotFound(page) {
     .catch(() => false);
 }
 
+const SKIP_MARKETING =
+  process.env.SCREENSHOT_SKIP_MARKETING === '1' ||
+  process.env.SKIP_MARKETING === '1' ||
+  readArg('skipMarketing') === '1' ||
+  readArg('skipMarketing') === 'true';
+
 // 1) Marketing route screenshots (canonical in apps/web)
-{
+if (!SKIP_MARKETING) {
+  requireBaseWeb();
+
+  // Fail fast if BASE_WEB is unreachable.
+  try {
+    const res = await fetch(BASE_WEB, { method: 'HEAD' });
+    if (!res.ok) {
+      throw new Error(`HEAD ${BASE_WEB} returned ${res.status}`);
+    }
+  } catch (err) {
+    throw new Error(
+      `[screenshot-all] BASE_WEB unreachable (${BASE_WEB}). Start apps/web first or pass --baseWeb / BASE_WEB_URL.\n` +
+        String(err),
+    );
+  }
+
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   for (const [p, name] of MARKETING_PAGES) {
     const page = await ctx.newPage();
@@ -151,6 +182,8 @@ function isNotFound(page) {
     console.log(`✓ ${name}`);
   }
   await ctx.close();
+} else {
+  console.log('[screenshot-all] skipping marketing pages (SCREENSHOT_SKIP_MARKETING=1)');
 }
 
 // 2) Client public route screenshots (no auth)

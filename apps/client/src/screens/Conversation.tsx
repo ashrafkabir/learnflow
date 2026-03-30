@@ -712,12 +712,9 @@ export function Conversation() {
             </span>
           </Button>
           <div className="flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-success animate-pulse"></span>
-            <span
-              className="text-xs text-gray-600 dark:text-gray-300"
-              title="Status indicator (preview)"
-            >
-              Online (preview)
+            <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+            <span className="text-xs text-gray-600 dark:text-gray-300" title="Mode">
+              Offline mode (deterministic)
             </span>
           </div>
         </div>
@@ -725,8 +722,7 @@ export function Conversation() {
 
       <div className="px-4 sm:px-6 py-2 border-b border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60">
         <p className="text-[11px] leading-snug text-gray-600 dark:text-gray-300">
-          System mode (MVP): deterministic routing; no open-web browsing unless enabled via
-          connected keys.
+          Mode (MVP): deterministic routing. No open-web browsing in this screen.
         </p>
       </div>
 
@@ -905,11 +901,16 @@ export function Conversation() {
                               setDrawerOpen(true);
                             } else {
                               dispatch({
-                                type: 'ADD_MESSAGE',
-                                payload: {
+                                type: 'ADD_CHAT_MESSAGE',
+                                message: {
+                                  id: `msg-${Date.now()}-no-sources`,
                                   role: 'assistant',
                                   content: 'No sources available for this response.',
-                                  ts: new Date().toISOString(),
+                                  timestamp: new Date().toISOString(),
+                                  meta: {
+                                    generatedBy: 'system',
+                                    sourcesCount: 0,
+                                  },
                                 },
                               });
                             }
