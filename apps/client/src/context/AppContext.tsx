@@ -102,6 +102,12 @@ export interface QuizQuestion {
   options?: string[];
   correctAnswer: string;
   explanation: string;
+  /** Iter141: richer, actionable rationales for learning (esp. MCQ). */
+  rationale?: {
+    correct?: string;
+    perOption?: string[];
+    commonMistake?: string;
+  };
 }
 
 export interface Quiz {

@@ -1,146 +1,141 @@
-# Iter140 Improvement Queue (Planner)
+# IMPROVEMENT_QUEUE — Iter141
 
-Owner: Builder  
-Planner: Ash (planner subagent)  
-Last updated: 2026-03-29
+Status: **IN PROGRESS**
 
-Status: **DONE**
+Owner: Builder
 
-This queue is the next 10–15 highest-leverage tasks for Iter140.
+Date: 2026-03-29
 
-Scope focus (per directive):
+Scope focus (per Iter141 brief):
 
-- **Server-side quiz_gap persistence + /daily integration + UI reasons**
-- **Exam Agent question quality + rationale**
-
-Evidence run (planner, today)
-
-- ✅ `npm test` (PASS)
-- ✅ Playwright: `e2e/iter136-smoke-assertions.spec.ts` (PASS)
-- ✅ Playwright: `e2e/iter137-key-screens.spec.ts` (PASS)
-- ✅ Playwright: `e2e/iter138-adaptive-loop.spec.ts` (PASS)
-- 📸 Screenshots available in repo under `screenshots/iter136/planner-run/` and synced to OneDrive under `onedrive-learnflow/iter140/evidence/`.
+- Quiz rationales
+- Concept tagging
+- Gap → lesson matching
+- Adaptive difficulty
+- Notes loop polish
 
 ---
 
-## Topline assessment (brutally honest)
+## What’s already in good shape (verified)
 
-Iter139 improved MCQ distractors and introduced `gapTags` emission (normalized concept tags) during scoring. But the adaptive loop is still incomplete in the exact place users feel it:
+- **Quiz gap surfaced in /daily and Dashboard UI**
+  - API: `apps/api/src/routes/daily.ts` emits `reasonTag: 'quiz_gap'` and `reason: Focus: <tag> (from last quiz)` using recent mastery `gapsJson`.
+  - Client: `apps/client/src/screens/Dashboard.tsx` renders a distinct **Quiz gap** pill (fuchsia styling).
+  - Tests: `apps/api/src/__tests__/daily-quiz-gap.test.ts` covers quiz-gap recommendation + “don’t recommend completed” behavior.
 
-- We **capture gaps**, but we do not yet **use them to drive daily recommendations** (`reasonTag='quiz_gap'` exists as a type but is never emitted).
-- We persist quiz gaps only as a **string array** in `mastery.gapsJson` with no recency/priority model and no linkage to actual lesson concepts.
-- ExamAgent still generates MCQs from naive sentence slicing; distractors are better, but **question stems and rationales** are often low-signal.
+- **Test suite health**
+  - `npm test`: PASS
+  - Playwright:
+    - `e2e/iter136-smoke-assertions.spec.ts`: PASS
+    - `e2e/iter137-key-screens.spec.ts`: PASS
+    - `e2e/iter138-adaptive-loop.spec.ts`: PASS
 
-Iter140 should turn quiz gaps into a first-class scheduling signal and make quiz feedback feel “smart” (actionable, concept-linked, and confidence-building).
-
----
-
-## P0 (must ship)
-
-### P0.1 — Quiz gap → Daily recommendations (end-to-end)
-
-**Goal:** A weak quiz result should change what the learner sees next, with a clear reason.
-
-**Work**
-
-1. **Persist normalized gap tags server-side** on `quiz.submitted`.
-   - Today: client sends `meta.gaps` as `(quiz as any).gapTags || quiz.gaps || []`.
-   - Server: `events.ts` reads `meta.gaps` and stores into mastery `gapsJson`.
-   - Gap: we don’t treat these as normalized tags vs freeform strings; and no recency.
-
-2. Extend mastery storage to support gap recency/priority.
-   - Minimal: store `{ tag, lastSeenAt, count, lastScore }[]` (JSON) instead of `string[]`.
-   - Or introduce a new table `quiz_gaps(userId, courseId, lessonId, tag, createdAt, score)`.
-
-3. Update `/api/v1/daily` selection algorithm to emit `reasonTag='quiz_gap'`.
-   - When there are recent gaps (e.g., last 7 days), recommend:
-     - a lesson in the same course whose title/metadata matches the gap tag, or
-     - a review-due lesson that also addresses the gap.
-   - If no match exists, still emit a quiz-gap item with a safe fallback and explicit reason (“No exact match; recommending foundational review”).
-
-4. Update Dashboard UI copy to render quiz gap reasons distinctly.
-   - E.g., “Focus: ${tag} (from last quiz)” rather than generic “Continue”.
-
-**Acceptance criteria**
-
-- Daily endpoint can return at least 1 lesson with `reasonTag='quiz_gap'` in a deterministic test.
-- UI surfaces that reason text.
-- Add/adjust tests:
-  - API: new test verifying quiz gap affects `/daily` ordering.
-  - Client: snapshot/unit test verifying the reason chip/text renders.
+- **Quick-action chips exist in Conversation** (basic notes/quiz/research loop): `apps/client/src/screens/Conversation.tsx`.
 
 ---
 
-### P0.2 — ExamAgent: higher-quality questions + rationales
+## Iter141 priority queue (10–15 tasks)
 
-**Goal:** Questions should be concept-checks, not “did you read this exact sentence?”
+### P0 — Must ship (learning loop correctness)
 
-**Work**
+1. **Quiz rationales: make explanations actionable, per option**
+   - Current MCQ has `explanation: sentence` (single blob). Users need: why correct is correct, why each distractor is wrong.
+   - Output schema for MCQ should include:
+     - `rationale.correct` (2–4 sentences)
+     - `rationale.perOption[]` aligned to options
+     - `commonMistake` (1 line)
+   - Add unit tests asserting non-empty rationales and that they reference the question keyword.
 
-1. Improve keyword/concept extraction.
-   - Use title-case phrases / noun-phrase-ish heuristics.
-   - Avoid generic stems (“What is true about …?”) when possible.
+2. **Introduce normalized concept tags for both lessons and quiz gaps (single canonical format)**
+   - Define a canonical tag format: lowercase, dash-separated, max length, no punctuation.
+   - Store on lesson metadata: `lesson.conceptTags: string[]`.
+   - Store on quiz results: `gapTags: string[]` (already hinted in `QuizResult.gapTags?`).
+   - Add migration/back-compat: if missing, derive tags from titles (best-effort).
 
-2. Add rationale quality guardrails.
-   - Explanation should tell the learner _why_ the correct choice is correct and why others are wrong (briefly).
-   - Add a unit test ensuring rationale length > N chars and contains at least one causal cue (“because”, “therefore”, “this means”, etc.) OR references the key concept.
+3. **Gap → lesson matching should use tags + fuzzy matching, not only title substring**
+   - Current `/daily` mapping uses `titleNorm.includes(tag)` (too brittle).
+   - Implement matching pipeline:
+     - Primary: intersection of `lesson.conceptTags` and `gapTags`
+     - Secondary: token-based match (Jaccard / cosine on bag-of-words)
+     - Tertiary: title substring (current behavior)
+   - Ensure deterministic ordering for testability.
 
-3. Add “difficulty” parameter support.
-   - Use `task.params.difficulty` to tune distractor subtlety and question style.
+4. **Add “Why am I seeing this?” interaction for daily recommendations**
+   - In Dashboard “Today’s Lessons” card, add an inline expander or tooltip that shows:
+     - lastSeenAt, count, lastScore for quiz gap
+     - nextReviewAt for review
+   - Keep it local-only; no new network calls if possible (include in API response).
 
-**Acceptance criteria**
+5. **Adaptive difficulty: persist and apply difficulty adjustments based on quiz history**
+   - Spec says: >90% increase, <60% offer prereqs/breakdown.
+   - Implement per-course or per-topic difficulty scalar in Student Context / DB.
+   - Apply to:
+     - quiz generation difficulty (question wording, distractor strength)
+     - lesson recommendations (prereq suggestions vs next lessons)
 
-- Unit tests prevent reintroduction of placeholder/garbage distractors.
-- At least one new test asserts rationale quality.
+### P1 — Should ship (quality + polish)
+
+6. **Notes loop polish: make “Take Notes” contextual to the active lesson/course automatically**
+   - Today chips fire generic prompts; often loses context.
+   - When user clicks “Take Notes” from Lesson Reader, send structured payload (courseId, lessonId) or inject lesson excerpt automatically.
+   - Ensure the notes output is saved/linked to the lesson (so the loop closes).
+
+7. **Surface quiz-gap callout in CourseView and LessonReader**
+   - If a lesson is being opened due to quiz gap, show a small banner:
+     - “Recommended because you missed: <tags>”
+     - CTA: “Start 3-question micro-quiz after reading”
+
+8. **Micro-remediation quiz (3 questions) after a quiz-gap lesson**
+   - Short, targeted assessment using the gap tags.
+   - Record mastery update and clear/reduce the gap signal upon success.
+
+9. **Concept tagging for generated lesson content (MVP heuristic)**
+   - Without LLM tagging, implement heuristic tagging:
+     - extract keywords from headings + bold terms + glossary
+     - normalize + keep top N
+   - Add tests that tags are stable for same content.
+
+10. **Improve gap signal storage: store structured entries, not just strings**
+
+- `/daily` already supports `{tag,lastSeenAt,count,lastScore}` in `gapsJson`.
+- Ensure the event ingestion always writes that richer form; add tests.
+
+### P2 — Nice to have (UX + guardrails)
+
+11. **Dashboard: visually separate “Review”, “Continue”, “Quiz gap” recommendations**
+
+- Add small grouping headers or icons so users understand variety.
+
+12. **Explainability copy and empty states**
+
+- If no daily lessons: show “No lessons due today — want to continue or take a quiz?”
+- If no quiz gaps: hide pill, avoid confusing labels.
+
+13. **Add a compact “Concepts you’re struggling with” panel**
+
+- Show top 3 gapTags across courses + quick jump to remediation lessons.
+
+14. **E2E test: quiz gap appears on Dashboard**
+
+- Existing `iter138-adaptive-loop` covers /daily review; add explicit assertion for Quiz gap pill (or a new iter141 e2e).
+
+15. **Telemetry (local-only) for loop completion**
+
+- Track: gap detected → recommended → lesson opened → remediation quiz passed.
+- Use this to confirm the loop is working before adding heavier personalization.
 
 ---
 
-## P1 (should ship)
+## Screenshots captured (Iter141)
 
-### P1.1 — Gap tags in CourseView / LessonReader (actionable loop)
+Saved via `node screenshot-all.mjs` to:
 
-- Show a small “Needs review: {tags}” badge on LessonReader when mastery has gaps.
-- In CourseView, show per-lesson badges (e.g., “Review due”, “Quiz gap”) alongside mastery level.
-
-### P1.2 — Better gap matching (tag → lesson)
-
-- Implement a lightweight mapping from `gapTag` to lesson candidates:
-  - normalized string match against lesson title
-  - optionally also search within lesson headings/summary (if available)
-- Keep deterministic + local-only.
-
-### P1.3 — Limit thrash: debounced daily refresh
-
-- Dashboard currently refetches `/daily` on `state.courses.length` and `completedLessons.size` changes.
-- Add a short debounce to avoid flicker during pipeline completion bursts.
-
-### P1.4 — Persist quiz question set (auditability)
-
-- Store last quiz questions/answers (redacted) per lesson for debugging and future “review your mistakes” UI.
-- Minimal: store in events meta (already) but add structured retrieval endpoint.
+- `learnflow/screenshots/iterunknown/run-2026-03-29/`
+  - Includes: `app-dashboard.png`, `course-view.png`, `lesson-reader.png`, `marketplace-*.png`, etc.
 
 ---
 
-## P2 (nice to have)
+## Notes / risks
 
-### P2.1 — Reason taxonomy cleanup
-
-- Today `reasonTag` includes `new` and `other` but API never emits them.
-- Either implement or remove to avoid dead UI states.
-
-### P2.2 — /daily multi-item composition
-
-- Allow mixing: 1 quiz_gap + 1 review + 1 continue (instead of pure priority order), to feel more human.
-
-### P2.3 — Mindmap gap visualization
-
-- If gaps exist for a lesson, tint the corresponding node/edge or add an icon.
-
----
-
-## Known gaps vs spec (FYI)
-
-From `LearnFlow_Product_Spec.md`:
-
-- Full agent mesh / K8s / vector DB are future-state; MVP is correctly single-node.
-- API spec lists `/api/v1/analytics` but MVP may not implement it fully; keep focus on mastery loop rather than broadening surface area.
+- The product spec is broad and “future-state”; Iter141 work should stay **local/deterministic** where possible.
+- Current exam agent is heuristic and does not truly measure mastery; adding better rationales + tags is the highest-leverage improvement without needing external model calls.

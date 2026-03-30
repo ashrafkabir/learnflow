@@ -32,6 +32,7 @@ import {
 } from '../db.js';
 import { parseLessonSources, type LessonSource } from '../utils/sources.js';
 import { buildCoursePlan } from '../utils/coursePlan.js';
+import { extractConceptTagsFromLesson } from '../utils/conceptTags.js';
 import { enforceBiteSizedLesson } from '../utils/lessonSizing.js';
 import { lessonHasRequiredStructure } from '../utils/lessonStructure.js';
 import {
@@ -331,6 +332,8 @@ interface Lesson {
   estimatedTime: number;
   wordCount: number;
   sources?: LessonSource[];
+  /** Iter141: canonical concept tags for recommendations + analytics. */
+  conceptTags?: string[];
 }
 
 interface Module {
@@ -472,6 +475,11 @@ router.post('/', validateBody(createCourseSchema), async (req: Request, res: Res
         estimatedTime: 5,
         wordCount: 0,
         sources: [],
+        conceptTags: extractConceptTagsFromLesson({
+          lessonTitle: les.title,
+          moduleTitle: mod.title,
+          courseTopic: topic,
+        }),
       })),
     })),
     progress: {},
@@ -1240,6 +1248,11 @@ Continue.`,
             estimatedTime: estimatedMinutes,
             wordCount,
             sources,
+            conceptTags: extractConceptTagsFromLesson({
+              lessonTitle: les.title,
+              moduleTitle: mod.title,
+              courseTopic: topic,
+            }),
           };
         });
 

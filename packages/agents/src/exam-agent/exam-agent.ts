@@ -10,6 +10,12 @@ export interface MultipleChoiceQuestion {
   options: string[];
   correctIndex: number;
   explanation: string;
+  /** Iter141: actionable rationales to help learners correct misconceptions. */
+  rationale?: {
+    correct: string;
+    perOption: string[];
+    commonMistake?: string;
+  };
 }
 
 export interface ShortAnswerQuestion {
@@ -180,12 +186,35 @@ export class ExamAgent implements AgentInterface {
       const shuffled = stableShuffle(options, `${keyword}:${i}`);
       const correctIndex = shuffled.findIndex((o) => o === correct);
 
+      const ci = correctIndex >= 0 ? correctIndex : 0;
+      const perOption = shuffled.map((opt, oi) => {
+        if (oi === ci) {
+          return `Correct: this option matches the lesson’s claim about **${keyword}**. Anchor it to the source sentence: “${sentence.slice(0, 140).trim()}${sentence.length > 140 ? '…' : ''}”.`;
+        }
+        // Provide a plausible misconception mapping based on the distractor template.
+        const lower = String(opt).toLowerCase();
+        if (lower.includes('opposite'))
+          return `Incorrect: this flips the meaning. The lesson describes **${keyword}** one way; this option asserts the reverse.`;
+        if (lower.includes('special case') || lower.includes('narrow'))
+          return `Incorrect: this shrinks the scope. The lesson frames **${keyword}** as a general idea, not only a narrow special case.`;
+        if (lower.includes('tool') || lower.includes('implementation'))
+          return `Incorrect: this confuses the concept with an implementation detail. The question is about what’s *true about* **${keyword}**, not a specific tool.`;
+        if (lower.includes('unrelated') || lower.includes('something else'))
+          return `Incorrect: this changes the topic. The source sentence is explicitly about **${keyword}**; this option drifts away from that claim.`;
+        return `Incorrect: this is a near-miss. Compare it to the lesson sentence and identify which word/assumption doesn’t match **${keyword}** as described.`;
+      });
+
       questions.push({
         id: `mcq-${i}`,
         question: `What is true about ${keyword}?`,
         options: shuffled,
-        correctIndex: correctIndex >= 0 ? correctIndex : 0,
+        correctIndex: ci,
         explanation: sentence,
+        rationale: {
+          correct: `The correct option is the one that restates the lesson’s statement about **${keyword}**. Look for alignment with the sentence: “${sentence.slice(0, 180).trim()}${sentence.length > 180 ? '…' : ''}”.`,
+          perOption,
+          commonMistake: `Common mistake: mixing up the scope/definition of **${keyword}** (e.g., treating it as a tool, special case, or the opposite claim).`,
+        },
       });
     }
 
