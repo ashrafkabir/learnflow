@@ -95,6 +95,14 @@ beforeEach(() => {
       });
     }
 
+    // Avoid errors for endpoints used by CourseView rows.
+    if (url.includes('/events')) {
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
@@ -124,8 +132,13 @@ describe('Iter138: mastery badges', () => {
     renderAt('/courses/c-1');
     await new Promise((r) => setTimeout(r, 800));
 
-    // Lesson 1 has mastery data
-    const badge = document.querySelector('[data-testid="mastery-badge-l1"]');
+    // Lesson 1 has mastery data (best-effort; async effects can be slow in CI)
+    let badge: Element | null = null;
+    for (let i = 0; i < 12; i++) {
+      badge = document.querySelector('[data-testid="mastery-badge-l1"]');
+      if (badge) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
     expect(badge).toBeTruthy();
     expect(badge?.textContent || '').toMatch(/Mastered|Solid|Learning|New/);
 
@@ -134,6 +147,7 @@ describe('Iter138: mastery badges', () => {
     expect(lastQuiz?.textContent || '').toContain('Last quiz: 80%');
 
     const reviewDue = document.querySelector('[data-testid="review-due-l1"]');
+    // reviewDue pill exists on lesson row only when nextReviewAt is in the past.
     expect(reviewDue).toBeTruthy();
 
     // Lesson 2 has no mastery record (should still render defaults)

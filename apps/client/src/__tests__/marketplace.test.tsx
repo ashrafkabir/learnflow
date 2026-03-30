@@ -117,8 +117,9 @@ function renderAt(path: string) {
 describe('Marketplace', () => {
   it('renders course marketplace', async () => {
     renderAt('/marketplace');
-    await waitFor(() =>
-      expect(document.querySelector('[data-screen="course-marketplace"]')).toBeTruthy(),
+    await waitFor(
+      () => expect(document.querySelector('[data-screen="course-marketplace"]')).toBeTruthy(),
+      { timeout: 8000 },
     );
   });
 

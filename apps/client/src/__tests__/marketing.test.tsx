@@ -72,7 +72,43 @@ describe('Marketing pages', () => {
   // NOTE: Canonical marketing is served by apps/web (Next.js). The client app no longer routes
   // /features, /pricing, /download, /about, /docs, /blog to avoid split-brain.
 
+  // Provide minimal API mocks so OnboardingGuard can resolve quickly.
+  beforeEach(() => {
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/api/v1/profile/context')) {
+        return new Response(
+          JSON.stringify({
+            goals: [],
+            topics: [],
+            experience: 'beginner',
+            subscriptionTier: 'free',
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        );
+      }
+      if (url.includes('/api/v1/subscription')) {
+        return new Response(JSON.stringify({ tier: 'free', capabilities: {} }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.includes('/api/v1/notifications')) {
+        return new Response(JSON.stringify({ notifications: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({}), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }) as typeof fetch;
+  });
+
   it('renders login page', async () => {
+    // Ensure auth is not present so route shows Login component.
+    localStorage.removeItem('learnflow-token');
     renderAt('/login');
     await waitFor(() => {
       const text = document.body.textContent || '';
@@ -81,6 +117,7 @@ describe('Marketing pages', () => {
   });
 
   it('renders register page', async () => {
+    localStorage.removeItem('learnflow-token');
     renderAt('/register');
     await waitFor(() => {
       const text = document.body.textContent || '';

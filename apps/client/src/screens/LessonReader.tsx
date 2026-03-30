@@ -17,8 +17,8 @@ import {
   IconBookmark,
   IconBook,
   IconBrainSpark,
-  IconGlobe,
   IconBulb,
+  IconGlobe,
   IconCheck,
   IconClipboard,
   IconClose,
@@ -26,7 +26,6 @@ import {
   IconInfo,
   IconLesson,
   IconMap,
-  IconPalette,
   IconPencil,
   IconProgressRing,
   IconRefresh,
@@ -64,6 +63,12 @@ interface Annotation {
   type: 'note' | 'explain' | 'example' | 'discover' | 'illustrate';
   createdAt: string;
 }
+
+type SelectedSubsection = {
+  heading: string;
+  bodyText: string;
+  globalIndex: number;
+};
 
 interface Comparison {
   concepts: string[];
@@ -193,6 +198,7 @@ export function LessonReader() {
 
   // Single fixed side drawer (Iter144): consolidate side elements + actions
   const [sideDrawerOpen, setSideDrawerOpen] = useState(true);
+  const sideDrawerRef = useRef<HTMLDivElement | null>(null);
   const [sideTwisties, setSideTwisties] = useState<{
     actions: boolean;
     notes: boolean;
@@ -210,25 +216,39 @@ export function LessonReader() {
   const [_notesFormat, _setNotesFormat] = useState<'cornell' | 'flashcard'>('cornell');
   const [savedNote, setSavedNote] = useState<any>(null);
   const [customNoteText, setCustomNoteText] = useState('');
-  const [illustrationDesc, setIllustrationDesc] = useState('');
+  const [_illustrationDesc, _setIllustrationDesc] = useState('');
   const [illustrations, setIllustrations] = useState<
     Array<{ id: string; description: string; url: string }>
   >([]);
-  const [generatingIllustration, setGeneratingIllustration] = useState(false);
+  const [_generatingIllustration, _setGeneratingIllustration] = useState(false);
   const [generatingNoteFormat, setGeneratingNoteFormat] = useState<string | null>(null);
   const [aiNoteContent, setAiNoteContent] = useState<string | null>(null);
 
   // Iter123: server-backed bookmarks
   const { isBookmarked, add: addBookmark, remove: removeBookmark } = useBookmarks();
 
-  // Feature 1: Inline Illustrations
+  // Feature 1: Inline Illustrations / Improve (Iter146)
   const [sectionIllustrations, setSectionIllustrations] = useState<Illustration[]>([]);
-  const [illustratePopover, setIllustratePopover] = useState<{
+  const [_illustratePopover, _setIllustratePopover] = useState<{
     sectionIndex: number;
     suggestedPrompt: string;
   } | null>(null);
-  const [illustratePrompt, setIllustratePrompt] = useState('');
-  const [generatingSectionIll, setGeneratingSectionIll] = useState(false);
+  const [_illustratePrompt, _setIllustratePrompt] = useState('');
+  const [_generatingSectionIll, _setGeneratingSectionIll] = useState(false);
+  const [improveLoading, setImproveLoading] = useState(false);
+
+  // Iter146: heading/subsection selection for Improve + Dig Deeper
+  const [selectedSubsection, setSelectedSubsection] = useState<SelectedSubsection | null>(null);
+  const [digDeeperLoading, setDigDeeperLoading] = useState(false);
+  const e2eSubsectionBodyOverride = useRef<Record<number, string>>({});
+
+  // Iter146: inline lesson chat overlay (Ask me)
+  const [askOpen, setAskOpen] = useState(false);
+  const [askMessages, setAskMessages] = useState<
+    Array<{ role: 'user' | 'assistant'; text: string }>
+  >([]);
+  const [askInput, setAskInput] = useState('');
+  const [askSending, setAskSending] = useState(false);
 
   // Feature 2: Comparison Mode
   const [comparison, setComparison] = useState<Comparison | null>(null);
@@ -392,16 +412,14 @@ export function LessonReader() {
           setStatusError(toUserError(e, 'Failed to load course status.'));
         })
         .finally(() => setStatusLoading(false));
-      fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/illustrations`)
-        .then((r) => (r.ok ? r.json() : null))
+      apiGet(`/courses/${courseId}/lessons/${lessonId}/illustrations`)
         .then((data) => {
           if (data?.illustrations) setSectionIllustrations(data.illustrations);
         })
         .catch(() => {
           toast('Could not load illustrations for this lesson.', 'error');
         });
-      fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/annotations`)
-        .then((r) => (r.ok ? r.json() : null))
+      apiGet(`/courses/${courseId}/lessons/${lessonId}/annotations`)
         .then((data) => {
           if (data?.annotations) setAnnotations(data.annotations);
         })
@@ -416,8 +434,7 @@ export function LessonReader() {
           // ignore malformed cached JSON
         }
       }
-      fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes`)
-        .then((r) => (r.ok ? r.json() : null))
+      apiGet(`/courses/${courseId}/lessons/${lessonId}/notes`)
         .then((data) => {
           if (data?.note) {
             setSavedNote(data.note);
@@ -436,12 +453,7 @@ export function LessonReader() {
     if (!courseId || !lessonId) return;
     setGeneratingNoteFormat(format);
     try {
-      const res = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format }),
-      });
-      const data = await res.json();
+      const data = await apiPost(`/courses/${courseId}/lessons/${lessonId}/notes`, { format });
       if (data.note?.content?.text) {
         setAiNoteContent(data.note.content.text);
         setSavedNote(data.note);
@@ -465,13 +477,9 @@ export function LessonReader() {
   const saveCustomNote = async () => {
     if (!courseId || !lessonId) return;
     try {
-      await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: { format: 'custom', text: aiNoteContent || '', customText: customNoteText },
-          illustrations,
-        }),
+      await apiPut(`/courses/${courseId}/lessons/${lessonId}/notes`, {
+        content: { format: 'custom', text: aiNoteContent || '', customText: customNoteText },
+        illustrations,
       });
 
       // Best-effort learner loop: record that notes were saved (durable event)
@@ -492,63 +500,177 @@ export function LessonReader() {
     }
   };
 
-  const generateIllustration = async () => {
-    if (!courseId || !lessonId || !illustrationDesc.trim()) return;
-    setGeneratingIllustration(true);
-    try {
-      const res = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes/illustrate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: illustrationDesc }),
-      });
-      const data = await res.json();
-      if (data.illustration?.url) {
-        setIllustrations((prev) => [...prev, { id: `ill-${Date.now()}`, ...data.illustration }]);
-        setIllustrationDesc('');
-      }
-    } catch (err) {
-      console.error('Failed to generate illustration:', err);
-      toast('Failed to generate an illustration. Please try again.', 'error');
-    } finally {
-      setGeneratingIllustration(false);
-    }
-  };
+  // (Legacy) Notes illustration helper. The LessonReader UX now focuses on per-section Improve.
+  // Keeping this commented out avoids unused-function lint while preserving history.
+  // const generateIllustration = async () => {
+  //   if (!courseId || !lessonId || !illustrationDesc.trim()) return;
+  //   _setGeneratingIllustration(true);
+  //   try {
+  //     const data = await apiPost(`/courses/${courseId}/lessons/${lessonId}/notes/illustrate`, {
+  //       description: illustrationDesc,
+  //     });
+  //     if (data.illustration?.url) {
+  //       setIllustrations((prev) => [...prev, { id: `ill-${Date.now()}`, ...data.illustration }]);
+  //       setIllustrationDesc('');
+  //     }
+  //   } catch (err: any) {
+  //     console.error('Failed to generate illustration:', err);
+  //     const u = toUserError(err, 'Failed to generate an illustration. Please try again.');
+  //     toast(u.requestId ? `${u.message} (${u.requestId})` : u.message, 'error');
+  //   } finally {
+  //     _setGeneratingIllustration(false);
+  //   }
+  // };
 
-  const generateSectionIllustration = async () => {
-    if (!courseId || !lessonId || !illustratePopover || !illustratePrompt.trim()) return;
-    setGeneratingSectionIll(true);
+  const improveSubsection = async (sub: SelectedSubsection) => {
+    if (!courseId || !lessonId) return;
+
+    // Ensure non-empty body.
+    const overrideBody = e2eSubsectionBodyOverride.current?.[sub.globalIndex];
+    const bodyRaw = String(overrideBody ?? sub.bodyText ?? '').trim();
+    const fallbackLine = bodyRaw
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)[0];
+    const body = bodyRaw || fallbackLine || sub.heading;
+
+    if (String(body).trim().length < 3) {
+      toast('Select a paragraph under this heading.', 'error');
+      return;
+    }
+
+    setSelectedSubsection(sub);
+    setImproveLoading(true);
     try {
-      const res = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/illustrations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sectionIndex: illustratePopover.sectionIndex,
-          prompt: illustratePrompt,
-          // Use license-safe images in production by default.
-          // In test/offline environments, the API will degrade gracefully.
-          provider: 'wikimedia',
-        }),
-      });
-      const data = await res.json();
-      if (data.illustration) {
-        setSectionIllustrations((prev) => [...prev, data.illustration]);
-        setIllustratePopover(null);
-        setIllustratePrompt('');
+      const prompt =
+        'Improve this subsection. Reword, expand and enrich with license-safe images (Wikimedia) around the topic with descriptions of the image, plus suggested tables, graphs, diagrams and documents (pdf, xlsx, docx) that explain the concept. Return JSON with keys: newTitle (optional), newContentMarkdown (required), suggestedImages (optional array).';
+
+      let selectedText = `${sub.heading}\n\n${body}\n\n${prompt}`.trim();
+      if (selectedText.length > 5000) {
+        selectedText = `${selectedText.slice(0, 4900)}\n\n...[truncated]`;
       }
-    } catch (err) {
-      console.error('Failed to generate section illustration:', err);
-      toast('Failed to generate a section illustration. Please try again.', 'error');
+
+      const data = await apiPost(
+        `/courses/${courseId}/lessons/${lessonId}/selection-tools/preview`,
+        {
+          tool: 'dig_deeper',
+          selectedText,
+        },
+      );
+
+      // Best-effort parse: allow raw markdown or JSON.
+      // New structured response (Iter146): { preview: { newTitle?, markdown, images[], links[] } }
+      // Back-compat: allow preview.note/proposed containing JSON.
+      const preview = data?.preview;
+
+      let newTitle: string | undefined;
+      let markdown: string | undefined;
+      let images: Array<{
+        url: string;
+        caption?: string;
+        license?: string;
+        author?: string;
+        sourcePageUrl?: string;
+      }> = [];
+      let links: Array<{ title: string; url: string; description?: string; source?: string }> = [];
+
+      if (preview && typeof preview === 'object') {
+        if (typeof preview.newTitle === 'string') newTitle = preview.newTitle.trim();
+        if (typeof preview.markdown === 'string') markdown = preview.markdown.trim();
+        if (Array.isArray(preview.images)) images = preview.images as any;
+        if (Array.isArray(preview.links)) links = preview.links as any;
+      }
+
+      if (!markdown) {
+        const raw = String(preview?.proposed || preview?.note || '').trim();
+        if (!raw) throw new Error('No proposed content returned');
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            if (typeof parsed.newTitle === 'string') newTitle = parsed.newTitle.trim();
+            if (typeof parsed.markdown === 'string') markdown = parsed.markdown.trim();
+            if (typeof parsed.newContentMarkdown === 'string')
+              markdown = parsed.newContentMarkdown.trim();
+            if (Array.isArray(parsed.images)) images = parsed.images;
+            if (Array.isArray(parsed.links)) links = parsed.links;
+          }
+        } catch {
+          markdown = raw;
+        }
+      }
+
+      if (!markdown) throw new Error('No markdown returned');
+
+      // Ensure we never persist raw JSON
+      if (markdown.trim().startsWith('{') && markdown.includes('"markdown"')) {
+        markdown = '';
+      }
+
+      // Embed images (caption + attribution) into markdown.
+      const safeImages = (images || [])
+        .map((img: any) => ({
+          url: String(img?.url || '').trim(),
+          caption: String(img?.caption || 'Image').trim(),
+          license: img?.license ? String(img.license) : 'Wikimedia Commons',
+          author: img?.author ? String(img.author) : '',
+          sourcePageUrl: img?.sourcePageUrl ? String(img.sourcePageUrl) : '',
+        }))
+        .filter((img) => /^https?:\/\//.test(img.url));
+
+      if (safeImages.length) {
+        markdown = `${markdown.trim()}\n\n${safeImages
+          .slice(0, 2)
+          .map(
+            (img) =>
+              `![${img.caption}](${img.url})\n> Attribution: ${img.license}${img.author ? ` · ${img.author}` : ''}${img.sourcePageUrl ? ` · ${img.sourcePageUrl}` : ''}`,
+          )
+          .join('\n\n')}`.trim();
+      }
+
+      // If server didn't include links section, append.
+      const safeLinks = (links || [])
+        .map((l: any) => ({
+          title: String(l?.title || '').trim(),
+          url: String(l?.url || '').trim(),
+          source: l?.source ? String(l.source) : '',
+        }))
+        .filter((l) => l.title && /^https?:\/\//.test(l.url));
+
+      if (safeLinks.length && !/Further resources/i.test(markdown)) {
+        markdown = `${markdown.trim()}\n\n### Further resources\n${safeLinks
+          .slice(0, 6)
+          .map((l) => `- [${l.title}](${l.url})${l.source ? ` — ${l.source}` : ''}`)
+          .join('\n')}`.trim();
+      }
+
+      const newContentMarkdown = markdown;
+
+      const replace = await apiPost(
+        `/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`,
+        { heading: sub.heading, newHeading: newTitle, newContentMarkdown },
+      );
+      if (!replace?.ok) throw new Error('Failed to replace subsection');
+
+      try {
+        await fetchLesson(courseId, lessonId);
+      } catch {
+        // ignore
+      }
+
+      toast('Subsection improved.', 'success');
+    } catch (err: any) {
+      console.error('Improve failed:', err);
+      const u = toUserError(err, 'Improve failed. Please try again.');
+      toast(u.requestId ? `${u.message} (${u.requestId})` : u.message, 'error');
     } finally {
-      setGeneratingSectionIll(false);
+      setImproveLoading(false);
     }
   };
 
   const deleteSectionIllustration = async (illId: string) => {
     if (!courseId || !lessonId) return;
     try {
-      await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/illustrations/${illId}`, {
-        method: 'DELETE',
-      });
+      await apiDelete(`/courses/${courseId}/lessons/${lessonId}/illustrations/${illId}`);
       setSectionIllustrations((prev) => prev.filter((i) => i.id !== illId));
     } catch {
       toast('Could not delete illustration. Please try again.', 'error');
@@ -560,19 +682,132 @@ export function LessonReader() {
     setComparingLoading(true);
     setShowComparison(true);
     try {
-      const res = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/compare`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const data = await res.json();
+      const data = await apiPost(`/courses/${courseId}/lessons/${lessonId}/compare`, {});
       if (data.comparison) {
         setComparison(data.comparison);
         localStorage.setItem(`learnflow-compare-${lessonId}`, JSON.stringify(data.comparison));
+        // Ensure the drawer section is open after generation.
+        setSideTwisties((s) => ({ ...s, comparison: true }));
       }
     } catch (err) {
       console.error('Failed to generate comparison:', err);
     } finally {
       setComparingLoading(false);
+    }
+  };
+
+  const runHeadingDigDeeper = async (sub: SelectedSubsection) => {
+    if (!courseId || !lessonId) return;
+
+    // Ensure we always send non-empty, schema-valid selectedText.
+    const overrideBody = e2eSubsectionBodyOverride.current?.[sub.globalIndex];
+    const bodyRaw = String(overrideBody ?? sub.bodyText ?? '').trim();
+    const fallbackLine = bodyRaw
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)[0];
+    const body = bodyRaw || fallbackLine || sub.heading;
+
+    if (String(body).trim().length < 3) {
+      toast('Select a paragraph under this heading.', 'error');
+      return;
+    }
+
+    setSelectedSubsection(sub);
+    setDigDeeperLoading(true);
+    try {
+      // Use selection tool preview (dig_deeper) for now, but feed the entire subsection body.
+      // The persistent replace happens via the server endpoint.
+      const prompt =
+        'Reword, expand and enrich with searched images around the topic with descriptions of the image, tables, graphs, diagrams and documents (pdf, xlsx, docx) which expand and help explain the concept.';
+
+      let selectedText = `${sub.heading}\n\n${body}\n\n${prompt}`.trim();
+      if (selectedText.length > 5000) {
+        selectedText = `${selectedText.slice(0, 4900)}\n\n...[truncated]`;
+      }
+
+      if (selectedText.trim().length < 3) {
+        toast('Select a paragraph under this heading.', 'error');
+        return;
+      }
+
+      const data = await apiPost(
+        `/courses/${courseId}/lessons/${lessonId}/selection-tools/preview`,
+        {
+          tool: 'dig_deeper',
+          selectedText,
+        },
+      );
+      const proposed = String(data?.preview?.proposed || data?.preview?.note || '').trim();
+      if (!proposed) throw new Error('No proposed content returned');
+
+      const replace = await apiPost(
+        `/courses/${courseId}/lessons/${lessonId}/content/replace-subsection`,
+        { heading: sub.heading, newContentMarkdown: proposed },
+      );
+      if (!replace?.ok) {
+        throw new Error('Failed to replace subsection');
+      }
+
+      // Refresh lesson in-app.
+      try {
+        await fetchLesson(courseId, lessonId);
+      } catch {
+        // best-effort; current render will still show previous content until refresh
+      }
+
+      toast('Subsection updated from Dig Deeper.', 'success');
+    } catch (err: any) {
+      console.error('Heading dig deeper failed:', err);
+      const u = toUserError(err, 'Dig Deeper failed. Please try again.');
+      toast(u.requestId ? `${u.message} (${u.requestId})` : u.message, 'error');
+    } finally {
+      setDigDeeperLoading(false);
+    }
+  };
+
+  const runAskMe = async () => {
+    if (!courseId || !lessonId) return;
+    const msg = askInput.trim();
+    if (!msg) return;
+    setAskSending(true);
+    setAskMessages((prev) => [...prev, { role: 'user', text: msg }]);
+    setAskInput('');
+    try {
+      const scoped = selectedSubsection?.heading
+        ? `Lesson: ${lesson?.title || ''}\nSelected section: ${selectedSubsection.heading}\n\nUser: ${msg}`
+        : `Lesson: ${lesson?.title || ''}\n\nUser: ${msg}`;
+
+      const data = await apiPost('/chat', {
+        message: scoped,
+        lessonId,
+        courseId,
+        history: askMessages.map((m) => ({ role: m.role, content: m.text })),
+      });
+
+      const reply =
+        String(data?.message || data?.text || data?.response || data?.result?.text || '').trim() ||
+        String(data?.reply || '').trim();
+      setAskMessages((prev) => [...prev, { role: 'assistant', text: reply || '...' }]);
+    } catch (err: any) {
+      const u = toUserError(err, 'Ask me failed. Please try again.');
+      toast(u.requestId ? `${u.message} (${u.requestId})` : u.message, 'error');
+      setAskMessages((prev) => [
+        ...prev,
+        { role: 'assistant', text: u.requestId ? `${u.message} (${u.requestId})` : u.message },
+      ]);
+    } finally {
+      setAskSending(false);
+    }
+  };
+
+  const openAskMe = () => {
+    setAskOpen(true);
+    if (askMessages.length === 0) {
+      const seed = selectedSubsection?.heading
+        ? `Ask anything about: ${lesson?.title || 'this lesson'} — ${selectedSubsection.heading}`
+        : `Ask anything about: ${lesson?.title || 'this lesson'}`;
+      setAskMessages([{ role: 'assistant', text: seed }]);
     }
   };
 
@@ -601,6 +836,9 @@ export function LessonReader() {
         void runSelectionToolPreview(tool, text, startOffset, endOffset);
       },
       clearSelection: () => setFloatingToolbar(null),
+      setSubsectionBody: (globalIndex: number, bodyText: string) => {
+        e2eSubsectionBodyOverride.current[globalIndex] = String(bodyText || '');
+      },
     };
     return () => {
       if (w.__learnflowE2E) delete w.__learnflowE2E;
@@ -610,41 +848,56 @@ export function LessonReader() {
   const [mobileToolsHintOpen, setMobileToolsHintOpen] = useState(false);
 
   const handleTextSelection = useCallback(() => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-      setTimeout(() => {
-        const sel2 = window.getSelection();
-        if (!sel2 || sel2.isCollapsed) setFloatingToolbar(null);
-      }, 200);
-      return;
-    }
-    const text = sel.toString().trim();
-    if (text.length < 3) return;
-
-    // Double-click selection can momentarily report text but have no ranges.
-    // Guard to prevent "IndexSizeError: Failed to execute 'getRangeAt'".
-    if (sel.rangeCount < 1) return;
-
-    let range: Range;
     try {
-      range = sel.getRangeAt(0);
-    } catch {
-      return;
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+        setTimeout(() => {
+          try {
+            const sel2 = window.getSelection();
+            if (!sel2 || sel2.isCollapsed) setFloatingToolbar(null);
+          } catch {
+            /* ignore */
+          }
+        }, 200);
+        return;
+      }
+      const text = sel.toString().trim();
+      if (text.length < 3) return;
+
+      // Double-click selection can momentarily report text but have no ranges.
+      // Guard to prevent "IndexSizeError: Failed to execute 'getRangeAt'".
+      if (sel.rangeCount < 1) return;
+
+      let range: Range;
+      try {
+        range = sel.getRangeAt(0);
+      } catch {
+        return;
+      }
+
+      // Only allow selections inside our lesson content container.
+      // Ignore selections inside the drawer or outside the markdown.
+      const container = contentRef.current;
+      if (!container) return;
+      const ancestor = range.commonAncestorContainer;
+      if (!ancestor || !container.contains(ancestor)) return;
+
+      const rect = range.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      if (!rect || !containerRect) return;
+
+      setFloatingToolbar({
+        x: rect.left - containerRect.left + rect.width / 2,
+        y: rect.top - containerRect.top - 10,
+        text,
+        startOffset: range.startOffset,
+        endOffset: range.endOffset,
+      });
+    } catch (err) {
+      console.warn('[LearnFlow] selection handler error (ignored):', err);
+      // Never throw from selection; clear toolbar
+      setFloatingToolbar(null);
     }
-
-    // Only allow selections inside our content container.
-    const container = contentRef.current;
-    if (!container || !container.contains(range.commonAncestorContainer)) return;
-
-    const rect = range.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    setFloatingToolbar({
-      x: rect.left - containerRect.left + rect.width / 2,
-      y: rect.top - containerRect.top - 10,
-      text,
-      startOffset: range.startOffset,
-      endOffset: range.endOffset,
-    });
   }, []);
 
   const runSelectionToolPreview = async (
@@ -670,7 +923,12 @@ export function LessonReader() {
       );
       setToolPreview(data);
     } catch (err: any) {
-      setToolPreview({ tool, selectedText, error: err?.message || 'Failed' });
+      const u = toUserError(err, 'Failed');
+      setToolPreview({
+        tool,
+        selectedText,
+        error: u.requestId ? `${u.message} (${u.requestId})` : u.message,
+      });
     } finally {
       setToolPreviewLoading(false);
     }
@@ -683,16 +941,14 @@ export function LessonReader() {
     if (tool === 'mark') {
       // Mark adds bullets to takeaways (stored in lesson notes).
       const bullets = toolPreview.preview?.bullets || [];
-      await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes/mark-takeaways`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bullets, selectedText: toolSelectedText }),
+      await apiPost(`/courses/${courseId}/lessons/${lessonId}/notes/mark-takeaways`, {
+        bullets,
+        selectedText: toolSelectedText,
       });
       // Refresh notes so UI can reflect takeaways.
       // IMPORTANT: await this refresh; otherwise E2E/UI can race and never render the new takeaways.
       try {
-        const refreshed = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/notes`);
-        const data = refreshed.ok ? await refreshed.json() : null;
+        const data = await apiGet(`/courses/${courseId}/lessons/${lessonId}/notes`);
         if (data?.note) setSavedNote(data.note);
       } catch {
         toast('Could not refresh notes after applying takeaways.', 'error');
@@ -743,12 +999,7 @@ export function LessonReader() {
       ) {
         body.note = annotationNoteText || '';
       }
-      const res = await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/annotations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
+      const data = await apiPost(`/courses/${courseId}/lessons/${lessonId}/annotations`, body);
       if (data.annotation) {
         setAnnotations((prev) => [...prev, data.annotation]);
         setFloatingToolbar(null);
@@ -765,9 +1016,7 @@ export function LessonReader() {
   const deleteAnnotation = async (annId: string) => {
     if (!courseId || !lessonId) return;
     try {
-      await fetch(`/api/v1/courses/${courseId}/lessons/${lessonId}/annotations/${annId}`, {
-        method: 'DELETE',
-      });
+      await apiDelete(`/courses/${courseId}/lessons/${lessonId}/annotations/${annId}`);
       setAnnotations((prev) => prev.filter((a) => a.id !== annId));
       setActiveAnnotation(null);
     } catch {
@@ -1419,26 +1668,6 @@ export function LessonReader() {
                       size="sm"
                       onClick={() =>
                         createAnnotation(
-                          'explain',
-                          floatingToolbar.text,
-                          floatingToolbar.startOffset,
-                          floatingToolbar.endOffset,
-                        )
-                      }
-                      disabled={annotationLoading}
-                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                      title="AI explanation"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <IconSearch className="w-4 h-4" />
-                        <span className="hidden sm:inline">Explain</span>
-                      </span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        createAnnotation(
                           'example',
                           floatingToolbar.text,
                           floatingToolbar.startOffset,
@@ -1473,27 +1702,6 @@ export function LessonReader() {
                       <span className="inline-flex items-center gap-2">
                         <IconGlobe className="w-4 h-4" />
                         <span className="hidden sm:inline">Discover</span>
-                      </span>
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        runSelectionToolPreview(
-                          'illustrate',
-                          floatingToolbar.text,
-                          floatingToolbar.startOffset,
-                          floatingToolbar.endOffset,
-                        )
-                      }
-                      disabled={annotationLoading}
-                      className="text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-300 h-7"
-                      title="Illustrate this selection"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <IconPalette className="w-4 h-4" />
-                        <span className="hidden sm:inline">Illustrate</span>
                       </span>
                     </Button>
 
@@ -1599,73 +1807,66 @@ export function LessonReader() {
                         <div key={sub.globalIndex} className="group/section relative">
                           {sub.heading && (
                             <div className="flex items-center gap-2 mt-6 mb-3">
-                              <h3 className="text-lg font-medium text-gray-900 dark:text-white flex-1">
+                              <h3
+                                className="text-lg font-medium text-gray-900 dark:text-white flex-1 cursor-pointer"
+                                onClick={() =>
+                                  setSelectedSubsection({
+                                    heading: sub.heading,
+                                    bodyText: sub.lines.join('\n').trim(),
+                                    globalIndex: sub.globalIndex,
+                                  })
+                                }
+                                title="Select this subsection for Actions"
+                              >
                                 {sub.heading}
                               </h3>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                  const suggested = `Educational diagram showing ${sub.heading.toLowerCase()}`;
-                                  setIllustratePopover({
-                                    sectionIndex: sub.globalIndex,
-                                    suggestedPrompt: suggested,
-                                  });
-                                  setIllustratePrompt(suggested);
-                                }}
+                                onClick={() =>
+                                  void improveSubsection({
+                                    heading: sub.heading,
+                                    bodyText: sub.lines.join('\n').trim(),
+                                    globalIndex: sub.globalIndex,
+                                  })
+                                }
+                                disabled={
+                                  improveLoading &&
+                                  selectedSubsection?.globalIndex === sub.globalIndex
+                                }
                                 className="opacity-0 group-hover/section:opacity-100 bg-accent/10 text-accent hover:bg-accent/20"
-                                title="Generate illustration for this section"
+                                title="Improve this subsection (rewrite + enrich)"
                               >
                                 <span className="inline-flex items-center gap-2">
-                                  <IconPalette className="w-4 h-4" />
-                                  Illustrate
+                                  <IconSparkles className="w-4 h-4" />
+                                  Improve
                                 </span>
                               </Button>
-                            </div>
-                          )}
-                          {illustratePopover?.sectionIndex === sub.globalIndex && (
-                            <div className="mb-4 p-4 bg-accent/5 border border-accent/20 rounded-xl">
-                              <label className="text-xs font-medium text-accent mb-2 block">
-                                Illustration prompt:
-                              </label>
-                              <input
-                                value={illustratePrompt}
-                                onChange={(e) => setIllustratePrompt(e.target.value)}
-                                onKeyDown={(e) =>
-                                  e.key === 'Enter' && generateSectionIllustration()
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  void runHeadingDigDeeper({
+                                    heading: sub.heading,
+                                    bodyText: sub.lines.join('\n').trim(),
+                                    globalIndex: sub.globalIndex,
+                                  })
                                 }
-                                className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white mb-2"
-                              />
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Button
-                                  variant="primary"
-                                  size="sm"
-                                  onClick={generateSectionIllustration}
-                                  disabled={generatingSectionIll || !illustratePrompt.trim()}
-                                >
-                                  {generatingSectionIll ? (
-                                    <span className="inline-flex items-center gap-2">
-                                      <IconSparkles className="w-4 h-4" />
-                                      Generating...
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-2">
-                                      <IconPalette className="w-4 h-4" />
-                                      Generate
-                                    </span>
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => {
-                                    setIllustratePopover(null);
-                                    setIllustratePrompt('');
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
+                                disabled={
+                                  digDeeperLoading &&
+                                  selectedSubsection?.globalIndex === sub.globalIndex
+                                }
+                                className="opacity-0 group-hover/section:opacity-100 bg-accent/10 text-accent hover:bg-accent/20"
+                                title="Reword and expand this subsection"
+                              >
+                                <span className="inline-flex items-center gap-2">
+                                  <IconSearch className="w-4 h-4" />
+                                  {digDeeperLoading &&
+                                  selectedSubsection?.globalIndex === sub.globalIndex
+                                    ? 'Digging…'
+                                    : 'Dig Deeper'}
+                                </span>
+                              </Button>
                             </div>
                           )}
                           {sub.lines.map((line, j) => renderLine(line, sub.globalIndex * 1000 + j))}
@@ -1851,13 +2052,13 @@ export function LessonReader() {
             )}
           </article>
 
-          {/* Unified side drawer (fixed while scrolling) */}
+          {/* Unified side drawer (sticky while scrolling) */}
           <aside
             className="hidden lg:block"
             aria-label="Lesson side drawer"
-            data-testid="lesson-side-drawer"
+            data-testid="lesson-right-rail"
           >
-            <div className="sticky top-24 h-fit">
+            <div className="sticky top-24 self-start" ref={sideDrawerRef}>
               <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card overflow-hidden">
                 <button
                   type="button"
@@ -1875,7 +2076,7 @@ export function LessonReader() {
                 </button>
 
                 {sideDrawerOpen && (
-                  <div className="p-4 space-y-3 max-h-[70vh] overflow-auto">
+                  <div className="p-4 space-y-3">
                     {/* Actions */}
                     <div className="rounded-xl border border-gray-200 dark:border-gray-800">
                       <button
@@ -1887,13 +2088,21 @@ export function LessonReader() {
                         <span className="text-xs font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
                           <IconSparkles className="w-4 h-4 text-accent" />
                           Actions
+                          {selectedSubsection?.heading ? (
+                            <span className="text-[11px] font-normal text-gray-500 dark:text-gray-300">
+                              · {selectedSubsection.heading}
+                            </span>
+                          ) : null}
                         </span>
                         <span className="text-xs text-gray-500">
                           {sideTwisties.actions ? '▾' : '▸'}
                         </span>
                       </button>
                       {sideTwisties.actions && (
-                        <div className="px-3 pb-3 flex flex-wrap gap-2">
+                        <div
+                          className="px-3 pb-3 flex flex-wrap gap-2"
+                          data-testid="lesson-actions"
+                        >
                           <Button
                             variant="secondary"
                             size="sm"
@@ -1908,11 +2117,7 @@ export function LessonReader() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            onClick={() =>
-                              nav(
-                                `/conversation?courseId=${courseId}&lessonId=${lessonId}&action=question`,
-                              )
-                            }
+                            onClick={openAskMe}
                             aria-label="Ask me"
                           >
                             <span className="inline-flex items-center gap-2">
@@ -1921,15 +2126,14 @@ export function LessonReader() {
                             </span>
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="secondary"
                             size="sm"
-                            onClick={() => setAttributionOpen(true)}
-                            aria-label="See sources"
-                            className="text-accent"
+                            onClick={generateComparison}
+                            aria-label="Compare concepts"
                           >
                             <span className="inline-flex items-center gap-2">
-                              <IconBook className="w-4 h-4" />
-                              Sources
+                              <IconScale className="w-4 h-4" />
+                              Compare
                             </span>
                           </Button>
                         </div>
@@ -1943,6 +2147,7 @@ export function LessonReader() {
                         onClick={() => setSideTwisties((s) => ({ ...s, notes: !s.notes }))}
                         className="w-full flex items-center justify-between px-3 py-2"
                         aria-expanded={sideTwisties.notes}
+                        aria-label="Take Notes"
                       >
                         <span className="text-xs font-semibold text-gray-900 dark:text-white inline-flex items-center gap-2">
                           <IconPencil className="w-4 h-4 text-accent" />
@@ -1961,6 +2166,7 @@ export function LessonReader() {
                             variant="secondary"
                             size="sm"
                             onClick={() => setActivePanel('notes')}
+                            aria-label="Take Notes"
                           >
                             <span className="inline-flex items-center gap-2">
                               <IconPencil className="w-4 h-4" />
@@ -2138,7 +2344,11 @@ export function LessonReader() {
                     <div className="rounded-xl border border-gray-200 dark:border-gray-800">
                       <button
                         type="button"
-                        onClick={() => setSideTwisties((s) => ({ ...s, reads: !s.reads }))}
+                        onClick={() => {
+                          setSideTwisties((s) => ({ ...s, reads: !s.reads }));
+                          // Iter144/146: open attribution drawer from here (Sources button removed)
+                          setAttributionOpen(true);
+                        }}
                         className="w-full flex items-center justify-between px-3 py-2"
                         aria-expanded={sideTwisties.reads}
                       >
@@ -2338,36 +2548,9 @@ export function LessonReader() {
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">
                   <span className="inline-flex items-center gap-2">
                     <IconPalette className="w-5 h-5 text-accent" />
-                    Generate Illustration
+                    Illustrations
                   </span>
                 </h3>
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    value={illustrationDesc}
-                    onChange={(e) => setIllustrationDesc(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && generateIllustration()}
-                    placeholder="Describe what you want illustrated..."
-                    className="flex-1 px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white"
-                  />
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={generateIllustration}
-                    disabled={generatingIllustration || !illustrationDesc.trim()}
-                  >
-                    {generatingIllustration ? (
-                      <span className="inline-flex items-center gap-2">
-                        <IconSparkles className="w-4 h-4" />
-                        Generating
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-2">
-                        <IconPalette className="w-4 h-4" />
-                        Generate
-                      </span>
-                    )}
-                  </Button>
-                </div>
                 {illustrations.length > 0 && (
                   <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {illustrations.map((ill) => (
@@ -2403,6 +2586,74 @@ export function LessonReader() {
         lessonContent={lesson?.content || ''}
         suggestions={lessonMindmapSuggestions}
       />
+
+      {/* Ask me overlay (Iter146): inline lesson-scoped chat; no navigation */}
+      {askOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ask me"
+          data-testid="lesson-ask-overlay"
+        >
+          <div className="w-full max-w-2xl bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Ask me</p>
+                <p className="text-xs text-gray-500 dark:text-gray-300">
+                  {lesson?.title}
+                  {selectedSubsection?.heading ? ` · ${selectedSubsection.heading}` : ''}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAskOpen(false)}
+                aria-label="Close ask me"
+              >
+                Close
+              </Button>
+            </div>
+            <div className="p-4 space-y-3 max-h-[60vh] overflow-auto">
+              {askMessages.map((m, idx) => (
+                <div
+                  key={idx}
+                  className={
+                    m.role === 'user'
+                      ? 'ml-auto max-w-[85%] rounded-2xl bg-accent/10 text-gray-900 dark:text-white p-3 text-sm'
+                      : 'mr-auto max-w-[85%] rounded-2xl bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white p-3 text-sm'
+                  }
+                >
+                  {m.text}
+                </div>
+              ))}
+            </div>
+            <div className="p-4 border-t border-gray-200 dark:border-gray-800">
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void runAskMe();
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  value={askInput}
+                  onChange={(e) => setAskInput(e.target.value)}
+                  placeholder="Ask a question about this lesson..."
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm"
+                />
+                <Button
+                  variant="primary"
+                  type="submit"
+                  disabled={askSending || askInput.trim().length < 1}
+                >
+                  {askSending ? 'Sending…' : 'Send'}
+                </Button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom navigation bar (Iter144): only prev/next, floating */}
       {(prevLesson || nextLesson) && (

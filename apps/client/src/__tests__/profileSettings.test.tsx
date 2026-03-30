@@ -15,11 +15,43 @@ beforeEach(() => {
     'learnflow-token',
     'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0IiwiZXhwIjo5OTk5OTk5OTk5fQ.test',
   );
-  globalThis.fetch = (async () =>
-    new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
+  (globalThis as any).__LEARNFLOW_ENV__ = {
+    VITE_DEV_AUTH_BYPASS: '1',
+    PLAYWRIGHT_E2E_FIXTURES: '1',
+  };
+
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes('/api/v1/profile/context')) {
+      return new Response(
+        JSON.stringify({ goals: [], topics: [], experience: 'beginner', subscriptionTier: 'free' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+    if (url.includes('/api/v1/subscription')) {
+      return new Response(JSON.stringify({ tier: 'free', capabilities: {} }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/api/v1/notifications')) {
+      return new Response(JSON.stringify({ notifications: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/api/v1/keys')) {
+      return new Response(JSON.stringify({ keys: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({ courses: [], keys: [], currentStreak: 0 }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
-    })) as typeof fetch;
+    });
+  }) as typeof fetch;
 });
 
 afterEach(() => cleanup());

@@ -23,6 +23,7 @@ import {
   dbLessonSources,
   dbLessonTakeaways,
   dbLessonImages,
+  dbLessons,
   dbProgress,
   dbNotes,
   dbIllustrations,
@@ -2571,6 +2572,23 @@ router.post(
       }
 
       if (tool === 'dig_deeper') {
+        // Optional: license-safe images from Wikimedia
+        let images: any[] = [];
+        try {
+          const candidates: LicenseSafeImageCandidate[] = await searchWikimediaCommonsImages(
+            String(selectedText),
+            { limit: 3 },
+          );
+          images = (candidates || []).slice(0, 2).map((c: any) => ({
+            url: c.url,
+            caption: c.title || c.caption || '',
+            license: c.license || '',
+            author: c.author || '',
+            sourcePageUrl: c.sourcePageUrl || '',
+          }));
+        } catch {
+          images = [];
+        }
         const { client: openai } = getOpenAIForRequest({
           userId,
           tier,
@@ -2579,17 +2597,72 @@ router.post(
 
         // Deterministic fallback in tests/offline.
         if (!openai || process.env.NODE_ENV === 'test') {
-          const note =
-            `Dig Deeper (preview)\n\n` +
-            `Suggested expansion:\n` +
-            `- ${String(selectedText).slice(0, 180)}${String(selectedText).length > 180 ? '…' : ''}\n` +
-            `\nArtifacts:\n` +
-            `- (Add sources/links here)\n` +
-            `- (Add a diagram idea here)\n` +
-            `- (Add an interactive demo idea here)`;
-          res.status(200).json({ tool, selectedText, preview: { note, proposed: note } });
+          // Real links are still required; use searchSources (tavily) even when LLM is unavailable.
+          let links: any[] = [];
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { searchSources } = require('@learnflow/agents');
+            const results = (await searchSources(String(selectedText))) as any[];
+            links = (results || []).slice(0, 5).map((r: any) => ({
+              title: r.title,
+              url: r.url,
+              description: r.description,
+              source: (() => {
+                try {
+                  return new URL(r.url).hostname;
+                } catch {
+                  return r.source || '';
+                }
+              })(),
+            }));
+          } catch {
+            links = [];
+          }
+
+          const payload = {
+            newTitle: undefined,
+            markdown:
+              `Suggested expansion:\n` +
+              `- ${String(selectedText).slice(0, 180)}${String(selectedText).length > 180 ? '…' : ''}\n` +
+              (images.length
+                ? `\n\n` +
+                  images
+                    .map(
+                      (img: any) =>
+                        `![${img.caption || 'Image'}](${img.url})\n` +
+                        `> Attribution: ${img.license || 'Wikimedia Commons'}${img.author ? ` · ${img.author}` : ''}${img.sourcePageUrl ? ` · ${img.sourcePageUrl}` : ''}`,
+                    )
+                    .join('\n\n')
+                : '') +
+              `\n\n### Further resources\n` +
+              (links.length
+                ? links
+                    .map((l: any) => `- [${l.title}](${l.url})${l.source ? ` — ${l.source}` : ''}`)
+                    .join('\n')
+                : `- (No links found)`),
+            images,
+            links,
+          };
+          res.status(200).json({ tool, selectedText, preview: payload });
           return;
         }
+
+        // Search real links (required to avoid hallucinated URLs)
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { searchSources } = require('@learnflow/agents');
+        const searchResults = (await searchSources(String(selectedText))) as any[];
+        const links = (searchResults || []).slice(0, 6).map((r: any) => ({
+          title: r.title,
+          url: r.url,
+          description: r.description,
+          source: (() => {
+            try {
+              return new URL(r.url).hostname;
+            } catch {
+              return r.source || '';
+            }
+          })(),
+        }));
 
         const completion = await openai.chat.completions.create({
           model: 'gpt-4o-mini',
@@ -2597,19 +2670,53 @@ router.post(
             {
               role: 'system',
               content:
-                'You are an expert tutor. Expand a paragraph without changing its meaning. Add concrete artifacts. Return a plain-text proposal, no markdown tables.',
+                'You are an expert tutor. Return JSON only with keys: newTitle (optional), markdown (required markdown string). Do not include any other keys.',
             },
             {
               role: 'user',
               content:
-                `Rewrite and expand this passage for clarity + depth, then add 3-6 artifacts (links, diagrams to draw, or interactive sites/tools) that help a learner.\n\n` +
-                `Rules:\n- Keep it scoped to this passage (do NOT rewrite the whole lesson)\n- Preserve intent\n- Make it more concrete\n- Put artifacts under a section titled "Artifacts"\n\nPassage:\n"""\n${selectedText}\n"""`,
+                `Rewrite and expand this passage for clarity + depth. Include a section titled "### Further resources" as a markdown bullet list using ONLY the provided links.\n\n` +
+                `Provided links (use these only; do not invent URLs):\n${JSON.stringify(links, null, 2)}\n\n` +
+                `Passage:\n"""\n${selectedText}\n"""`,
             },
           ],
         });
-        const proposed = completion.choices[0]?.message?.content || '';
-        const note = `Dig Deeper (preview)\n\n${proposed}`;
-        res.status(200).json({ tool, selectedText, preview: { note, proposed } });
+
+        const raw = completion.choices[0]?.message?.content || '';
+        let newTitle: string | undefined;
+        let markdown: string = '';
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            if (typeof parsed.newTitle === 'string') newTitle = parsed.newTitle.trim();
+            if (typeof parsed.markdown === 'string') markdown = parsed.markdown.trim();
+          }
+        } catch {
+          markdown = String(raw || '').trim();
+        }
+
+        let finalMarkdown = markdown || String(raw || '').trim();
+        if (images.length) {
+          const imagesBlock =
+            '\n\n' +
+            images
+              .map(
+                (img: any) =>
+                  `![${img.caption || 'Image'}](${img.url})\n` +
+                  `> Attribution: ${img.license || 'Wikimedia Commons'}${img.author ? ` · ${img.author}` : ''}${img.sourcePageUrl ? ` · ${img.sourcePageUrl}` : ''}`,
+              )
+              .join('\n\n');
+          finalMarkdown = `${finalMarkdown.trim()}${imagesBlock}`.trim();
+        }
+
+        const payload = {
+          newTitle,
+          markdown: finalMarkdown,
+          images,
+          links,
+        };
+
+        res.status(200).json({ tool, selectedText, preview: payload });
         return;
       }
 
@@ -2655,6 +2762,128 @@ router.post(
     } catch (err: any) {
       sendError(res, req, { status: 500, code: 'tool_failed', message: err?.message || 'Failed' });
     }
+  },
+);
+
+// POST /api/v1/courses/:id/lessons/:lessonId/content/replace-subsection
+// Replaces the markdown content under a specific heading within the lesson.
+// Best-effort: matches `##`/`###` heading lines.
+const replaceSubsectionSchema = z.object({
+  heading: z
+    .string()
+    .min(1)
+    .max(200)
+    .transform((s) => s.trim()),
+  newHeading: z
+    .string()
+    .min(1)
+    .max(200)
+    .transform((s) => s.trim())
+    .optional(),
+  newContentMarkdown: z.string().min(1).max(50_000),
+});
+
+router.post(
+  '/:id/lessons/:lessonId/content/replace-subsection',
+  validateBody(replaceSubsectionSchema),
+  (req: Request, res: Response) => {
+    const courseId = String(req.params.id);
+    const lessonId = String(req.params.lessonId);
+    const { heading, newHeading, newContentMarkdown } = req.body;
+
+    const course = courses.get(courseId) || (dbCourses.getById(courseId) as any);
+    if (!course) {
+      sendError(res, req, { status: 404, code: 'not_found', message: 'Course not found' });
+      return;
+    }
+
+    // Locate lesson in course modules (in-memory structure).
+    let lesson: any | undefined;
+    let lessonModuleIndex = -1;
+    let lessonLessonIndex = -1;
+    for (let mi = 0; mi < (course.modules || []).length; mi++) {
+      const mod = course.modules[mi];
+      const li = (mod.lessons || []).findIndex((l: any) => l.id === lessonId);
+      if (li >= 0) {
+        lesson = mod.lessons[li];
+        lessonModuleIndex = mi;
+        lessonLessonIndex = li;
+        break;
+      }
+    }
+    if (!lesson) {
+      // Fall back: try db lookup (rare) to get current content.
+      const row = dbLessons.getById(lessonId) as any;
+      if (!row) {
+        sendError(res, req, { status: 404, code: 'not_found', message: 'Lesson not found' });
+        return;
+      }
+      lesson = { ...row };
+    }
+
+    const content = String(lesson.content || '');
+    const lines = content.split('\n');
+
+    const h = String(heading || '').trim();
+    const isHeadingLine = (line: string) => {
+      const m = line.match(/^(#{2,3})\s+(.*)$/);
+      if (!m) return false;
+      return String(m[2] || '').trim() === h;
+    };
+
+    const startIdx = lines.findIndex((l) => isHeadingLine(l));
+    if (startIdx < 0) {
+      sendError(res, req, {
+        status: 404,
+        code: 'heading_not_found',
+        message: `Heading not found: ${h}`,
+      });
+      return;
+    }
+
+    // Find next heading (same level or higher) to bound subsection.
+    let endIdx = lines.length;
+    for (let i = startIdx + 1; i < lines.length; i++) {
+      if (/^#{2,3}\s+/.test(lines[i])) {
+        endIdx = i;
+        break;
+      }
+    }
+
+    const headingLine = newHeading
+      ? lines[startIdx].replace(/^(#{2,3})\s+.*$/, `$1 ${newHeading}`)
+      : lines[startIdx];
+    const newBlockLines = [headingLine, '', String(newContentMarkdown).trim(), ''];
+    const updatedLines = [...lines.slice(0, startIdx), ...newBlockLines, ...lines.slice(endIdx)];
+    const updatedContent = updatedLines.join('\n').replace(/\n{4,}/g, '\n\n\n');
+
+    // Persist in DB.
+    try {
+      dbLessons.setContent(lessonId, updatedContent);
+    } catch (err: any) {
+      console.warn('[LearnFlow] Failed to persist updated lesson content:', err);
+    }
+
+    // Update in-memory course module copy (for immediate reads).
+    try {
+      if (lessonModuleIndex >= 0 && lessonLessonIndex >= 0) {
+        course.modules[lessonModuleIndex].lessons[lessonLessonIndex] = {
+          ...course.modules[lessonModuleIndex].lessons[lessonLessonIndex],
+          content: updatedContent,
+        };
+        courses.set(courseId, course);
+      }
+      // Also persist the course blob as best-effort.
+      try {
+        dbCourses.save(course);
+      } catch {
+        // ignore
+      }
+    } catch {
+      // ignore
+    }
+
+    res.status(200).json({ ok: true, lessonId, heading: h });
   },
 );
 

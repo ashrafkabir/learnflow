@@ -1069,6 +1069,12 @@ const stmts = {
   ),
   getLessonQuality: sqlite.prepare(`SELECT telemetry FROM lesson_quality WHERE lessonId = ?`),
 
+  // Lessons
+  updateLessonContent: sqlite.prepare(`UPDATE lessons SET content = ? WHERE id = ?`),
+  getLessonById: sqlite.prepare(
+    `SELECT id, courseId, moduleIndex, lessonIndex, title, description, content, estimatedTime, wordCount FROM lessons WHERE id = ?`,
+  ),
+
   // Courses
   insertCourse: sqlite.prepare(
     `INSERT OR REPLACE INTO courses (id, title, description, topic, depth, authorId, modules, progress, plan, status, error, generationAttempt, generationStartedAt, lastProgressAt, failedAt, failureReason, failureMessage, origin, marketplaceCourseId, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -2299,6 +2305,18 @@ export const dbLessonQuality = {
     } catch {
       return undefined;
     }
+  },
+};
+
+// Minimal helpers for updating persisted lesson content (Iter146)
+export const dbLessons = {
+  getById(lessonId: string): any | undefined {
+    const row = (stmts as any).getLessonById.get(lessonId) as any;
+    return row || undefined;
+  },
+
+  setContent(lessonId: string, content: string): void {
+    (stmts as any).updateLessonContent.run(content || '', lessonId);
   },
 };
 

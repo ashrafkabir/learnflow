@@ -207,14 +207,14 @@ describe('Lesson Reader', () => {
 
     renderAt('/courses/c1/lessons/l1');
 
-    // Iter144: Sources entry point moved into the unified drawer (button label: "Sources").
-    const btn = await screen.findByText('Sources');
+    // Iter146: Sources button removed from Actions. Open attribution drawer via "Suggested reads" section.
+    const btn = await screen.findByText(/Suggested reads/i);
     fireEvent.click(btn);
 
     expect(await screen.findByText('Sources & Attribution')).toBeInTheDocument();
 
-    // Title appears in Suggested reads list and inside drawer (rail may also show it)
-    expect((await screen.findAllByText('Example Docs')).length).toBeGreaterThanOrEqual(2);
+    // Title appears in the drawer list
+    expect((await screen.findAllByText('Example Docs')).length).toBeGreaterThanOrEqual(1);
 
     expect(await screen.findByText('A short summary.')).toBeInTheDocument();
     expect(await screen.findByText(/Because it clarifies the API surface\./)).toBeInTheDocument();

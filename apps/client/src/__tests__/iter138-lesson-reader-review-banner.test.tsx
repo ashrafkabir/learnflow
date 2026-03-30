@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import '@testing-library/jest-dom/vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import React from 'react';
 import { ThemeProvider } from '../design-system/ThemeProvider.js';
@@ -72,12 +72,33 @@ beforeEach(() => {
 
     // Avoid errors on other endpoints used by LessonReader.
     if (
-      url.includes('/illustrations') ||
-      url.includes('/annotations') ||
-      url.includes('/notes') ||
-      url.includes('/events')
+      url.includes('/api/v1/profile/context') ||
+      url.includes('/api/v1/subscription') ||
+      url.includes('/api/v1/notifications')
     ) {
-      return new Response(JSON.stringify({}), {
+      // handled below
+    }
+
+    if (url.includes('/illustrations')) {
+      return new Response(JSON.stringify({ illustrations: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/annotations')) {
+      return new Response(JSON.stringify({ annotations: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/notes')) {
+      return new Response(JSON.stringify({ note: { content: { text: '', customText: '' } } }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    if (url.includes('/events')) {
+      return new Response(JSON.stringify({ ok: true }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -129,12 +150,14 @@ function renderAt(path: string) {
 describe('Iter138: lesson reader review due banner', () => {
   it('shows the review due banner when nextReviewAt is in the past (best-effort)', async () => {
     renderAt('/courses/c-1/lessons/l1');
-    await new Promise((r) => setTimeout(r, 800));
 
-    // Banner is intentionally hidden on xs (`hidden sm:flex`). In jsdom we don't emulate
-    // responsive breakpoints, so assert presence + copy regardless of `hidden` class.
-    const banner = document.querySelector('[data-testid="review-due-banner"]');
-    expect(banner).toBeTruthy();
-    expect(banner?.textContent || '').toContain('Review due');
+    await waitFor(
+      () => {
+        const banner = document.querySelector('[data-testid="review-due-banner"]');
+        expect(banner).toBeTruthy();
+        expect(banner?.textContent || '').toContain('Review due');
+      },
+      { timeout: 5000 },
+    );
   });
 });

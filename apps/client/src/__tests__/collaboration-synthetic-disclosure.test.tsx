@@ -74,8 +74,12 @@ describe('Collaboration synthetic disclosure', () => {
     // The disclosure may render before/after async data loads; assert on full page text.
     // This avoids brittle matching when the phrase is split across nested elements.
     // Avoid fragile per-element text splitting; assert on whole page copy.
-    await new Promise((r) => setTimeout(r, 800));
-    const body = (document.body.textContent || '').toLowerCase();
+    let body = '';
+    for (let i = 0; i < 12; i++) {
+      body = (document.body.textContent || '').toLowerCase();
+      if (body.includes('synthetic suggestions')) break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
     expect(body).toContain('synthetic suggestions');
     expect(body).toMatch(/not verified/i);
   });

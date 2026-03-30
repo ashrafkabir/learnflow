@@ -42,7 +42,7 @@ async function createCourse(
 ): Promise<{ courseId: string; pipelineId?: string }> {
   const p = await request.post(`${apiBase}/api/v1/pipeline`, {
     timeout: 30_000,
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, 'x-learnflow-e2e-fixtures': 'true' },
     data: { topic: `Smoke topic ${Date.now()}` },
   });
   if (!p.ok()) {

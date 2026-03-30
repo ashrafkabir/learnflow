@@ -21,7 +21,7 @@ async function registerAndGetToken(request: any): Promise<string> {
 async function createCourse(request: any, token: string): Promise<string> {
   const create = await request.post(`${API}/api/v1/courses`, {
     timeout: 20_000,
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, 'x-learnflow-e2e-fixtures': 'true' },
     data: { topic: 'Iter135 LessonReader Suggested Reads', depth: 'beginner', fast: true },
   });
   const data = await create.json();

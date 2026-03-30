@@ -19,3 +19,6 @@ debug-screenshot.mjs
 
 # Iteration evidence
 iterations/
+
+# Vite transient timestamp artifacts
+apps/client/vite.config.ts.timestamp-*.mjs

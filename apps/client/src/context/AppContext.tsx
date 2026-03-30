@@ -530,8 +530,11 @@ export function apiBase(): string {
   // Using same-origin would hit the Vite dev server and 404.
   if (typeof window !== 'undefined') {
     try {
-      if (window.location.hostname === 'localhost' && window.location.port === '3001') {
-        return 'http://localhost:3000';
+      if (
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+        window.location.port === '3001'
+      ) {
+        return 'http://127.0.0.1:3000';
       }
     } catch {
       // ignore
