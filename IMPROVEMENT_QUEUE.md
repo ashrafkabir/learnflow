@@ -1,6 +1,6 @@
 # IMPROVEMENT_QUEUE — Iter141
 
-Status: **READY FOR BUILDER**
+Status: **DONE**
 
 (Iter142 queue is in OneDrive at /home/aifactory/onedrive-learnflow/iter142/IMPROVEMENT_QUEUE.md; this local file will be overwritten by the next planner if needed.)
 

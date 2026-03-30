@@ -1,0 +1,13 @@
+{
+  "required": [
+    "blog",
+    "post",
+    "article"
+  ],
+  "found": [],
+  "missing": [
+    "blog",
+    "post",
+    "article"
+  ]
+}

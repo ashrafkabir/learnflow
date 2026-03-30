@@ -1,0 +1,21 @@
+{
+  "hasRating": true,
+  "hasLessonCount": true,
+  "course": {
+    "id": "pub-1774814927893",
+    "title": "Mastering Iter134 UX Course",
+    "topic": "Iter134 UX Course",
+    "description": "Build practical skill in Iter134 UX Course through guided lessons and worked examples (beginner level).",
+    "difficulty": "beginner",
+    "price": 0,
+    "creatorId": "test-user-1",
+    "status": "published",
+    "lessonCount": 7,
+    "attributionCount": 3,
+    "readabilityScore": 0.7,
+    "rating": 0,
+    "enrollmentCount": 1,
+    "revenue": 0,
+    "publishedAt": "2026-03-29T20:08:47.893Z"
+  }
+}

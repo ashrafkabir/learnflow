@@ -1,0 +1,13 @@
+{
+  "required": [
+    "download",
+    "macos",
+    "windows"
+  ],
+  "found": [],
+  "missing": [
+    "download",
+    "macos",
+    "windows"
+  ]
+}

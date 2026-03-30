@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { courses } from './courses.js';
 import { dbCourses, dbProgress, dbMastery } from '../db.js';
+import { canonicalizeConceptTag } from '../utils/conceptTags.js';
 
 const router = Router();
 
@@ -50,11 +51,33 @@ router.get('/', (req: Request, res: Response) => {
   const seen = new Set<string>();
 
   function normTag(s: string): string {
-    return String(s || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9\s_-]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return canonicalizeConceptTag(String(s || '')).trim();
+  }
+
+  function conceptMatchSource(lesson: any, tag: string): { ok: boolean; source: string } {
+    const ct: string[] = Array.isArray(lesson?.conceptTags)
+      ? lesson.conceptTags.map((x: any) => normTag(String(x || ''))).filter(Boolean)
+      : [];
+
+    const nt = normTag(tag);
+    if (!nt) return { ok: false, source: '' };
+
+    // 1) exact canonical tag match
+    if (ct.includes(nt)) return { ok: true, source: 'concept_tag_exact' };
+
+    // 2) relaxed match: prefix containment either direction
+    for (const t of ct) {
+      if (!t) continue;
+      if (t.startsWith(nt) || nt.startsWith(t)) return { ok: true, source: 'concept_tag_relaxed' };
+    }
+
+    // 3) fallback: title match (legacy)
+    const titleNorm = normTag(lesson?.title || '');
+    if (titleNorm && (titleNorm.includes(nt) || nt.includes(titleNorm))) {
+      return { ok: true, source: 'title_fallback' };
+    }
+
+    return { ok: false, source: '' };
   }
 
   function extractGapTags(raw: any): string[] {
@@ -161,7 +184,7 @@ router.get('/', (req: Request, res: Response) => {
       return String(a.tag).localeCompare(String(b.tag));
     });
 
-    // Try to map each tag to a lesson in the same course with a title match.
+    // Try to map each tag to a lesson in the same course.
     for (const s of signals) {
       if (out.length >= limit) break;
 
@@ -173,18 +196,32 @@ router.get('/', (req: Request, res: Response) => {
       const nt = normTag(s.tag);
       if (!nt) continue;
 
+      // Prefer mapping within the lesson that produced the gap (when it matches).
+      const originMeta = findLessonMeta(course.id, s.lessonId);
       let candidate: any | null = null;
-      for (const m of course.modules || []) {
-        for (const l of m.lessons || []) {
-          if (completedSet.has(l.id)) continue;
-          const titleNorm = normTag(l.title || '');
-          if (!titleNorm) continue;
-          if (titleNorm.includes(nt) || nt.includes(titleNorm)) {
-            candidate = l;
-            break;
-          }
+      let matchSource = '';
+      if (originMeta && !completedSet.has(originMeta.lesson.id)) {
+        const ms = conceptMatchSource(originMeta.lesson, nt);
+        if (ms.ok) {
+          candidate = originMeta.lesson;
+          matchSource = ms.source;
         }
-        if (candidate) break;
+      }
+
+      // Otherwise, scan for the first uncompleted matching lesson.
+      if (!candidate) {
+        for (const m of course.modules || []) {
+          for (const l of m.lessons || []) {
+            if (completedSet.has(l.id)) continue;
+            const ms = conceptMatchSource(l, nt);
+            if (ms.ok) {
+              candidate = l;
+              matchSource = ms.source;
+              break;
+            }
+          }
+          if (candidate) break;
+        }
       }
 
       if (!candidate) continue;
@@ -200,7 +237,7 @@ router.get('/', (req: Request, res: Response) => {
         lessonTitle: candidate.title,
         estimatedTime: minutesFromEstimatedTime(candidate.estimatedTime),
         reasonTag: 'quiz_gap',
-        reason: `Focus: ${s.tag} (from last quiz)`,
+        reason: `Focus: ${s.tag} (${matchSource || 'match'}; from last quiz)`,
       });
     }
   } catch {

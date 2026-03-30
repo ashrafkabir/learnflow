@@ -1,0 +1,8 @@
+{
+  "hasGoals": true,
+  "hasApiKeys": true,
+  "hasSubscription": true,
+  "hasNotifications": true,
+  "hasExport": true,
+  "hasPrivacy": true
+}

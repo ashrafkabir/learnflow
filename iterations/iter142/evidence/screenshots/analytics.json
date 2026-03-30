@@ -1,0 +1,391 @@
+{
+  "userId": "test-user-1",
+  "totalCoursesEnrolled": 1,
+  "totalLessonsCompleted": 1,
+  "totalStudyMinutes": 62,
+  "currentStreak": 1,
+  "weeklyProgress": [
+    {
+      "day": "Mon",
+      "minutes": 0
+    },
+    {
+      "day": "Tue",
+      "minutes": 0
+    },
+    {
+      "day": "Wed",
+      "minutes": 0
+    },
+    {
+      "day": "Thu",
+      "minutes": 0
+    },
+    {
+      "day": "Fri",
+      "minutes": 0
+    },
+    {
+      "day": "Sat",
+      "minutes": 0
+    },
+    {
+      "day": "Sun",
+      "minutes": 62
+    }
+  ],
+  "recentEvents": [
+    {
+      "id": "evt-1774830472569-df5adb4841fbf",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:27:52.569Z"
+    },
+    {
+      "id": "evt-1774830472569-2f6f40795124b",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:27:52.569Z"
+    },
+    {
+      "id": "evt-1774830472568-febee5f23a909",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:27:52.568Z"
+    },
+    {
+      "id": "evt-1774828915799-79fc570cafa0b",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:01:55.799Z"
+    },
+    {
+      "id": "evt-1774828915798-bf48441d1aece",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:01:55.798Z"
+    },
+    {
+      "id": "evt-1774828915798-e6b3228f33907",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:01:55.798Z"
+    },
+    {
+      "id": "evt-1774828826805-9bbd1d3f50f9d",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:00:26.805Z"
+    },
+    {
+      "id": "evt-1774828826805-939b0c439f804",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:00:26.805Z"
+    },
+    {
+      "id": "evt-1774828826803-738dae4f14ced",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:00:26.803Z"
+    },
+    {
+      "id": "evt-1774827771893-a495524228333",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:42:51.893Z"
+    },
+    {
+      "id": "evt-1774827771892-ef2510c6ef878",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:42:51.892Z"
+    },
+    {
+      "id": "evt-1774827771892-892387d3d6f72",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:42:51.892Z"
+    },
+    {
+      "id": "evt-1774827110903-b71459463180e",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:31:50.903Z"
+    },
+    {
+      "id": "evt-1774827110902-04abb3cbf797",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:31:50.902Z"
+    },
+    {
+      "id": "evt-1774827110901-bb82fe5935793",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:31:50.901Z"
+    },
+    {
+      "id": "evt-1774827054076-c7440d8e73d91",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:30:54.076Z"
+    },
+    {
+      "id": "evt-1774827054074-bb3ba77671efd",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:30:54.074Z"
+    },
+    {
+      "id": "evt-1774827054073-231dbe326a776",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:30:54.073Z"
+    },
+    {
+      "id": "evt-1774826622057-5a3ab8be87a6",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:23:42.057Z"
+    },
+    {
+      "id": "evt-1774826622057-1226eab098b13",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:23:42.057Z"
+    },
+    {
+      "id": "evt-1774826622056-09c5b3d760be4",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:23:42.056Z"
+    },
+    {
+      "id": "evt-1774826168500-529ffcb790f38",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:16:08.500Z"
+    },
+    {
+      "id": "evt-1774826168499-74a454af0d2ef",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:16:08.499Z"
+    },
+    {
+      "id": "evt-1774826168498-8812113c193e9",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:16:08.498Z"
+    },
+    {
+      "id": "evt-1774826120186-f0b2e059c0234",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:15:20.186Z"
+    },
+    {
+      "id": "evt-1774826120185-a5e1677cd803",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:15:20.185Z"
+    },
+    {
+      "id": "evt-1774826120184-4f839c550b3cf",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:15:20.184Z"
+    },
+    {
+      "id": "evt-1774826030529-6f1fdb24ad63d",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:13:50.529Z"
+    },
+    {
+      "id": "evt-1774826030528-831746683d089",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:13:50.528Z"
+    },
+    {
+      "id": "evt-1774826030526-64dfdc8b0e665",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:13:50.526Z"
+    },
+    {
+      "id": "evt-1774825346073-f042c0e972b51",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:02:26.073Z"
+    },
+    {
+      "id": "evt-1774825346071-87566d46d9a3",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:02:26.071Z"
+    },
+    {
+      "id": "evt-1774825346071-29cc81754bf2a",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:02:26.071Z"
+    },
+    {
+      "id": "evt-1774824201223-a799679781ee3",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:43:21.223Z"
+    },
+    {
+      "id": "evt-1774824201222-01d427c4668f7",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:43:21.222Z"
+    },
+    {
+      "id": "evt-1774824201221-a92140cce9c32",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:43:21.221Z"
+    },
+    {
+      "id": "evt-1774823339372-1252b56a309ff",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:59.372Z"
+    },
+    {
+      "id": "evt-1774823339372-29fad3e37d95e",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:59.372Z"
+    },
+    {
+      "id": "evt-1774823339371-7574a0cc0495a",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:59.371Z"
+    },
+    {
+      "id": "evt-1774823287022-aa6ece1511338",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:07.022Z"
+    },
+    {
+      "id": "evt-1774823287021-04452bcc223d6",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:07.021Z"
+    },
+    {
+      "id": "evt-1774823287020-b96155fe3398",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:07.020Z"
+    },
+    {
+      "id": "evt-1774823265087-ddb2e18634b0b",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:27:45.087Z"
+    },
+    {
+      "id": "evt-1774823265086-b41697174d47f",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:27:45.086Z"
+    },
+    {
+      "id": "evt-1774823265085-0f4ef4b96d55e",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:27:45.085Z"
+    },
+    {
+      "id": "evt-1774823196187-2201734bdc143",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:36.187Z"
+    },
+    {
+      "id": "evt-1774823196186-f8acd8e5796d",
+      "type": "lesson.view_end",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:36.186Z"
+    },
+    {
+      "id": "evt-1774823196184-0b8a856c5be2e",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:36.184Z"
+    },
+    {
+      "id": "evt-1774823165343-c13f633724913",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:05.343Z"
+    },
+    {
+      "id": "evt-1774823165342-979738aaa454a",
+      "type": "lesson.view_start",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:05.342Z"
+    }
+  ],
+  "topTopics": [],
+  "quizAverage": 0
+}

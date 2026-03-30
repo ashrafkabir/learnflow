@@ -1,0 +1,332 @@
+{
+  "userId": "test-user-1",
+  "goals": [],
+  "topics": [],
+  "experience": "beginner",
+  "onboardingCompletedAt": null,
+  "strengths": [],
+  "weaknesses": [],
+  "learningStyle": "reading",
+  "quizScores": {},
+  "studyStreak": 1,
+  "totalStudyMinutes": 62,
+  "subscriptionTier": "free",
+  "role": "student",
+  "lastActiveAt": "2026-03-30T00:29:41.410Z",
+  "progress": {
+    "coursesCompleted": 1,
+    "lessonsCompleted": 1,
+    "currentCourse": null
+  },
+  "bookmarkedContent": [],
+  "searchQueries": [],
+  "browseHistory": [
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:27:52.569Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:27:52.568Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:01:55.799Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:01:55.798Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:00:26.805Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-30T00:00:26.803Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:42:51.893Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:42:51.892Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:31:50.903Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:31:50.901Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:30:54.076Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:30:54.073Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:23:42.057Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:23:42.056Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:16:08.500Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:16:08.498Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:15:20.186Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:15:20.184Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:13:50.529Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:13:50.526Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:02:26.073Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T23:02:26.071Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:43:21.223Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:43:21.221Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:59.372Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:59.371Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:07.022Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:28:07.020Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:27:45.087Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:27:45.085Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:36.187Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:36.184Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:05.343Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T22:26:05.342Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T21:46:15.870Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T21:46:15.869Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T21:45:15.670Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T21:45:15.669Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:59:28.196Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:59:28.194Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:48:35.960Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:48:35.957Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:46:37.668Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:46:37.666Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:23:43.435Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:23:43.434Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:08:48.090Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "c-1",
+      "lessonId": "l1",
+      "createdAt": "2026-03-29T20:08:48.089Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "course-1774763061463-a664x6",
+      "lessonId": "course-1774763061463-a664x6-m0-l0",
+      "createdAt": "2026-03-29T20:08:47.500Z"
+    },
+    {
+      "kind": "lesson",
+      "courseId": "course-1774763061463-a664x6",
+      "lessonId": "course-1774763061463-a664x6-m0-l0",
+      "createdAt": "2026-03-29T20:08:47.499Z"
+    }
+  ],
+  "preferences": {
+    "notifications": true,
+    "darkMode": false,
+    "language": "en",
+    "telemetryEnabled": true,
+    "settingsVersion": 1
+  }
+}

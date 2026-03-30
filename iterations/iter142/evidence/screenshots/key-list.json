@@ -1,0 +1,387 @@
+{
+  "keys": [
+    {
+      "id": "b05ed1d2-cc1c-4665-b214-bb3088292aaa",
+      "provider": "openai",
+      "label": "Test Key",
+      "maskedKey": "sk-...2345",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:22:23.186Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "2e37e920-c786-41ae-bf5c-f41b942da935",
+      "provider": "openai",
+      "label": "openai test",
+      "maskedKey": "sk-...enai",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:22:23.214Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "284250e3-3201-4aba-9bb6-d708c331d19c",
+      "provider": "anthropic",
+      "label": "anthropic test",
+      "maskedKey": "sk-ant-...opic",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:22:23.218Z",
+      "usageCount": 0
+    },
+    {
+      "id": "d4ce519b-8778-42a9-899f-e01291904c73",
+      "provider": "google",
+      "label": "google test",
+      "maskedKey": "AI...ogle",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:22:23.221Z",
+      "usageCount": 0
+    },
+    {
+      "id": "840c563f-15ec-49d5-98a4-3d6d57f4e3c2",
+      "provider": "mistral",
+      "label": "mistral test",
+      "maskedKey": "sk-...tral",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:22:23.224Z",
+      "usageCount": 0
+    },
+    {
+      "id": "1d69248b-fcc3-4b4d-8396-ac6ea66a5672",
+      "provider": "groq",
+      "label": "groq test",
+      "maskedKey": "gsk_...groq",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:22:23.229Z",
+      "usageCount": 0
+    },
+    {
+      "id": "8f4085b8-a9b2-4099-a074-f472548801ed",
+      "provider": "openai",
+      "label": "Test Key",
+      "maskedKey": "sk-...2345",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:27:37.666Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "3bb7ae45-97f4-42d9-a928-76f6dfebab5c",
+      "provider": "openai",
+      "label": "openai test",
+      "maskedKey": "sk-...enai",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:27:37.693Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "2541756d-0641-4fc0-88ce-fb5fff15c7c1",
+      "provider": "anthropic",
+      "label": "anthropic test",
+      "maskedKey": "sk-ant-...opic",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:27:37.696Z",
+      "usageCount": 0
+    },
+    {
+      "id": "b86ce93b-16ba-469b-87ce-f12e95153795",
+      "provider": "google",
+      "label": "google test",
+      "maskedKey": "AI...ogle",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:27:37.699Z",
+      "usageCount": 0
+    },
+    {
+      "id": "0f651cd8-e013-4fdb-ab4a-20307dc5a729",
+      "provider": "mistral",
+      "label": "mistral test",
+      "maskedKey": "sk-...tral",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:27:37.701Z",
+      "usageCount": 0
+    },
+    {
+      "id": "5916d4bd-8609-4902-a600-be93ab6da3f9",
+      "provider": "groq",
+      "label": "groq test",
+      "maskedKey": "gsk_...groq",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-23T10:27:37.705Z",
+      "usageCount": 0
+    },
+    {
+      "id": "bbfd27d4-3aa6-4365-b545-38f56f3b9f08",
+      "provider": "openai",
+      "label": "Test Key",
+      "maskedKey": "sk-...2345",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:55:33.895Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "0b68dd1d-73f7-4dd2-9b70-45bd853b74dc",
+      "provider": "openai",
+      "label": "openai test",
+      "maskedKey": "sk-...enai",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:55:33.932Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "33d53fcc-e0d5-4077-beb2-05cef47a9121",
+      "provider": "anthropic",
+      "label": "anthropic test",
+      "maskedKey": "sk-ant-...opic",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:55:33.936Z",
+      "usageCount": 0
+    },
+    {
+      "id": "accdfeb3-5644-440c-81cc-3e17dd9c2dd7",
+      "provider": "google",
+      "label": "google test",
+      "maskedKey": "AI...ogle",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:55:33.939Z",
+      "usageCount": 0
+    },
+    {
+      "id": "8d36f058-e620-428d-9d6c-33f5983decb2",
+      "provider": "mistral",
+      "label": "mistral test",
+      "maskedKey": "sk-...tral",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:55:33.941Z",
+      "usageCount": 0
+    },
+    {
+      "id": "dca66a3d-3bd2-44c7-b8c0-8dd2d32de319",
+      "provider": "groq",
+      "label": "groq test",
+      "maskedKey": "gsk_...groq",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:55:33.946Z",
+      "usageCount": 0
+    },
+    {
+      "id": "54fb244d-49c8-47b3-b698-4fadf05a8ede",
+      "provider": "openai",
+      "label": "Test Key",
+      "maskedKey": "sk-...2345",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:57:25.140Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "046b5e81-afec-4438-a995-78faa750dd0b",
+      "provider": "openai",
+      "label": "openai test",
+      "maskedKey": "sk-...enai",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:57:25.174Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "4bd2d5c3-2cec-4536-988d-af3c3d86f0a3",
+      "provider": "anthropic",
+      "label": "anthropic test",
+      "maskedKey": "sk-ant-...opic",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:57:25.178Z",
+      "usageCount": 0
+    },
+    {
+      "id": "822ec74f-f96f-479e-9622-bf8fe8dc1e47",
+      "provider": "google",
+      "label": "google test",
+      "maskedKey": "AI...ogle",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:57:25.181Z",
+      "usageCount": 0
+    },
+    {
+      "id": "f63d6fdc-8c31-4a3b-b700-f2f960e645ba",
+      "provider": "mistral",
+      "label": "mistral test",
+      "maskedKey": "sk-...tral",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:57:25.184Z",
+      "usageCount": 0
+    },
+    {
+      "id": "45b75d51-c7cc-44b4-918f-e6b310077ccb",
+      "provider": "groq",
+      "label": "groq test",
+      "maskedKey": "gsk_...groq",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T19:57:25.190Z",
+      "usageCount": 0
+    },
+    {
+      "id": "cbb02d53-271b-44dc-b803-706926da65a3",
+      "provider": "openai",
+      "label": "Test Key",
+      "maskedKey": "sk-...2345",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:04:53.065Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "da41d176-9323-4317-be51-2e2d69f37d0d",
+      "provider": "openai",
+      "label": "openai test",
+      "maskedKey": "sk-...enai",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:04:53.105Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "efdf6cec-9d7b-4132-9d7e-f90b1e0890f1",
+      "provider": "anthropic",
+      "label": "anthropic test",
+      "maskedKey": "sk-ant-...opic",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:04:53.109Z",
+      "usageCount": 0
+    },
+    {
+      "id": "f7abde7a-8f8c-40f3-9b87-3a66dc7a7551",
+      "provider": "google",
+      "label": "google test",
+      "maskedKey": "AI...ogle",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:04:53.112Z",
+      "usageCount": 0
+    },
+    {
+      "id": "ec90a776-5af6-4646-8543-2d6ca83f6282",
+      "provider": "mistral",
+      "label": "mistral test",
+      "maskedKey": "sk-...tral",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:04:53.114Z",
+      "usageCount": 0
+    },
+    {
+      "id": "4876b05b-b321-4844-af89-e3e5eaeff0be",
+      "provider": "groq",
+      "label": "groq test",
+      "maskedKey": "gsk_...groq",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:04:53.119Z",
+      "usageCount": 0
+    },
+    {
+      "id": "9144283b-63e3-4d1d-b372-bdd68cf031ac",
+      "provider": "openai",
+      "label": "Test Key",
+      "maskedKey": "sk-...2345",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:07:43.302Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "a42372c9-bc4f-45f6-b7bb-9d9e84590d17",
+      "provider": "openai",
+      "label": "openai test",
+      "maskedKey": "sk-...enai",
+      "active": false,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:07:43.338Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    },
+    {
+      "id": "a5aed8d1-2a66-4a1b-8a98-7af076170a23",
+      "provider": "anthropic",
+      "label": "anthropic test",
+      "maskedKey": "sk-ant-...opic",
+      "active": true,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:07:43.342Z",
+      "usageCount": 0
+    },
+    {
+      "id": "21a1fb2e-a2fc-45ed-9b6f-dd50ad28f01f",
+      "provider": "google",
+      "label": "google test",
+      "maskedKey": "AI...ogle",
+      "active": true,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:07:43.346Z",
+      "usageCount": 0
+    },
+    {
+      "id": "5046e87f-7ff3-4b78-8178-09891098445c",
+      "provider": "mistral",
+      "label": "mistral test",
+      "maskedKey": "sk-...tral",
+      "active": true,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:07:43.348Z",
+      "usageCount": 0
+    },
+    {
+      "id": "70f6acc8-cabb-467d-b98d-0a413becc1e4",
+      "provider": "groq",
+      "label": "groq test",
+      "maskedKey": "gsk_...groq",
+      "active": true,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-29T20:07:43.353Z",
+      "usageCount": 0
+    },
+    {
+      "id": "80492d6e-bef2-4001-a19b-4d702367ef4b",
+      "provider": "openai",
+      "label": "Test Key",
+      "maskedKey": "sk-...2345",
+      "active": true,
+      "validationStatus": "unknown",
+      "createdAt": "2026-03-30T00:29:22.680Z",
+      "usageCount": 41,
+      "lastUsed": "2026-03-29T20:08:47.827Z"
+    }
+  ]
+}

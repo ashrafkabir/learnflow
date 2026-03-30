@@ -1,0 +1,19 @@
+{
+  "message": "Lesson marked complete. Great job!",
+  "progress": 1,
+  "completedLessons": [
+    "l1"
+  ],
+  "completion_percent": 0,
+  "nextActions": [
+    "Continue to next lesson",
+    "Take a quiz",
+    "Review notes"
+  ],
+  "next": "Continue learning",
+  "actions": [
+    "next_lesson",
+    "quiz",
+    "notes"
+  ]
+}

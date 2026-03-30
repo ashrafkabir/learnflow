@@ -1,0 +1,11 @@
+{
+  "required": [
+    "free",
+    "pro"
+  ],
+  "found": [],
+  "missing": [
+    "free",
+    "pro"
+  ]
+}

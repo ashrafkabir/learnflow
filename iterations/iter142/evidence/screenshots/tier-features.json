@@ -1,0 +1,24 @@
+{
+  "tier": "free",
+  "status": "inactive",
+  "billingMode": "mock",
+  "managedKeyAccess": false,
+  "features": {
+    "proactiveUpdates": false,
+    "unlimitedMindmap": false,
+    "priorityAgents": false,
+    "managedApiKeys": false,
+    "advancedAnalytics": false
+  },
+  "capabilities": {
+    "courses.unlimited": false,
+    "agents.priority": false,
+    "keys.managed": false,
+    "update_agent": false,
+    "analytics.advanced": false,
+    "support.priority": false,
+    "marketplace.publish": true,
+    "export.data": false
+  },
+  "invoices": []
+}

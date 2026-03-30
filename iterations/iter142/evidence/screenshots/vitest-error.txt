@@ -1,0 +1,222 @@
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+[7m[1m[36m RUN [39m[22m[27m [36mv1.6.0[39m [90m/home/aifactory/.openclaw/workspace/learnflow[39m
+
+ [32m✓[39m apps/api/src/__tests__/deployment.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m apps/web/src/__tests__/web.test.ts [2m ([22m[2m13 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m apps/docs/src/__tests__/docs.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m packages/agents/src/content-pipeline/__tests__/artifact-writer.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m packages/agents/src/__tests__/domain-outline-regression.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m packages/agents/src/__tests__/iter73-subtopic-shaping-regression.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m packages/agents/src/__tests__/collaboration-mindmap.test.ts [2m ([22m[2m12 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m packages/agents/src/__tests__/core-agents.test.ts [2m ([22m[2m26 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m packages/core/src/__tests__/orchestrator.test.ts [2m ([22m[2m22 tests[22m[2m)[22m[90m 63[2mms[22m[39m
+ [32m✓[39m packages/agents/src/__tests__/course-builder.test.ts [2m ([22m[2m15 tests[22m[2m)[22m[90m 123[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/admin-cleanup.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 36[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/update-agent-tick.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 44[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/qa-comprehensive.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[33m 356[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/ws-attachments-ignored.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 57[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/daily-quiz-gap.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 91[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/billingmode.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 540[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/pipeline-auth-logging.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 336[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/pipeline-restart-stall.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 352[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter134-illustrations-fastmode.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 350[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter77-course-stall-and-restart.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 359[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/lesson-structure-required.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 343[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/courses-create.integration.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 331[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/lesson-sources-structured.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 380[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/update-agent-topics-run-state.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 403[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/profile-data-summary.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 419[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/export-provenance.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 444[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter72-outline-diversity.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 448[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/update-agent-tier-gating.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 637[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/pipeline-to-course.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 637[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter72-outline-regression.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 739[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/marketplace-enroll-import.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 767[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter73-lesson-quality-gates.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter74-research-retry.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/ws-contract-inbound-message-id.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 38[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/admin-search-config.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[33m 1363[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/collaboration.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 348[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/export-zip-contents.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 33[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/mastery-events.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 68[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/api-layer.test.ts [2m ([22m[2m37 tests[22m[2m)[22m[33m 2212[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/daily-lessons.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 52[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter73-course-generation-min-words.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 385[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/courses-create.repeat.integration.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 442[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/byoai-provider-selection.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 381[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/keys-usage.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 392[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/illustrations-attribution.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 413[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter74-course-stall-detection.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 373[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/ws-contract.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 2491[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/lesson-sources-persisted.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 361[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/course-delete-rate-limit.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 153[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/delete-my-data.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 351[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/usage-dashboard.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 362[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/pipeline-course-plan-debug.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 631[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/keys-delete.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[33m 569[2mms[22m[39m
+ [32m✓[39m packages/shared/src/__tests__/env-validation.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 66[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/profile-context-has-persisted-slices.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 435[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/rate-limit-tiered.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 729[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/telemetry-events-suppressed.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 647[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/usage.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 465[2mms[22m[39m
+ [32m✓[39m apps/api/src/utils/__tests__/sourceCards.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 18[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/openapi-parity.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/api.test.ts [2m ([22m[2m12 tests[22m[2m)[22m[33m 3231[2mms[22m[39m
+ [32m✓[39m apps/api/src/utils/__tests__/styleHardening.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m apps/api/src/utils/noFakeUrls.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter74-worked-example-vague-language.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/lesson-sizing.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 21[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/anthropic-client.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/crypto-aead.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter74-quick-check-answer-key.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m packages/agents/src/__tests__/iter73-offline-topic-pack.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 46[2mms[22m[39m
+ [32m✓[39m apps/web/src/__tests__/screenshotMobileOutDir.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 264[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/crypto-legacy-v1.fixture.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/openapi-lint.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 36[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/ws-idempotency.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 1874[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/capabilities-parity.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m packages/agents/src/content-pipeline/__tests__/tavily-provider.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/collaboration-matches-truth.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 847[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/subscription.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[33m 4247[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/keys-validate-on-save.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 898[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter74-pipeline-milestones.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 798[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/notifications-generate-mvp.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[33m 4195[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/marketplace.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[33m 4595[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/export-endpoint.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/selection-tools-preview-validation.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/iter87-payload-limits.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 27[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/bookmarks-crud.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 36[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/auth.test.ts [2m ([22m[2m20 tests[22m[2m)[22m[33m 5055[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/dev-auth-hardening.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 78[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/collaboration-synthetic.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 343[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/pipeline-log-events.test.ts [2m ([22m[2m1 test[22m[2m)[22m[33m 399[2mms[22m[39m
+ [32m✓[39m apps/api/src/__tests__/request-id-propagation.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 40[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/updateAgentTrustLoop.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 283[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/dashboard.test.tsx [2m ([22m[2m8 tests[22m[2m)[22m[90m 243[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/auth.test.tsx [2m ([22m[2m6 tests[22m[2m)[22m[33m 308[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/agentMarketplace.test.tsx [2m ([22m[2m6 tests[22m[2m)[22m[33m 595[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/marketing.test.tsx [2m ([22m[2m6 tests[22m[2m)[22m[33m 653[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/courseMarketplace.test.tsx [2m ([22m[2m5 tests[22m[2m)[22m[33m 681[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/collaboration-synthetic-disclosure.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[33m 899[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/iter138-lesson-reader-review-banner.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[33m 904[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/iter138-mastery-badges.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[33m 913[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/adminSearchConfigPanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[33m 927[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/source-drawer-credibility.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 125[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/marketplace.test.tsx [2m ([22m[2m6 tests[22m[2m)[22m[33m 992[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/components.test.tsx [2m ([22m[2m11 tests[22m[2m)[22m[90m 143[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/marketplace-no-fake-metrics.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 138[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/iter77-course-restart-buttons.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[33m 1009[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/appStateDebugPanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 70[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/pipeline.test.tsx [2m ([22m[2m7 tests[22m[2m)[22m[33m 1088[2mms[22m[39m
+ [33m❯[39m apps/client/src/__tests__/mvpTruthRegression.test.tsx [2m ([22m[2m1 test[22m [2m|[22m [31m1 failed[39m[2m)[22m[90m 214[2mms[22m[39m
+[31m   [33m❯[31m apps/client/src/__tests__/mvpTruthRegression.test.tsx[2m > [22mMVP truth regression[2m > [22mrenders core truth statements for marketplace agents + BYOAI[39m
+[31m     → Invalid Chai property: toBeInTheDocument[39m
+ [32m✓[39m apps/client/src/__tests__/no-localhost-links.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/conversation.test.tsx [2m ([22m[2m7 tests[22m[2m)[22m[33m 1442[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/onboarding.test.tsx [2m ([22m[2m10 tests[22m[2m)[22m[33m 1447[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/conversation-activity-kind.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[33m 643[2mms[22m[39m
+ [33m❯[39m apps/client/src/__tests__/mockBillingCopyRegression.test.tsx [2m ([22m[2m2 tests[22m [2m|[22m [31m2 failed[39m[2m)[22m[90m 5[2mms[22m[39m
+[31m   [33m❯[31m apps/client/src/__tests__/mockBillingCopyRegression.test.tsx[2m > [22mMock billing copy regression[2m > [22mdoes not mention real billing periods in client settings copy[39m
+[31m     → ENOENT: no such file or directory, open '/home/aifactory/.openclaw/workspace/learnflow/src/screens/ProfileSettings.tsx'[39m
+[31m   [33m❯[31m apps/client/src/__tests__/mockBillingCopyRegression.test.tsx[2m > [22mMock billing copy regression[2m > [22mweb pricing page explicitly discloses mock billing[39m
+[31m     → ENOENT: no such file or directory, open '/home/aifactory/.openclaw/apps/web/src/app/pricing/page.tsx'[39m
+ [32m✓[39m apps/client/src/__tests__/toUserError.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [33m❯[39m apps/client/src/__tests__/marketing-structured-data.test.ts [2m ([22m[2m1 test[22m [2m|[22m [31m1 failed[39m[2m)[22m[90m 16[2mms[22m[39m
+[31m   [33m❯[31m apps/client/src/__tests__/marketing-structured-data.test.ts[2m > [22mMarketing structured data (MVP honesty)[2m > [22mapps/client/index.html must not include AggregateRating schema fields[39m
+[31m     → ENOENT: no such file or directory, open '/home/aifactory/.openclaw/workspace/learnflow/index.html'[39m
+ [32m✓[39m apps/client/src/__tests__/studentContext.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/pricingPage.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 3[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/wsClientMessageShape.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 3[2mms[22m[39m
+ [33m❯[39m apps/client/src/__tests__/subscription-upgrade.test.tsx [2m ([22m[2m1 test[22m [2m|[22m [31m1 failed[39m[2m)[22m[90m 116[2mms[22m[39m
+[31m   [33m❯[31m apps/client/src/__tests__/subscription-upgrade.test.tsx[2m > [22mSubscription upgrade UX (web pricing page)[2m > [22mhas an Upgrade CTA present and labeled mock billing[39m
+[31m     → Invalid Chai property: toHaveTextContent[39m
+ [32m✓[39m apps/client/src/__tests__/notFound.test.tsx [2m ([22m[2m3 tests[22m[2m)[22m[33m 1227[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/mindmap.test.tsx [2m ([22m[2m5 tests[22m[2m)[22m[33m 2180[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/client.test.tsx [2m ([22m[2m29 tests[22m[2m)[22m[33m 2435[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/creatorDashboard.test.tsx [2m ([22m[2m3 tests[22m[2m)[22m[33m 1618[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/courseDetail.test.tsx [2m ([22m[2m3 tests[22m[2m)[22m[33m 1610[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/lessonReader.test.tsx [2m ([22m[2m6 tests[22m[2m)[22m[33m 2746[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/courseView.test.tsx [2m ([22m[2m5 tests[22m[2m)[22m[33m 2751[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/collaboration.test.tsx [2m ([22m[2m4 tests[22m[2m)[22m[33m 2876[2mms[22m[39m
+ [32m✓[39m packages/agents/src/__tests__/firecrawl-content.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[33m 10336[2mms[22m[39m
+ [32m✓[39m apps/client/src/__tests__/profileSettings.test.tsx [2m ([22m[2m6 tests[22m[2m)[22m[33m 3371[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 5 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m apps/client/src/__tests__/marketing-structured-data.test.ts[2m > [22mMarketing structured data (MVP honesty)[2m > [22mapps/client/index.html must not include AggregateRating schema fields
+[31m[1mError[22m: ENOENT: no such file or directory, open '/home/aifactory/.openclaw/workspace/learnflow/index.html'[39m
+[90m [2m❯[22m Object.readFileSync node:fs:[2m440:20[22m[39m
+[36m [2m❯[22m apps/client/src/__tests__/marketing-structured-data.test.ts:[2m12:21[22m[39m
+    [90m 10| [39m  [34mit[39m([32m'apps/client/index.html must not include AggregateRating schema f[39m…
+    [90m 11| [39m    [35mconst[39m indexPath [33m=[39m path[33m.[39m[34mjoin[39m(process[33m.[39m[34mcwd[39m()[33m,[39m [32m'index.html'[39m)[33m;[39m
+    [90m 12| [39m    [35mconst[39m html [33m=[39m fs[33m.[39m[34mreadFileSync[39m(indexPath[33m,[39m [32m'utf8'[39m)[33m;[39m
+    [90m   | [39m                    [31m^[39m
+    [90m 13| [39m
+    [90m 14| [39m    [90m// JSON-LD fields we want to keep out of MVP builds.[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ errno: -2, code: 'ENOENT', syscall: 'open', path: '/home/aifactory/.openclaw/workspace/learnflow/index.html' }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m apps/client/src/__tests__/mockBillingCopyRegression.test.tsx[2m > [22mMock billing copy regression[2m > [22mdoes not mention real billing periods in client settings copy
+[31m[1mError[22m: ENOENT: no such file or directory, open '/home/aifactory/.openclaw/workspace/learnflow/src/screens/ProfileSettings.tsx'[39m
+[90m [2m❯[22m Object.readFileSync node:fs:[2m440:20[22m[39m
+[36m [2m❯[22m read apps/client/src/__tests__/mockBillingCopyRegression.test.tsx:[2m8:13[22m[39m
+    [90m  6| [39m
+    [90m  7| [39m[35mfunction[39m [34mread[39m(p[33m:[39m string) {
+    [90m  8| [39m  [35mreturn[39m fs[33m.[39m[34mreadFileSync[39m(p[33m,[39m [32m'utf8'[39m)[33m;[39m
+    [90m   | [39m            [31m^[39m
+    [90m  9| [39m}
+    [90m 10| [39m
+[90m [2m❯[22m apps/client/src/__tests__/mockBillingCopyRegression.test.tsx:[2m14:18[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ errno: -2, code: 'ENOENT', syscall: 'open', path: '/home/aifactory/.openclaw/workspace/learnflow/src/screens/ProfileSettings.tsx' }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m apps/client/src/__tests__/mockBillingCopyRegression.test.tsx[2m > [22mMock billing copy regression[2m > [22mweb pricing page explicitly discloses mock billing
+[31m[1mError[22m: ENOENT: no such file or directory, open '/home/aifactory/.openclaw/apps/web/src/app/pricing/page.tsx'[39m
+[90m [2m❯[22m Object.readFileSync node:fs:[2m440:20[22m[39m
+[36m [2m❯[22m read apps/client/src/__tests__/mockBillingCopyRegression.test.tsx:[2m8:13[22m[39m
+    [90m  6| [39m
+    [90m  7| [39m[35mfunction[39m [34mread[39m(p[33m:[39m string) {
+    [90m  8| [39m  [35mreturn[39m fs[33m.[39m[34mreadFileSync[39m(p[33m,[39m [32m'utf8'[39m)[33m;[39m
+    [90m   | [39m            [31m^[39m
+    [90m  9| [39m}
+    [90m 10| [39m
+[90m [2m❯[22m apps/client/src/__tests__/mockBillingCopyRegression.test.tsx:[2m23:15[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22m[39m
+[31m[1mSerialized Error:[22m[39m [90m{ errno: -2, code: 'ENOENT', syscall: 'open', path: '/home/aifactory/.openclaw/apps/web/src/app/pricing/page.tsx' }[39m
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m apps/client/src/__tests__/mvpTruthRegression.test.tsx[2m > [22mMVP truth regression[2m > [22mrenders core truth statements for marketplace agents + BYOAI
+[31m[1mError[22m: Invalid Chai property: toBeInTheDocument[39m
+[36m [2m❯[22m apps/client/src/__tests__/mvpTruthRegression.test.tsx:[2m21:63[22m[39m
+    [90m 19| [39m    )[33m;[39m
+    [90m 20| [39m
+    [90m 21| [39m    [34mexpect[39m(screen[33m.[39m[34mgetByRole[39m([32m'heading'[39m[33m,[39m { name[33m:[39m [36m/mvp truth/i[39m }))[33m.[39m[34mtoBeIn[39m…
+    [90m   | [39m                                                              [31m^[39m
+    [90m 22| [39m
+    [90m 23| [39m    [90m// Agents disclosure[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m apps/client/src/__tests__/subscription-upgrade.test.tsx[2m > [22mSubscription upgrade UX (web pricing page)[2m > [22mhas an Upgrade CTA present and labeled mock billing
+[31m[1mError[22m: Invalid Chai property: toHaveTextContent[39m
+[36m [2m❯[22m apps/client/src/__tests__/subscription-upgrade.test.tsx:[2m12:19[22m[39m
+    [90m 10| [39m
+    [90m 11| [39m    [35mconst[39m upgrade [33m=[39m [35mawait[39m screen[33m.[39m[34mfindByRole[39m([32m'link'[39m[33m,[39m { name[33m:[39m [36m/upgrade t[39m…
+    [90m 12| [39m    [34mexpect[39m(upgrade)[33m.[39m[34mtoHaveTextContent[39m([36m/mock billing/i[39m)[33m;[39m
+    [90m   | [39m                  [31m^[39m
+    [90m 13| [39m  })[33m;[39m
+    [90m 14| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m125 passed[39m[22m[90m (129)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m503 passed[39m[22m[90m (508)[39m
+[2m   Start at [22m 20:31:01
+[2m   Duration [22m 11.88s[2m (transform 12.15s, setup 3.15s, collect 114.53s, tests 94.24s, environment 21.21s, prepare 14.24s)[22m
+

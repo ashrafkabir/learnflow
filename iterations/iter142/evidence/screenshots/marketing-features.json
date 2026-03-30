@@ -1,0 +1,14 @@
+{
+  "required": [
+    "agent",
+    "course",
+    "learn"
+  ],
+  "found": [
+    "learn"
+  ],
+  "missing": [
+    "agent",
+    "course"
+  ]
+}
