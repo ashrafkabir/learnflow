@@ -42,6 +42,9 @@ function collectWsEvents(ws: WebSocket, max = 50, timeoutMs = 2000): Promise<any
 
 describe('Iter163: mindmap suggestions event semantics', () => {
   it('mindmap.subscribe emits mindmap.suggestions (not mindmap.update)', async () => {
+    // Must be set BEFORE createApp() so config sees it.
+    process.env.LEARNFLOW_DEV_AUTH = '1';
+
     const app = createApp();
     const httpServer = createServer(app);
     createWebSocketServer(httpServer);
@@ -51,7 +54,6 @@ describe('Iter163: mindmap suggestions event semantics', () => {
     if (!addr || typeof addr === 'string') throw new Error('Expected numeric address');
     const port = addr.port;
 
-    process.env.LEARNFLOW_DEV_AUTH = '1';
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=dev`);
     await waitForWsOpen(ws);
 

@@ -52,8 +52,21 @@ export function getOpenAIForRequest(params: {
     }
   }
 
-  // BYOAI-only enforcement:
-  // Do not silently fall back to a server-managed env key.
-  // If the user hasn't supplied an override or saved key, return null.
+  // Fallback (dev/demo only): allow a server-managed env key if explicitly configured.
+  // This is OFF by default to preserve BYOAI truth. Enable only for controlled demos.
+  const envKey = process.env.OPENAI_API_KEY;
+  const devAuth = process.env.LEARNFLOW_DEV_AUTH === '1';
+  const disableManaged = process.env.LEARNFLOW_DISABLE_MANAGED_OPENAI === '1';
+  const allowManaged =
+    !disableManaged && (process.env.LEARNFLOW_ALLOW_MANAGED_OPENAI === '1' || devAuth);
+
+  if (allowManaged && envKey && envKey.trim().length > 0) {
+    return {
+      client: new OpenAI({ apiKey: envKey.trim() }),
+      source: { kind: 'managed_env' },
+    };
+  }
+
+  // Otherwise: BYOAI-only enforcement.
   return { client: null, source: { kind: 'none' } };
 }
