@@ -8,6 +8,7 @@ import { marketplaceRouter } from './routes/marketplace.js';
 import { marketplaceFullRouter } from './routes/marketplace-full.js';
 import { marketplaceAgentManifestsRouter } from './routes/marketplace-agent-manifests.js';
 import { profileRouter } from './routes/profile.js';
+import { contextSlicesRouter } from './routes/contextSlices.js';
 import { subscriptionRouter } from './routes/subscription.js';
 import { analyticsRouter } from './routes/analytics.js';
 import { collaborationRouter } from './routes/collaboration.js';
@@ -320,6 +321,7 @@ export function createApp(options?: { devMode?: boolean }) {
     marketplaceAgentManifestsRouter,
   );
   app.use('/api/v1/profile', protectedAuth, rateLimiter, writeRateLimiter, profileRouter);
+  app.use('/api/v1/context', protectedAuth, rateLimiter, writeRateLimiter, contextSlicesRouter);
   app.use('/api/v1/bookmarks', protectedAuth, rateLimiter, writeRateLimiter, bookmarksRouter);
   app.use('/api/v1/subscription', protectedAuth, rateLimiter, writeRateLimiter, subscriptionRouter);
   app.use('/api/v1/analytics', protectedAuth, rateLimiter, analyticsRouter);
@@ -359,6 +361,10 @@ export function createApp(options?: { devMode?: boolean }) {
 
   // Health check
   app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok' });
+  });
+  // Iter163: spec/doc alias
+  app.get('/api/v1/health', (_req, res) => {
     res.status(200).json({ status: 'ok' });
   });
 

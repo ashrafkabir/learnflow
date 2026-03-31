@@ -32,7 +32,7 @@ export function CourseMarketplace() {
   const [search, setSearch] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('');
   const [topicFilter, setTopicFilter] = useState('');
-  const [maxPrice, _setMaxPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const [category, setCategory] = useState('All');
   const [sortBy, setSortBy] = useState<'newest' | 'price'>('newest');
   const [courses, setCourses] = useState<MarketplaceCourse[]>([]);
@@ -223,6 +223,14 @@ export function CourseMarketplace() {
             <option value="design">Design</option>
             <option value="business">Business</option>
           </select>
+          <input
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(e.target.value)}
+            inputMode="numeric"
+            placeholder="Max price"
+            aria-label="Max price"
+            className="w-[130px] px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+          />
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}

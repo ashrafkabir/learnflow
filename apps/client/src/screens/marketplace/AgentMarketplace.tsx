@@ -363,11 +363,14 @@ export function AgentMarketplace() {
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-3">
                 <IconSearch className="w-10 h-10 text-gray-400" />
                 <p className="text-gray-600 dark:text-gray-300">
-                  No results found. Try a different search.
+                  {agentsError
+                    ? 'Marketplace unavailable right now.'
+                    : 'No results found. Try a different search or clear filters.'}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  If this seems wrong, reload — the MVP catalog should normally show at least a few
-                  agents.
+                  {agentsError
+                    ? 'This can happen if the API is down or you are offline.'
+                    : 'If this seems wrong, reload — the catalog should normally show at least a few agents.'}
                 </p>
               </div>
             ) : (

@@ -1761,7 +1761,7 @@ async function runPipeline(pipelineId: string) {
       }
 
       const estMinutes = Math.max(0, Number((lesson as any).estimatedTime || 0));
-      const maxMinutes = 12;
+      const maxMinutes = 10;
       const estimatedTimeCheck = {
         pass: estMinutes > 0 && estMinutes <= maxMinutes,
         minutes: estMinutes,

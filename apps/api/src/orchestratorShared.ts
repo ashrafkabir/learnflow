@@ -71,6 +71,30 @@ export function buildStudentContext(userId: string): StudentContextObject {
     }
   })();
 
+  const preferences = (() => {
+    try {
+      return JSON.parse(String((dbUser as any)?.preferencesJson || '{}')) || {};
+    } catch {
+      return {};
+    }
+  })();
+
+  const lessonRatings = (() => {
+    try {
+      return JSON.parse(String((dbUser as any)?.lessonRatingsJson || '{}')) || {};
+    } catch {
+      return {};
+    }
+  })();
+
+  const agentRatings = (() => {
+    try {
+      return JSON.parse(String((dbUser as any)?.agentRatingsJson || '{}')) || {};
+    } catch {
+      return {};
+    }
+  })();
+
   return {
     userId,
     user,
@@ -132,13 +156,13 @@ export function buildStudentContext(userId: string): StudentContextObject {
       }
     })(),
     sessionFrequency: 0,
-    preferredTimeOfDay: 'morning',
-    preferredLessonLength: 10,
+    preferredTimeOfDay: (preferences?.preferredTimeOfDay || 'morning') as any,
+    preferredLessonLength: Number(preferences?.preferredLessonLength || 10),
     subscriptionTier: user.tier,
     billingStatus: 'active',
     apiKeyProvider: undefined,
     usageQuotas: {},
-    notificationSettings: { email: true, push: true, inApp: true },
+    notificationSettings: preferences?.notificationSettings || { email: true, push: true, inApp: true },
     preferredAgents: dbMarketplace.getActivatedAgents(userId),
     marketplaceAgentManifests: (() => {
       const ids = dbMarketplace.getActivatedAgents(userId);
@@ -155,8 +179,8 @@ export function buildStudentContext(userId: string): StudentContextObject {
     collaborationOptIn: false,
     peerConnections: [],
     sharedCourses: [],
-    lessonRatings: {},
-    agentRatings: {},
+    lessonRatings,
+    agentRatings,
     courseReviews: [],
   };
 }

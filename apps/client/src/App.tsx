@@ -198,21 +198,39 @@ function AnalyticsPageTracker() {
         ) as HTMLAnchorElement | null;
         if (!a) return;
 
-        // Only intercept our explicit pricing links.
-        if (a.getAttribute('data-link') !== 'pricing') return;
         const href = a.getAttribute('href') || '';
-        if (href !== '/pricing') return;
+
+        // Intercept known marketing links served by apps/web (Next.js) so the SPA doesn't 404.
+        const marketingPaths = new Set([
+          '/pricing',
+          '/features',
+          '/download',
+          '/about',
+          '/docs',
+          '/blog',
+        ]);
+
+        // Only intercept our explicit marketing links.
+        const dataLink = a.getAttribute('data-link') || '';
+        const isExplicitMarketingLink =
+          dataLink === 'pricing' || dataLink === 'features' || dataLink === 'download' ||
+          dataLink === 'about' || dataLink === 'docs' || dataLink === 'blog';
+
+        if (!isExplicitMarketingLink) return;
+        if (!marketingPaths.has(href) && !href.startsWith('/blog/')) return;
 
         e.preventDefault();
 
-        // Use a runtime-configurable origin for apps/web (Next.js), fallback to same-origin /pricing.
+        // Use a runtime-configurable origin for apps/web (Next.js), fallback to same-origin.
         const runtimeEnv =
           (globalThis as any)?.__LEARNFLOW_ENV__ &&
           typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
             ? ((globalThis as any).__LEARNFLOW_ENV__ as Record<string, string | undefined>)
             : null;
         const webOrigin = runtimeEnv?.VITE_WEB_ORIGIN || (import.meta as any)?.env?.VITE_WEB_ORIGIN;
-        const target = webOrigin ? `${String(webOrigin).replace(/\/$/, '')}/pricing` : '/pricing';
+        const base = webOrigin ? String(webOrigin).replace(/\/$/, '') : '';
+
+        const target = base ? `${base}${href}` : href;
         window.location.assign(target);
       } catch {
         // ignore
@@ -394,8 +412,26 @@ export function App() {
                       </ErrorBoundary>
                     }
                   />
+                  {/* MVP truth screen */}
                   <Route
                     path="/settings/about"
+                    element={
+                      <ErrorBoundary>
+                        <AboutMvpTruth />
+                      </ErrorBoundary>
+                    }
+                  />
+                  {/* Back-compat aliases (Iter166): keep old/shorthand URLs from breaking */}
+                  <Route
+                    path="/settings/about-mvp-truth"
+                    element={
+                      <ErrorBoundary>
+                        <AboutMvpTruth />
+                      </ErrorBoundary>
+                    }
+                  />
+                  <Route
+                    path="/about-mvp-truth"
                     element={
                       <ErrorBoundary>
                         <AboutMvpTruth />

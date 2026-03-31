@@ -226,7 +226,7 @@ router.get(
 );
 
 // Topics
-router.get('/topics', (req: Request, res: Response) => {
+router.get('/topics', requireTier('pro'), (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const topics = db.listUpdateAgentTopics(userId).map((t) => {
     const run = db.getUpdateAgentTopicRunState(userId, t.id);
@@ -341,6 +341,7 @@ router.delete(
 // Sources
 router.get(
   '/sources',
+  requireTier('pro'),
   validateQuery(z.object({ topicId: z.string().min(1) })),
   (req: Request, res: Response) => {
     const userId = req.user!.sub;

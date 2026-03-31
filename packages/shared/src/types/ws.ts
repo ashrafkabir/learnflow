@@ -66,25 +66,25 @@ export type WsServerEvent =
     }
   | {
       event: 'mindmap.update';
-      data:
-        | {
-            // Spec §11.2
-            nodes_added: unknown[];
-            edges_added: unknown[];
-          }
-        | {
-            // Extension used by the current UI (Conversation route)
-            courseId?: string | null;
-            suggestions?: Array<{
-              id: string;
-              label: string;
-              parentLessonId?: string;
-              reason?: string;
-            }>;
-            // Keep spec fields present to make clients tolerant
-            nodes_added?: unknown[];
-            edges_added?: unknown[];
-          };
+      data: {
+        // Spec §11.2
+        nodes_added: unknown[];
+        edges_added: unknown[];
+      };
+    }
+  | {
+      // Iter163+: Suggestions are NOT spec-correct mindmap.update graph deltas.
+      // Use a dedicated event so clients don't misinterpret semantics.
+      event: 'mindmap.suggestions';
+      data: {
+        courseId?: string | null;
+        suggestions: Array<{
+          id: string;
+          label: string;
+          parentLessonId?: string;
+          reason?: string;
+        }>;
+      };
     }
   | {
       event: 'progress.update';

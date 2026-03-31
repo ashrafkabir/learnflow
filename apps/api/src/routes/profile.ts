@@ -68,6 +68,30 @@ router.get('/context', (req: Request, res: Response) => {
     }
   }
 
+  const preferences = (() => {
+    try {
+      return JSON.parse(String((user as any)?.preferencesJson || '{}')) || {};
+    } catch {
+      return {};
+    }
+  })();
+
+  const lessonRatings = (() => {
+    try {
+      return JSON.parse(String((user as any)?.lessonRatingsJson || '{}')) || {};
+    } catch {
+      return {};
+    }
+  })();
+
+  const agentRatings = (() => {
+    try {
+      return JSON.parse(String((user as any)?.agentRatingsJson || '{}')) || {};
+    } catch {
+      return {};
+    }
+  })();
+
   res.status(200).json({
     userId,
     goals: user?.goals || [],
@@ -100,7 +124,17 @@ router.get('/context', (req: Request, res: Response) => {
       language: user?.preferredLanguage || 'en',
       telemetryEnabled: user?.telemetryEnabled !== false,
       settingsVersion: 1,
+      // Iter163: MVP Student Context slices
+      notificationSettings: preferences?.notificationSettings || {
+        email: true,
+        push: true,
+        inApp: true,
+      },
+      preferredLessonLength: Number(preferences?.preferredLessonLength || 10),
+      preferredTimeOfDay: String(preferences?.preferredTimeOfDay || 'morning'),
     },
+    lessonRatings,
+    agentRatings,
   });
 });
 

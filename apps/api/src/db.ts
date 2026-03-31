@@ -167,6 +167,17 @@ if (!isTest) {
       sqlite.exec(`ALTER TABLE users ADD COLUMN telemetryEnabled INTEGER NOT NULL DEFAULT 1;`);
     }
 
+    // Iter163: Student Context MVP slices persisted on user row
+    if (!hasColumn('users', 'preferencesJson')) {
+      sqlite.exec(`ALTER TABLE users ADD COLUMN preferencesJson TEXT NOT NULL DEFAULT '{}';`);
+    }
+    if (!hasColumn('users', 'lessonRatingsJson')) {
+      sqlite.exec(`ALTER TABLE users ADD COLUMN lessonRatingsJson TEXT NOT NULL DEFAULT '{}';`);
+    }
+    if (!hasColumn('users', 'agentRatingsJson')) {
+      sqlite.exec(`ALTER TABLE users ADD COLUMN agentRatingsJson TEXT NOT NULL DEFAULT '{}';`);
+    }
+
     // Iter123: server-backed bookmarks table (legacy DBs)
     try {
       sqlite.exec(
@@ -326,6 +337,9 @@ sqlite.exec(`
     experience TEXT NOT NULL DEFAULT '',
     schedule TEXT NOT NULL DEFAULT '{}',
     preferredLanguage TEXT NOT NULL DEFAULT 'en',
+    preferencesJson TEXT NOT NULL DEFAULT '{}',
+    lessonRatingsJson TEXT NOT NULL DEFAULT '{}',
+    agentRatingsJson TEXT NOT NULL DEFAULT '{}',
     onboardingCompletedAt TEXT,
     telemetryEnabled INTEGER NOT NULL DEFAULT 1,
     oauthProvider TEXT,
@@ -812,10 +826,10 @@ const stmts = {
 
   // Users
   insertUser: sqlite.prepare(
-    `INSERT INTO users (id, email, displayName, passwordHash, role, tier, goals, topics, experience, schedule, preferredLanguage, onboardingCompletedAt, telemetryEnabled, oauthProvider, oauthId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (id, email, displayName, passwordHash, role, tier, goals, topics, experience, schedule, preferredLanguage, preferencesJson, lessonRatingsJson, agentRatingsJson, onboardingCompletedAt, telemetryEnabled, oauthProvider, oauthId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ),
   updateUser: sqlite.prepare(
-    `UPDATE users SET email=?, displayName=?, passwordHash=?, role=?, tier=?, goals=?, topics=?, experience=?, schedule=?, preferredLanguage=?, onboardingCompletedAt=?, telemetryEnabled=?, oauthProvider=?, oauthId=?, updatedAt=? WHERE id=?`,
+    `UPDATE users SET email=?, displayName=?, passwordHash=?, role=?, tier=?, goals=?, topics=?, experience=?, schedule=?, preferredLanguage=?, preferencesJson=?, lessonRatingsJson=?, agentRatingsJson=?, onboardingCompletedAt=?, telemetryEnabled=?, oauthProvider=?, oauthId=?, updatedAt=? WHERE id=?`,
   ),
   findUserById: sqlite.prepare(`SELECT * FROM users WHERE id = ?`),
   findUserByEmail: sqlite.prepare(`SELECT * FROM users WHERE email = ?`),
@@ -1265,6 +1279,9 @@ export interface DbUser {
   experience?: string;
   schedule?: any;
   preferredLanguage: string;
+  preferencesJson?: string;
+  lessonRatingsJson?: string;
+  agentRatingsJson?: string;
   onboardingCompletedAt?: Date;
   /** User consent for server-side learning event telemetry (default true). */
   telemetryEnabled?: boolean;
@@ -1318,6 +1335,9 @@ function rowToUser(row: any): DbUser | undefined {
     goals: JSON.parse(row.goals || '[]'),
     topics: JSON.parse(row.topics || '[]'),
     schedule: JSON.parse(row.schedule || '{}'),
+    preferencesJson: String(row.preferencesJson || '{}'),
+    lessonRatingsJson: String(row.lessonRatingsJson || '{}'),
+    agentRatingsJson: String(row.agentRatingsJson || '{}'),
     onboardingCompletedAt: row.onboardingCompletedAt
       ? new Date(row.onboardingCompletedAt)
       : undefined,
@@ -1393,6 +1413,9 @@ class SqliteDb {
       user.experience || '',
       JSON.stringify(user.schedule || {}),
       user.preferredLanguage || 'en',
+      user.preferencesJson || '{}',
+      user.lessonRatingsJson || '{}',
+      user.agentRatingsJson || '{}',
       user.onboardingCompletedAt ? user.onboardingCompletedAt.toISOString() : null,
       user.telemetryEnabled === false ? 0 : 1,
       user.oauthProvider || null,
@@ -1414,6 +1437,9 @@ class SqliteDb {
       user.experience || '',
       JSON.stringify(user.schedule || {}),
       user.preferredLanguage || 'en',
+      user.preferencesJson || '{}',
+      user.lessonRatingsJson || '{}',
+      user.agentRatingsJson || '{}',
       user.onboardingCompletedAt ? user.onboardingCompletedAt.toISOString() : null,
       user.telemetryEnabled === false ? 0 : 1,
       user.oauthProvider || null,

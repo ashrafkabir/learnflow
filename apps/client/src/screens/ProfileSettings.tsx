@@ -638,6 +638,60 @@ export function ProfileSettings() {
           {/* Toggles */}
           <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-card p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Preferences</h2>
+
+            {/* Iter163: Student Context MVP preferences */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Preferred lesson length
+              </span>
+              <select
+                value={(profile as any)?.preferredLessonLength || 10}
+                onChange={async (e) => {
+                  const n = Number(e.target.value) || 10;
+                  // Keep local continuity; server is source of truth.
+                  update({ preferredLessonLength: n } as any);
+                  try {
+                    await apiPost('/context/preferences', { preferredLessonLength: n });
+                    toast('Saved preferred lesson length', 'success');
+                  } catch {
+                    toast('Failed to save preferred lesson length', 'error');
+                  }
+                }}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              >
+                {[5, 10, 15, 20, 30, 45, 60].map((m) => (
+                  <option key={m} value={m}>
+                    {m} minutes
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Preferred time of day
+              </span>
+              <select
+                value={(profile as any)?.preferredTimeOfDay || 'morning'}
+                onChange={async (e) => {
+                  const v = String(e.target.value || 'morning');
+                  update({ preferredTimeOfDay: v } as any);
+                  try {
+                    await apiPost('/context/preferences', { preferredTimeOfDay: v });
+                    toast('Saved preferred time of day', 'success');
+                  } catch {
+                    toast('Failed to save preferred time of day', 'error');
+                  }
+                }}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+              >
+                {['morning', 'afternoon', 'evening', 'night'].map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-700 dark:text-gray-300">Dark Mode</span>
               <Button

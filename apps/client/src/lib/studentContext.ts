@@ -14,7 +14,17 @@ export type StudentContext = {
   role?: string;
   lastActiveAt?: string;
   progress?: any;
-  preferences?: any;
+  preferences?: {
+    notifications?: {
+      email?: boolean;
+      push?: boolean;
+      inApp?: boolean;
+    };
+    preferredLessonLength?: number;
+    preferredTimeOfDay?: 'morning' | 'afternoon' | 'evening' | 'night';
+  };
+  lessonRatings?: Record<string, number>;
+  agentRatings?: Record<string, number>;
 };
 
 const KEY = 'learnflow-student-context';

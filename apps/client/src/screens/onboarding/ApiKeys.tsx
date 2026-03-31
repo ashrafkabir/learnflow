@@ -16,6 +16,8 @@ export function OnboardingApiKeys() {
   const [key, setKey] = useState('');
   const [validating, setValidating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testedAt, setTestedAt] = useState<string | null>(null);
 
   const canSave = useMemo(() => key.trim().length > 0, [key]);
 
@@ -24,7 +26,7 @@ export function OnboardingApiKeys() {
     nav('/onboarding/subscription');
   };
 
-  const validateKey = async (): Promise<boolean> => {
+  const validateKeyFormatOnly = async (): Promise<boolean> => {
     setValidating(true);
     try {
       await apiPost('/keys/validate', { provider, apiKey: key.trim() });
@@ -41,16 +43,38 @@ export function OnboardingApiKeys() {
     }
   };
 
+  const testWithProvider = async (): Promise<boolean> => {
+    if (!key.trim()) return false;
+    setTesting(true);
+    try {
+      // Best-effort: server will only validate with provider for OpenAI/Anthropic.
+      await apiPost('/keys', { provider, apiKey: key.trim(), validate: true, activate: true });
+      setTestedAt(new Date().toISOString());
+      toast('Provider test succeeded (best-effort)', 'success');
+      return true;
+    } catch (err) {
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as any).message)
+          : 'Provider test failed';
+      toast(msg, 'error');
+      return false;
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const saveKey = async () => {
     if (!canSave) return;
 
-    // Optional validation: run basic provider format validation for a clearer UX.
-    const ok = await validateKey();
+    // Always do format-only validation so users catch obvious paste mistakes.
+    const ok = await validateKeyFormatOnly();
     if (!ok) return;
 
     setSaving(true);
     try {
-      await apiPost('/keys', { provider, apiKey: key.trim() });
+      // Default: store only (no provider network call). This is truthful MVP behavior.
+      await apiPost('/keys', { provider, apiKey: key.trim(), activate: true });
 
       toast('API key saved securely', 'success');
       setKey('');
@@ -131,35 +155,59 @@ export function OnboardingApiKeys() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              We&apos;ll validate the key format and store it encrypted.
+              We&apos;ll validate the key <span className="font-medium">format only</span> (no network call)
+              and store it encrypted.
             </p>
           </label>
         </div>
 
-        <div className="flex gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => nav('/onboarding/topics')}
-            className="px-6 py-4"
-            disabled={saving || validating}
-          >
-            Back
-          </Button>
-          <Button
-            variant="primary"
-            onClick={canSave ? saveKey : next}
-            fullWidth
-            className="py-4"
-            disabled={saving || validating}
-          >
-            {canSave
-              ? saving
-                ? 'Saving…'
-                : validating
-                  ? 'Validating…'
-                  : 'Validate, Save & Continue'
-              : 'Skip for now'}
-          </Button>
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={() => nav('/onboarding/topics')}
+              className="px-6 py-4"
+              disabled={saving || validating || testing}
+            >
+              Back
+            </Button>
+            <Button
+              variant="primary"
+              onClick={canSave ? saveKey : next}
+              fullWidth
+              className="py-4"
+              disabled={saving || validating || testing}
+            >
+              {canSave
+                ? saving
+                  ? 'Saving…'
+                  : validating
+                    ? 'Validating…'
+                    : 'Validate format, Save & Continue'
+                : 'Skip for now'}
+            </Button>
+          </div>
+
+          {canSave ? (
+            <div className="flex items-center justify-between gap-3">
+              <Button
+                variant="ghost"
+                onClick={testWithProvider}
+                disabled={saving || validating || testing}
+              >
+                {testing ? 'Testing…' : 'Test with provider (optional)'}
+              </Button>
+              {testedAt ? (
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                  Last tested: {new Date(testedAt).toLocaleString()}
+                </span>
+              ) : (
+                <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                  Available for OpenAI/Anthropic only
+                </span>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

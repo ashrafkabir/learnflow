@@ -22,6 +22,8 @@ const acceptSchema = z.object({
   suggestionId: z.string().min(1),
 });
 
+const dismissSchema = acceptSchema;
+
 // POST /api/v1/mindmap/suggest - Compute suggested expansion nodes for a course
 router.post('/suggest', validateBody(suggestSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
@@ -68,6 +70,17 @@ router.get('/suggestions', (req: Request, res: Response) => {
 
 // POST /api/v1/mindmap/accept - Accept a suggestion (remove from suggestions list)
 router.post('/accept', validateBody(acceptSchema), (req: Request, res: Response) => {
+  const userId = req.user!.sub;
+  const { courseId, suggestionId } = req.body;
+  const row = dbMindmapSuggestions.get(userId, courseId);
+  const current = Array.isArray(row?.suggestions) ? row!.suggestions : [];
+  const next = current.filter((s: any) => String(s?.id) !== suggestionId);
+  const saved = dbMindmapSuggestions.save(userId, courseId, next);
+  res.status(200).json(saved);
+});
+
+// POST /api/v1/mindmap/dismiss - Dismiss a suggestion (remove from suggestions list)
+router.post('/dismiss', validateBody(dismissSchema), (req: Request, res: Response) => {
   const userId = req.user!.sub;
   const { courseId, suggestionId } = req.body;
   const row = dbMindmapSuggestions.get(userId, courseId);

@@ -260,6 +260,8 @@ const initialState: AppState = {
     dailyGoal: 30,
     darkMode: false,
     notifications: true,
+    preferredLessonLength: (initialStudentContext as any)?.preferences?.preferredLessonLength || 10,
+    preferredTimeOfDay: (initialStudentContext as any)?.preferences?.preferredTimeOfDay || 'morning',
   },
   loading: {},
   streak: 0,
@@ -382,6 +384,10 @@ function reducer(state: AppState, action: Action): AppState {
           safeLocalStorageGet('learnflow-onboarding-complete') === 'true'
             ? new Date().toISOString()
             : initialStudentContext?.onboardingCompletedAt || null,
+        preferences: {
+          preferredLessonLength: (nextProfile as any).preferredLessonLength,
+          preferredTimeOfDay: (nextProfile as any).preferredTimeOfDay,
+        },
       });
       return { ...state, profile: nextProfile };
     }
@@ -898,6 +904,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (state.activeLesson) payload.lessonId = state.activeLesson.id;
 
         const data = await apiPost('/chat', payload);
+
+        // Iter164: If REST chat returns marketplace disclosure, surface it as a system message.
+        const disclosure = (data as any)?.marketplaceDisclosure;
+        if (disclosure && typeof disclosure === 'object') {
+          const agentName = String(disclosure.activatedMarketplaceAgentName || 'Marketplace agent');
+          const note = String(
+            disclosure.note || 'This marketplace agent is routing-only in the MVP (no code execution).',
+          );
+          dispatch({
+            type: 'ADD_CHAT_MESSAGE',
+            message: {
+              id: `msg-${Date.now()}-disclosure`,
+              role: 'assistant',
+              content: `Disclosure: ${agentName} — ${note}`,
+              timestamp: new Date().toISOString(),
+              meta: { generatedBy: 'system', kind: 'disclosure' as any },
+            },
+          });
+        }
+
         const assistantMsg: ChatMessage = {
           id: `msg-${Date.now()}-reply`,
           role: 'assistant',

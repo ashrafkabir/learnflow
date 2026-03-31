@@ -169,6 +169,51 @@ async function handleMessage(ws: WebSocket, user: AuthUser, msg: WsEvent): Promi
     return;
   }
 
+  if (msg.event === 'progress.persist') {
+    // Iter163: persist lesson completion explicitly (so progress.update is grounded in DB state).
+    const courseId = String((msg as any)?.data?.courseId || '').trim();
+    const lessonId = String((msg as any)?.data?.lessonId || '').trim();
+
+    if (!courseId || !lessonId) {
+      sendWsError(ws, createRequestId(), {
+        code: 'invalid_request',
+        message: 'Missing required fields: data.courseId, data.lessonId',
+      });
+      return;
+    }
+
+    try {
+      const { dbProgress } = await import('./db.js');
+      dbProgress.markComplete(user.sub, courseId, lessonId);
+      const completedLessons = dbProgress.getCompletedLessons(user.sub, courseId);
+
+      // Best-effort percent: if course is in memory, compute total lessons.
+      let completion_percent = 0;
+      try {
+        const { courses } = await import('./routes/courses.js');
+        const course = courses.get(courseId) as any;
+        const totalLessons =
+          course?.modules?.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0) || 0;
+        completion_percent = totalLessons ? (completedLessons.length / totalLessons) * 100 : 0;
+      } catch {
+        // ignore
+      }
+
+      sendEvent(ws, 'progress.update', {
+        course_id: courseId,
+        lesson_id: lessonId,
+        completion_percent,
+      });
+    } catch (e: any) {
+      sendWsError(ws, createRequestId(), {
+        code: 'progress_persist_failed',
+        message: e?.message || 'Failed to persist progress',
+      });
+    }
+
+    return;
+  }
+
   if (msg.event === 'mindmap.subscribe') {
     // Dual-purpose event:
     // - Spec §11.2 expects { nodes_added[], edges_added[] }
@@ -220,11 +265,11 @@ async function handleMessage(ws: WebSocket, user: AuthUser, msg: WsEvent): Promi
       ].map((s) => ({ ...s, parentLessonId: lessonId || undefined }));
     }
 
-    sendEvent(ws, 'mindmap.update', {
+    // Iter163: Suggestions payload is NOT a spec-correct mindmap.update. Emit a dedicated event
+    // to avoid lying about nodes/edges semantics; reserve mindmap.update for real graph deltas.
+    sendEvent(ws, 'mindmap.suggestions', {
       courseId,
       suggestions,
-      nodes_added: [],
-      edges_added: [],
     });
   }
 }

@@ -1,6 +1,6 @@
-# LearnFlow — IMPLEMENTED_VS_SPEC (Iteration 130)
+# LearnFlow — IMPLEMENTED_VS_SPEC (Iteration 165)
 
-This document is a **brutally honest** mapping between the product spec (sections 1–17) and what is actually implemented in this repo as of Iteration 130.
+This document is a **brutally honest** mapping between the product spec (sections 1–17) and what is actually implemented in this repo as of Iteration 165.
 
 Legend:
 
@@ -71,7 +71,7 @@ Legend:
   - Marketplace browsing exists.
   - Agent activation exists.
     - **Iter130 trust hardening:** first-time activation requires an explicit disclosure acknowledgement (routing preference + UI labels only; no third-party agent code executes at runtime).
-  - **Iter130 trust hardening:** course marketplace browse UI does **not** display ratings/enrollment counts unless backed by real analytics.
+  - Trust hardening: course marketplace browse UI does **not** display ratings/enrollment counts unless backed by real analytics.
   - Course reviews/ratings write path exists (DB-backed) and aggregates are surfaced.
   - Payments/payouts are represented but not production-ready.
 
@@ -101,7 +101,7 @@ Legend:
   - Mindmap explorer UI exists (vis-network).
   - Yjs collaboration exists.
   - **User-owned** room keying implemented: `mindmap:<userId>:<courseId>`.
-  - Suggestions exist via WS (`mindmap.update`) and persisted suggestions endpoints exist.
+  - Suggestions exist via WS (`mindmap.suggestions`) and persisted suggestions endpoints exist.
   - Accepting a suggestion now persists via `POST /api/v1/mindmap/accept`.
   - Missing: richer semantics, mastery scoring beyond MVP, and robust “node click triggers action” coverage across all node types.
 

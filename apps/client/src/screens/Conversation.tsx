@@ -411,6 +411,7 @@ export function Conversation() {
       durationMs?: number;
       taskSummary?: string;
       resultSummary?: string;
+      status?: string;
     }>
   >([]);
 
@@ -455,6 +456,17 @@ export function Conversation() {
         case 'response.chunk':
           setStreamingContent((prev) => prev + (evt.data?.content_delta || ''));
           break;
+        case 'agent.working': {
+          // Iter163: keep activity indicator alive during long runs.
+          setAgentTrace((prev) => {
+            const last = prev[prev.length - 1];
+            if (!last) return prev;
+            const next = [...prev];
+            next[next.length - 1] = { ...last, status: 'working' };
+            return next;
+          });
+          break;
+        }
         case 'response.end': {
           // P0 Trust (Iter120): research agent can return mock papers when no API is configured.
           // Surface that in the same screen where results appear.
@@ -596,7 +608,21 @@ export function Conversation() {
           const lessonId = evt.data?.lesson_id;
           const pct = Number(evt.data?.completion_percent ?? 0);
 
-          if (lessonId) dispatch({ type: 'COMPLETE_LESSON', lessonId });
+          if (lessonId) {
+            // Iter163: only persist if we have enough context.
+            try {
+              if (wsConnected && courseId) {
+                wsSend('progress.persist', {
+                  courseId,
+                  lessonId,
+                });
+              }
+            } catch {
+              // ignore
+            }
+
+            dispatch({ type: 'COMPLETE_LESSON', lessonId });
+          }
 
           dispatch({
             type: 'ADD_NOTIFICATION',
@@ -613,8 +639,8 @@ export function Conversation() {
           });
           break;
         }
-        case 'mindmap.update': {
-          // Expected payload:
+        case 'mindmap.suggestions': {
+          // Expected payload (Iter163):
           // {
           //   courseId?: string,
           //   suggestions?: Array<{ id, label, parentLessonId?, reason? }>
@@ -802,7 +828,7 @@ export function Conversation() {
             </div>
 
             <ul className="mt-3 space-y-2">
-              {agentTrace.slice(-8).map((t) => (
+              {agentTrace.slice(-12).map((t) => (
                 <li
                   key={t.id}
                   className="text-[11px] leading-snug text-gray-700 dark:text-gray-200"
@@ -822,6 +848,7 @@ export function Conversation() {
                   {typeof t.durationMs === 'number' ? (
                     <span className="text-gray-500"> · {(t.durationMs / 1000).toFixed(1)}s</span>
                   ) : null}
+                  {t.status ? <span className="text-gray-500"> · {t.status}</span> : null}
                   {t.taskSummary ? (
                     <div className="mt-0.5 text-gray-600 dark:text-gray-300">{t.taskSummary}</div>
                   ) : null}

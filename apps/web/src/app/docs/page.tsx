@@ -5,6 +5,7 @@ const sections = [
       { label: 'Quickstart', href: '#quickstart' },
       { label: 'WebSocket protocol', href: '#ws' },
       { label: 'BYOAI keys', href: '#keys' },
+      { label: 'Update Agent (MVP)', href: '#update-agent' },
       { label: 'Docs sources (repo)', href: '#sources' },
     ],
   },
@@ -101,6 +102,16 @@ npm run dev
           <p>
             Users can store encrypted provider keys via <code>POST /api/v1/keys</code>. Keys are
             encrypted at rest and never returned in plaintext.
+          </p>
+
+          <h2 id="update-agent">Update Agent (MVP)</h2>
+          <p>
+            Update Agent is a <strong>Pro</strong> feature that monitors only the RSS/Atom sources you
+            explicitly add. It does not crawl the open web.
+          </p>
+          <p>
+            Scheduling is external in this MVP (cron/systemd/K8s). See: <code>docs/update-agent.md</code>{' '}
+            in the repo.
           </p>
 
           <h2 id="sources">Docs sources (repo)</h2>

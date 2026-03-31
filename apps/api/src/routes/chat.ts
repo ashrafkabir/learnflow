@@ -195,6 +195,11 @@ router.post('/', validateBody(chatSchema), async (req: Request, res: Response) =
   const result = await orchestrator.processMessage(routedInput, context);
   const routedAgentName = formatAgentName(result.agentResults?.[0]?.agentName || 'orchestrator');
 
+  // Iter163: REST parity with WS — disclose when intent routing used an activated marketplace manifest.
+  const routingParams = (result as any)?.agentResults?.[0]?.params || (result as any)?.params || {};
+  const activatedMarketplaceAgentId = (routingParams as any)?.activatedMarketplaceAgentId;
+  const activatedMarketplaceAgentName = (routingParams as any)?.activatedMarketplaceAgentName;
+
   // Usage persistence (Iter67): record per-agent + best-effort provider attribution.
   try {
     // Our agents are mostly deterministic/offline today and may not report tokens.
@@ -264,6 +269,14 @@ router.post('/', validateBody(chatSchema), async (req: Request, res: Response) =
     content: result.text,
     response: result.text,
     reply: result.text,
+    marketplaceDisclosure:
+      activatedMarketplaceAgentId && activatedMarketplaceAgentName
+        ? {
+            activatedMarketplaceAgentId,
+            activatedMarketplaceAgentName,
+            note: 'Marketplace agents route to built-in agents in this MVP (routing-only).',
+          }
+        : null,
     actions: suggestedActions,
     actionTargets,
     sources,

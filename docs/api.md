@@ -97,6 +97,10 @@ Key implemented endpoints include:
 ## WebSockets (implemented)
 
 - Orchestrator/chat WebSocket: created by `apps/api/src/websocket.ts` (server attaches to main HTTP server)
+  - **Mindmap semantics:**
+    - `mindmap.update` is reserved for real graph deltas (`nodes_added`, `edges_added`) per spec §11.2.
+    - `mindmap.suggestions` is the MVP event for suggested topics (not graph deltas) and is consumed by both Conversation + Mindmap Explorer.
+  - **Progress semantics:** spec uses `completion%`; we normalize to `completion_percent` on the wire (shared type: `packages/shared/src/types/ws.ts`).
 - Yjs mindmap WebSocket: `apps/api/src/yjsServer.ts` mounted at path `/yjs` on a dedicated port
 
 ---

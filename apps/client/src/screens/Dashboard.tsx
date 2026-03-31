@@ -385,6 +385,16 @@ export function Dashboard() {
                   {state.streak}
                 </p>
                 <p className="text-xs opacity-75 mt-1">days in a row</p>
+                <p className="text-[11px] opacity-80 mt-2">
+                  MVP: based on lessons you complete in LearnFlow.
+                  <button
+                    type="button"
+                    className="underline ml-1"
+                    onClick={() => nav('/settings/about')}
+                  >
+                    Learn more
+                  </button>
+                </p>
               </div>
               <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 border border-gray-200 dark:border-gray-800 shadow-card card stat-animate stat-animate-delay-1">
                 <p className="text-sm text-gray-800/80 dark:text-gray-200">Courses</p>

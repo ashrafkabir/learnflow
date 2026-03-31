@@ -72,4 +72,56 @@ describe('Iter97: Update Agent server-side tier gating', () => {
     expect(res.status).toBe(403);
     expect(String(res.text)).toContain('Requires pro tier');
   });
+
+  it('Free tier cannot read topics (403)', async () => {
+    const app = createApp();
+
+    const reg = await request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        email: `free3-${Date.now()}@test.com`,
+        password: 'password123',
+        displayName: 'Free3',
+      })
+      .expect(201);
+
+    const regToken = reg.body.accessToken as string;
+    const payload = JSON.parse(Buffer.from(regToken.split('.')[1], 'base64url').toString('utf8'));
+    const userId = String(payload.sub || '');
+
+    const token = mintToken({ sub: userId, email: String(payload.email || ''), tier: 'free' });
+
+    const res = await request(app)
+      .get('/api/v1/update-agent/topics')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+    expect(String(res.text)).toContain('Requires pro tier');
+  });
+
+  it('Free tier cannot read sources (403)', async () => {
+    const app = createApp();
+
+    const reg = await request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        email: `free4-${Date.now()}@test.com`,
+        password: 'password123',
+        displayName: 'Free4',
+      })
+      .expect(201);
+
+    const regToken = reg.body.accessToken as string;
+    const payload = JSON.parse(Buffer.from(regToken.split('.')[1], 'base64url').toString('utf8'));
+    const userId = String(payload.sub || '');
+
+    const token = mintToken({ sub: userId, email: String(payload.email || ''), tier: 'free' });
+
+    const res = await request(app)
+      .get('/api/v1/update-agent/sources?topicId=uat-x')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+    expect(String(res.text)).toContain('Requires pro tier');
+  });
 });

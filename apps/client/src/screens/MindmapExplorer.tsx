@@ -570,7 +570,19 @@ export function MindmapExplorer() {
 
         if (lessonId && courseId) {
           nav(`/courses/${courseId}/lessons/${lessonId}`);
-        } else if (courseId) {
+          return;
+        }
+
+        // Spec-ish behavior: concept/module nodes expand into focus mode.
+        // (MVP: we don’t have a server-side expansion graph yet, so we reveal neighborhood.)
+        const nodeType = String((clickedNode as any)?._type || '').toLowerCase();
+        if (nodeType === 'concept' || nodeType === 'module') {
+          setFocusedNodeId(clickedId);
+          setFocusMode(true);
+          return;
+        }
+
+        if (courseId) {
           nav(`/courses/${courseId}`);
         } else {
           setFocusedNodeId(clickedId);
@@ -709,6 +721,126 @@ export function MindmapExplorer() {
             </div>
           ) : (
             <>
+              {/* Suggestions tray (Iter164): review + accept/dismiss server-backed suggestions */}
+              <div
+                className="absolute bottom-4 left-4 z-10 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl p-3 shadow-card w-[320px] max-w-[calc(100vw-32px)]"
+                data-testid="mindmap-suggestions-tray"
+              >
+                {(() => {
+                  const cid = String(sharedParams.courseId || state.activeCourse?.id || state.courses?.[0]?.id || '');
+                  const list = cid ? state.mindmapSuggestions?.[cid] || [] : [];
+                  const count = list.length;
+                  return (
+                    <>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                          Suggestions {count > 0 ? `(${count})` : ''}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={async () => {
+                            if (!cid) return;
+                            try {
+                              await apiPost('/mindmap/suggest', { courseId: cid });
+                              const s = await apiGet(
+                                `/mindmap/suggestions?courseId=${encodeURIComponent(cid)}`,
+                              );
+                              if (s?.suggestions) {
+                                dispatch({
+                                  type: 'SET_MINDMAP_SUGGESTIONS',
+                                  courseId: cid,
+                                  suggestions: s.suggestions,
+                                });
+                              }
+                            } catch {
+                              // ignore
+                            }
+                          }}
+                          title="Generate/refresh suggestions"
+                        >
+                          Refresh
+                        </Button>
+                      </div>
+
+                      {count === 0 ? (
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                          No suggestions yet.
+                        </div>
+                      ) : (
+                        <div className="mt-2 space-y-2 max-h-[180px] overflow-auto pr-1">
+                          {list.slice(0, 5).map((s: any) => (
+                            <div
+                              key={String(s.id)}
+                              className="rounded-lg border border-indigo-200 dark:border-indigo-900 bg-white/70 dark:bg-gray-900/40 px-2 py-2"
+                            >
+                              <div className="text-xs font-medium text-gray-900 dark:text-white">
+                                {String(s.label || 'Suggested topic')}
+                              </div>
+                              {s.reason ? (
+                                <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2">
+                                  {String(s.reason)}
+                                </div>
+                              ) : null}
+                              <div className="flex items-center gap-2 mt-2">
+                                <Button
+                                  size="sm"
+                                  variant="primary"
+                                  onClick={() => {
+                                    // Prefer the existing on-graph action panel for acceptance UX.
+                                    setSuggestedAction({
+                                      label: String(s.label || 'Suggested topic'),
+                                      topicId: String(s.id),
+                                      reason: String(s.reason || ''),
+                                      parentLessonId: (s as any).parentLessonId,
+                                    });
+                                    setPanelPos({ x: 16, y: 16 });
+                                  }}
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  onClick={async () => {
+                                    if (!cid) return;
+                                    try {
+                                      const row = await apiPost('/mindmap/dismiss', {
+                                        courseId: cid,
+                                        suggestionId: String(s.id),
+                                      });
+                                      dispatch({
+                                        type: 'SET_MINDMAP_SUGGESTIONS',
+                                        courseId: cid,
+                                        suggestions: row?.suggestions || [],
+                                      });
+                                    } catch {
+                                      // Best-effort local removal
+                                      dispatch({
+                                        type: 'SET_MINDMAP_SUGGESTIONS',
+                                        courseId: cid,
+                                        suggestions: list.filter((x: any) => String(x?.id) !== String(s.id)),
+                                      });
+                                    }
+                                  }}
+                                >
+                                  Dismiss
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          {count > 5 ? (
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                              Showing 5 of {count}.
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
               <div ref={containerRef} className="w-full h-full" />
 
               {suggestedAction && panelPos && (

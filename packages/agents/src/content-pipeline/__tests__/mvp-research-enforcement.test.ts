@@ -14,10 +14,12 @@ describe('Iter156 P0: MVP research enforcement', () => {
   it('forbids non-OpenAI provider ids when MVP enforcement enabled', async () => {
     const { assertMvpResearchAllowed } = await import('../mvp.js');
 
-    expect(() => assertMvpResearchAllowed('legacy_multi_source')).toThrowError(
-      /MVP research mode forbids provider/i,
-    );
+    // Iter163: legacy_multi_source is an allowed offline stack in MVP builds.
+    expect(() => assertMvpResearchAllowed('legacy_multi_source')).not.toThrow();
 
     expect(() => assertMvpResearchAllowed('openai_web_search')).not.toThrow();
+
+    // Still forbids unknown/paid providers.
+    expect(() => assertMvpResearchAllowed('paid_provider_example')).toThrowError(/forbids provider/i);
   });
 });

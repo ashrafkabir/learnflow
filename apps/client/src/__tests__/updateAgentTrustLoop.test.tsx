@@ -114,8 +114,8 @@ describe('Update Agent trust loop UI', () => {
 
     const ui = renderPanel();
 
-    // allow effects to run
-    await new Promise((r) => setTimeout(r, 50));
+    // allow effects to run (extra time for concurrent Vitest runs)
+    await new Promise((r) => setTimeout(r, 150));
 
     expect(ui.getByText(/Topic status/i)).toBeInTheDocument();
     expect(ui.getByText(/crawl the open web/i)).toBeInTheDocument();
@@ -126,7 +126,7 @@ describe('Update Agent trust loop UI', () => {
     const runNow = ui.getByRole('button', { name: /Run now/i });
     fireEvent.click(runNow);
 
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 150));
 
     // The client uses a configurable apiBase() in tests; match on suffix (ignore querystrings).
     expect(

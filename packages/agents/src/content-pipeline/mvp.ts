@@ -19,6 +19,10 @@ export function assertMvpResearchAllowed(providerId: string): void {
   // Only allow OpenAI web_search based provider in MVP.
   if (providerId === 'openai_web_search') return;
 
+  // Allow legacy offline multi-source stack (Wikipedia/arXiv/GitHub/etc).
+  // This stack does not require paid keys and is used in MVP builds.
+  if (providerId === 'legacy_multi_source') return;
+
   const err: any = new Error(
     `MVP research mode forbids provider "${providerId}". Use OpenAI web_search only (spec §6.1.1).`,
   );

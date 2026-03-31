@@ -120,11 +120,36 @@ export async function handleWsMessage(
   let activatedMarketplaceAgentId: string | null = null;
   let activatedMarketplaceAgentName: string | null = null;
 
+  let workingTimer: any = null;
+
   try {
+    // Emit a small heartbeat so clients don't interpret long agent runs as dead.
+    // Best-effort; cleared when the request completes.
+    const workingIntervalMs = 2500;
+    workingTimer = setInterval(() => {
+      try {
+        send(ws, 'agent.working', {
+          message_id: messageId,
+          agent_name: 'orchestrator',
+          status: 'working',
+        });
+      } catch {
+        // ignore
+      }
+    }, workingIntervalMs);
+
+    const timeoutMs = (() => {
+      const raw = process.env.LEARNFLOW_WS_ORCHESTRATOR_TIMEOUT_MS;
+      if (!raw) return process.env.NODE_ENV !== 'production' ? 60000 : 30000;
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n <= 0) return process.env.NODE_ENV !== 'production' ? 60000 : 30000;
+      return Math.max(1000, Math.floor(n));
+    })();
+
     const result = await Promise.race([
       orchestrator.processMessage(text, context),
       new Promise<any>((_resolve, reject) =>
-        setTimeout(() => reject(new Error('orchestrator_timeout')), 8000),
+        setTimeout(() => reject(new Error('orchestrator_timeout')), timeoutMs),
       ),
     ]);
     aggregatedText = result.text || '';
@@ -336,5 +361,11 @@ export async function handleWsMessage(
       sources: [],
     });
     markMessageCompleted(user.sub, messageId);
+  } finally {
+    try {
+      if (workingTimer) clearInterval(workingTimer);
+    } catch {
+      // ignore
+    }
   }
 }
