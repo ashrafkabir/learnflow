@@ -162,7 +162,11 @@ export function buildStudentContext(userId: string): StudentContextObject {
     billingStatus: 'active',
     apiKeyProvider: undefined,
     usageQuotas: {},
-    notificationSettings: preferences?.notificationSettings || { email: true, push: true, inApp: true },
+    notificationSettings: preferences?.notificationSettings || {
+      email: true,
+      push: true,
+      inApp: true,
+    },
     preferredAgents: dbMarketplace.getActivatedAgents(userId),
     marketplaceAgentManifests: (() => {
       const ids = dbMarketplace.getActivatedAgents(userId);

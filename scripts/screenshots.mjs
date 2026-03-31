@@ -30,7 +30,10 @@ function ensureNotesTemplate() {
       fs.writeFileSync(
         notesPath,
         `# Screenshot Run Notes\n\n- Iteration: ${iter}\n- Date: ${new Date().toISOString().slice(0, 10)}\n- Base URL (client): ${base}\n- Base URL (marketing/web): ${
-          readArg('baseWeb') || process.env.BASE_WEB_URL || process.env.SCREENSHOT_BASE_WEB_URL || 'http://localhost:3003'
+          readArg('baseWeb') ||
+          process.env.BASE_WEB_URL ||
+          process.env.SCREENSHOT_BASE_WEB_URL ||
+          'http://localhost:3003'
         }\n\n## Captured surfaces\n\n### Desktop\n- Marketing (apps/web): /, /features, /pricing, /download, /blog, /about, /docs\n- Client public: /, /login, /register, onboarding steps 1–6\n- Client authed: /dashboard, /conversation, /mindmap, /pipelines (+ detail), /marketplace/*, /settings (+ about)\n\n### Mobile\n- Client key screens (multi-viewport)\n\n## What changed\n\n- \n\n## Known limitations\n\n- \n\n`,
         'utf8',
       );

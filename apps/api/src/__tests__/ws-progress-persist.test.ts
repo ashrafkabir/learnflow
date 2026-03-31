@@ -56,7 +56,9 @@ describe('Iter163: WS progress.persist persists completion', () => {
     const ws = new WebSocket(`ws://127.0.0.1:${port}/ws?token=dev`);
     await waitForWsOpen(ws);
 
-    ws.send(JSON.stringify({ event: 'progress.persist', data: { courseId: 'c-1', lessonId: 'l-1' } }));
+    ws.send(
+      JSON.stringify({ event: 'progress.persist', data: { courseId: 'c-1', lessonId: 'l-1' } }),
+    );
 
     const events = await collectWsEvents(ws, 25, 1200);
 

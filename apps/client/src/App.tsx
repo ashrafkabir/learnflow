@@ -213,8 +213,12 @@ function AnalyticsPageTracker() {
         // Only intercept our explicit marketing links.
         const dataLink = a.getAttribute('data-link') || '';
         const isExplicitMarketingLink =
-          dataLink === 'pricing' || dataLink === 'features' || dataLink === 'download' ||
-          dataLink === 'about' || dataLink === 'docs' || dataLink === 'blog';
+          dataLink === 'pricing' ||
+          dataLink === 'features' ||
+          dataLink === 'download' ||
+          dataLink === 'about' ||
+          dataLink === 'docs' ||
+          dataLink === 'blog';
 
         if (!isExplicitMarketingLink) return;
         if (!marketingPaths.has(href) && !href.startsWith('/blog/')) return;

@@ -727,7 +727,9 @@ export function MindmapExplorer() {
                 data-testid="mindmap-suggestions-tray"
               >
                 {(() => {
-                  const cid = String(sharedParams.courseId || state.activeCourse?.id || state.courses?.[0]?.id || '');
+                  const cid = String(
+                    sharedParams.courseId || state.activeCourse?.id || state.courses?.[0]?.id || '',
+                  );
                   const list = cid ? state.mindmapSuggestions?.[cid] || [] : [];
                   const count = list.length;
                   return (
@@ -819,7 +821,9 @@ export function MindmapExplorer() {
                                       dispatch({
                                         type: 'SET_MINDMAP_SUGGESTIONS',
                                         courseId: cid,
-                                        suggestions: list.filter((x: any) => String(x?.id) !== String(s.id)),
+                                        suggestions: list.filter(
+                                          (x: any) => String(x?.id) !== String(s.id),
+                                        ),
                                       });
                                     }
                                   }}

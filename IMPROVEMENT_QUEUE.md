@@ -61,7 +61,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
 
 ### P0 — regressions / correctness / contracts
 
-1) **Fix API port/entrypoint contradiction (PORT 3000 contract) and delete/stop using `server.ts` in dev**
+1. **Fix API port/entrypoint contradiction (PORT 3000 contract) and delete/stop using `server.ts` in dev**
    - Problem:
      - Dev ports contract expects API on **3000** (`DEV_PORTS.md`, Vite proxy), but `apps/api/src/server.ts` defaults to 3002 and hard-enables devMode.
      - This is a recurring footgun for new devs and automation.
@@ -73,7 +73,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
      - `npm run dev:status` always shows API on 3000; docs and scripts align.
    - Files: `apps/api/src/index.ts`, `apps/api/src/server.ts`, root `package.json` scripts/systemd unit files (if present).
 
-2) **Marketing site: implement spec-required Marketplace page or correct spec**
+2. **Marketing site: implement spec-required Marketplace page or correct spec**
    - Problem: Spec §12.1 includes a Marketplace page (#28). Marketing nav includes “Marketplace”, and route exists at `apps/web/src/app/marketplace/page.tsx` (present), but we did not validate content fidelity (likely stub).
    - Build:
      - Either implement a real preview (cards + search UI + honest MVP disclosure) pulling from API read-only endpoints, OR label it clearly as “Preview (no live data)”.
@@ -81,7 +81,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
      - `/marketplace` has non-placeholder content and doesn’t mislead.
    - Files: `apps/web/src/app/marketplace/page.tsx`, (optional) API marketplace read endpoints.
 
-3) **Client Settings route mismatch: fix Dashboard link to MVP truth**
+3. **Client Settings route mismatch: fix Dashboard link to MVP truth**
    - Problem: `Dashboard.tsx` navigates to `/about-mvp-truth`, but `App.tsx` routes MVP truth at `/settings/about` (and tests reference `/settings/about-mvp-truth`). This is a routing inconsistency waiting to break.
    - Build:
      - Choose canonical route and add redirects/aliases:
@@ -93,7 +93,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
      - All three paths render MVP truth screen; no 404.
    - Files: `apps/client/src/App.tsx`, `apps/client/src/screens/Dashboard.tsx`.
 
-4) **Planner screenshot script: add deterministic “required screen list” and fail if missing**
+4. **Planner screenshot script: add deterministic “required screen list” and fail if missing**
    - Problem: Iter165 had evidence gaps; Iter166 needed an ad-hoc script.
    - Build:
      - Update repo’s canonical screenshot runner (`scripts/screenshots.mjs`) to capture:
@@ -106,7 +106,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
 
 ### P1 — high-value spec gaps (MVP-appropriate)
 
-5) **Make “planned vs shipped” truthfulness consistent across spec, docs, and UI**
+5. **Make “planned vs shipped” truthfulness consistent across spec, docs, and UI**
    - Problem: Spec §12 marketing wireframe promises demo video, testimonials, stats, etc. Marketing pages currently contain placeholders like `[Screenshot: ...]`.
    - Build:
      - Replace placeholders with:
@@ -117,7 +117,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
      - No “fake demo” appearance; fewer placeholders.
    - Files: `apps/web/src/app/features/page.tsx`, `apps/web/src/app/page.tsx`, `apps/web/src/app/pricing/page.tsx`.
 
-6) **Docs site: convert `apps/web /docs` from stub to render Markdown from `apps/docs/pages`**
+6. **Docs site: convert `apps/web /docs` from stub to render Markdown from `apps/docs/pages`**
    - Problem:
      - `apps/web/src/app/docs/page.tsx` points at Markdown under `apps/docs/pages/*`, but does not render it.
    - Build:
@@ -130,7 +130,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
      - `/docs` is not just a link list; it displays real documentation.
    - Files: `apps/web/src/app/docs/*`, `apps/docs/pages/*`.
 
-7) **Onboarding: add explicit “Interests” step (or fix spec references)**
+7. **Onboarding: add explicit “Interests” step (or fix spec references)**
    - Problem: `App.tsx` maps `/onboarding/interests` to `Topics` screen (same component). Spec claims separate goals/topics/interests.
    - Build:
      - Either implement a distinct Interests UI (lightweight tag picker) OR remove the duplicated route and adjust copy/spec references.
@@ -138,7 +138,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
      - Onboarding steps align with `OnboardingProgress` (6 steps) and routes.
    - Files: `apps/client/src/screens/onboarding/*`, `apps/client/src/components/OnboardingProgress.tsx`, `apps/client/src/App.tsx`.
 
-8) **Client landing vs marketing home: decide canonical entrypoint and implement redirect**
+8. **Client landing vs marketing home: decide canonical entrypoint and implement redirect**
    - Problem: There’s `apps/client` landing (`LandingApp.tsx`) and `apps/web` marketing home. This creates split-brain.
    - Build (pick one):
      - Option A: Make client `/` redirect to `apps/web` home when unauth (using `VITE_WEB_ORIGIN`).
@@ -147,7 +147,7 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
      - “What is LearnFlow?” has exactly one canonical home.
    - Files: `apps/client/src/screens/LandingApp.tsx`, `apps/client/src/App.tsx`, `apps/web/src/app/layout.tsx`.
 
-9) **Mindmap: add basic navigational affordance (node click → open course/lesson)**
+9. **Mindmap: add basic navigational affordance (node click → open course/lesson)**
    - Problem: Spec expects mindmap as a navigation surface; MVP appears mostly visualization.
    - Build:
      - Ensure nodes have stable IDs mapping to lesson routes and implement click behavior.
@@ -157,44 +157,50 @@ Note: filenames include `client-.png` and `web-.png` for the “/” route; rena
 
 ### P2 — polish / maintainability
 
-10) **Rename screenshot outputs for “/” route**
-   - Problem: `client-.png` and `web-.png` are ugly and ambiguous.
-   - Build:
-     - In screenshot script, name “/” as `home`.
-   - Acceptance:
-     - Filenames are stable and readable.
+10. **Rename screenshot outputs for “/” route**
 
-11) **Fix missing ripgrep dependency or update repo scripts/docs to avoid `rg`**
-   - Problem: `rg` is referenced in docs/planner workflows but isn’t installed in this environment.
-   - Build:
-     - Either add `ripgrep` to dev dependencies/tooling or remove references.
-   - Acceptance:
-     - New dev can follow docs without missing commands.
+- Problem: `client-.png` and `web-.png` are ugly and ambiguous.
+- Build:
+  - In screenshot script, name “/” as `home`.
+- Acceptance:
+  - Filenames are stable and readable.
 
-12) **Update `apps/docs/pages/architecture.md` to match spec §3.2.0 MVP**
-   - Problem: Architecture doc currently describes Postgres/Redis/MinIO and agent mesh diagrams that are not in this repo’s MVP.
-   - Build:
-     - Add an “MVP (this repo)” section mirroring spec §3.2.0 and clearly label future-state.
-   - Acceptance:
-     - Docs don’t contradict the spec’s MVP truth.
+11. **Fix missing ripgrep dependency or update repo scripts/docs to avoid `rg`**
 
-13) **Add a “Surface Map” doc and keep it in-repo**
-   - Build:
-     - Create `apps/docs/pages/surface-map.md` listing all routes and their owning app/port.
-   - Acceptance:
-     - Future screenshot automation + QA has a canonical route list.
+- Problem: `rg` is referenced in docs/planner workflows but isn’t installed in this environment.
+- Build:
+  - Either add `ripgrep` to dev dependencies/tooling or remove references.
+- Acceptance:
+  - New dev can follow docs without missing commands.
 
-14) **Add smoke tests for marketing pages**
-   - Build:
-     - Playwright test: visit each marketing URL and assert the H1 matches expected and no placeholder “undefined”.
-   - Acceptance:
-     - Prevent broken deploys on marketing surfaces.
+12. **Update `apps/docs/pages/architecture.md` to match spec §3.2.0 MVP**
 
-15) **Clarify Update Agent scheduler truth in both UI and docs**
-   - Problem: Spec says manual tick + RSS/Atom-only; ensure UI doesn’t imply web crawling.
-   - Build:
-     - Add “RSS/Atom only; requires external cron” note wherever Update Agent is surfaced.
-   - Files: `apps/docs/pages/update-agent-scheduling.md`, relevant client screen.
+- Problem: Architecture doc currently describes Postgres/Redis/MinIO and agent mesh diagrams that are not in this repo’s MVP.
+- Build:
+  - Add an “MVP (this repo)” section mirroring spec §3.2.0 and clearly label future-state.
+- Acceptance:
+  - Docs don’t contradict the spec’s MVP truth.
+
+13. **Add a “Surface Map” doc and keep it in-repo**
+
+- Build:
+  - Create `apps/docs/pages/surface-map.md` listing all routes and their owning app/port.
+- Acceptance:
+  - Future screenshot automation + QA has a canonical route list.
+
+14. **Add smoke tests for marketing pages**
+
+- Build:
+  - Playwright test: visit each marketing URL and assert the H1 matches expected and no placeholder “undefined”.
+- Acceptance:
+  - Prevent broken deploys on marketing surfaces.
+
+15. **Clarify Update Agent scheduler truth in both UI and docs**
+
+- Problem: Spec says manual tick + RSS/Atom-only; ensure UI doesn’t imply web crawling.
+- Build:
+  - Add “RSS/Atom only; requires external cron” note wherever Update Agent is surfaced.
+- Files: `apps/docs/pages/update-agent-scheduling.md`, relevant client screen.
 
 ---
 

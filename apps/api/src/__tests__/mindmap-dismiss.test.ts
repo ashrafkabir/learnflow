@@ -11,7 +11,11 @@ describe('Mindmap suggestions: dismiss endpoint', () => {
     // Create a real course
     const reg = await request(app)
       .post('/api/v1/auth/register')
-      .send({ email: `mindmap-dismiss-${Date.now()}@test.com`, password: 'password123', displayName: 'M' })
+      .send({
+        email: `mindmap-dismiss-${Date.now()}@test.com`,
+        password: 'password123',
+        displayName: 'M',
+      })
       .expect(201);
 
     const token = reg.body.accessToken;

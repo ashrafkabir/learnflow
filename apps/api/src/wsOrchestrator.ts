@@ -142,7 +142,8 @@ export async function handleWsMessage(
       const raw = process.env.LEARNFLOW_WS_ORCHESTRATOR_TIMEOUT_MS;
       if (!raw) return process.env.NODE_ENV !== 'production' ? 60000 : 30000;
       const n = Number(raw);
-      if (!Number.isFinite(n) || n <= 0) return process.env.NODE_ENV !== 'production' ? 60000 : 30000;
+      if (!Number.isFinite(n) || n <= 0)
+        return process.env.NODE_ENV !== 'production' ? 60000 : 30000;
       return Math.max(1000, Math.floor(n));
     })();
 

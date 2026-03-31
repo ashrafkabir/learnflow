@@ -261,7 +261,8 @@ const initialState: AppState = {
     darkMode: false,
     notifications: true,
     preferredLessonLength: (initialStudentContext as any)?.preferences?.preferredLessonLength || 10,
-    preferredTimeOfDay: (initialStudentContext as any)?.preferences?.preferredTimeOfDay || 'morning',
+    preferredTimeOfDay:
+      (initialStudentContext as any)?.preferences?.preferredTimeOfDay || 'morning',
   },
   loading: {},
   streak: 0,
@@ -910,7 +911,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (disclosure && typeof disclosure === 'object') {
           const agentName = String(disclosure.activatedMarketplaceAgentName || 'Marketplace agent');
           const note = String(
-            disclosure.note || 'This marketplace agent is routing-only in the MVP (no code execution).',
+            disclosure.note ||
+              'This marketplace agent is routing-only in the MVP (no code execution).',
           );
           dispatch({
             type: 'ADD_CHAT_MESSAGE',

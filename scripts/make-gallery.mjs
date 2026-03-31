@@ -8,9 +8,7 @@ if (!dir) {
 }
 
 const absDir = path.resolve(dir);
-const files = (await fs.readdir(absDir))
-  .filter((f) => f.toLowerCase().endsWith('.png'))
-  .sort();
+const files = (await fs.readdir(absDir)).filter((f) => f.toLowerCase().endsWith('.png')).sort();
 
 const rows = files
   .map((f) => {

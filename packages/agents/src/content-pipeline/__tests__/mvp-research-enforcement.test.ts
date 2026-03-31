@@ -20,6 +20,8 @@ describe('Iter156 P0: MVP research enforcement', () => {
     expect(() => assertMvpResearchAllowed('openai_web_search')).not.toThrow();
 
     // Still forbids unknown/paid providers.
-    expect(() => assertMvpResearchAllowed('paid_provider_example')).toThrowError(/forbids provider/i);
+    expect(() => assertMvpResearchAllowed('paid_provider_example')).toThrowError(
+      /forbids provider/i,
+    );
   });
 });

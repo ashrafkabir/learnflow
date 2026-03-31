@@ -106,12 +106,12 @@ npm run dev
 
           <h2 id="update-agent">Update Agent (MVP)</h2>
           <p>
-            Update Agent is a <strong>Pro</strong> feature that monitors only the RSS/Atom sources you
-            explicitly add. It does not crawl the open web.
+            Update Agent is a <strong>Pro</strong> feature that monitors only the RSS/Atom sources
+            you explicitly add. It does not crawl the open web.
           </p>
           <p>
-            Scheduling is external in this MVP (cron/systemd/K8s). See: <code>docs/update-agent.md</code>{' '}
-            in the repo.
+            Scheduling is external in this MVP (cron/systemd/K8s). See:{' '}
+            <code>docs/update-agent.md</code> in the repo.
           </p>
 
           <h2 id="sources">Docs sources (repo)</h2>

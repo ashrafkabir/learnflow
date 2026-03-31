@@ -25,7 +25,7 @@ The app also includes a **Run now** action for a one-off check.
 
 ## Reliability model (trust loop)
 
-The Update Agent uses a *trust loop* model:
+The Update Agent uses a _trust loop_ model:
 
 - **Locks** prevent overlapping runs.
 - **Backoff** increases delay after repeated failures.

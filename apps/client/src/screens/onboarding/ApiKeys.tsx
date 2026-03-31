@@ -155,8 +155,8 @@ export function OnboardingApiKeys() {
               className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent"
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              We&apos;ll validate the key <span className="font-medium">format only</span> (no network call)
-              and store it encrypted.
+              We&apos;ll validate the key <span className="font-medium">format only</span> (no
+              network call) and store it encrypted.
             </p>
           </label>
         </div>
