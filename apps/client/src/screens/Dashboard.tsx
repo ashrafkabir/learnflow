@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, apiGet } from '../context/AppContext.js';
+import { useApp, apiGet, apiDelete } from '../context/AppContext.js';
 import { ProgressRing } from '../components/ProgressRing.js';
 import { ConfirmDialog } from '../components/ConfirmDialog.js';
 import { useStartPipeline, usePipelineList } from '../hooks/usePipeline.js';
@@ -687,43 +687,66 @@ export function Dashboard() {
                         !['reviewing', 'published', 'personal'].includes(p.stage),
                     )
                     .map((p) => (
-                      <Button
+                      <div
                         key={p.id}
-                        variant="ghost"
-                        fullWidth
-                        onClick={() => nav(`/pipeline/${p.id}`)}
-                        className="justify-start text-left gap-3 p-3 h-auto"
+                        className="flex items-stretch gap-2"
+                        aria-label={`Pipeline ${p.courseTitle || p.topic}`}
                       >
-                        <div className="w-10 h-10 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center">
-                          <span className="text-accent" aria-hidden>
-                            {p.stage === 'scraping' ? (
-                              <IconSearch size={18} />
-                            ) : p.stage === 'organizing' ? (
-                              <IconPipeline size={18} />
-                            ) : p.stage === 'synthesizing' ? (
-                              <IconBrainSpark size={18} />
-                            ) : p.stage === 'quality_check' ? (
-                              <IconShieldKey size={18} />
-                            ) : (
-                              <IconLesson size={18} />
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {p.courseTitle || p.topic}
-                          </p>
-                          <p className="text-xs text-gray-800/80 dark:text-gray-200 capitalize">
-                            {p.stage.replace('_', ' ')} · {p.progress}%
-                          </p>
-                        </div>
-                        <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-sky-400 rounded-full transition-all"
-                            style={{ width: `${p.progress}%` }}
-                          />
-                        </div>
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          fullWidth
+                          onClick={() => nav(`/pipeline/${p.id}`)}
+                          className="justify-start text-left gap-3 p-3 h-auto flex-1"
+                        >
+                          <div className="w-10 h-10 rounded-full bg-sky-100 dark:bg-sky-900/40 flex items-center justify-center">
+                            <span className="text-accent" aria-hidden>
+                              {p.stage === 'scraping' ? (
+                                <IconSearch size={18} />
+                              ) : p.stage === 'organizing' ? (
+                                <IconPipeline size={18} />
+                              ) : p.stage === 'synthesizing' ? (
+                                <IconBrainSpark size={18} />
+                              ) : p.stage === 'quality_check' ? (
+                                <IconShieldKey size={18} />
+                              ) : (
+                                <IconLesson size={18} />
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {p.courseTitle || p.topic}
+                            </p>
+                            <p className="text-xs text-gray-800/80 dark:text-gray-200 capitalize">
+                              {p.stage.replace('_', ' ')} · {p.progress}%
+                            </p>
+                          </div>
+                          <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-sky-400 rounded-full transition-all"
+                              style={{ width: `${p.progress}%` }}
+                            />
+                          </div>
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await apiDelete(`/pipeline/${p.id}`);
+                              refreshPipelines();
+                              toast('Pipeline deleted', 'success');
+                            } catch {
+                              toast('Failed to delete pipeline', 'error');
+                            }
+                          }}
+                          className="px-3"
+                          aria-label={`Delete pipeline ${p.courseTitle || p.topic}`}
+                        >
+                          <IconTrash size={16} className="text-current" decorative />
+                        </Button>
+                      </div>
                     ))}
                 </div>
               </div>

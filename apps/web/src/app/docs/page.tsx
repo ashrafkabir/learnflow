@@ -154,8 +154,14 @@ npm run dev
 
           <h2 id="courses">Courses</h2>
           <p>
-            Create a course with <code>POST /api/v1/courses</code>, read lessons, and mark
-            completion via <code>POST /api/v1/courses/:id/lessons/:lessonId/complete</code>.
+            Create a course with <code>POST /api/v1/pipeline</code> (MVP default; spec-compliant
+            OpenAI <code>web_search</code>-only research), then poll{' '}
+            <code>GET /api/v1/pipeline/:id</code> and fetch the course via{' '}
+            <code>GET /api/v1/courses/:id</code>.
+          </p>
+          <p style={{ fontSize: 13, color: '#6b7280' }}>
+            Legacy: <code>POST /api/v1/courses</code> is retained for backwards compatibility and
+            internal tooling, but it is not the recommended default path.
           </p>
         </article>
       </div>

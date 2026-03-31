@@ -11,7 +11,7 @@ if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const isTest = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
 const DB_PATH = isTest ? ':memory:' : path.join(DATA_DIR, 'learnflow.db');
-const sqlite: Database.Database = new Database(DB_PATH);
+export const sqlite: Database.Database = new Database(DB_PATH);
 sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('foreign_keys = ON');
 
@@ -3368,4 +3368,4 @@ export const dbCollaboration = {
   },
 };
 
-export { sqlite };
+// sqlite is exported above as a named export; keep no-op re-export removed to avoid TS redeclare.

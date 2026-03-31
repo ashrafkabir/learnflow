@@ -1,213 +1,180 @@
-# IMPROVEMENT_QUEUE — Iter166 (Planner)
+# IMPROVEMENT_QUEUE — Iter167 (Planner)
 
 Status: DONE (built)
 
 OneDrive sync (this run):
 
-- ✅ Screenshots mirrored to: `/home/aifactory/onedrive-learnflow/iter166/screenshots/run-001/`
-- ⏳ (Next) Mirror this updated `IMPROVEMENT_QUEUE.md` to OneDrive at: `/home/aifactory/onedrive-learnflow/iter166/IMPROVEMENT_QUEUE.md`
+- ⏳ Mirror screenshots to: `/home/aifactory/onedrive-learnflow/iter167/screenshots/run-001/`
+- ⏳ Mirror this file to: `/home/aifactory/onedrive-learnflow/iter167/IMPROVEMENT_QUEUE.md`
 
-Repo evidence for this iteration:
+Repo evidence (Iter167):
 
-- Product spec: `LearnFlow_Product_Spec.md`
+- Product spec: `LearnFlow_Product_Spec.md` (≈1160+ lines; sections #1–#17)
 - Client routes: `apps/client/src/App.tsx`
-- API entry: `apps/api/src/index.ts` (stable ports, WS + Yjs)
+- API entry: `apps/api/src/index.ts` + config `apps/api/src/config.ts`
+- Pipeline (spec §6.1): `apps/api/src/routes/pipeline.ts`
+- Legacy course creation (still not spec-compliant research): `apps/api/src/routes/courses.ts`
+- Orchestrator prompt (spec §10): `packages/core/src/orchestrator/system-prompt.ts`
+- Key vault + encryption: `apps/api/src/keys.ts`, `apps/api/src/crypto.ts`
 - Marketing site: `apps/web/src/app/*/page.tsx`
-- Playwright screenshots (this run): `learnflow/screenshots/iter166/run-001/` (and OneDrive mirror)
+- Screenshot automation: `scripts/screenshots.mjs` → outputs under `learnflow/screenshots/iter167/run-001/`
+
+Screenshots (this run):
+
+- Repo: `learnflow/screenshots/iter167/run-001/desktop/*.png` and `.../mobile/*.png`
+- Required desktop set captured by script (proof): `scripts/screenshots.mjs` has a `requiredDesktop[]` list and fails if missing.
 
 ---
 
-## Brutally honest spec-vs-implementation (Iter166)
+## Brutally honest spec-vs-implementation (Iter167)
 
-### ✅ What matches the MVP-truth spec sections
+### ✅ What’s actually aligned with the spec (or the spec’s MVP-truth notes)
 
-- **MVP architecture disclosure is explicit** in the spec (§3.2.0) and reinforced in-product:
-  - `apps/client/src/screens/AboutMvpTruth.tsx` states marketplace agents do not execute third-party code and BYOAI-only.
-  - Marketing home + features pages include “planned/best-effort” language.
+1. **OpenAI `web_search` only research (spec §6.1.1) is implemented for the pipeline path**
+   - Evidence:
+     - `apps/api/src/routes/pipeline.ts` uses `searchAndExtractTopic(...)` and logs `openai_web_search:*`.
+     - `packages/agents/src/content-pipeline/openai-websearch-provider.ts` exists; MVP enforcement in `packages/agents/src/content-pipeline/mvp.ts`.
 
-- **Stable dev ports exist and are enforced**:
-  - `DEV_PORTS.md` says API 3000, client 3001, web 3003.
-  - `apps/client/vite.config.ts` proxies `/api` and `/ws` to `http://localhost:3000`.
-  - `scripts/check-ports.mjs` hard-fails `npm run dev` if ports are already in use.
+2. **BYOAI key vault exists and is encrypted at rest (spec §4.4 / §16 WS-02)**
+   - Evidence:
+     - `apps/api/src/keys.ts` stores `{ encryptedKey, iv, tag, encVersion }` produced by `encrypt()`.
+     - `apps/api/src/crypto.ts` uses AES-256-GCM (AEAD) as default `encVersion='v2_gcm'` with legacy v1 CBC decrypt support.
+     - UI copy in `apps/client/src/screens/ProfileSettings.tsx` explicitly says “AES-256-GCM, AEAD”.
 
-- **Marketing site pages required by spec §12.1 exist** (`apps/web/src/app/.../page.tsx`):
-  - `/`, `/features`, `/pricing`, `/download`, `/docs`, `/blog`, `/about`.
+3. **Lesson “bite-sized” constraints are enforced server-side**
+   - Evidence:
+     - `apps/api/src/utils/lessonSizing.ts` soft-caps to 1500 words and adds a truncation note.
+     - `apps/api/src/routes/courses.ts` prompts include `## Estimated Time` and hard requirements for structured lesson headings.
 
-### ❌ Spec sections that are still misleading vs actual code
+4. **Screenshot automation is now first-class and deterministic** (regression guard)
+   - Evidence:
+     - `scripts/screenshots.mjs` captures desktop + mobile and hard-fails if required screenshots are missing.
+     - This run successfully produced a complete set under `learnflow/screenshots/iter167/run-001/`.
 
-- **Full production “multi-agent mesh” architecture** in spec §§3–4 reads like shipped behavior (gRPC, K8s, vector DB, containerized agents). In repo reality, orchestration is **keyword/intent routing** + built-in handlers; no third-party agent execution.
+### ❌ The biggest spec gaps / misleading areas (these are real, not “nice-to-haves”)
 
-- **Docs/Architecture guide is partially out of date / contradictory**:
-  - `apps/docs/pages/architecture.md` claims Postgres/Redis/MinIO, Nextra, “packages/agents” etc — but spec §3.2.0 says SQLite + no Redis/S3/vector DB, and actual running stack in dev is Express + WS + Yjs.
+A) **Spec §6.1 content pipeline vs actual course creation path is split-brain**
 
-- **API dev auth posture is confusing**:
-  - `apps/api/src/index.ts` starts with `createApp({ devMode: config.devMode })` where `config.devMode` depends on `LEARNFLOW_DEV_AUTH`.
-  - But `apps/api/src/server.ts` hardcodes `createApp({ devMode: true })` and defaults PORT to 3002, which conflicts with the port contract and creates confusion about which entrypoint is canonical.
+- The pipeline route is spec-ish (OpenAI web_search), but `apps/api/src/routes/courses.ts` still contains legacy multi-source behavior and even says so:
+  - Comment: “Iter152: Spec requires OpenAI web_search for the pipeline; course creation remains legacy.”
+- Impact: Users creating courses the “normal” way can get behavior that contradicts the spec’s research constraints and artifact model.
+
+B) **Spec §6.3 “source credibility index weights future recommendations” is not real (yet)**
+
+- There is a heuristic scorer in `apps/api/src/utils/sourceCredibility.ts`, but it’s only used in export (`apps/api/src/routes/export.ts`).
+- Pipeline also has credibilityScore fields, but those are either provider-provided or hardcoded in mock fixtures—no “index that influences recs” loop exists.
+
+C) **Marketplace (spec §7) is largely UI scaffolding and/or not a real two-sided marketplace**
+
+- Web has `/marketplace` (`apps/web/src/app/marketplace/page.tsx`) and client has marketplace screens (screenshots show them), but:
+  - No evidence of real pricing, moderation queue, payouts, creator analytics, or publish flow matching §7.1.
+  - Agent “SDK requirements” are not implemented as described (no real sandboxed third-party execution).
+
+D) **Orchestrator is not “DAG-based execution planner” (spec §16 WS-03)**
+
+- `packages/core/src/orchestrator/system-prompt.ts` is implemented (good), but actual orchestrator logic remains intent/heuristic routing (not a DAG planner).
+- This is fine for MVP, but the spec still reads like the DAG planner exists.
+
+E) **Docs still have contradictions risk**
+
+- `apps/docs/pages/architecture.md` is present and has historically been out-of-date vs the MVP architecture (SQLite + no Redis/MinIO). If it still claims Postgres/Redis/MinIO, it’s misleading.
 
 ---
 
-## Screenshots — completion of required capture
+## Prioritized, buildable tasks (10–15)
 
-✅ Captured **apps/client** (3001) + **apps/web** (3003) surfaces.
+### P0 — regressions / contracts / user-facing correctness
 
-- Stored in repo: `learnflow/screenshots/iter166/run-001/`
-- Mirrored to OneDrive: `/home/aifactory/onedrive-learnflow/iter166/screenshots/run-001/`
+1. **Unify course creation onto the spec pipeline (OpenAI `web_search` only) or explicitly label legacy path**
+   - Problem: Two different course generation systems with different guarantees.
+   - Build option A (preferred): Route “Create course” to `pipeline` (spec §6.1) and deprecate legacy `courses.ts` generation.
+   - Build option B: Keep both, but add a clear UI toggle + warnings and ensure tests cover both.
+   - Acceptance:
+     - Default new-course flow uses pipeline and persists research artifacts.
+     - No silent fallbacks to legacy multi-source.
+   - Files: `apps/client` course create UI, `apps/api/src/routes/pipeline.ts`, `apps/api/src/routes/courses.ts`.
 
-Note: filenames include `client-.png` and `web-.png` for the “/” route; rename in script later (see task P2.4).
-
----
-
-## Prioritized buildable tasks (10–15)
-
-### P0 — regressions / correctness / contracts
-
-1. **Fix API port/entrypoint contradiction (PORT 3000 contract) and delete/stop using `server.ts` in dev**
-   - Problem:
-     - Dev ports contract expects API on **3000** (`DEV_PORTS.md`, Vite proxy), but `apps/api/src/server.ts` defaults to 3002 and hard-enables devMode.
-     - This is a recurring footgun for new devs and automation.
+2. **Fix Settings copy mismatch: UI says AES-256-GCM but spec says AES-256 generically — ensure truthfulness and no contradictions**
+   - Problem: Copy consistency. Also ensure no place claims “never logged” while pipeline logs could include request previews.
    - Build:
-     - Make `apps/api/src/index.ts` the **only** dev/prod entrypoint.
-     - Either remove `server.ts` or mark it explicitly “legacy/local only” and ensure it is not referenced by package scripts/systemd.
-     - Ensure API always binds `config.port` default 3000.
+     - Confirm secrets are redacted everywhere in pipeline logging.
+     - Update spec or UI copy to state AES-256-GCM (AEAD) explicitly.
    - Acceptance:
-     - `npm run dev:status` always shows API on 3000; docs and scripts align.
-   - Files: `apps/api/src/index.ts`, `apps/api/src/server.ts`, root `package.json` scripts/systemd unit files (if present).
+     - A single canonical statement (spec + UI + docs) with exact algorithm/version.
+   - Files: `LearnFlow_Product_Spec.md`, `apps/client/src/screens/ProfileSettings.tsx`, `apps/api/src/routes/pipeline.ts`.
 
-2. **Marketing site: implement spec-required Marketplace page or correct spec**
-   - Problem: Spec §12.1 includes a Marketplace page (#28). Marketing nav includes “Marketplace”, and route exists at `apps/web/src/app/marketplace/page.tsx` (present), but we did not validate content fidelity (likely stub).
+3. **Docs accuracy patch: update `apps/docs/pages/architecture.md` to match spec §3.2.0 MVP**
+   - Problem: Documentation is the fastest way to lose trust.
    - Build:
-     - Either implement a real preview (cards + search UI + honest MVP disclosure) pulling from API read-only endpoints, OR label it clearly as “Preview (no live data)”.
-   - Acceptance:
-     - `/marketplace` has non-placeholder content and doesn’t mislead.
-   - Files: `apps/web/src/app/marketplace/page.tsx`, (optional) API marketplace read endpoints.
+     - Add “MVP (this repo today)” section: SQLite, Express, WS, Yjs, no Redis/MinIO/Postgres required.
+     - Clearly mark future-state diagrams as “PLANNED”.
+   - Acceptance: Reading docs cannot lead to the wrong deployment assumptions.
 
-3. **Client Settings route mismatch: fix Dashboard link to MVP truth**
-   - Problem: `Dashboard.tsx` navigates to `/about-mvp-truth`, but `App.tsx` routes MVP truth at `/settings/about` (and tests reference `/settings/about-mvp-truth`). This is a routing inconsistency waiting to break.
+4. **Marketplace truth audit: add “MVP marketplace is a preview” banners where applicable**
+   - Problem: Spec §7 describes monetization + moderation; UI likely implies it exists.
    - Build:
-     - Choose canonical route and add redirects/aliases:
-       - `/settings/about` (canonical)
-       - `/settings/about-mvp-truth` (alias)
-       - `/about-mvp-truth` (alias if already shipped)
-     - Update all nav links.
+     - Add consistent “Preview / mock mode” callouts on marketplace screens (courses, agents, creator dashboard).
    - Acceptance:
-     - All three paths render MVP truth screen; no 404.
-   - Files: `apps/client/src/App.tsx`, `apps/client/src/screens/Dashboard.tsx`.
+     - No screen implies paid publishing, payouts, or agent sandbox execution if it isn’t implemented.
 
-4. **Planner screenshot script: add deterministic “required screen list” and fail if missing**
-   - Problem: Iter165 had evidence gaps; Iter166 needed an ad-hoc script.
+### P1 — high-value spec gaps (MVP-appropriate + testable)
+
+5. **Implement real “Suggested Reads” + “Further Reading” blocks end-to-end**
+   - Evidence: API already returns `recommendedSources` (2–5) and client has `AttributionDrawer` sections.
    - Build:
-     - Update repo’s canonical screenshot runner (`scripts/screenshots.mjs`) to capture:
-       - apps/web: `/`, `/features`, `/pricing`, `/download`, `/docs`, `/blog`, `/about`
-       - apps/client: `/`, `/login`, `/register`, `/dashboard`, `/conversation`, `/mindmap`, `/marketplace/courses`, `/marketplace/agents`, `/settings`, `/settings/about`
-     - If any expected file is missing, exit non-zero.
+     - Ensure lesson pages always show recommended sources when available (and titles, not just URLs).
+     - In pipeline, generate/attach recommended sources per lesson using `sourceCards` selection.
    - Acceptance:
-     - One command produces a complete set and CI can enforce completeness.
-   - Files: `scripts/screenshots.mjs`.
+     - Lesson reader shows curated suggested reads; export includes them.
 
-### P1 — high-value spec gaps (MVP-appropriate)
-
-5. **Make “planned vs shipped” truthfulness consistent across spec, docs, and UI**
-   - Problem: Spec §12 marketing wireframe promises demo video, testimonials, stats, etc. Marketing pages currently contain placeholders like `[Screenshot: ...]`.
+6. **Add a minimal “credibility index influences recommendations” loop**
    - Build:
-     - Replace placeholders with:
-       - real screenshots from the client app (static assets), or
-       - honest “Screenshot coming soon” blocks with design polish.
-     - Add a single “MVP truth” callout component used across `/features`, `/pricing`, `/download`.
+     - Persist credibility score per source and use it to rank `recommendedSources`.
    - Acceptance:
-     - No “fake demo” appearance; fewer placeholders.
-   - Files: `apps/web/src/app/features/page.tsx`, `apps/web/src/app/page.tsx`, `apps/web/src/app/pricing/page.tsx`.
+     - Measurable effect: same lesson plan yields different ordering when credibility differs.
 
-6. **Docs site: convert `apps/web /docs` from stub to render Markdown from `apps/docs/pages`**
-   - Problem:
-     - `apps/web/src/app/docs/page.tsx` points at Markdown under `apps/docs/pages/*`, but does not render it.
+7. **Orchestrator “action chips” contract: make it match spec language and be consistent across screens**
+   - Evidence: Aggregator ensures 3–4 chips in `packages/core/src/orchestrator/response-aggregator.ts`.
    - Build:
-     - Add a simple MD renderer (server-side) or static import pipeline to render at least:
-       - getting-started
-       - api-reference
-       - websocket-events
-       - mvp-truth
+     - Ensure chips are always visible after lessons (if lesson reader moved actions to drawer, confirm parity).
    - Acceptance:
-     - `/docs` is not just a link list; it displays real documentation.
-   - Files: `apps/web/src/app/docs/*`, `apps/docs/pages/*`.
+     - After any assistant message, UI exposes 3–4 actions without hunting.
 
-7. **Onboarding: add explicit “Interests” step (or fix spec references)**
-   - Problem: `App.tsx` maps `/onboarding/interests` to `Topics` screen (same component). Spec claims separate goals/topics/interests.
+8. **Marketing /docs should render real Markdown from `apps/docs/pages/*` (not just link lists)**
+   - Problem: Spec §13 says docs plan; web `/docs` should be credible.
    - Build:
-     - Either implement a distinct Interests UI (lightweight tag picker) OR remove the duplicated route and adjust copy/spec references.
+     - Render at least “Getting Started” + “API Reference” pages.
    - Acceptance:
-     - Onboarding steps align with `OnboardingProgress` (6 steps) and routes.
-   - Files: `apps/client/src/screens/onboarding/*`, `apps/client/src/components/OnboardingProgress.tsx`, `apps/client/src/App.tsx`.
-
-8. **Client landing vs marketing home: decide canonical entrypoint and implement redirect**
-   - Problem: There’s `apps/client` landing (`LandingApp.tsx`) and `apps/web` marketing home. This creates split-brain.
-   - Build (pick one):
-     - Option A: Make client `/` redirect to `apps/web` home when unauth (using `VITE_WEB_ORIGIN`).
-     - Option B: Remove marketing link-outs and build a real product landing within client.
-   - Acceptance:
-     - “What is LearnFlow?” has exactly one canonical home.
-   - Files: `apps/client/src/screens/LandingApp.tsx`, `apps/client/src/App.tsx`, `apps/web/src/app/layout.tsx`.
-
-9. **Mindmap: add basic navigational affordance (node click → open course/lesson)**
-   - Problem: Spec expects mindmap as a navigation surface; MVP appears mostly visualization.
-   - Build:
-     - Ensure nodes have stable IDs mapping to lesson routes and implement click behavior.
-   - Acceptance:
-     - From mindmap you can reach lesson reader reliably.
-   - Files: `apps/client/src/screens/MindmapExplorer.tsx`, `apps/api/src/routes/mindmap.ts`.
+     - `/docs` on web is readable documentation, not a stub.
 
 ### P2 — polish / maintainability
 
-10. **Rename screenshot outputs for “/” route**
+9. **Improve screenshot run notes**
+   - Build:
+     - In `scripts/screenshots.mjs`, auto-fill `NOTES.md` “What changed” and “Known limitations” with git SHA + dev ports used.
 
-- Problem: `client-.png` and `web-.png` are ugly and ambiguous.
-- Build:
-  - In screenshot script, name “/” as `home`.
-- Acceptance:
-  - Filenames are stable and readable.
-
-11. **Fix missing ripgrep dependency or update repo scripts/docs to avoid `rg`**
-
-- Problem: `rg` is referenced in docs/planner workflows but isn’t installed in this environment.
-- Build:
-  - Either add `ripgrep` to dev dependencies/tooling or remove references.
-- Acceptance:
-  - New dev can follow docs without missing commands.
-
-12. **Update `apps/docs/pages/architecture.md` to match spec §3.2.0 MVP**
-
-- Problem: Architecture doc currently describes Postgres/Redis/MinIO and agent mesh diagrams that are not in this repo’s MVP.
-- Build:
-  - Add an “MVP (this repo)” section mirroring spec §3.2.0 and clearly label future-state.
-- Acceptance:
-  - Docs don’t contradict the spec’s MVP truth.
-
-13. **Add a “Surface Map” doc and keep it in-repo**
+10. **Add Playwright smoke tests for marketing surfaces (§15)**
 
 - Build:
-  - Create `apps/docs/pages/surface-map.md` listing all routes and their owning app/port.
-- Acceptance:
-  - Future screenshot automation + QA has a canonical route list.
+  - E2E test that asserts each marketing page loads and has the expected H1.
 
-14. **Add smoke tests for marketing pages**
+11. **Remove or further harden any “legacy” entrypoints and footguns**
 
+- Evidence: `apps/api/src/server.ts` is “LEGACY ENTRYPOINT (do not use)”.
 - Build:
-  - Playwright test: visit each marketing URL and assert the H1 matches expected and no placeholder “undefined”.
-- Acceptance:
-  - Prevent broken deploys on marketing surfaces.
+  - Ensure package scripts and systemd units only point at `src/index.ts`.
 
-15. **Clarify Update Agent scheduler truth in both UI and docs**
+12. **Clarify subscription mock mode consistently**
 
-- Problem: Spec says manual tick + RSS/Atom-only; ensure UI doesn’t imply web crawling.
-- Build:
-  - Add “RSS/Atom only; requires external cron” note wherever Update Agent is surfaced.
-- Files: `apps/docs/pages/update-agent-scheduling.md`, relevant client screen.
+- Evidence: spec §8 explicitly notes mock billing; ensure marketing pricing and in-app settings say the same.
 
 ---
 
-## OneDrive sync — completed
+## OneDrive sync — TODO (must complete this iteration)
 
-✅ Mirrored Iter166 artifacts to:
-
-- `/home/aifactory/onedrive-learnflow/iter166/IMPROVEMENT_QUEUE.md`
-- `/home/aifactory/onedrive-learnflow/iter166/BUILD_LOG_ITER166.md`
-- `/home/aifactory/onedrive-learnflow/iter166/screenshots/iter166/run-002/`
+- Mirror screenshots:
+  - from: `learnflow/screenshots/iter167/run-001/`
+  - to: `/home/aifactory/onedrive-learnflow/iter167/screenshots/run-001/`
+- Mirror this file:
+  - from: `IMPROVEMENT_QUEUE.md`
+  - to: `/home/aifactory/onedrive-learnflow/iter167/IMPROVEMENT_QUEUE.md`

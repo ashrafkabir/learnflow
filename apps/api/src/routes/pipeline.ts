@@ -160,6 +160,7 @@ import {
   dbLessonTakeaways,
   dbLessonImages,
   dbLessonSources,
+  sqlite,
 } from '../db.js';
 import { buildCoursePlan } from '../utils/coursePlan.js';
 
@@ -220,6 +221,7 @@ function extractStatusCode(err: any): number | undefined {
 }
 
 import { redactSecrets } from '../utils/redactSecrets.js';
+import { redactSecretsDeep } from '../utils/redactSecretsDeep.js';
 
 async function writeOpenAILogArtifact(params: {
   courseId: string;
@@ -269,8 +271,13 @@ async function logOpenAIRequestResponse(params: {
 }): Promise<void> {
   const { p, courseId, kind, request, response } = params;
 
-  // Write full artifacts to disk.
-  const paths = await writeOpenAILogArtifact({ courseId, kind, request, response });
+  // Write full artifacts to disk (redacted).
+  const paths = await writeOpenAILogArtifact({
+    courseId,
+    kind,
+    request: redactSecretsDeep(request),
+    response: redactSecretsDeep(response),
+  });
 
   // Log truncated previews to pipeline logs.
   appendLog(
@@ -322,6 +329,10 @@ function logAuthIssue(
 }
 
 function updatePipeline(p: PipelineState, partial: Partial<PipelineState>) {
+  // If a pipeline was deleted/cancelled, ignore late updates from background tasks.
+  if ((p as any).deleted) return;
+  if (!pipelines.has(p.id)) return;
+
   Object.assign(p, partial, { updatedAt: new Date().toISOString() });
   pipelines.set(p.id, p);
   // Persist to SQLite
@@ -2558,6 +2569,69 @@ router.get('/', (req: Request, res: Response) => {
       failReason: p.failReason,
     }));
   res.json({ pipelines: all });
+});
+
+/** DELETE /api/v1/pipeline/:id — Delete/cancel a pipeline run (best-effort) */
+router.delete('/:id', (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const p = pipelines.get(id) as any;
+
+  // If it's not in memory, attempt DB cleanup anyway (idempotent).
+  if (!p) {
+    try {
+      dbPipelines.delete(id);
+    } catch {
+      // ignore
+    }
+    res.status(204).end();
+    return;
+  }
+
+  // Enforce ownership
+  if (p.userId && req.user?.sub && p.userId !== req.user.sub) {
+    sendError(res, req, { status: 404, code: 'not_found', message: 'Pipeline not found' });
+    return;
+  }
+
+  // Mark deleted so late async updates are ignored.
+  p.deleted = true;
+  p.status = 'FAILED';
+  p.stage = 'failed';
+  p.failReason = 'deleted';
+  p.finishedAt = new Date().toISOString();
+  p.updatedAt = new Date().toISOString();
+
+  // Remove from live list
+  pipelines.delete(id);
+
+  // Remove persisted state
+  try {
+    dbPipelines.delete(id);
+  } catch {
+    // ignore
+  }
+
+  // Best-effort: also delete derived course shell if it exists and is owned.
+  // This prevents “stuck” shells from lingering when the user cancels.
+  try {
+    const courseId = String(p.courseId || '');
+    if (courseId) {
+      const existing = dbCourses.getById(courseId) as any;
+      if (existing && (!existing.authorId || existing.authorId === req.user?.sub)) {
+        try {
+          // progress table is non-FK; delete explicit.
+          sqlite.prepare('DELETE FROM progress WHERE courseId = ?').run(courseId);
+        } catch {
+          // ignore
+        }
+        dbCourses.delete(courseId);
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  res.status(204).end();
 });
 
 /** POST /api/v1/pipeline/:id/restart — Restart a failed/stalled pipeline by creating a new run id */
