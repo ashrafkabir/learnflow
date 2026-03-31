@@ -66,8 +66,8 @@ export function Dashboard() {
       if (result) {
         setActivePipelineId(result.pipelineId);
         refreshPipelines();
-        // Happy path: take the user directly to their new course.
-        nav(`/courses/${result.courseId}`);
+        // Take the user to the live pipeline view first (course shell may be empty until pipeline finishes).
+        nav(`/pipeline/${result.pipelineId}`);
       }
     } catch (err: any) {
       // Show the real reason (auth, tier limit, server error) instead of failing silently.
