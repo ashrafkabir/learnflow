@@ -2571,6 +2571,15 @@ router.get('/', (req: Request, res: Response) => {
   res.json({ pipelines: all });
 });
 
+/** DELETE /api/v1/pipeline — Guard against missing id (client bug / stale UI) */
+router.delete('/', (req: Request, res: Response) => {
+  sendError(res, req, {
+    status: 400,
+    code: 'invalid_request',
+    message: 'Missing pipeline id. Use DELETE /api/v1/pipeline/:id',
+  });
+});
+
 /** DELETE /api/v1/pipeline/:id — Delete/cancel a pipeline run (best-effort) */
 router.delete('/:id', (req: Request, res: Response) => {
   const id = String(req.params.id);
