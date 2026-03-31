@@ -572,6 +572,7 @@ export function ProfileSettings() {
                     provider: keyProvider,
                     apiKey,
                     validate: true,
+                    activate: true,
                   });
                   setSavedKeys([
                     ...savedKeys,
