@@ -225,15 +225,22 @@ function AnalyticsPageTracker() {
 
         e.preventDefault();
 
-        // Use a runtime-configurable origin for apps/web (Next.js), fallback to same-origin.
+        // Use a runtime-configurable origin for apps/web (Next.js).
+        // If not provided, default to the same host on :3003 (marketing server), because
+        // the client SPA does not serve /pricing and would 404.
         const runtimeEnv =
           (globalThis as any)?.__LEARNFLOW_ENV__ &&
           typeof (globalThis as any).__LEARNFLOW_ENV__ === 'object'
             ? ((globalThis as any).__LEARNFLOW_ENV__ as Record<string, string | undefined>)
             : null;
         const webOrigin = runtimeEnv?.VITE_WEB_ORIGIN || (import.meta as any)?.env?.VITE_WEB_ORIGIN;
-        const base = webOrigin ? String(webOrigin).replace(/\/$/, '') : '';
 
+        const inferred =
+          typeof window !== 'undefined' && window.location?.origin
+            ? window.location.origin.replace(/:\d+$/, ':3003')
+            : '';
+
+        const base = (webOrigin ? String(webOrigin) : inferred).replace(/\/$/, '');
         const target = base ? `${base}${href}` : href;
         window.location.assign(target);
       } catch {
